@@ -64,11 +64,11 @@ new class extends Component
 
 <section>
     <header>
-        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+        <h2 class="text-lg font-semibold text-white">
             {{ __('Profile Information') }}
         </h2>
 
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <p class="mt-1 text-sm text-gray-400">
             {{ __("Update your account's profile information and email address.") }}
         </p>
     </header>
@@ -76,7 +76,7 @@ new class extends Component
     <form wire:submit="updateProfileInformation" class="mt-6 space-y-6">
         <div>
             <x-input-label for="username" :value="__('Username')" />
-            <x-text-input id="username" name="username" type="text" class="mt-1 block w-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" value="{{ auth()->user()->username }}" disabled />
+            <x-text-input id="username" name="username" type="text" class="mt-1 block w-full !bg-surface-600/30 !text-gray-500 cursor-not-allowed !border-surface-300/30" value="{{ auth()->user()->username }}" disabled />
         </div>
 
         <div>
@@ -92,10 +92,10 @@ new class extends Component
 
             @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! auth()->user()->hasVerifiedEmail())
                 <div>
-                    <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
+                    <p class="text-sm mt-2 text-gray-300">
                         {{ __('Your email address is unverified.') }}
 
-                        <button wire:click.prevent="sendVerification" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                        <button wire:click.prevent="sendVerification" class="underline text-sm text-alja-cyan hover:text-alja-cyan-light rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-alja-magenta/50 focus:ring-offset-surface-700">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>
