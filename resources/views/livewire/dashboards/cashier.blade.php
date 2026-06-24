@@ -5,11 +5,22 @@ use App\Models\Expense;
 use App\Models\Invoice;
 
 new class extends Component {
+    protected $listeners = [
+        'echo:orders,OrderUpdated' => '$refresh',
+    ];
+
     // Expense logging properties
     public $amount = '';
     public $description = '';
     public $type = 'laba'; // Default to operations expense
     public $incurredAt = '';
+
+    // Checkout properties
+    public $selectedInvoiceId = null;
+    public $paymentType = 'settle'; // 'dp' or 'settle'
+    public $inputAmount = '';
+    public $inputDiscount = 0;
+    public $inputMethod = 'Cash';
 
     // Alert feedback
     public $showSuccessAlert = false;
@@ -43,6 +54,89 @@ new class extends Component {
         $this->type = 'laba';
 
         $this->successMessage = 'Expense logged successfully!';
+        $this->showSuccessAlert = true;
+    }
+
+    public function selectInvoice($id, $type = 'settle')
+    {
+        $this->selectedInvoiceId = $id;
+        $this->paymentType = $type;
+        $invoice = Invoice::findOrFail($id);
+        
+        if ($type === 'dp') {
+            $this->inputAmount = (int) ($invoice->grand_total * 0.5); // suggest 50% DP
+        } else {
+            $this->inputAmount = $invoice->accounts_receivable;
+        }
+        $this->inputDiscount = 0;
+        $this->inputMethod = 'Cash';
+        $this->resetErrorBag();
+    }
+
+    public function closeCheckout()
+    {
+        $this->selectedInvoiceId = null;
+    }
+
+    public function processCheckout()
+    {
+        $invoice = Invoice::findOrFail($this->selectedInvoiceId);
+        
+        if ($this->paymentType === 'dp') {
+            $this->validate([
+                'inputAmount' => 'required|integer|min:1000|max:' . $invoice->grand_total,
+                'inputMethod' => 'required|string|in:Cash,Transfer,QRIS',
+            ]);
+            
+            $dpAmt = (int) $this->inputAmount;
+            
+            $invoice->dp_amount = $dpAmt;
+            $invoice->dp_paid = $dpAmt;
+            $invoice->payment_dp_method = $this->inputMethod;
+            $invoice->cashier_dp_name = auth()->user()->name;
+            $invoice->dp_date = now()->toDateString();
+            $invoice->accounts_receivable = $invoice->grand_total - $dpAmt;
+            $invoice->status = 1; // Down Payment
+            $invoice->save();
+            
+            $this->successMessage = 'Down Payment registered successfully!';
+        } else {
+            $maxDiscount = $invoice->accounts_receivable;
+            $this->validate([
+                'inputDiscount' => 'required|integer|min:0|max:' . $maxDiscount,
+                'inputAmount' => 'required|integer|min:0',
+                'inputMethod' => 'required|string|in:Cash,Transfer,QRIS',
+            ]);
+            
+            $discount = (int) $this->inputDiscount;
+            $amountToPay = $invoice->accounts_receivable - $discount;
+            $cashPaid = (int) $this->inputAmount;
+            
+            if ($cashPaid < $amountToPay) {
+                $this->addError('inputAmount', 'Insufficient payment. Amount must be at least Rp. ' . number_format($amountToPay));
+                return;
+            }
+            
+            // Adjust invoice totals
+            $invoice->discount += $discount;
+            $invoice->grand_total -= $discount;
+            $invoice->total_profit = max(0, $invoice->total_profit - $discount);
+            $invoice->settlement_amount = $amountToPay;
+            $invoice->payment_amount = $cashPaid;
+            $invoice->change_amount = $cashPaid - $amountToPay;
+            $invoice->payment_method = $this->inputMethod;
+            $invoice->cashier_name = auth()->user()->name;
+            $invoice->payment_date = now()->toDateString();
+            $invoice->accounts_receivable = 0;
+            $invoice->status = 2; // Paid / Lunas
+            $invoice->save();
+            
+            $this->successMessage = 'Payment settled and invoice closed!';
+        }
+        
+        event(new \App\Events\OrderUpdated());
+        
+        $this->selectedInvoiceId = null;
         $this->showSuccessAlert = true;
     }
 
@@ -216,11 +310,12 @@ new class extends Component {
                                 </td>
                                 <td class="py-3 px-3">Rp. {{ number_format($inv->grand_total) }}</td>
                                 <td class="py-3 px-3 font-bold text-red-500">Rp. {{ number_format($inv->accounts_receivable) }}</td>
-                                <td class="py-3 px-3 text-right space-x-1">
+                                <td class="py-3 px-3 text-right space-x-1 flex items-center justify-end gap-1">
                                     @if ($inv->status == 0)
-                                        <button class="rounded bg-cyan-500 hover:bg-cyan-600 px-3 py-1 text-[11px] font-bold text-white shadow-sm transition">Register DP</button>
+                                        <button wire:click="selectInvoice({{ $inv->id }}, 'dp')" class="rounded bg-cyan-500 hover:bg-cyan-600 px-2 py-1 text-[11px] font-bold text-white shadow-sm transition">Register DP</button>
                                     @endif
-                                    <button class="rounded bg-emerald-500 hover:bg-emerald-600 px-3 py-1 text-[11px] font-bold text-white shadow-sm transition">Checkout</button>
+                                    <button wire:click="selectInvoice({{ $inv->id }}, 'settle')" class="rounded bg-emerald-500 hover:bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white shadow-sm transition">Checkout</button>
+                                    <a href="/orders/{{ $inv->id }}/receipt" target="_blank" class="rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 px-2 py-1 text-[11px] font-bold transition">Receipt</a>
                                 </td>
                             </tr>
                         @empty
@@ -312,4 +407,146 @@ new class extends Component {
             </table>
         </div>
     </div>
+
+    <!-- CHECKOUT MODAL -->
+    @if ($selectedInvoiceId)
+        @php
+            $selInvoice = \App\Models\Invoice::with(['customer', 'orders'])->find($selectedInvoiceId);
+        @endphp
+        @if ($selInvoice)
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 shadow-2xl p-6 relative text-xs">
+                    
+                    <!-- Header -->
+                    <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-700/50 pb-3 mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-950 dark:text-white">
+                                {{ $paymentType === 'dp' ? 'Register Down Payment' : 'Invoice Payment Checkout' }}
+                            </h3>
+                            <p class="text-xs text-gray-400 mt-0.5">Invoice #{{ str_pad($selInvoice->id, 5, '0', STR_PAD_LEFT) }} &bull; Customer: {{ $selInvoice->customer->name }}</p>
+                        </div>
+                        <button wire:click="closeCheckout" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- Items Summary -->
+                    <div class="mb-4 space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                        <span class="block font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-[10px]">Order Items</span>
+                        @foreach ($selInvoice->orders as $o)
+                            <div class="flex justify-between text-[11px] text-gray-700 dark:text-gray-300">
+                                <span>{{ $o->quantity }}x {{ $o->file_name }}</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">Rp. {{ number_format($o->subtotal) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <!-- Payment Details Form -->
+                    <div class="space-y-4">
+                        @if ($selInvoice->status == 0)
+                            <div>
+                                <label class="block font-semibold text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wider text-[10px]">Payment Type</label>
+                                <div class="flex gap-4">
+                                    <label class="flex items-center gap-2 font-bold cursor-pointer text-gray-700 dark:text-gray-300">
+                                        <input type="radio" wire:model.live="paymentType" value="dp" class="text-cyan-500 focus:ring-cyan-500">
+                                        <span>Down Payment (DP)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 font-bold cursor-pointer text-gray-700 dark:text-gray-300">
+                                        <input type="radio" wire:model.live="paymentType" value="settle" class="text-cyan-500 focus:ring-cyan-500">
+                                        <span>Full Settlement</span>
+                                    </label>
+                                </div>
+                            </div>
+                        @else
+                            <div class="bg-amber-50 dark:bg-amber-950/20 border border-amber-500/20 p-2.5 rounded-lg text-amber-700 dark:text-amber-400 font-semibold">
+                                Sisa Piutang Settlement (Current DP Paid: Rp. {{ number_format($selInvoice->dp_paid) }})
+                            </div>
+                        @endif
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-semibold text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider text-[10px]">Payment Method</label>
+                                <select wire:model="inputMethod" class="w-full rounded-lg border border-gray-250 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-gray-900 dark:text-white font-medium">
+                                    <option value="Cash">Cash</option>
+                                    <option value="Transfer">Bank Transfer</option>
+                                    <option value="QRIS">QRIS</option>
+                                </select>
+                            </div>
+
+                            @if ($paymentType === 'settle')
+                                <div>
+                                    <label class="block font-semibold text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider text-[10px]">Additional Discount (Rp.)</label>
+                                    <input type="number" wire:model.live="inputDiscount" class="w-full rounded-lg border border-gray-250 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-gray-900 dark:text-white font-medium">
+                                    @error('inputDiscount') <span class="text-red-500 text-[10px]">{{ $message }}</span> @enderror
+                                </div>
+                            @endif
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider text-[10px]">
+                                {{ $paymentType === 'dp' ? 'DP Amount Received (Rp.)' : 'Total Cash Paid by Customer (Rp.)' }}
+                            </label>
+                            <input type="number" wire:model.live="inputAmount" class="w-full rounded-lg border border-gray-250 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 py-2.5 px-3 focus:outline-none focus:border-cyan-500 text-gray-900 dark:text-white font-bold text-sm">
+                            @error('inputAmount') <span class="text-red-500 text-[10px]">{{ $message }}</span> @enderror
+                        </div>
+
+                        <!-- Calculations Preview -->
+                        @php
+                            $discount = (int) $inputDiscount;
+                            $receivable = $selInvoice->accounts_receivable;
+                            $netToPay = $paymentType === 'dp' ? (int)$inputAmount : ($receivable - $discount);
+                            $paid = (int) $inputAmount;
+                            $change = $paid - $netToPay;
+                        @endphp
+                        <div class="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-150 dark:border-gray-700/50 space-y-2">
+                            @if ($paymentType === 'dp')
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Total Invoice:</span>
+                                    <span class="text-gray-900 dark:text-white font-bold">Rp. {{ number_format($selInvoice->grand_total) }}</span>
+                                </div>
+                                <div class="flex justify-between text-cyan-600 dark:text-cyan-400 font-semibold">
+                                    <span>Down Payment Paid:</span>
+                                    <span>Rp. {{ number_format($paid) }}</span>
+                                </div>
+                                <div class="flex justify-between border-t border-gray-200/50 dark:border-gray-700/50 pt-2 text-red-500 font-bold">
+                                    <span>Remaining Balance (AR):</span>
+                                    <span>Rp. {{ number_format(max(0, $selInvoice->grand_total - $paid)) }}</span>
+                                </div>
+                            @else
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Remaining Balance:</span>
+                                    <span class="text-gray-900 dark:text-white font-bold">Rp. {{ number_format($receivable) }}</span>
+                                </div>
+                                @if ($discount > 0)
+                                    <div class="flex justify-between text-purple-600 dark:text-purple-400 font-semibold">
+                                        <span>Discount Given:</span>
+                                        <span>-Rp. {{ number_format($discount) }}</span>
+                                    </div>
+                                @endif
+                                <div class="flex justify-between font-medium">
+                                    <span class="text-gray-400">Net Settle Amount:</span>
+                                    <span class="text-gray-900 dark:text-white font-bold">Rp. {{ number_format(max(0, $receivable - $discount)) }}</span>
+                                </div>
+                                <div class="flex justify-between text-emerald-600 dark:text-emerald-400 border-t border-gray-200/50 dark:border-gray-700/50 pt-2 font-bold text-sm">
+                                    <span>Change (Kembalian):</span>
+                                    <span>Rp. {{ number_format(max(0, $change)) }}</span>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" wire:click="closeCheckout" class="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/50 text-gray-700 dark:text-gray-300 font-bold py-2.5 transition">
+                                Cancel
+                            </button>
+                            <button type="button" wire:click="processCheckout" class="flex-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 transition shadow-sm">
+                                Process Payment
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        @endif
+    @endif
 </div>

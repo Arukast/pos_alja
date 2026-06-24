@@ -10,6 +10,10 @@ use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
+    protected $listeners = [
+        'echo:orders,OrderUpdated' => '$refresh',
+    ];
+
     // Add stock form properties
     public $selectedMaterialId = '';
     public $addStockQuantity = '';

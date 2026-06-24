@@ -273,6 +273,8 @@ new class extends Component {
             }
         });
 
+        event(new \App\Events\OrderUpdated());
+
         $this->reset(['items', 'customerId', 'customerSearch', 'discount']);
         $this->deadline = now()->addDay()->format('Y-m-d\TH:i');
 

@@ -18,4 +18,9 @@ Route::get('/orders/{invoice}/ticket', function (Invoice $invoice) {
     return view('orders.ticket', compact('invoice'));
 })->middleware(['auth'])->name('orders.ticket');
 
+Route::get('/orders/{invoice}/receipt', function (Invoice $invoice) {
+    $invoice->load(['customer', 'orders']);
+    return view('orders.receipt', compact('invoice'));
+})->middleware(['auth'])->name('orders.receipt');
+
 require __DIR__.'/auth.php';

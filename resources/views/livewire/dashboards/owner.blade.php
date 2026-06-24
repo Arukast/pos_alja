@@ -3,6 +3,10 @@
 use Livewire\Volt\Component;
 
 new class extends Component {
+    protected $listeners = [
+        'echo:orders,OrderUpdated' => '$refresh',
+    ];
+
     public string $period = 'Monthly';
 
     public function mount()

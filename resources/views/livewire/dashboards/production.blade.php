@@ -10,6 +10,10 @@ use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
 
 new class extends Component {
+    protected $listeners = [
+        'echo:orders,OrderUpdated' => '$refresh',
+    ];
+
     // Waste logging form properties
     public $materialId = '';
     public $machineId = '';
@@ -51,6 +55,8 @@ new class extends Component {
 
         $this->successMessage = 'Order production started and inventory adjusted!';
         $this->showSuccessAlert = true;
+        
+        event(new \App\Events\OrderUpdated());
     }
 
     public function completeOrderProduction($orderId)
@@ -61,6 +67,8 @@ new class extends Component {
 
         $this->successMessage = 'Order marked as completed!';
         $this->showSuccessAlert = true;
+        
+        event(new \App\Events\OrderUpdated());
     }
 
     public function logWaste()
