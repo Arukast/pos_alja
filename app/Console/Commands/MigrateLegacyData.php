@@ -81,6 +81,15 @@ class MigrateLegacyData extends Command
             }
             $usedUsernames[] = strtolower($username);
 
+            $role = match ($u->level) {
+                'bm' => 'manager',
+                'owner' => 'owner',
+                'kasir' => 'cashier',
+                'setting' => 'designer',
+                'produksi' => 'production',
+                default => 'cashier',
+            };
+
             DB::table('users')->insert([
                 'id' => $u->id,
                 'name' => $u->nama,
@@ -89,7 +98,7 @@ class MigrateLegacyData extends Command
                 'password' => Hash::make('password123'), // Default temporary password
                 'phone' => $u->handphone,
                 'address' => $u->alamat,
-                'role' => $u->level,
+                'role' => $role,
                 'branch_id' => 1, // Main Branch
                 'created_at' => $now,
                 'updated_at' => $now,

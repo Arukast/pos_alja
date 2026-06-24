@@ -7,11 +7,23 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
-                    {{ __("You're logged in!") }}
+            @if (auth()->user()->role === 'manager')
+                <livewire:dashboards.manager />
+            @elseif (auth()->user()->role === 'owner')
+                <livewire:dashboards.owner />
+            @elseif (auth()->user()->role === 'cashier')
+                <livewire:dashboards.cashier />
+            @elseif (auth()->user()->role === 'designer')
+                <livewire:dashboards.designer />
+            @elseif (auth()->user()->role === 'production')
+                <livewire:dashboards.production />
+            @else
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6 text-gray-900 dark:text-gray-100">
+                        {{ __("You're logged in!") }}
+                    </div>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 </x-app-layout>
