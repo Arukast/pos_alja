@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\UserManagement;
+use App\Livewire\Dashboards\Manager;
+use App\Livewire\Dashboards\Owner;
 use App\Models\Branch;
 use App\Models\User;
-use App\Livewire\Admin\UserManagement;
-use App\Livewire\Dashboards\Owner;
-use App\Livewire\Dashboards\Manager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -16,6 +16,7 @@ class UserManagementTest extends TestCase
     use RefreshDatabase;
 
     protected Branch $branch1;
+
     protected Branch $branch2;
 
     protected function setUp(): void
@@ -98,7 +99,7 @@ class UserManagementTest extends TestCase
                 // Should NOT contain branch 2 users
                 $hasBranch2User = $users->contains($cashier2);
 
-                return $hasBranch1User && $hasOtherManager && $hasOwner && !$hasBranch2User;
+                return $hasBranch1User && $hasOtherManager && $hasOwner && ! $hasBranch2User;
             });
     }
 

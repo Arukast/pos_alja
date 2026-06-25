@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Livewire\Profile\UpdateProfileInformationForm;
-use App\Livewire\Profile\UpdatePasswordForm;
 use App\Livewire\Profile\DeleteUserForm;
+use App\Livewire\Profile\UpdatePasswordForm;
+use App\Livewire\Profile\UpdateProfileInformationForm;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;

@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Events\OrderUpdated;
+use App\Livewire\Dashboards\Cashier;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\User;
-use App\Events\OrderUpdated;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use App\Livewire\Dashboards\Cashier;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -20,7 +20,7 @@ class CashieringTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Seed branch
         Branch::create([
             'id' => 1,

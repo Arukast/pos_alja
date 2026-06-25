@@ -16,6 +16,7 @@ class Owner extends Component
     ];
 
     public string $period = 'Monthly';
+
     public string $selectedBranchId = 'all';
 
     // Active tab
@@ -139,7 +140,7 @@ class Owner extends Component
                 $svgPoints[] = "$x $y";
             }
             if ($svgPoints) {
-                $svgPath = 'M ' . implode(' L ', $svgPoints);
+                $svgPath = 'M '.implode(' L ', $svgPoints);
             }
         }
 

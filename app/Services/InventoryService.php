@@ -10,11 +10,6 @@ class InventoryService
 {
     /**
      * Add new stock to material and log in stock ledger.
-     *
-     * @param Material $material
-     * @param float $quantity
-     * @param string|null $notes
-     * @return Material
      */
     public function addStock(Material $material, float $quantity, ?string $notes = null): Material
     {
@@ -23,9 +18,9 @@ class InventoryService
             $material->initial_stock = (float) $material->remaining_stock;
             $material->added_stock = $quantity;
             $material->current_stock = $material->initial_stock + $quantity;
-            
+
             // Recalculate remaining stock: current - sold - wasted
-            $material->remaining_stock = $material->current_stock - (float)$material->sold_stock - (float)$material->wasted_stock;
+            $material->remaining_stock = $material->current_stock - (float) $material->sold_stock - (float) $material->wasted_stock;
             $material->save();
 
             // Log in stock_ledgers
@@ -35,8 +30,8 @@ class InventoryService
                 'logged_at' => now()->toDateString(),
                 'initial_stock' => $material->initial_stock,
                 'added_stock' => $quantity,
-                'used_stock' => (float)$material->sold_stock,
-                'wasted_stock' => (float)$material->wasted_stock,
+                'used_stock' => (float) $material->sold_stock,
+                'wasted_stock' => (float) $material->wasted_stock,
                 'remaining_stock' => $material->remaining_stock,
                 'notes' => $notes ?: "Manual stock addition: +{$quantity}",
                 'created_at' => now(),
@@ -49,9 +44,6 @@ class InventoryService
 
     /**
      * Log print waste/failure, increment wasted counter, and decrement remaining stock.
-     *
-     * @param array $params
-     * @return WastedMaterial
      */
     public function logWaste(array $params): WastedMaterial
     {
@@ -81,8 +73,8 @@ class InventoryService
             ]);
 
             // 2. Adjust parent material stock counters
-            $material->wasted_stock = (float)$material->wasted_stock + $quantity;
-            $material->remaining_stock = (float)$material->current_stock - (float)$material->sold_stock - $material->wasted_stock;
+            $material->wasted_stock = (float) $material->wasted_stock + $quantity;
+            $material->remaining_stock = (float) $material->current_stock - (float) $material->sold_stock - $material->wasted_stock;
             $material->save();
 
             // 3. Log in stock_ledgers
@@ -90,9 +82,9 @@ class InventoryService
                 'branch_id' => $material->branch_id ?: 1,
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),
-                'initial_stock' => (float)$material->initial_stock,
-                'added_stock' => (float)$material->added_stock,
-                'used_stock' => (float)$material->sold_stock,
+                'initial_stock' => (float) $material->initial_stock,
+                'added_stock' => (float) $material->added_stock,
+                'used_stock' => (float) $material->sold_stock,
                 'wasted_stock' => $material->wasted_stock,
                 'remaining_stock' => $material->remaining_stock,
                 'notes' => "Failed Print logged: -{$quantity} ({$notes})",
@@ -106,17 +98,13 @@ class InventoryService
 
     /**
      * Deduct stock for printed layout items.
-     *
-     * @param int $materialId
-     * @param float $quantity
-     * @return Material
      */
     public function deductStockOnPrint(int $materialId, float $quantity): Material
     {
         return DB::transaction(function () use ($materialId, $quantity) {
             $material = Material::findOrFail($materialId);
-            $material->sold_stock = (float)$material->sold_stock + $quantity;
-            $material->remaining_stock = (float)$material->current_stock - $material->sold_stock - (float)$material->wasted_stock;
+            $material->sold_stock = (float) $material->sold_stock + $quantity;
+            $material->remaining_stock = (float) $material->current_stock - $material->sold_stock - (float) $material->wasted_stock;
             $material->save();
 
             // Log in stock ledgers
@@ -124,10 +112,10 @@ class InventoryService
                 'branch_id' => $material->branch_id ?: 1,
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),
-                'initial_stock' => (float)$material->initial_stock,
-                'added_stock' => (float)$material->added_stock,
+                'initial_stock' => (float) $material->initial_stock,
+                'added_stock' => (float) $material->added_stock,
                 'used_stock' => $material->sold_stock,
-                'wasted_stock' => (float)$material->wasted_stock,
+                'wasted_stock' => (float) $material->wasted_stock,
                 'remaining_stock' => $material->remaining_stock,
                 'notes' => "Printed order item stock deduction: -{$quantity}",
                 'created_at' => now(),

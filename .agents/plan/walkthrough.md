@@ -139,3 +139,28 @@ We have refactored the entire application from Livewire Volt (single-file inline
 * Updated test assertions across `ProfileTest.php`, `UserManagementTest.php`, `BranchAuthorizationAndScopingTest.php`, `CashieringTest.php`, and `InventoryManagementTest.php`.
 * Redirected User CRUD tests in owner and manager views to directly test the new shared `UserManagement::class` component.
 
+---
+
+## Phase 9: GitHub Integration (Completed)
+
+We have configured standard GitHub integration files to automate workflows, ensure styling guidelines, and standardize contributions.
+
+### Changes Made
+
+#### 1. GitHub Actions CI Pipeline
+* **File:** [.github/workflows/ci.yml](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/workflows/ci.yml)
+  * Sets up PHP 8.3 and Node 20 environment on push/PR to `main`.
+  * Installs dependencies, runs Laravel Pint syntax checks, compiles assets using Vite, and executes PHPUnit tests.
+
+#### 2. Dependabot Configuration
+* **File:** [.github/dependabot.yml](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/dependabot.yml)
+  * Automated weekly checks for Composer, NPM, and GitHub Action dependencies.
+
+#### 3. Contribution & Issue Templates
+* **Issue Templates:**
+  * [bug_report.md](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/ISSUE_TEMPLATE/bug_report.md) — Bug reporting form structure.
+  * [feature_request.md](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/ISSUE_TEMPLATE/feature_request.md) — Feature proposal template.
+* **PR Template:**
+  * [pull_request_template.md](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/pull_request_template.md) — Standardized checklist and verification guide.
+
+

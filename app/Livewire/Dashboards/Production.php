@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboards;
 
+use App\Events\OrderUpdated;
 use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Order;
@@ -19,15 +20,22 @@ class Production extends Component
 
     // Waste logging form properties
     public string $materialId = '';
+
     public string $machineId = '';
+
     public string $quantity = '';
+
     public string $dimensions = '';
+
     public string $designerName = '';
+
     public string $operatorName = '';
+
     public string $notes = '';
 
     // Alert feedback
     public bool $showSuccessAlert = false;
+
     public string $successMessage = '';
 
     public function mount(): void
@@ -56,7 +64,7 @@ class Production extends Component
                     $qtyToDeduct = (float) ($order->area * $order->quantity);
                 }
 
-                $inventoryService = new InventoryService();
+                $inventoryService = new InventoryService;
                 $inventoryService->deductStockOnPrint($matrix->material_id, $qtyToDeduct);
             }
         }
@@ -64,7 +72,7 @@ class Production extends Component
         $this->successMessage = 'Order production started and inventory adjusted!';
         $this->showSuccessAlert = true;
 
-        event(new \App\Events\OrderUpdated());
+        event(new OrderUpdated);
     }
 
     public function completeOrderProduction(int $orderId): void
@@ -81,30 +89,30 @@ class Production extends Component
         $this->successMessage = 'Order marked as completed!';
         $this->showSuccessAlert = true;
 
-        event(new \App\Events\OrderUpdated());
+        event(new OrderUpdated);
     }
 
     public function logWaste(): void
     {
         $this->validate([
-            'materialId'   => 'required|integer|exists:materials,id',
-            'machineId'    => 'nullable|integer',
-            'quantity'     => 'required|numeric|min:0.01',
-            'dimensions'   => 'nullable|string|max:50',
+            'materialId' => 'required|integer|exists:materials,id',
+            'machineId' => 'nullable|integer',
+            'quantity' => 'required|numeric|min:0.01',
+            'dimensions' => 'nullable|string|max:50',
             'designerName' => 'nullable|string|max:255',
             'operatorName' => 'required|string|max:255',
-            'notes'        => 'required|string|max:500',
+            'notes' => 'required|string|max:500',
         ]);
 
-        $inventoryService = new InventoryService();
+        $inventoryService = new InventoryService;
         $inventoryService->logWaste([
-            'material_id'   => (int) $this->materialId,
-            'machine_id'    => (int) ($this->machineId ?: 0),
-            'quantity'      => (float) $this->quantity,
-            'dimensions'    => $this->dimensions,
+            'material_id' => (int) $this->materialId,
+            'machine_id' => (int) ($this->machineId ?: 0),
+            'quantity' => (float) $this->quantity,
+            'dimensions' => $this->dimensions,
             'designer_name' => $this->designerName,
             'operator_name' => $this->operatorName,
-            'notes'         => $this->notes,
+            'notes' => $this->notes,
         ]);
 
         $this->reset(['materialId', 'machineId', 'quantity', 'dimensions', 'designerName', 'notes']);

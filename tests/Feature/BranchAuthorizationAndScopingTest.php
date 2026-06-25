@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Dashboards\Cashier;
 use App\Models\Branch;
 use App\Models\Customer;
-use App\Models\Invoice;
-use App\Models\User;
 use App\Models\Expense;
+use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Livewire\Dashboards\Cashier;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -18,7 +18,9 @@ class BranchAuthorizationAndScopingTest extends TestCase
     use RefreshDatabase;
 
     protected Branch $branch1;
+
     protected Branch $branch2;
+
     protected Customer $customer;
 
     protected function setUp(): void
@@ -27,7 +29,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
 
         $this->branch1 = Branch::create(['id' => 1, 'name' => 'Branch One']);
         $this->branch2 = Branch::create(['id' => 2, 'name' => 'Branch Two']);
-        
+
         $this->customer = Customer::create([
             'name' => 'Jane Customer',
             'type' => 'Retail',
@@ -192,10 +194,10 @@ class BranchAuthorizationAndScopingTest extends TestCase
         Livewire::actingAs($cashier)
             ->test(Cashier::class)
             ->assertViewHas('activeInvoices', function ($invoices) use ($inv1, $inv2) {
-                return $invoices->contains($inv1) && !$invoices->contains($inv2);
+                return $invoices->contains($inv1) && ! $invoices->contains($inv2);
             })
             ->assertViewHas('expenses', function ($expenses) use ($exp1, $exp2) {
-                return $expenses->contains($exp1) && !$expenses->contains($exp2);
+                return $expenses->contains($exp1) && ! $expenses->contains($exp2);
             })
             ->assertViewHas('todayExpenseTotal', 10000);
     }
@@ -233,7 +235,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
             ->call('markAsPickedUp', $invoice->id)
             ->assertHasNoErrors()
             ->assertViewHas('pickupQueue', function ($queue) use ($invoice) {
-                return !$queue->contains($invoice);
+                return ! $queue->contains($invoice);
             });
 
         $this->assertDatabaseHas('invoices', [

@@ -22,11 +22,14 @@ class Manager extends Component
 
     // Add stock form properties
     public string $selectedMaterialId = '';
+
     public string $addStockQuantity = '';
+
     public string $addStockNotes = '';
 
     // Alert feedback
     public bool $showSuccessAlert = false;
+
     public string $successMessage = '';
 
     public function setTab(string $tab): void
@@ -40,8 +43,8 @@ class Manager extends Component
     {
         $this->validate([
             'selectedMaterialId' => 'required|integer|exists:materials,id',
-            'addStockQuantity'   => 'required|numeric|min:0.01',
-            'addStockNotes'      => 'nullable|string|max:255',
+            'addStockQuantity' => 'required|numeric|min:0.01',
+            'addStockNotes' => 'nullable|string|max:255',
         ]);
 
         $material = Material::findOrFail($this->selectedMaterialId);
@@ -50,7 +53,7 @@ class Manager extends Component
             abort(403, 'Unauthorized branch access.');
         }
 
-        $inventoryService = new InventoryService();
+        $inventoryService = new InventoryService;
         $inventoryService->addStock($material, (float) $this->addStockQuantity, $this->addStockNotes);
 
         $this->reset(['selectedMaterialId', 'addStockQuantity', 'addStockNotes']);

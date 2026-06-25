@@ -17,7 +17,7 @@ class PricingServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->pricingService = new PricingService();
+        $this->pricingService = new PricingService;
 
         // Setup base branch
         DB::table('branches')->insert([

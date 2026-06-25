@@ -112,7 +112,6 @@ return [
             'strict' => true,
         ],
 
-
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

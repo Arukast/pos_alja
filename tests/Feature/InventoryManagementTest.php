@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Dashboards\Cashier;
+use App\Livewire\Dashboards\Manager;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Livewire\Dashboards\Cashier;
-use App\Livewire\Dashboards\Manager;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -18,7 +18,7 @@ class InventoryManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Seed branch
         Branch::create([
             'id' => 1,
@@ -57,7 +57,7 @@ class InventoryManagementTest extends TestCase
     public function test_manager_can_restock_materials(): void
     {
         $user = User::factory()->create(['role' => 'manager']);
-        
+
         $material = Material::create([
             'branch_id' => 1,
             'name' => 'Flexy 340gr',
@@ -83,7 +83,7 @@ class InventoryManagementTest extends TestCase
             'id' => $material->id,
             'remaining_stock' => 150,
         ]);
-        
+
         $this->assertDatabaseHas('stock_ledgers', [
             'material_id' => $material->id,
             'added_stock' => 50.00,

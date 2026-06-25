@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Models\Invoice;
+use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
 
@@ -18,6 +18,7 @@ Route::get('/orders/{invoice}/ticket', function (Invoice $invoice) {
         abort(403, 'Unauthorized branch access.');
     }
     $invoice->load(['customer', 'orders']);
+
     return view('orders.ticket', compact('invoice'));
 })->middleware(['auth'])->name('orders.ticket');
 
@@ -26,6 +27,7 @@ Route::get('/orders/{invoice}/receipt', function (Invoice $invoice) {
         abort(403, 'Unauthorized branch access.');
     }
     $invoice->load(['customer', 'orders']);
+
     return view('orders.receipt', compact('invoice'));
 })->middleware(['auth'])->name('orders.receipt');
 

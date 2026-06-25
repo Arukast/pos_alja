@@ -11,6 +11,7 @@ use Livewire\Component;
 class UpdateProfileInformationForm extends Component
 {
     public string $name = '';
+
     public string $email = '';
 
     /**
@@ -29,8 +30,9 @@ class UpdateProfileInformationForm extends Component
     {
         $user = Auth::user();
 
-        if (!in_array($user->role, ['owner', 'manager'])) {
+        if (! in_array($user->role, ['owner', 'manager'])) {
             $this->addError('name', 'Only owners and managers can update profile information.');
+
             return;
         }
 

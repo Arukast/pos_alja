@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class LegacyMigrationTest extends TestCase
@@ -28,15 +29,15 @@ class LegacyMigrationTest extends TestCase
         // Assert tables are populated
         $this->assertGreaterThan(0, DB::table('branches')->count());
         $this->assertEquals('Main Branch', DB::table('branches')->first()->name);
-        
+
         $this->assertGreaterThan(0, DB::table('users')->count());
         $this->assertGreaterThan(0, DB::table('customers')->count());
         $this->assertGreaterThan(0, DB::table('products')->count());
         $this->assertGreaterThan(0, DB::table('materials')->count());
-        
+
         // Assert pricing matrices are populated
         $this->assertGreaterThan(0, DB::table('pricing_matrices')->count());
-        
+
         // Assert invoices & orders are populated
         $this->assertGreaterThan(0, DB::table('invoices')->count());
         $this->assertGreaterThan(0, DB::table('orders')->count());
@@ -48,6 +49,6 @@ class LegacyMigrationTest extends TestCase
         // Assert passwords were set to temporary default secure hash
         $user = DB::table('users')->first();
         $this->assertNotEmpty($user->password);
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password123', $user->password));
+        $this->assertTrue(Hash::check('password123', $user->password));
     }
 }

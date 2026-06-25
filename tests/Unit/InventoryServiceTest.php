@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\Material;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class InventoryServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->inventoryService = new InventoryService();
+        $this->inventoryService = new InventoryService;
 
         // Seed branch
         DB::table('branches')->insert([
@@ -49,13 +50,13 @@ class InventoryServiceTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $material = \App\Models\Material::find(1);
+        $material = Material::find(1);
 
         // 2. Add stock
         $this->inventoryService->addStock($material, 50.0, 'Purchased new sheets');
 
         // 3. Assert material stock counts updated
-        $updatedMaterial = \App\Models\Material::find(1);
+        $updatedMaterial = Material::find(1);
         $this->assertEquals(85.0, $updatedMaterial->initial_stock); // sisa stock before
         $this->assertEquals(50.0, $updatedMaterial->added_stock);
         $this->assertEquals(135.0, $updatedMaterial->current_stock); // 85 + 50
@@ -108,7 +109,7 @@ class InventoryServiceTest extends TestCase
         $this->assertEquals('Tinta luntur', $waste->notes);
 
         // Assert material stock counts updated
-        $updatedMaterial = \App\Models\Material::find(2);
+        $updatedMaterial = Material::find(2);
         $this->assertEquals(22.5, $updatedMaterial->wasted_stock); // 10 + 12.5
         $this->assertEquals(137.5, $updatedMaterial->remaining_stock); // 200 - 40 - 22.5
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboards;
 
+use App\Events\OrderUpdated;
 use App\Models\Expense;
 use App\Models\Invoice;
 use Livewire\Component;
@@ -14,19 +15,27 @@ class Cashier extends Component
 
     // Expense logging properties
     public string $amount = '';
+
     public string $description = '';
+
     public string $type = 'laba'; // Default to operations expense
+
     public string $incurredAt = '';
 
     // Checkout properties
     public ?int $selectedInvoiceId = null;
+
     public string $paymentType = 'settle'; // 'dp' or 'settle'
+
     public string $inputAmount = '';
+
     public int $inputDiscount = 0;
+
     public string $inputMethod = 'Cash';
 
     // Alert feedback
     public bool $showSuccessAlert = false;
+
     public string $successMessage = '';
 
     public function mount(): void
@@ -37,18 +46,18 @@ class Cashier extends Component
     public function logExpense(): void
     {
         $this->validate([
-            'amount'      => 'required|integer|min:100',
-            'type'        => 'required|string|in:modal,laba',
-            'incurredAt'  => 'required|date',
+            'amount' => 'required|integer|min:100',
+            'type' => 'required|string|in:modal,laba',
+            'incurredAt' => 'required|date',
             'description' => 'required|string|max:500',
         ]);
 
         Expense::create([
-            'branch_id'    => auth()->user()->branch_id ?: 1,
-            'amount'       => (int) $this->amount,
-            'type'         => $this->type,
-            'incurred_at'  => $this->incurredAt,
-            'description'  => $this->description,
+            'branch_id' => auth()->user()->branch_id ?: 1,
+            'amount' => (int) $this->amount,
+            'type' => $this->type,
+            'incurred_at' => $this->incurredAt,
+            'description' => $this->description,
             'cashier_name' => auth()->user()->name,
         ]);
 
@@ -87,7 +96,7 @@ class Cashier extends Component
 
         if ($this->paymentType === 'dp') {
             $this->validate([
-                'inputAmount' => 'required|integer|min:1000|max:' . $invoice->grand_total,
+                'inputAmount' => 'required|integer|min:1000|max:'.$invoice->grand_total,
                 'inputMethod' => 'required|string|in:Cash,Transfer,QRIS',
             ]);
 
@@ -106,9 +115,9 @@ class Cashier extends Component
         } else {
             $maxDiscount = $invoice->accounts_receivable;
             $this->validate([
-                'inputDiscount' => 'required|integer|min:0|max:' . $maxDiscount,
-                'inputAmount'   => 'required|integer|min:0',
-                'inputMethod'   => 'required|string|in:Cash,Transfer,QRIS',
+                'inputDiscount' => 'required|integer|min:0|max:'.$maxDiscount,
+                'inputAmount' => 'required|integer|min:0',
+                'inputMethod' => 'required|string|in:Cash,Transfer,QRIS',
             ]);
 
             $discount = (int) $this->inputDiscount;
@@ -116,7 +125,8 @@ class Cashier extends Component
             $cashPaid = (int) $this->inputAmount;
 
             if ($cashPaid < $amountToPay) {
-                $this->addError('inputAmount', 'Insufficient payment. Amount must be at least Rp. ' . number_format($amountToPay));
+                $this->addError('inputAmount', 'Insufficient payment. Amount must be at least Rp. '.number_format($amountToPay));
+
                 return;
             }
 
@@ -137,7 +147,7 @@ class Cashier extends Component
             $this->successMessage = 'Payment settled and invoice closed!';
         }
 
-        event(new \App\Events\OrderUpdated());
+        event(new OrderUpdated);
 
         $this->selectedInvoiceId = null;
         $this->showSuccessAlert = true;
@@ -159,7 +169,7 @@ class Cashier extends Component
         $this->showSuccessAlert = true;
 
         // Broadcast via WebSocket (Reverb) for cross-role sync
-        event(new \App\Events\OrderUpdated());
+        event(new OrderUpdated);
 
         // Also directly refresh this component in case Reverb is not running
         $this->dispatch('$refresh');

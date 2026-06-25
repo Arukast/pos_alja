@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
 
 class MigrateLegacyData extends Command
 {
@@ -77,7 +77,7 @@ class MigrateLegacyData extends Command
         foreach ($legacyUsers as $u) {
             $username = trim($u->username);
             if (in_array(strtolower($username), $usedUsernames)) {
-                $username = $username . '_' . $u->id;
+                $username = $username.'_'.$u->id;
             }
             $usedUsernames[] = strtolower($username);
 
@@ -94,7 +94,7 @@ class MigrateLegacyData extends Command
                 'id' => $u->id,
                 'name' => $u->nama,
                 'username' => $username,
-                'email' => strtolower($username) . '@alja.com',
+                'email' => strtolower($username).'@alja.com',
                 'password' => Hash::make('password123'), // Default temporary password
                 'phone' => $u->handphone,
                 'address' => $u->alamat,
@@ -104,7 +104,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Users migrated: ' . count($legacyUsers));
+        $this->info('Users migrated: '.count($legacyUsers));
 
         // 2. Migrate kostumer -> customers (chunked for performance)
         $this->info('Migrating customers...');
@@ -130,7 +130,7 @@ class MigrateLegacyData extends Command
         if (count($customersData) > 0) {
             DB::table('customers')->insert($customersData);
         }
-        $this->info('Customers migrated: ' . count($legacyCustomers));
+        $this->info('Customers migrated: '.count($legacyCustomers));
 
         // 3. Migrate produk -> products
         $this->info('Migrating products...');
@@ -144,7 +144,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Products migrated: ' . count($legacyProducts));
+        $this->info('Products migrated: '.count($legacyProducts));
 
         // 4. Migrate bahan -> materials
         $this->info('Migrating materials...');
@@ -170,7 +170,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Materials migrated: ' . count($legacyMaterials));
+        $this->info('Materials migrated: '.count($legacyMaterials));
 
         // 5. Migrate mesin -> machines
         $this->info('Migrating machines...');
@@ -185,7 +185,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Machines migrated: ' . count($legacyMachines));
+        $this->info('Machines migrated: '.count($legacyMachines));
 
         // 6. Migrate jenis_finishing -> finishings
         $this->info('Migrating finishings...');
@@ -199,7 +199,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Finishings migrated: ' . count($legacyFinishings));
+        $this->info('Finishings migrated: '.count($legacyFinishings));
 
         // 7. Migrate jenis_potong -> cuts
         $this->info('Migrating cuts...');
@@ -213,7 +213,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Cuts migrated: ' . count($legacyCuts));
+        $this->info('Cuts migrated: '.count($legacyCuts));
 
         // 8. Migrate jenis_display -> displays
         $this->info('Migrating displays...');
@@ -227,7 +227,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Displays migrated: ' . count($legacyDisplays));
+        $this->info('Displays migrated: '.count($legacyDisplays));
 
         // 9. Migrate harga_jual -> pricing_matrices
         $this->info('Migrating pricing matrices...');
@@ -235,10 +235,10 @@ class MigrateLegacyData extends Command
         DB::table('pricing_matrices')->truncate();
         $validProductIds = DB::table('products')->pluck('id')->flip()->toArray();
         $validMaterialIds = DB::table('materials')->pluck('id')->flip()->toArray();
-        
+
         $migratedCount = 0;
         foreach ($legacyMatrices as $hm) {
-            if (!isset($validProductIds[$hm->hj_produk]) || !isset($validMaterialIds[$hm->hj_bahan])) {
+            if (! isset($validProductIds[$hm->hj_produk]) || ! isset($validMaterialIds[$hm->hj_bahan])) {
                 continue;
             }
             DB::table('pricing_matrices')->insert([
@@ -262,19 +262,19 @@ class MigrateLegacyData extends Command
             ]);
             $migratedCount++;
         }
-        $this->info('Pricing matrices migrated: ' . $migratedCount);
+        $this->info('Pricing matrices migrated: '.$migratedCount);
 
         // 10. Migrate invoice -> invoices
         $this->info('Migrating invoices (this may take a few seconds)...');
         $legacyInvoices = DB::connection('mysql_migration')->table('invoice')->get();
         DB::table('invoices')->truncate();
-        
+
         $validCustomerIds = DB::table('customers')->pluck('id')->flip()->toArray();
         $insertedInvoiceIds = [];
 
         $invoicesData = [];
         foreach ($legacyInvoices as $inv) {
-            if (!isset($validCustomerIds[$inv->invoice_kostumer])) {
+            if (! isset($validCustomerIds[$inv->invoice_kostumer])) {
                 continue;
             }
             $invoicesData[] = [
@@ -318,7 +318,7 @@ class MigrateLegacyData extends Command
         if (count($invoicesData) > 0) {
             DB::table('invoices')->insert($invoicesData);
         }
-        $this->info('Invoices migrated: ' . count($legacyInvoices));
+        $this->info('Invoices migrated: '.count($legacyInvoices));
 
         // 11. Migrate orderan -> orders
         $this->info('Migrating order items...');
@@ -330,7 +330,7 @@ class MigrateLegacyData extends Command
         $ordersData = [];
         $migratedOrdersCount = 0;
         foreach ($legacyOrders as $ord) {
-            if (!isset($validInvoiceIds[$ord->order_invoice])) {
+            if (! isset($validInvoiceIds[$ord->order_invoice])) {
                 continue;
             }
             $ordersData[] = [
@@ -362,7 +362,7 @@ class MigrateLegacyData extends Command
         if (count($ordersData) > 0) {
             DB::table('orders')->insert($ordersData);
         }
-        $this->info('Orders migrated: ' . $migratedOrdersCount);
+        $this->info('Orders migrated: '.$migratedOrdersCount);
 
         // 12. Migrate pengeluaran -> expenses
         $this->info('Migrating expenses...');
@@ -381,7 +381,7 @@ class MigrateLegacyData extends Command
                 'updated_at' => $now,
             ]);
         }
-        $this->info('Expenses migrated: ' . count($legacyExpenses));
+        $this->info('Expenses migrated: '.count($legacyExpenses));
 
         // 13. Migrate bahan_gagal -> wasted_materials
         $this->info('Migrating wasted materials...');
@@ -389,7 +389,7 @@ class MigrateLegacyData extends Command
         DB::table('wasted_materials')->truncate();
         $wastedCount = 0;
         foreach ($legacyWasted as $w) {
-            if (!isset($validMaterialIds[$w->gagal_bahan_id])) {
+            if (! isset($validMaterialIds[$w->gagal_bahan_id])) {
                 continue;
             }
             DB::table('wasted_materials')->insert([
@@ -408,7 +408,7 @@ class MigrateLegacyData extends Command
             ]);
             $wastedCount++;
         }
-        $this->info('Wasted materials migrated: ' . $wastedCount);
+        $this->info('Wasted materials migrated: '.$wastedCount);
 
         // 14. Migrate stok -> stock_ledgers
         $this->info('Migrating stock ledgers...');
@@ -418,7 +418,7 @@ class MigrateLegacyData extends Command
         $stockData = [];
         $migratedStockCount = 0;
         foreach ($legacyStock as $s) {
-            if (!isset($validMaterialIds[$s->stok_bahan_id])) {
+            if (! isset($validMaterialIds[$s->stok_bahan_id])) {
                 continue;
             }
             $stockData[] = [
@@ -445,7 +445,7 @@ class MigrateLegacyData extends Command
         if (count($stockData) > 0) {
             DB::table('stock_ledgers')->insert($stockData);
         }
-        $this->info('Stock ledgers migrated: ' . $migratedStockCount);
+        $this->info('Stock ledgers migrated: '.$migratedStockCount);
 
         $this->info('All legacy data successfully migrated to PostgreSQL!');
     }

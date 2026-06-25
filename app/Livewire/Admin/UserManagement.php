@@ -20,20 +20,29 @@ class UserManagement extends Component
 
     // Modal state
     public bool $showUserModal = false;
+
     public ?int $userIdBeingEdited = null;
 
     // Form fields
     public string $formName = '';
+
     public string $formUsername = '';
+
     public string $formEmail = '';
+
     public string $formPhone = '';
+
     public string $formAddress = '';
+
     public string $formPassword = '';
+
     public string $formRole = 'cashier';
+
     public int $formBranchId = 1;
 
     // Alert feedback
     public bool $showSuccessAlert = false;
+
     public string $successMessage = '';
 
     public function openCreateModal(): void
@@ -91,12 +100,12 @@ class UserManagement extends Component
             : 'cashier,designer,production';
 
         $rules = [
-            'formName'     => 'required|string|max:255',
-            'formUsername' => 'required|string|max:255|unique:users,username,' . ($this->userIdBeingEdited ?: 'NULL') . ',id,deleted_at,NULL',
-            'formEmail'    => 'required|string|email|max:255|unique:users,email,' . ($this->userIdBeingEdited ?: 'NULL') . ',id,deleted_at,NULL',
-            'formPhone'    => 'nullable|string|max:20',
-            'formAddress'  => 'nullable|string|max:255',
-            'formRole'     => 'required|string|in:' . $allowedRoles,
+            'formName' => 'required|string|max:255',
+            'formUsername' => 'required|string|max:255|unique:users,username,'.($this->userIdBeingEdited ?: 'NULL').',id,deleted_at,NULL',
+            'formEmail' => 'required|string|email|max:255|unique:users,email,'.($this->userIdBeingEdited ?: 'NULL').',id,deleted_at,NULL',
+            'formPhone' => 'nullable|string|max:20',
+            'formAddress' => 'nullable|string|max:255',
+            'formRole' => 'required|string|in:'.$allowedRoles,
         ];
 
         if ($this->mode === 'owner') {
@@ -129,19 +138,19 @@ class UserManagement extends Component
             }
 
             $data = [
-                'name'     => $this->formName,
+                'name' => $this->formName,
                 'username' => $this->formUsername,
-                'email'    => $this->formEmail,
-                'phone'    => $this->formPhone,
-                'address'  => $this->formAddress,
-                'role'     => $this->formRole,
+                'email' => $this->formEmail,
+                'phone' => $this->formPhone,
+                'address' => $this->formAddress,
+                'role' => $this->formRole,
             ];
 
             if ($this->mode === 'owner') {
                 $data['branch_id'] = $this->formBranchId;
             }
 
-            if (!empty($this->formPassword)) {
+            if (! empty($this->formPassword)) {
                 $data['password'] = Hash::make($this->formPassword);
             }
 
@@ -158,14 +167,14 @@ class UserManagement extends Component
                 : (auth()->user()->branch_id ?: 1);
 
             User::create([
-                'name'      => $this->formName,
-                'username'  => $this->formUsername,
-                'email'     => $this->formEmail,
-                'phone'     => $this->formPhone,
-                'address'   => $this->formAddress,
-                'role'      => $this->formRole,
+                'name' => $this->formName,
+                'username' => $this->formUsername,
+                'email' => $this->formEmail,
+                'phone' => $this->formPhone,
+                'address' => $this->formAddress,
+                'role' => $this->formRole,
                 'branch_id' => $branchId,
-                'password'  => Hash::make($this->formPassword),
+                'password' => Hash::make($this->formPassword),
             ]);
             $this->successMessage = 'User created successfully!';
         }
@@ -206,20 +215,20 @@ class UserManagement extends Component
             $query = User::query()
                 ->leftJoin('branches', 'users.branch_id', '=', 'branches.id')
                 ->select('users.*', 'branches.name as branch_name');
-            if (!empty($this->userSearch)) {
+            if (! empty($this->userSearch)) {
                 $query->where(function ($q) {
-                    $q->where('users.name', 'like', '%' . $this->userSearch . '%')
-                      ->orWhere('users.username', 'like', '%' . $this->userSearch . '%');
+                    $q->where('users.name', 'like', '%'.$this->userSearch.'%')
+                        ->orWhere('users.username', 'like', '%'.$this->userSearch.'%');
                 });
             }
             $usersList = $query->orderBy('users.name')->get();
         } else {
             // Manager sees only own branch users
             $query = User::where('branch_id', $branchId ?: 1);
-            if (!empty($this->userSearch)) {
+            if (! empty($this->userSearch)) {
                 $query->where(function ($q) {
-                    $q->where('name', 'like', '%' . $this->userSearch . '%')
-                      ->orWhere('username', 'like', '%' . $this->userSearch . '%');
+                    $q->where('name', 'like', '%'.$this->userSearch.'%')
+                        ->orWhere('username', 'like', '%'.$this->userSearch.'%');
                 });
             }
             $usersList = $query->orderBy('name')->get();

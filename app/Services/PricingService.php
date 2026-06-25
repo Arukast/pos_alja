@@ -4,15 +4,12 @@ namespace App\Services;
 
 use App\Exceptions\PricingMatrixNotFoundException;
 use App\Models\PricingMatrix;
-use Illuminate\Support\Facades\Log;
 
 class PricingService
 {
     /**
      * Calculate quote for a given product and its configurations.
      *
-     * @param array $params
-     * @return array
      * @throws PricingMatrixNotFoundException
      */
     public function calculateQuote(array $params): array
@@ -107,7 +104,7 @@ class PricingService
 
         $matrix = $query->first();
 
-        if (!$matrix) {
+        if (! $matrix) {
             throw new PricingMatrixNotFoundException(
                 "Pricing matrix record not found for product ID: {$productId} matching these parameters.",
                 $params
