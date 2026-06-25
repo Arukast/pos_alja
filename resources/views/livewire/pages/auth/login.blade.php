@@ -36,7 +36,7 @@
                     required
                     autofocus
                     autocomplete="username"
-                    class="bg-surface-600/50 border-surface-300/60 focus:ring-alja-magenta/40 focus:border-alja-magenta block w-full rounded-xl border py-3 pr-4 pl-11 text-white placeholder-gray-500 transition duration-200 focus:ring-2 focus:outline-none"
+                    class="bg-surface-600/50 border-surface-300/60 focus:ring-brand-primary/40 focus:border-brand-primary block w-full rounded-xl border py-3 pr-4 pl-11 text-white placeholder-gray-500 transition duration-200 focus:ring-2 focus:outline-none"
                     placeholder="Enter your username"
                 />
             </div>
@@ -78,7 +78,7 @@
                     name="password"
                     required
                     autocomplete="current-password"
-                    class="bg-surface-600/50 border-surface-300/60 focus:ring-alja-magenta/40 focus:border-alja-magenta block w-full rounded-xl border py-3 pr-4 pl-11 text-white placeholder-gray-500 transition duration-200 focus:ring-2 focus:outline-none"
+                    class="bg-surface-600/50 border-surface-300/60 focus:ring-brand-primary/40 focus:border-brand-primary block w-full rounded-xl border py-3 pr-4 pl-11 text-white placeholder-gray-500 transition duration-200 focus:ring-2 focus:outline-none"
                     placeholder="••••••••"
                 />
             </div>
@@ -98,7 +98,7 @@
                     wire:model="form.remember"
                     id="remember"
                     type="checkbox"
-                    class="border-surface-300 bg-surface-600/50 text-alja-magenta focus:ring-alja-magenta/40 focus:ring-offset-surface-700 h-4 w-4 rounded"
+                    class="border-surface-300 bg-surface-600/50 text-brand-primary focus:ring-brand-primary/40 focus:ring-offset-surface-700 h-4 w-4 rounded"
                     name="remember"
                 />
                 <span class="ms-2 text-sm text-gray-400"
@@ -108,7 +108,7 @@
 
             @if (Route::has('password.request'))
             <a
-                class="text-alja-cyan hover:text-alja-cyan-light text-sm transition duration-150"
+                class="text-brand-secondary hover:text-brand-secondary-light text-sm transition duration-150"
                 href="{{ route('password.request') }}"
                 wire:navigate
             >
@@ -121,7 +121,7 @@
         <div>
             <button
                 type="submit"
-                class="bg-alja-magenta hover:bg-alja-magenta-hover focus:ring-offset-surface-700 focus:ring-alja-magenta/50 shadow-glow-magenta flex w-full justify-center rounded-xl border border-transparent px-4 py-3.5 text-sm font-bold tracking-wider text-white uppercase transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none active:scale-[0.98]"
+                class="bg-brand-primary hover:bg-brand-primary-hover focus:ring-offset-surface-700 focus:ring-brand-primary/50 shadow-glow-primary flex w-full justify-center rounded-xl border border-transparent px-4 py-3.5 text-sm font-bold tracking-wider text-white uppercase transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none active:scale-[0.98]"
             >
                 {{ __('Sign In') }}
             </button>

@@ -2,8 +2,8 @@
     x-data="{ open: false }"
     class="dark:bg-surface-700/90 dark:border-surface-300/40 relative z-50 border-b border-gray-200 bg-white/90 backdrop-blur-xl"
 >
-    <!-- CMYK signature stripe at the very top -->
-    <div class="cmyk-bar absolute top-0 left-0 w-full"></div>
+    <!-- Brand signature stripe at the very top -->
+    <x-brand-stripe />
 
     <!-- Primary Navigation Menu -->
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -16,26 +16,7 @@
                         wire:navigate
                         class="group flex items-center gap-2.5"
                     >
-                        <!-- CMYK dots -->
-                        <div class="flex gap-1">
-                            <div
-                                class="bg-alja-magenta h-2 w-2 rounded-sm transition-transform duration-200 group-hover:scale-110"
-                            ></div>
-                            <div
-                                class="bg-alja-cyan h-2 w-2 rounded-sm transition-transform duration-200 group-hover:scale-110"
-                                style="transition-delay: 50ms"
-                            ></div>
-                            <div
-                                class="bg-alja-yellow h-2 w-2 rounded-sm transition-transform duration-200 group-hover:scale-110"
-                                style="transition-delay: 100ms"
-                            ></div>
-                        </div>
-                        <span
-                            class="text-sm font-bold tracking-wide text-gray-800 dark:text-white"
-                            >ALJA<span class="text-alja-magenta ml-0.5"
-                                >POS</span
-                            ></span
-                        >
+                        <x-brand-logo type="short" size="sm" />
                     </a>
                 </div>
 

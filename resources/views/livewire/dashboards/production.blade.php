@@ -1,27 +1,12 @@
 <div class="space-y-6 text-gray-200">
     <!-- Header banner -->
-    <div
-        class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-alja-cyan via-[#0088BB] to-surface-700 p-6 shadow-lg"
-    >
-        <div class="relative z-10 text-white">
-            <span
-                class="inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur-sm"
-            >
-                Print Shop Production Line
-            </span>
-            <h1 class="mt-2 text-3xl font-extrabold tracking-tight">
-                Active Print Queue
-            </h1>
-            <p class="mt-1 max-w-xl text-sm text-white/70">
-                Track print jobs dispatched from designers, log printer machine
-                usage, report failed prints (wasted stock), and execute
-                completed work tickets.
-            </p>
-        </div>
-        <div
-            class="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-alja-magenta/10 blur-2xl"
-        ></div>
-    </div>
+    <!-- Header banner -->
+    <x-brand-header-banner
+        badge="Print Shop Production Line"
+        title="Active Print Queue"
+        description="Track print jobs dispatched from designers, log printer machine usage, report failed prints (wasted stock), and execute completed work tickets."
+        theme="production"
+    />
 
     <!-- Alert Feedback -->
     @if ($showSuccessAlert)
@@ -74,12 +59,12 @@
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat 1 -->
         <div
-            class="hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-card shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card"
+            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium uppercase tracking-wider text-gray-500"
+                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
                     >
                         Jobs in Queue
                     </p>
@@ -87,7 +72,7 @@
                         {{ $queueCount }} Jobs
                     </h3>
                 </div>
-                <div class="rounded-lg bg-alja-yellow/10 p-3 text-orange-500">
+                <div class="bg-brand-accent/10 rounded-lg p-3 text-orange-500">
                     <svg
                         class="h-6 w-6"
                         fill="none"
@@ -115,12 +100,12 @@
 
         <!-- Stat 2 -->
         <div
-            class="hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-card shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card"
+            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium uppercase tracking-wider text-gray-500"
+                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
                     >
                         Currently Printing
                     </p>
@@ -155,12 +140,12 @@
 
         <!-- Stat 3 -->
         <div
-            class="hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-card shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card"
+            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium uppercase tracking-wider text-gray-500"
+                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
                     >
                         Jobs Completed (Today)
                     </p>
@@ -193,12 +178,12 @@
 
         <!-- Stat 4 -->
         <div
-            class="hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-card shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card"
+            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium uppercase tracking-wider text-gray-500"
+                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
                     >
                         Failed / Waste logged
                     </p>
@@ -234,7 +219,7 @@
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Live print queue board -->
         <div
-            class="rounded-xl border border-gray-200 bg-white p-6 shadow-card shadow-sm backdrop-blur-sm dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card lg:col-span-2"
+            class="shadow-card dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm lg:col-span-2"
         >
             <div class="mb-4 flex items-center justify-between">
                 <div>
@@ -246,7 +231,7 @@
                     </p>
                 </div>
                 <span
-                    class="rounded-full bg-orange-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:bg-orange-950/30 dark:text-orange-400"
+                    class="rounded-full bg-orange-50 px-3 py-1 text-[10px] font-bold tracking-wider text-orange-600 uppercase dark:bg-orange-950/30 dark:text-orange-400"
                     >Queue: {{ $queueCount + $printingCount }} active</span
                 >
             </div>
@@ -254,7 +239,7 @@
             <div class="space-y-3.5">
                 @forelse ($activeOrders as $oItem)
                 <div
-                    class="bg-gray-50/20/10 flex flex-col gap-3 rounded-lg border border-gray-100 p-4 transition hover:shadow-md dark:border-gray-700/30 sm:flex-row sm:items-center sm:justify-between"
+                    class="bg-gray-50/20/10 flex flex-col gap-3 rounded-lg border border-gray-100 p-4 transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between dark:border-gray-700/30"
                 >
                     <div>
                         <div class="flex items-center gap-2">
@@ -263,7 +248,7 @@
                                 STR_PAD_LEFT) }}-{{ $oItem->id }}</span
                             >
                             <span
-                                class="inline-block rounded bg-cyan-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-400"
+                                class="inline-block rounded bg-cyan-50 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-cyan-600 uppercase dark:bg-cyan-950/30 dark:text-cyan-400"
                             >
                                 CS: {{ $oItem->invoice->customer_service }}
                             </span>
@@ -322,10 +307,10 @@
 
         <!-- Log failed prints / quick actions -->
         <div
-            class="rounded-xl border border-gray-200 bg-white p-6 shadow-card shadow-sm backdrop-blur-sm dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card lg:col-span-1"
+            class="shadow-card dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm lg:col-span-1"
         >
             <h3 class="text-lg font-bold text-white">Log Print Waste</h3>
-            <p class="mb-4 mt-1 text-xs text-gray-500">
+            <p class="mt-1 mb-4 text-xs text-gray-500">
                 Report failed runs to adjust inventory.
             </p>
 
@@ -336,7 +321,7 @@
                     >
                     <select
                         wire:model="materialId"
-                        class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:border-surface-200 dark:bg-surface-600/50 dark:text-gray-100 dark:placeholder-gray-500"
+                        class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
                         required
                     >
                         <option value="">-- Choose Material --</option>
@@ -355,7 +340,7 @@
                     >
                     <select
                         wire:model="machineId"
-                        class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:border-surface-200 dark:bg-surface-600/50 dark:text-gray-100 dark:placeholder-gray-500"
+                        class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
                     >
                         <option value="">-- Choose Machine --</option>
                         @foreach ($allMachines as $mac)
@@ -375,7 +360,7 @@
                             min="0.01"
                             wire:model="quantity"
                             placeholder="e.g. 1.5 or 5"
-                            class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:border-surface-200 dark:bg-surface-600/50 dark:text-gray-100 dark:placeholder-gray-500"
+                            class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
                             required
                         />
                     </div>
@@ -387,7 +372,7 @@
                             type="text"
                             wire:model="dimensions"
                             placeholder="e.g. 2x1"
-                            class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:border-surface-200 dark:bg-surface-600/50 dark:text-gray-100 dark:placeholder-gray-500"
+                            class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
                         />
                     </div>
                 </div>
@@ -398,7 +383,7 @@
                     >
                     <select
                         wire:model="designerName"
-                        class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:border-surface-200 dark:bg-surface-600/50 dark:text-gray-100 dark:placeholder-gray-500"
+                        class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
                     >
                         <option value="">-- Choose Designer --</option>
                         @foreach ($designersList as $des)
@@ -416,7 +401,7 @@
                     <textarea
                         wire:model="notes"
                         placeholder="e.g. Paper jam, head clog, color mismatch..."
-                        class="h-16 w-full resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:border-surface-200 dark:bg-surface-600/50 dark:text-gray-100 dark:placeholder-gray-500"
+                        class="dark:border-surface-200 dark:bg-surface-600/50 h-16 w-full resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
                         required
                     ></textarea>
                 </div>
@@ -433,7 +418,7 @@
 
     <!-- LOG OF RECENT FAILURES/WASTED MATERIALS -->
     <div
-        class="rounded-xl border border-gray-200 bg-white p-6 shadow-card shadow-sm backdrop-blur-sm dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card"
+        class="shadow-card dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm"
     >
         <h3 class="mb-4 text-lg font-bold text-white">
             Recent Logged Print Failures
@@ -442,7 +427,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs text-gray-400">
                 <thead
-                    class="text-gray-650 bg-gray-100 font-semibold uppercase tracking-wider dark:bg-surface-600/80 dark:text-gray-400"
+                    class="text-gray-650 dark:bg-surface-600/80 bg-gray-100 font-semibold tracking-wider uppercase dark:text-gray-400"
                 >
                     <tr>
                         <th class="px-3 py-2.5">Date</th>
@@ -455,11 +440,11 @@
                     </tr>
                 </thead>
                 <tbody
-                    class="divide-y divide-gray-100 dark:divide-surface-300/30"
+                    class="dark:divide-surface-300/30 divide-y divide-gray-100"
                 >
                     @forelse ($recentWaste as $wItem)
                     <tr
-                        class="text-red-600 transition-all hover:bg-gray-50 dark:hover:bg-surface-400/20"
+                        class="dark:hover:bg-surface-400/20 text-red-600 transition-all hover:bg-gray-50"
                     >
                         <td class="px-3 py-3">{{ $wItem->logged_at }}</td>
                         <td class="px-3 py-3 font-semibold text-white">

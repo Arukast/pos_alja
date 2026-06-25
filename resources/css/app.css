@@ -7,16 +7,16 @@
 @theme {
     --font-sans: 'Outfit', var(--font-sans);
 
-    /* ALJA CMYK Brand Palette */
-    --color-alja-magenta: #E91E8C;
-    --color-alja-magenta-hover: #D01A7E;
-    --color-alja-magenta-light: #F74EAA;
-    --color-alja-cyan: #00AEEF;
-    --color-alja-cyan-hover: #0099D6;
-    --color-alja-cyan-light: #33C1F5;
-    --color-alja-yellow: #FFF200;
-    --color-alja-yellow-hover: #E6DA00;
-    --color-alja-key: #1A1A2E;
+    /* Brand Semantic Design Tokens */
+    --color-brand-primary: #E91E8C;
+    --color-brand-primary-hover: #D01A7E;
+    --color-brand-primary-light: #F74EAA;
+    --color-brand-secondary: #00AEEF;
+    --color-brand-secondary-hover: #0099D6;
+    --color-brand-secondary-light: #33C1F5;
+    --color-brand-accent: #FFF200;
+    --color-brand-accent-hover: #E6DA00;
+    --color-brand-dark: #1A1A2E;
 
     /* Dark surfaces */
     --color-surface-900: #0A0A16;
@@ -30,14 +30,14 @@
     --color-surface-100: #3D3D65;
 
     /* Glows & Shadows */
-    --shadow-glow-magenta: 0 0 20px -5px rgba(233, 30, 140, 0.35);
-    --shadow-glow-cyan: 0 0 20px -5px rgba(0, 174, 239, 0.35);
-    --shadow-glow-yellow: 0 0 20px -5px rgba(255, 242, 0, 0.25);
+    --shadow-glow-primary: 0 0 20px -5px rgba(233, 30, 140, 0.35);
+    --shadow-glow-secondary: 0 0 20px -5px rgba(0, 174, 239, 0.35);
+    --shadow-glow-accent: 0 0 20px -5px rgba(255, 242, 0, 0.25);
     --shadow-card: 0 4px 24px -4px rgba(0, 0, 0, 0.3);
     --shadow-card-hover: 0 8px 32px -4px rgba(0, 0, 0, 0.4);
 
     /* Borders */
-    --border-alja-subtle: rgba(233, 30, 140, 0.12);
+    --border-brand-subtle: rgba(233, 30, 140, 0.12);
 
     /* Animations & Keyframes */
     --animate-glow-pulse: glow-pulse 3s ease-in-out infinite;
@@ -59,14 +59,14 @@
 }
 
 :root {
-    --alja-magenta: #E91E8C;
-    --alja-cyan: #00AEEF;
-    --alja-yellow: #FFF200;
-    --alja-key: #1A1A2E;
-    --alja-surface: #0D0D1A;
+    --brand-primary: #E91E8C;
+    --brand-secondary: #00AEEF;
+    --brand-accent: #FFF200;
+    --brand-dark: #1A1A2E;
+    --brand-surface: #0D0D1A;
 }
 
-/* Smooth scrollbar for the ALJA dark theme */
+/* Smooth scrollbar for the brand dark theme */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -88,43 +88,43 @@
     color: #fff;
 }
 
-/* CMYK color strip — signature branding element from the logo */
-.cmyk-stripe {
+/* Brand color strip — signature branding element from the logo */
+.brand-stripe {
     display: flex;
     gap: 3px;
 }
-.cmyk-stripe::before,
-.cmyk-stripe::after {
+.brand-stripe::before,
+.brand-stripe::after {
     content: none;
 }
-.cmyk-dot {
+.brand-dot {
     width: 8px;
     height: 8px;
     border-radius: 2px;
     display: inline-block;
 }
-.cmyk-dot-m { background: var(--alja-magenta); }
-.cmyk-dot-c { background: var(--alja-cyan); }
-.cmyk-dot-y { background: var(--alja-yellow); }
-.cmyk-dot-k { background: var(--alja-key); }
+.brand-dot-primary { background: var(--brand-primary); }
+.brand-dot-secondary { background: var(--brand-secondary); }
+.brand-dot-accent { background: var(--brand-accent); }
+.brand-dot-dark { background: var(--brand-dark); }
 
-/* Horizontal CMYK bar accent — thin decorative line */
-.cmyk-bar {
+/* Horizontal brand bar accent — thin decorative line */
+.brand-stripe-bar {
     height: 3px;
     background: linear-gradient(
         to right,
-        var(--alja-magenta) 0%,
-        var(--alja-magenta) 33%,
-        var(--alja-yellow) 33%,
-        var(--alja-yellow) 55%,
-        var(--alja-cyan) 55%,
-        var(--alja-cyan) 100%
+        var(--brand-primary) 0%,
+        var(--brand-primary) 33%,
+        var(--brand-accent) 33%,
+        var(--brand-accent) 55%,
+        var(--brand-secondary) 55%,
+        var(--brand-secondary) 100%
     );
     border-radius: 2px;
 }
 
 /* Glassmorphism card style */
-.alja-glass {
+.brand-glass {
     background: rgba(20, 20, 40, 0.75);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -132,23 +132,23 @@
 }
 
 /* Smooth focus ring for inputs */
-.alja-focus-ring:focus {
+.brand-focus-ring:focus {
     outline: none;
     box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.25);
-    border-color: var(--alja-magenta);
+    border-color: var(--brand-primary);
 }
 
 /* Brand gradient text */
-.text-alja-gradient {
-    background: linear-gradient(135deg, var(--alja-magenta), var(--alja-cyan));
+.text-brand-gradient {
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
 /* Brand gradient background */
-.bg-alja-gradient {
-    background: linear-gradient(135deg, var(--alja-magenta), #B0185F, var(--alja-cyan));
+.bg-brand-gradient {
+    background: linear-gradient(135deg, var(--brand-primary), #B0185F, var(--brand-secondary));
 }
 
 /* Subtle hover lift */
