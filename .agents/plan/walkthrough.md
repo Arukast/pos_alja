@@ -181,3 +181,69 @@ We have configured standard GitHub integration files to automate workflows, ensu
   * [.husky/pre-commit](file:///home/arukast/Projects/localDev/projects/pos_alja/.husky/pre-commit) — Hook running `npx lint-staged` locally.
   * [package.json](file:///home/arukast/Projects/localDev/projects/pos_alja/package.json) — Maps `.php` files to Pint and `.blade.php` files to Prettier class sorting pre-commit.
 
+---
+
+## Phase 10: Tailwind CSS v4 & Livewire v4 Upgrade (Completed Code Changes)
+
+We have upgraded the application build system to Tailwind CSS v4 (using the `@tailwindcss/vite` plugin) and bumped the backend dependencies to support Livewire v4. As part of this upgrade, we fully cleaned up the `livewire/volt` package by converting all remaining 7 Volt components into standard PSR-12 compliant Class-Based Livewire components.
+
+### Changes Made
+
+#### 1. Configured Dependencies and Asset Build Tools
+* **[package.json](file:///home/arukast/Projects/localDev/projects/pos_alja/package.json):** Removed `postcss`, `autoprefixer`, and `tailwindcss` (v3). Added `tailwindcss` (v4.0.0) and `@tailwindcss/vite` (v4.0.0).
+* **[composer.json](file:///home/arukast/Projects/localDev/projects/pos_alja/composer.json):** Bumped `livewire/livewire` to `^4.0` and removed `livewire/volt`.
+* **[vite.config.js](file:///home/arukast/Projects/localDev/projects/pos_alja/vite.config.js):** Configured and registered the new `@tailwindcss/vite` plugin.
+* **[postcss.config.js](file:///home/arukast/Projects/localDev/projects/pos_alja/postcss.config.js) & [tailwind.config.js](file:///home/arukast/Projects/localDev/projects/pos_alja/tailwind.config.js):** Overwritten with deprecation/migration notices.
+* **[bootstrap/providers.php](file:///home/arukast/Projects/localDev/projects/pos_alja/bootstrap/providers.php) & [VoltServiceProvider.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Providers/VoltServiceProvider.php):** Removed and disabled the Volt service provider.
+
+#### 2. Migrated Design System & Custom Classes
+* **[app.css](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/css/app.css):** Upgraded styling directives to the new Tailwind CSS v4 syntax (`@import "tailwindcss";` and `@plugin "@tailwindcss/forms";`). Migrated the custom ALJA design system theme (fonts, colors, keyframes, shadows, and animations) into the `@theme` directive, utilizing standard CSS custom properties.
+
+#### 3. Refactored remaining Volt Components to Class-Based Livewire
+Created class files and stripped inline Volt PHP code from Blade templates:
+* Layout Navbar: [Navigation.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Layout/Navigation.php) & [navigation.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/layout/navigation.blade.php)
+* Login Screen: [Login.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Pages/Auth/Login.php) & [login.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/pages/auth/login.blade.php)
+* Confirm Password Screen: [ConfirmPassword.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Pages/Auth/ConfirmPassword.php) & [confirm-password.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/pages/auth/confirm-password.blade.php)
+* Forgot Password Screen: [ForgotPassword.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Pages/Auth/ForgotPassword.php) & [forgot-password.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/pages/auth/forgot-password.blade.php)
+* Register Screen: [Register.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Pages/Auth/Register.php) & [register.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/pages/auth/register.blade.php)
+* Reset Password Screen: [ResetPassword.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Pages/Auth/ResetPassword.php) & [reset-password.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/pages/auth/reset-password.blade.php)
+* Verify Email Screen: [VerifyEmail.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Pages/Auth/VerifyEmail.php) & [verify-email.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/pages/auth/verify-email.blade.php)
+
+* Welcome page navigation: [Navigation.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Welcome/Navigation.php)
+
+#### 4. Updated Auth Routing & Feature Tests
+* **[auth.php](file:///home/arukast/Projects/localDev/projects/pos_alja/routes/auth.php):** Replaced Volt routing with standard Laravel route rules pointing to the class-based components.
+* **Refactored Test Files:** Replaced all Volt test assertions and testing helpers with native Livewire assertions:
+  * [AuthenticationTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/Auth/AuthenticationTest.php)
+  * [PasswordConfirmationTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/Auth/PasswordConfirmationTest.php)
+  * [PasswordUpdateTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/Auth/PasswordUpdateTest.php)
+  * [UserAuthorizationTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/UserAuthorizationTest.php)
+
+---
+
+## Verification & Execution Guide (Phase 10)
+
+Because direct workspace execution via terminal is restricted, please verify the upgrades by running the following commands inside the container environment:
+
+### 1. Update Backend Dependencies
+Update Livewire and remove the old Volt dependencies from the container shell:
+```bash
+sudo docker exec -it -w /var/www/html/pos_alja local-php83 composer update livewire/livewire --with-all-dependencies
+sudo docker exec -it -w /var/www/html/pos_alja local-php83 composer remove livewire/volt
+```
+
+### 2. Update Frontend Assets and Build
+Install the new Tailwind CSS v4 dependencies and compile the assets on the host machine directly (not inside the PHP container):
+```bash
+npm install
+npm run build
+```
+
+### 3. Clear Application Cache and Run Tests
+Clear any cached application configurations and run the PHPUnit test suite:
+```bash
+sudo docker exec -it -w /var/www/html/pos_alja local-php83 php artisan optimize:clear
+sudo docker exec -it -w /var/www/html/pos_alja local-php83 ./vendor/bin/phpunit
+```
+
+
