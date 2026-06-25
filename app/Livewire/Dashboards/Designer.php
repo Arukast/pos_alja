@@ -178,7 +178,7 @@ class Designer extends Component
             $this->isCalculated = true;
         } catch (PricingMatrixNotFoundException $e) {
             $this->calcError = 'Pricing configuration not found for these parameters.';
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->calcError = $e->getMessage();
         }
     }

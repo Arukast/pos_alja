@@ -172,19 +172,12 @@ We have configured standard GitHub integration files to automate workflows, ensu
   * [phpstan.neon](file:///home/arukast/Projects/localDev/projects/pos_alja/phpstan.neon) — Basic static analysis ruleset (checking level 5).
   * [phpstan-baseline.neon](file:///home/arukast/Projects/localDev/projects/pos_alja/phpstan-baseline.neon) — Pre-existing code lint exclusions to keep the CI check passing cleanly for future additions.
 
-#### 5. CodeQL Security Scanning
-* **File:** [.github/workflows/codeql.yml](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/workflows/codeql.yml)
-  * Runs deep semantic analysis for PHP and JavaScript weekly and on PRs to prevent vulnerabilities (e.g. SQL Injection, XSS) from entering production.
-
-#### 6. Tailwind CSS Class Sorting (Prettier)
+#### 5. Tailwind CSS Class Sorting (Prettier)
 * **File:** [.prettierrc](file:///home/arukast/Projects/localDev/projects/pos_alja/.prettierrc)
   * Integrates `prettier-plugin-tailwindcss` and overrides configuration to automatically format `.blade.php` files as HTML.
 
-#### 7. Git Pre-Commit Hooks (Husky & lint-staged)
+#### 6. Git Pre-Commit Hooks (Husky & lint-staged)
 * **Files:**
   * [.husky/pre-commit](file:///home/arukast/Projects/localDev/projects/pos_alja/.husky/pre-commit) — Hook running `npx lint-staged` locally.
-  * [package.json](file:///home/arukast/Projects/localDev/projects/pos_alja/package.json) — Maps `.php` to run Pint and `.blade.php` to run Prettier formatting automatically prior to any Git commit.
-
-
-
+  * [package.json](file:///home/arukast/Projects/localDev/projects/pos_alja/package.json) — Maps `.php` files to Pint and `.blade.php` files to Prettier class sorting pre-commit.
 
