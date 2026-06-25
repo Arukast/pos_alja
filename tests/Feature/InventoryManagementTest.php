@@ -6,7 +6,9 @@ use App\Models\Branch;
 use App\Models\Material;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use App\Livewire\Dashboards\Cashier;
+use App\Livewire\Dashboards\Manager;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class InventoryManagementTest extends TestCase
@@ -31,8 +33,8 @@ class InventoryManagementTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'cashier']);
 
-        Volt::actingAs($user)
-            ->test('dashboards.cashier')
+        Livewire::actingAs($user)
+            ->test(Cashier::class)
             ->set('amount', 50000)
             ->set('type', 'laba')
             ->set('description', 'Office cleaning supplies')
@@ -69,8 +71,8 @@ class InventoryManagementTest extends TestCase
             'remaining_stock' => 100,
         ]);
 
-        Volt::actingAs($user)
-            ->test('dashboards.manager')
+        Livewire::actingAs($user)
+            ->test(Manager::class)
             ->set('selectedMaterialId', $material->id)
             ->set('addStockQuantity', 50)
             ->set('addStockNotes', 'Restocked 50m')

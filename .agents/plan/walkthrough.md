@@ -95,3 +95,47 @@ Verify that all unit and feature tests pass successfully:
 ```bash
 sudo docker exec -it -w /var/www/html/pos_alja local-php83 ./vendor/bin/phpunit
 ```
+
+---
+
+## Phase 8: Refactoring Volt to Class-Based Livewire Components (Completed)
+
+We have refactored the entire application from Livewire Volt (single-file inline components) to clean, PSR-12 compliant, Class-Based Livewire Components to improve readability, performance, and structure.
+
+### Changes Made
+
+#### 1. Created PHP Livewire Classes
+* **Profile Components:**
+  * [UpdateProfileInformationForm.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Profile/UpdateProfileInformationForm.php)
+  * [UpdatePasswordForm.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Profile/UpdatePasswordForm.php)
+  * [DeleteUserForm.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Profile/DeleteUserForm.php)
+* **Dashboard Components:**
+  * [Owner.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Owner.php)
+  * [Manager.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Manager.php)
+  * [Cashier.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Cashier.php)
+  * [Designer.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Designer.php)
+  * [Production.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Production.php)
+* **Extracted Sub-Component:**
+  * [UserManagement.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Admin/UserManagement.php)
+
+#### 2. Modified Blade Views (PHP blocks removed)
+* Removed Volt inline PHP tags (`<?php ... ?>`) and cleanly matched component layouts:
+  * [update-profile-information-form.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/profile/update-profile-information-form.blade.php)
+  * [update-password-form.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/profile/update-password-form.blade.php)
+  * [delete-user-form.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/profile/delete-user-form.blade.php)
+  * [owner.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/owner.blade.php)
+  * [manager.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/manager.blade.php)
+  * [cashier.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/cashier.blade.php)
+  * [designer.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/designer.blade.php)
+  * [production.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/production.blade.php)
+  * [user-management.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/admin/user-management.blade.php)
+
+#### 3. Applied Debounce & Alpine.js Optimizations
+* Input discount, input amount, and search elements updated to `.live.debounce.300ms` in Designer, Cashier, and UserManagement blades to limit redundant server requests.
+* Replaced `wire:click="$set('showUserModal', false)"` with Alpine `@click="$wire.set('showUserModal', false)"` to avoid unnecessary page re-renders.
+
+#### 4. Migrated Test Suite to Livewire Native Helpers
+* Replaced all occurrences of `Livewire\Volt\Volt` testing helpers with standard `Livewire\Livewire::test()` assertions.
+* Updated test assertions across `ProfileTest.php`, `UserManagementTest.php`, `BranchAuthorizationAndScopingTest.php`, `CashieringTest.php`, and `InventoryManagementTest.php`.
+* Redirected User CRUD tests in owner and manager views to directly test the new shared `UserManagement::class` component.
+

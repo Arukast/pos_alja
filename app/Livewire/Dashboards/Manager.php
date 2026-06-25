@@ -1,0 +1,104 @@
+<?php
+
+namespace App\Livewire\Dashboards;
+
+use App\Models\Expense;
+use App\Models\Machine;
+use App\Models\Material;
+use App\Models\PricingMatrix;
+use App\Models\User;
+use App\Services\InventoryService;
+use Illuminate\Support\Facades\DB;
+use Livewire\Component;
+
+class Manager extends Component
+{
+    protected $listeners = [
+        'echo:orders,OrderUpdated' => '$refresh',
+    ];
+
+    // Active tab
+    public string $activeTab = 'inventory';
+
+    // Add stock form properties
+    public string $selectedMaterialId = '';
+    public string $addStockQuantity = '';
+    public string $addStockNotes = '';
+
+    // Alert feedback
+    public bool $showSuccessAlert = false;
+    public string $successMessage = '';
+
+    public function setTab(string $tab): void
+    {
+        $this->activeTab = $tab;
+        $this->resetErrorBag();
+        $this->showSuccessAlert = false;
+    }
+
+    public function addMaterialStock(): void
+    {
+        $this->validate([
+            'selectedMaterialId' => 'required|integer|exists:materials,id',
+            'addStockQuantity'   => 'required|numeric|min:0.01',
+            'addStockNotes'      => 'nullable|string|max:255',
+        ]);
+
+        $material = Material::findOrFail($this->selectedMaterialId);
+
+        if (auth()->user()->branch_id && $material->branch_id !== auth()->user()->branch_id) {
+            abort(403, 'Unauthorized branch access.');
+        }
+
+        $inventoryService = new InventoryService();
+        $inventoryService->addStock($material, (float) $this->addStockQuantity, $this->addStockNotes);
+
+        $this->reset(['selectedMaterialId', 'addStockQuantity', 'addStockNotes']);
+
+        $this->successMessage = 'Inventory stock restocked successfully!';
+        $this->showSuccessAlert = true;
+    }
+
+    public function render()
+    {
+        $branchId = auth()->user()->branch_id ?: 1;
+
+        // 1. Dynamic Quick Stat Counters
+        $materialCount = Material::where('branch_id', $branchId)->count();
+        $machineCount = Machine::where('branch_id', $branchId)->count();
+        $staffCount = User::where('branch_id', $branchId)->count();
+        $pricingRulesCount = PricingMatrix::where('branch_id', $branchId)->count();
+
+        // 2. Load stock ledger log history
+        $stockLogs = DB::table('stock_ledgers')
+            ->join('materials', 'stock_ledgers.material_id', '=', 'materials.id')
+            ->where('materials.branch_id', $branchId)
+            ->select('stock_ledgers.*', 'materials.name as material_name', 'materials.category as material_category')
+            ->orderBy('stock_ledgers.id', 'desc')
+            ->limit(8)
+            ->get();
+
+        // 3. Load entire material inventory list
+        $materialsList = Material::where('branch_id', $branchId)
+            ->orderBy('remaining_stock', 'asc') // prioritize low stock
+            ->limit(20)
+            ->get();
+
+        // 4. Load all materials for the dropdown selection
+        $allMaterials = Material::where('branch_id', $branchId)->orderBy('name')->get();
+
+        // 5. Recent Expenses
+        $expenses = Expense::where('branch_id', $branchId)->orderBy('id', 'desc')->limit(8)->get();
+
+        return view('livewire.dashboards.manager', compact(
+            'materialCount',
+            'machineCount',
+            'staffCount',
+            'pricingRulesCount',
+            'stockLogs',
+            'materialsList',
+            'allMaterials',
+            'expenses'
+        ));
+    }
+}

@@ -9,7 +9,8 @@ use App\Models\User;
 use App\Events\OrderUpdated;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Livewire\Volt\Volt;
+use App\Livewire\Dashboards\Cashier;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CashieringTest extends TestCase
@@ -59,8 +60,8 @@ class CashieringTest extends TestCase
             'source' => 0,
         ]);
 
-        Volt::actingAs($user)
-            ->test('dashboards.cashier')
+        Livewire::actingAs($user)
+            ->test(Cashier::class)
             ->set('selectedInvoiceId', $invoice->id)
             ->set('paymentType', 'dp')
             ->set('inputAmount', 40000)
@@ -114,8 +115,8 @@ class CashieringTest extends TestCase
             'source' => 0,
         ]);
 
-        Volt::actingAs($user)
-            ->test('dashboards.cashier')
+        Livewire::actingAs($user)
+            ->test(Cashier::class)
             ->set('selectedInvoiceId', $invoice->id)
             ->set('paymentType', 'settle')
             ->set('inputDiscount', 10000)
@@ -170,8 +171,8 @@ class CashieringTest extends TestCase
             'source' => 0,
         ]);
 
-        Volt::actingAs($user)
-            ->test('dashboards.cashier')
+        Livewire::actingAs($user)
+            ->test(Cashier::class)
             ->set('selectedInvoiceId', $invoice->id)
             ->set('paymentType', 'settle')
             ->set('inputDiscount', 5000) // net to pay is 95000

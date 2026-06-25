@@ -9,7 +9,8 @@ use App\Models\User;
 use App\Models\Expense;
 use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use App\Livewire\Dashboards\Cashier;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class BranchAuthorizationAndScopingTest extends TestCase
@@ -188,8 +189,8 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'cashier_name' => 'Cashier 2',
         ]);
 
-        Volt::actingAs($cashier)
-            ->test('dashboards.cashier')
+        Livewire::actingAs($cashier)
+            ->test(Cashier::class)
             ->assertViewHas('activeInvoices', function ($invoices) use ($inv1, $inv2) {
                 return $invoices->contains($inv1) && !$invoices->contains($inv2);
             })
@@ -224,8 +225,8 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'pickup_status' => 0,
         ]);
 
-        Volt::actingAs($cashier)
-            ->test('dashboards.cashier')
+        Livewire::actingAs($cashier)
+            ->test(Cashier::class)
             ->assertViewHas('pickupQueue', function ($queue) use ($invoice) {
                 return $queue->contains($invoice);
             })

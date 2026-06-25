@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\User;
+use App\Livewire\Admin\UserManagement;
+use App\Livewire\Dashboards\Owner;
+use App\Livewire\Dashboards\Manager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -85,9 +88,8 @@ class UserManagementTest extends TestCase
             'branch_id' => $this->branch1->id,
         ]);
 
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
-            ->set('activeTab', 'users')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->assertViewHas('usersList', function ($users) use ($cashier1, $cashier2, $otherManager, $owner) {
                 // Should contain branch 1 users
                 $hasBranch1User = $users->contains($cashier1);
@@ -111,8 +113,8 @@ class UserManagementTest extends TestCase
         ]);
 
         // 1. Create Staff
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->call('openCreateModal')
             ->set('formName', 'New Staff')
             ->set('formUsername', 'newstaff')
@@ -132,8 +134,8 @@ class UserManagementTest extends TestCase
         $staff = User::where('username', 'newstaff')->first();
 
         // 2. Update Staff
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->call('openEditModal', $staff->id)
             ->assertSet('formName', 'New Staff')
             ->set('formName', 'Updated Staff')
@@ -146,8 +148,8 @@ class UserManagementTest extends TestCase
         ]);
 
         // 3. Delete Staff (Soft Delete)
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->call('deleteUser', $staff->id)
             ->assertHasNoErrors();
 
@@ -175,22 +177,22 @@ class UserManagementTest extends TestCase
         ]);
 
         // Manager cannot open edit modal for owner
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->assertStatus(200)
             ->call('openEditModal', $owner->id)
             ->assertStatus(403);
 
         // Manager cannot open edit modal for manager
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->call('openEditModal', $otherManager->id)
             ->assertStatus(403);
 
         // Manager cannot edit/save owner
         // Even if they forge the modal state, the saveUser handler blocks it
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->set('userIdBeingEdited', $owner->id)
             ->set('formName', 'Hacked Owner')
             ->set('formUsername', $owner->username)
@@ -200,8 +202,8 @@ class UserManagementTest extends TestCase
             ->assertStatus(403);
 
         // Manager cannot delete owner
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->call('deleteUser', $owner->id)
             ->assertStatus(403);
 
@@ -228,14 +230,14 @@ class UserManagementTest extends TestCase
         ]);
 
         // Try to open edit modal for other branch user - expect 403
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->call('openEditModal', $otherBranchCashier->id)
             ->assertStatus(403);
 
         // Try to delete other branch user - expect 403
-        Volt::actingAs($manager)
-            ->test('dashboards.manager')
+        Livewire::actingAs($manager)
+            ->test(UserManagement::class, ['mode' => 'manager'])
             ->call('deleteUser', $otherBranchCashier->id)
             ->assertStatus(403);
 
@@ -265,8 +267,8 @@ class UserManagementTest extends TestCase
         ]);
 
         // Primary Owner can edit Secondary Owner
-        Volt::actingAs($primaryOwner)
-            ->test('dashboards.owner')
+        Livewire::actingAs($primaryOwner)
+            ->test(UserManagement::class, ['mode' => 'owner'])
             ->call('openEditModal', $secondaryOwner->id)
             ->assertSet('formName', $secondaryOwner->name)
             ->set('formName', 'Updated Owner Name')
@@ -283,8 +285,8 @@ class UserManagementTest extends TestCase
         ]);
 
         // Primary Owner can delete Secondary Owner
-        Volt::actingAs($primaryOwner)
-            ->test('dashboards.owner')
+        Livewire::actingAs($primaryOwner)
+            ->test(UserManagement::class, ['mode' => 'owner'])
             ->call('deleteUser', $secondaryOwner->id)
             ->assertHasNoErrors();
 
@@ -317,14 +319,14 @@ class UserManagementTest extends TestCase
         ]);
 
         // Secondary Owner cannot open edit modal for Primary Owner
-        Volt::actingAs($secondaryOwner)
-            ->test('dashboards.owner')
+        Livewire::actingAs($secondaryOwner)
+            ->test(UserManagement::class, ['mode' => 'owner'])
             ->call('openEditModal', $primaryOwner->id)
             ->assertStatus(403);
 
         // Secondary Owner cannot delete Primary Owner
-        Volt::actingAs($secondaryOwner)
-            ->test('dashboards.owner')
+        Livewire::actingAs($secondaryOwner)
+            ->test(UserManagement::class, ['mode' => 'owner'])
             ->call('deleteUser', $primaryOwner->id)
             ->assertStatus(403);
 
