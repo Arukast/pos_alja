@@ -31,7 +31,12 @@ new class extends Component {
             'addStockNotes' => 'nullable|string|max:255',
         ]);
 
-        $material = Material::find($this->selectedMaterialId);
+        $material = Material::findOrFail($this->selectedMaterialId);
+
+        if (auth()->user()->branch_id && $material->branch_id !== auth()->user()->branch_id) {
+            abort(403, 'Unauthorized branch access.');
+        }
+
         $inventoryService = new InventoryService();
         $inventoryService->addStock($material, (float) $this->addStockQuantity, $this->addStockNotes);
 
@@ -43,30 +48,34 @@ new class extends Component {
 
     public function with(): array
     {
+        $branchId = auth()->user()->branch_id ?: 1;
+
         // 1. Dynamic Quick Stat Counters
-        $materialCount = Material::count();
-        $machineCount = Machine::count();
-        $staffCount = User::count();
-        $pricingRulesCount = PricingMatrix::count();
+        $materialCount = Material::where('branch_id', $branchId)->count();
+        $machineCount = Machine::where('branch_id', $branchId)->count();
+        $staffCount = User::where('branch_id', $branchId)->count();
+        $pricingRulesCount = PricingMatrix::where('branch_id', $branchId)->count();
 
         // 2. Load stock ledger log history
         $stockLogs = DB::table('stock_ledgers')
             ->join('materials', 'stock_ledgers.material_id', '=', 'materials.id')
+            ->where('materials.branch_id', $branchId)
             ->select('stock_ledgers.*', 'materials.name as material_name', 'materials.category as material_category')
             ->orderBy('stock_ledgers.id', 'desc')
             ->limit(8)
             ->get();
 
         // 3. Load entire material inventory list
-        $materialsList = Material::orderBy('remaining_stock', 'asc') // prioritize low stock
+        $materialsList = Material::where('branch_id', $branchId)
+            ->orderBy('remaining_stock', 'asc') // prioritize low stock
             ->limit(20)
             ->get();
 
         // 4. Load all materials for the dropdown selection
-        $allMaterials = Material::orderBy('name')->get();
+        $allMaterials = Material::where('branch_id', $branchId)->orderBy('name')->get();
 
         // 5. Recent Expenses
-        $expenses = Expense::orderBy('id', 'desc')->limit(8)->get();
+        $expenses = Expense::where('branch_id', $branchId)->orderBy('id', 'desc')->limit(8)->get();
 
         return compact(
             'materialCount',
@@ -120,7 +129,7 @@ new class extends Component {
     <!-- Quick stats grid -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat card 1 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Stock Materials</p>
@@ -137,7 +146,7 @@ new class extends Component {
         </div>
 
         <!-- Stat card 2 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Printers & Machinery</p>
@@ -154,7 +163,7 @@ new class extends Component {
         </div>
 
         <!-- Stat card 3 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Active Staff</p>
@@ -170,7 +179,7 @@ new class extends Component {
         </div>
 
         <!-- Stat card 4 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Pricing Engine Rows</p>
@@ -189,14 +198,14 @@ new class extends Component {
     <!-- Management actions and recent stock ledger -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Stock Restock Payout form -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card">
             <h3 class="text-lg font-bold text-white">Material Restocking</h3>
             <p class="mt-1 text-xs text-gray-500 mb-4">Replenish material sheet or banner rolls inventory levels.</p>
             
             <form wire:submit.prevent="addMaterialStock" class="space-y-4 text-xs">
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Select Material</label>
-                    <select wire:model="selectedMaterialId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 focus:outline-none focus:border-alja-magenta focus:ring-1 focus:ring-alja-magenta/30 text-white transition-colors duration-200" required>
+                    <select wire:model="selectedMaterialId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 focus:outline-none focus:border-alja-magenta focus:ring-1 focus:ring-alja-magenta/30 text-white transition-colors duration-200" required>
                         <option value="">-- Choose Material to Restock --</option>
                         @foreach ($allMaterials as $mat)
                             <option value="{{ $mat->id }}">{{ $mat->name }} {{ $mat->dimensions ? "({$mat->dimensions})" : '' }} [{{ $mat->category }}]</option>
@@ -207,13 +216,13 @@ new class extends Component {
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Added Restock Qty</label>
-                    <input type="number" step="any" min="0.01" wire:model="addStockQuantity" placeholder="e.g. 500 or 12.5" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-alja-magenta focus:ring-1 focus:ring-alja-magenta/30 text-white transition-colors duration-200" required>
+                    <input type="number" step="any" min="0.01" wire:model="addStockQuantity" placeholder="e.g. 500 or 12.5" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-alja-magenta focus:ring-1 focus:ring-alja-magenta/30 text-white transition-colors duration-200" required>
                     @error('addStockQuantity') <span class="text-red-400 text-[10px] font-semibold">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Restocking Notes</label>
-                    <textarea wire:model="addStockNotes" placeholder="Restock batch invoice number, vendor name, etc..." class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-alja-magenta focus:ring-1 focus:ring-alja-magenta/30 text-white h-20 resize-none transition-colors duration-200"></textarea>
+                    <textarea wire:model="addStockNotes" placeholder="Restock batch invoice number, vendor name, etc..." class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-alja-magenta focus:ring-1 focus:ring-alja-magenta/30 text-white h-20 resize-none transition-colors duration-200"></textarea>
                     @error('addStockNotes') <span class="text-red-400 text-[10px] font-semibold">{{ $message }}</span> @enderror
                 </div>
 
@@ -224,13 +233,13 @@ new class extends Component {
         </div>
 
         <!-- Recent Stock ledger logs -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card lg:col-span-2">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card lg:col-span-2">
             <h3 class="text-lg font-bold text-white">Recent Inventory Ledger Logs</h3>
             <p class="mt-1 text-xs text-gray-500 mb-4">Stock ledger activity adjustments logs.</p>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs text-gray-400">
-                    <thead class="bg-surface-600/80 text-gray-500 uppercase tracking-wider font-semibold">
+                    <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
                         <tr>
                             <th class="py-2.5 px-3 rounded-l-lg">Date</th>
                             <th class="py-2.5 px-3">Material</th>
@@ -240,9 +249,9 @@ new class extends Component {
                             <th class="py-2.5 px-3 text-right rounded-r-lg">Ledger Remaining</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-surface-300/30 text-[11px]">
+                    <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30 text-[11px]">
                         @forelse ($stockLogs as $log)
-                            <tr class="hover:bg-surface-400/20 transition-colors duration-150">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition-colors duration-150">
                                 <td class="py-2.5 px-3 font-medium">{{ $log->logged_at }}</td>
                                 <td class="py-2.5 px-3 font-semibold text-white">
                                     {{ $log->material_name }}
@@ -266,13 +275,13 @@ new class extends Component {
     <!-- DETAILED STOCK LEVEL WITH LOW STOCK WARN & RECENT EXPENSES -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Stock Levels Ledger -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card lg:col-span-2">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card lg:col-span-2">
             <h3 class="text-lg font-bold text-white">Material Inventory Levels</h3>
             <p class="mt-1 text-xs text-gray-500 mb-4">Stock balances with low stock highlight flags.</p>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs text-gray-400">
-                    <thead class="bg-surface-600/80 text-gray-500 uppercase tracking-wider font-semibold">
+                    <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
                         <tr>
                             <th class="py-2 px-2 rounded-l-lg">Material</th>
                             <th class="py-2 px-2">Initial</th>
@@ -282,12 +291,12 @@ new class extends Component {
                             <th class="py-2 px-2 text-right rounded-r-lg">Remaining Stock</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-surface-300/30 text-[11px]">
+                    <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30 text-[11px]">
                         @foreach ($materialsList as $mItem)
                             @php
                                 $isLow = $mItem->remaining_stock <= 10.0;
                             @endphp
-                            <tr class="hover:bg-surface-400/20 transition-colors duration-150 {{ $isLow ? 'bg-red-500/5 text-red-400' : '' }}">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition-colors duration-150 {{ $isLow ? 'bg-red-500/5 text-red-400' : '' }}">
                                 <td class="py-2 px-2 font-semibold">
                                     {{ $mItem->name }} 
                                     @if ($mItem->dimensions) <span class="text-[9px] font-normal text-gray-600">({{ $mItem->dimensions }})</span> @endif
@@ -310,13 +319,13 @@ new class extends Component {
         </div>
 
         <!-- Recent Expenses log -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card lg:col-span-1">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card lg:col-span-1">
             <h3 class="text-lg font-bold text-white mb-1">Expenses Ledger</h3>
             <p class="text-xs text-gray-500 mb-4">Drawer payouts audit tracking logs.</p>
 
             <div class="space-y-3.5 max-h-[400px] overflow-y-auto pr-1">
                 @forelse ($expenses as $exp)
-                    <div class="p-3 rounded-xl border border-surface-300/30 bg-surface-600/50 text-xs relative hover:border-surface-200/40 transition-colors duration-150">
+                    <div class="p-3 rounded-xl border border-gray-200 dark:border-surface-300/30 bg-white dark:bg-surface-600/50 text-xs relative hover:border-surface-200/40 transition-colors duration-150">
                         <div class="flex justify-between items-start">
                             <span class="font-bold text-white uppercase">{{ $exp->cashier_name }}</span>
                             <span class="font-black text-red-400">Rp. {{ number_format($exp->amount) }}</span>

@@ -48,6 +48,7 @@ new class extends Component {
     public $calcPrice = 0;
     public $calcCost = 0;
     public $calcSubtotal = 0;
+    public $calcMatrixId = 0;
     public $isCalculated = false;
     public $calcError = '';
 
@@ -68,6 +69,13 @@ new class extends Component {
     {
         $this->customerId = $id;
         $this->customerSearch = $name;
+    }
+
+    public function updatedCustomerSearch()
+    {
+        // Reset the selected customer ID if the user manually edits the search field
+        // after a customer was already selected — prevents ghost/stale selection
+        $this->customerId = '';
     }
 
     public function createCustomer()
@@ -134,6 +142,7 @@ new class extends Component {
             $this->calcPrice = $quote['unit_price'];
             $this->calcCost = $quote['unit_cost'];
             $this->calcSubtotal = $quote['subtotal'];
+            $this->calcMatrixId = $quote['pricing_matrix_id'];
             $this->isCalculated = true;
         } catch (PricingMatrixNotFoundException $e) {
             $this->calcError = "Pricing configuration not found for these parameters.";
@@ -184,6 +193,7 @@ new class extends Component {
             'length' => $this->length,
             'file_name' => $this->fileName ?: 'Unnamed_File',
             'notes' => $this->notes ?: '',
+            'pricing_matrix_id' => $this->calcMatrixId,
             'unit_price' => $this->calcPrice,
             'unit_cost' => $this->calcCost,
             'subtotal' => $this->calcSubtotal,
@@ -195,7 +205,7 @@ new class extends Component {
         $this->reset([
             'productId', 'materialId', 'machineId', 'finishingId', 'cutId', 'displayId',
             'sides', 'finishingSides', 'fileName', 'notes',
-            'calcPrice', 'calcCost', 'calcSubtotal', 'isCalculated', 'calcError'
+            'calcPrice', 'calcCost', 'calcSubtotal', 'calcMatrixId', 'isCalculated', 'calcError'
         ]);
 
         $this->quantity = 1;
@@ -236,7 +246,7 @@ new class extends Component {
             $totalProfit = $grandTotal - $totalCost;
 
             $invoice = Invoice::create([
-                'branch_id' => 1,
+                'branch_id' => auth()->user()->branch_id ?: (\App\Models\Branch::first()->id ?? 1),
                 'created_date' => now()->toDateString(),
                 'customer_id' => $this->customerId,
                 'status' => 0,
@@ -308,15 +318,17 @@ new class extends Component {
         $hasSides = false;
         $hasFinishingSides = false;
 
+        $branchId = auth()->user()->branch_id ?: (\App\Models\Branch::first()->id ?? 1);
+
         if ($this->productId) {
-            $matrices = PricingMatrix::where('product_id', $this->productId)->get();
+            $matrices = PricingMatrix::where('product_id', $this->productId)->where('branch_id', $branchId)->get();
 
             $materialIds = $matrices->pluck('material_id')->unique();
-            $materials = Material::whereIn('id', $materialIds)->get();
+            $materials = Material::whereIn('id', $materialIds)->where('branch_id', $branchId)->get();
 
             $machineIds = $matrices->pluck('machine_id')->unique()->filter();
             if ($machineIds->isNotEmpty()) {
-                $machines = Machine::whereIn('id', $machineIds)->get();
+                $machines = Machine::whereIn('id', $machineIds)->where('branch_id', $branchId)->get();
                 $hasMachines = $matrices->contains(fn($m) => $m->machine_id > 0);
             }
 
@@ -345,6 +357,7 @@ new class extends Component {
         }
 
         $activeInvoices = Invoice::with('customer')
+            ->where('branch_id', $branchId)
             ->orderBy('id', 'desc')
             ->limit(5)
             ->get();
@@ -402,15 +415,15 @@ new class extends Component {
         <!-- LEFT PANEL: CUSTOMER & METADATA -->
         <div class="space-y-6 lg:col-span-1">
             <!-- Customer Section -->
-            <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card backdrop-blur-md">
-                <h2 class="text-lg font-bold text-white mb-4">1. Customer Intake</h2>
+            <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card backdrop-blur-md">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4">1. Customer Intake</h2>
                 
                 @if (!$showNewCustomerForm)
                     <!-- Search Field -->
                     <div class="space-y-3">
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500">Search Customer</label>
                         <div class="relative">
-                            <input type="text" wire:model.live="customerSearch" placeholder="Type name or phone..." class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 pl-3 pr-10 text-sm focus:border-teal-500 focus:outline-none">
+                            <input type="text" wire:model.live="customerSearch" placeholder="Type name or phone..." class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 pl-3 pr-10 text-sm focus:border-teal-500 focus:outline-none">
                             @if ($customerId)
                                 <div class="absolute right-3 top-2.5 text-emerald-400">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -420,10 +433,12 @@ new class extends Component {
 
                         <!-- Dropdown Results -->
                         @if ($customerSearch && !$customerId)
-                            <div class="max-h-40 overflow-y-auto rounded-lg border border-gray-100 dark:border-gray-700/50 bg-white shadow-lg divide-y divide-surface-300/30">
+                            <div class="max-h-40 overflow-y-auto rounded-lg border border-gray-250 dark:border-gray-700/50 bg-white dark:bg-surface-600 shadow-lg divide-y divide-gray-100 dark:divide-surface-300/30">
                                 @forelse ($customers as $c)
-                                    <button type="button" wire:click="selectCustomer({{ $c->id }}, '{{ $c->name }}')" class="w-full text-left px-3 py-2 text-xs hover:bg-teal-50 dark:hover:bg-teal-950/20 text-gray-700 font-medium">
-                                        {{ $c->name }} ({{ $c->phone ?: 'No Phone' }}) - <span class="text-teal-500">{{ $c->type }}</span>
+                                    {{-- Use Js::from() to safely JSON-encode the name inside HTML attributes --}}
+                                    {{-- This prevents apostrophes/special chars from breaking the wire:click JS call --}}
+                                    <button type="button" wire:click="selectCustomer({{ $c->id }}, {{ \Illuminate\Support\Js::from($c->name) }})" class="w-full text-left px-3 py-2 text-xs hover:bg-teal-50 dark:hover:bg-teal-950/20 text-gray-700 dark:text-gray-200 font-medium">
+                                        {{ $c->name }} ({{ $c->phone ?: 'No Phone' }}) - <span class="text-teal-550">{{ $c->type }}</span>
                                     </button>
                                 @empty
                                     <div class="px-3 py-2.5 text-xs text-gray-500 text-center">No customer found.</div>
@@ -443,12 +458,12 @@ new class extends Component {
                             <button type="button" wire:click="$set('showNewCustomerForm', false)" class="text-xs text-red-400 font-semibold">Cancel</button>
                         </div>
 
-                        <input type="text" wire:model="customerName" placeholder="Full Name *" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-xs" required>
-                        <input type="text" wire:model="customerPhone" placeholder="Phone Number" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-xs">
-                        <input type="email" wire:model="customerEmail" placeholder="Email" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-xs">
-                        <textarea wire:model="customerAddress" placeholder="Address" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-xs h-16 resize-none"></textarea>
+                        <input type="text" wire:model="customerName" placeholder="Full Name *" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-xs" required>
+                        <input type="text" wire:model="customerPhone" placeholder="Phone Number" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-xs">
+                        <input type="email" wire:model="customerEmail" placeholder="Email" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-xs">
+                        <textarea wire:model="customerAddress" placeholder="Address" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-xs h-16 resize-none"></textarea>
                         
-                        <select wire:model="customerType" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-xs">
+                        <select wire:model="customerType" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-xs">
                             <option value="Reguler">Reguler</option>
                             <option value="Mitra">Mitra</option>
                         </select>
@@ -462,17 +477,17 @@ new class extends Component {
             </div>
 
             <!-- Order Settings -->
-            <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card backdrop-blur-md space-y-4">
+            <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card backdrop-blur-md space-y-4">
                 <h2 class="text-lg font-bold text-white">2. Job Parameters</h2>
 
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Production Deadline</label>
-                    <input type="datetime-local" wire:model="deadline" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                    <input type="datetime-local" wire:model="deadline" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Order Intake Channel</label>
-                    <select wire:model="source" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                    <select wire:model="source" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                         <option value="Offline">Offline / Walk-In</option>
                         <option value="WhatsApp">WhatsApp Message</option>
                         <option value="Tokopedia">Tokopedia Store</option>
@@ -486,14 +501,14 @@ new class extends Component {
         <!-- RIGHT PANEL: INTERACTIVE CALCULATOR & CART -->
         <div class="space-y-6 lg:col-span-2">
             <!-- 3. Dynamic Quote Calculator -->
-            <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card">
+            <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card">
                 <h2 class="text-lg font-bold text-white mb-4">3. Quote Calculator</h2>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Product Category Selector -->
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Product Category</label>
-                        <select wire:model.live="productId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                        <select wire:model.live="productId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                             <option value="">-- Select Product Category --</option>
                             @foreach ($products as $p)
                                 <option value="{{ $p->id }}">{{ $p->name }}</option>
@@ -505,7 +520,7 @@ new class extends Component {
                     @if ($productId)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Material (Bahan)</label>
-                            <select wire:model.live="materialId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <select wire:model.live="materialId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                                 <option value="">-- Select Material --</option>
                                 @foreach ($materials as $m)
                                     <option value="{{ $m->id }}">{{ $m->name }} {{ $m->dimensions ? "({$m->dimensions})" : '' }}</option>
@@ -518,7 +533,7 @@ new class extends Component {
                     @if ($productId && $hasMachines)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Print Machine</label>
-                            <select wire:model.live="machineId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <select wire:model.live="machineId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                                 <option value="">-- Select Machine --</option>
                                 @foreach ($machines as $mc)
                                     <option value="{{ $mc->id }}">{{ $mc->name }}</option>
@@ -531,7 +546,7 @@ new class extends Component {
                     @if ($productId && $hasFinishings)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Post-Finishing</label>
-                            <select wire:model.live="finishingId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <select wire:model.live="finishingId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                                 <option value="">-- Select Finishing --</option>
                                 @foreach ($finishings as $f)
                                     <option value="{{ $f->id }}">{{ $f->name }}</option>
@@ -544,7 +559,7 @@ new class extends Component {
                     @if ($productId && $hasCuts)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Cutting Style</label>
-                            <select wire:model.live="cutId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <select wire:model.live="cutId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                                 <option value="">-- Select Cutting --</option>
                                 @foreach ($cuts as $c)
                                     <option value="{{ $c->id }}">{{ $c->name }}</option>
@@ -557,7 +572,7 @@ new class extends Component {
                     @if ($productId && $hasDisplays)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Display Stands & Accessories</label>
-                            <select wire:model.live="displayId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <select wire:model.live="displayId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                                 <option value="">-- Select Display --</option>
                                 @foreach ($displays as $d)
                                     <option value="{{ $d->id }}">{{ $d->name }}</option>
@@ -575,7 +590,7 @@ new class extends Component {
                                 @else Print Sides (Sisi)
                                 @endif
                             </label>
-                            <select wire:model.live="sides" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <select wire:model.live="sides" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                                 @if ($productId == 7)
                                     <option value="1">1 Warna</option>
                                     <option value="2">2 Warna</option>
@@ -598,7 +613,7 @@ new class extends Component {
                     @if ($productId && $hasFinishingSides)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Finishing Sides</label>
-                            <select wire:model.live="finishingSides" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <select wire:model.live="finishingSides" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2.5 px-3 text-sm focus:border-teal-500 focus:outline-none">
                                 <option value="0">0 Sisi</option>
                                 <option value="1">1 Sisi</option>
                                 <option value="2">2 Sisi</option>
@@ -610,30 +625,30 @@ new class extends Component {
                     @if ($productId == 5)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Length (m)</label>
-                            <input type="number" step="0.01" min="0.1" wire:model.live="length" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <input type="number" step="0.01" min="0.1" wire:model.live="length" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Width (m)</label>
-                            <input type="number" step="0.01" min="0.1" wire:model.live="width" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                            <input type="number" step="0.01" min="0.1" wire:model.live="width" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
                         </div>
                     @endif
 
                     <!-- Quantity Input -->
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Quantity (Pcs/Sheets/Qty)</label>
-                        <input type="number" min="1" step="any" wire:model.live="quantity" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                        <input type="number" min="1" step="any" wire:model.live="quantity" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
                     </div>
 
                     <!-- File Name Input -->
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">File Layout Name</label>
-                        <input type="text" wire:model="fileName" placeholder="layout_design.pdf" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
+                        <input type="text" wire:model="fileName" placeholder="layout_design.pdf" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none">
                     </div>
 
                     <!-- Notes Input -->
                     <div class="md:col-span-2">
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Prepress / Layout Instructions</label>
-                        <textarea wire:model="notes" placeholder="Additional notes for production operators..." class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none h-16 resize-none"></textarea>
+                        <textarea wire:model="notes" placeholder="Additional notes for production operators..." class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 text-sm focus:border-teal-500 focus:outline-none h-16 resize-none"></textarea>
                     </div>
                 </div>
 
@@ -663,12 +678,12 @@ new class extends Component {
 
             <!-- 4. Pre-Queued Draft Cart -->
             @if (!empty($items))
-                <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card">
+                <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card">
                     <h2 class="text-lg font-bold text-white mb-4">4. Order Summary Queue</h2>
 
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs text-gray-400">
-                            <thead class="bg-surface-600/80 text-gray-500 uppercase tracking-wider font-semibold">
+                            <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
                                 <tr>
                                     <th class="py-2.5 px-3">Product / Layout File</th>
                                     <th class="py-2.5 px-3">Specifications</th>
@@ -677,9 +692,9 @@ new class extends Component {
                                     <th class="py-2.5 px-3 text-center">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-surface-300/30">
+                            <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30">
                                 @foreach ($items as $item)
-                                    <tr class="hover:bg-surface-400/20 transition">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition">
                                         <td class="py-3 px-3">
                                             <div class="font-bold text-white">{{ $item['product_name'] }}</div>
                                             <div class="text-gray-500 italic mt-0.5">{{ $item['file_name'] }}</div>
@@ -706,7 +721,7 @@ new class extends Component {
                             <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Order Discount</label>
                             <div class="relative w-36">
                                 <span class="absolute left-3 top-2 text-xs font-bold text-gray-400">Rp.</span>
-                                <input type="number" wire:model.live="discount" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-1.5 pl-9 pr-3 text-xs focus:border-teal-500 focus:outline-none">
+                                <input type="number" wire:model.live="discount" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-1.5 pl-9 pr-3 text-xs focus:border-teal-500 focus:outline-none">
                             </div>
                         </div>
 
@@ -735,11 +750,11 @@ new class extends Component {
     </div>
 
     <!-- RECENTLY PLACED INVOICES -->
-    <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card">
+    <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card">
         <h2 class="text-lg font-bold text-white mb-4">Recent Placed Invoices</h2>
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs text-gray-400">
-                <thead class="bg-surface-600/80 text-gray-500 uppercase tracking-wider font-semibold">
+                <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
                     <tr>
                         <th class="py-2.5 px-3">Invoice ID</th>
                         <th class="py-2.5 px-3">Customer</th>
@@ -749,9 +764,9 @@ new class extends Component {
                         <th class="py-2.5 px-3 text-center">Work Ticket</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-300/30">
+                <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30">
                     @forelse ($activeInvoices as $inv)
-                        <tr class="hover:bg-surface-400/20 transition">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition">
                             <td class="py-3 px-3 font-semibold text-white">#{{ str_pad($inv->id, 5, '0', STR_PAD_LEFT) }}</td>
                             <td class="py-3 px-3 font-semibold text-white">{{ $inv->customer->name }}</td>
                             <td class="py-3 px-3 font-bold text-white">Rp. {{ number_format($inv->grand_total) }}</td>

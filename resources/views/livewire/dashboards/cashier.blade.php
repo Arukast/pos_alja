@@ -41,7 +41,7 @@ new class extends Component {
         ]);
 
         Expense::create([
-            'branch_id' => 1,
+            'branch_id' => auth()->user()->branch_id ?: 1,
             'amount' => (int) $this->amount,
             'type' => $this->type,
             'incurred_at' => $this->incurredAt,
@@ -140,32 +140,69 @@ new class extends Component {
         $this->showSuccessAlert = true;
     }
 
+    public function markAsPickedUp($invoiceId)
+    {
+        $invoice = Invoice::findOrFail($invoiceId);
+        
+        if (auth()->user()->branch_id && $invoice->branch_id !== auth()->user()->branch_id) {
+            abort(403, 'Unauthorized branch access.');
+        }
+
+        $invoice->pickup_status = 1;
+        $invoice->pickup_date = now()->toDateString();
+        $invoice->save();
+
+        $this->successMessage = 'Order marked as Picked Up!';
+        $this->showSuccessAlert = true;
+        
+        // Broadcast via WebSocket (Reverb) for cross-role sync
+        event(new \App\Events\OrderUpdated());
+        
+        // Also directly refresh this component in case Reverb is not running
+        $this->dispatch('$refresh');
+    }
+
     public function with(): array
     {
-        // Load recent expenses logged by any cashier/manager
-        $expenses = Expense::orderBy('id', 'desc')
+        $branchId = auth()->user()->branch_id ?: 1;
+
+        // Load recent expenses logged by this branch
+        $expenses = Expense::where('branch_id', $branchId)
+            ->orderBy('id', 'desc')
             ->limit(10)
             ->get();
 
-        // Calculate today's total expenses
-        $todayExpenseTotal = Expense::whereDate('incurred_at', now()->toDateString())
+        // Calculate today's total expenses for this branch
+        $todayExpenseTotal = Expense::where('branch_id', $branchId)
+            ->whereDate('incurred_at', now()->toDateString())
             ->sum('amount');
 
-        // Query actual active unpaid/DP invoices
+        // Query actual active unpaid/DP invoices for this branch
         $activeInvoices = Invoice::with('customer')
+            ->where('branch_id', $branchId)
             ->whereIn('status', [0, 1]) // 0: Unpaid, 1: DP
             ->orderBy('id', 'desc')
             ->limit(8)
             ->get();
 
-        // Calculate checkout metrics
-        $awaitingCount = Invoice::where('status', 0)->count();
-        $dpCollectedToday = Invoice::whereDate('created_date', now()->toDateString())
+        // Calculate checkout metrics for this branch
+        $awaitingCount = Invoice::where('branch_id', $branchId)->where('status', 0)->count();
+        $dpCollectedToday = Invoice::where('branch_id', $branchId)
+            ->whereDate('dp_date', now()->toDateString())  // Use dp_date: the date DP was actually paid
             ->where('status', 1)
             ->sum('dp_amount');
-        $settlementsToday = Invoice::whereDate('created_date', now()->toDateString())
+        $settlementsToday = Invoice::where('branch_id', $branchId)
+            ->whereDate('payment_date', now()->toDateString())  // Use payment_date: the date settlement occurred
             ->where('status', 2)
             ->sum('settlement_amount');
+
+        // Fetch paid, not yet picked up invoices for Customer Pickup Queue in this branch
+        $pickupQueue = Invoice::with('customer')
+            ->where('branch_id', $branchId)
+            ->where('status', 2) // Paid / Lunas
+            ->where('pickup_status', 0) // Not Picked Up
+            ->orderBy('payment_date', 'asc')
+            ->get();
 
         return compact(
             'expenses', 
@@ -173,7 +210,8 @@ new class extends Component {
             'activeInvoices',
             'awaitingCount',
             'dpCollectedToday',
-            'settlementsToday'
+            'settlementsToday',
+            'pickupQueue'
         );
     }
 }; ?>
@@ -209,7 +247,7 @@ new class extends Component {
     <!-- Quick stats grid -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat 1 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Awaiting Checkout</p>
@@ -226,7 +264,7 @@ new class extends Component {
         </div>
 
         <!-- Stat 2 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">DP Collected Today</p>
@@ -242,7 +280,7 @@ new class extends Component {
         </div>
 
         <!-- Stat 3 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Settlements Today</p>
@@ -258,7 +296,7 @@ new class extends Component {
         </div>
 
         <!-- Stat 4 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Store Expenses (Today)</p>
@@ -277,13 +315,13 @@ new class extends Component {
     <!-- Active bills list & Log Expenses layout -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Billing Queue Panel -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card lg:col-span-2">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card lg:col-span-2">
             <h3 class="text-lg font-bold text-white">Active Billing Queue</h3>
             <p class="mt-1 text-xs text-gray-500 mb-4">Invoices ready for Down Payment (DP) or final settlement.</p>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs text-gray-400">
-                    <thead class="bg-surface-600/80 text-gray-500 uppercase tracking-wider font-semibold">
+                    <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
                         <tr>
                             <th class="py-2.5 px-3">Invoice ID</th>
                             <th class="py-2.5 px-3">Customer</th>
@@ -293,9 +331,9 @@ new class extends Component {
                             <th class="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-surface-300/30">
+                    <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30">
                         @forelse ($activeInvoices as $inv)
-                            <tr class="hover:bg-surface-400/20 transition-all">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition-all">
                                 <td class="py-3 px-3 font-semibold text-white">#{{ str_pad($inv->id, 5, '0', STR_PAD_LEFT) }}</td>
                                 <td class="py-3 px-3">
                                     <p class="font-bold text-gray-800">{{ $inv->customer->name }}</p>
@@ -329,20 +367,20 @@ new class extends Component {
         </div>
 
         <!-- Log Expense Form Panel -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card lg:col-span-1">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card lg:col-span-1">
             <h3 class="text-lg font-bold text-white">Log Store Expense</h3>
             <p class="mt-1 text-xs text-gray-500 mb-4">Record operational cash payouts.</p>
 
             <form wire:submit.prevent="logExpense" class="space-y-4 text-xs">
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Expense Amount (Rp.)</label>
-                    <input type="number" wire:model="amount" placeholder="e.g. 50000" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white" required>
+                    <input type="number" wire:model="amount" placeholder="e.g. 50000" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white" required>
                     @error('amount') <span class="text-red-400 text-[10px]">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Expense Classification</label>
-                    <select wire:model="type" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white">
+                    <select wire:model="type" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white">
                         <option value="laba">Operational / Operational cost (Laba)</option>
                         <option value="modal">Capital / Purchase supplies (Modal)</option>
                     </select>
@@ -351,13 +389,13 @@ new class extends Component {
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Incurred Date</label>
-                    <input type="date" wire:model="incurredAt" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white" required>
+                    <input type="date" wire:model="incurredAt" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white" required>
                     @error('incurredAt') <span class="text-red-400 text-[10px]">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Description / Reason</label>
-                    <textarea wire:model="description" placeholder="Specify items purchased, utility, or reasons..." class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white h-20 resize-none" required></textarea>
+                    <textarea wire:model="description" placeholder="Specify items purchased, utility, or reasons..." class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white h-20 resize-none" required></textarea>
                     @error('description') <span class="text-red-400 text-[10px]">{{ $message }}</span> @enderror
                 </div>
 
@@ -368,13 +406,53 @@ new class extends Component {
         </div>
     </div>
 
-    <!-- EXPENSES LEDGER LIST -->
-    <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card">
-        <h3 class="text-lg font-bold text-white mb-4">Recent Cash Drawer Expenses Logs</h3>
+    <!-- CUSTOMER PICKUP QUEUE -->
+    <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card">
+        <h3 class="text-lg font-bold text-gray-950 dark:text-white">Customer Pickup Queue</h3>
+        <p class="mt-1 text-xs text-gray-500 mb-4">Paid orders ready to be picked up by customers.</p>
 
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs text-gray-400">
-                <thead class="bg-surface-600/80 text-gray-500 uppercase tracking-wider font-semibold">
+                <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
+                    <tr>
+                        <th class="py-2.5 px-3">Invoice ID</th>
+                        <th class="py-2.5 px-3">Customer</th>
+                        <th class="py-2.5 px-3">Payment Date</th>
+                        <th class="py-2.5 px-3">Grand Total</th>
+                        <th class="py-2.5 px-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30">
+                    @forelse ($pickupQueue as $inv)
+                        <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition-all">
+                            <td class="py-3 px-3 font-semibold text-gray-950 dark:text-white">#{{ str_pad($inv->id, 5, '0', STR_PAD_LEFT) }}</td>
+                            <td class="py-3 px-3">
+                                <p class="font-bold text-gray-800 dark:text-gray-250">{{ $inv->customer->name }}</p>
+                                <p class="text-[10px] text-gray-400">{{ $inv->customer->phone ?: 'No phone' }}</p>
+                            </td>
+                            <td class="py-3 px-3 text-gray-700 dark:text-gray-300">{{ $inv->payment_date }}</td>
+                            <td class="py-3 px-3 text-gray-700 dark:text-gray-300">Rp. {{ number_format($inv->grand_total) }}</td>
+                            <td class="py-3 px-3 text-right">
+                                <button wire:click="markAsPickedUp({{ $inv->id }})" class="rounded bg-alja-magenta hover:bg-alja-magenta/90 px-3 py-1 text-[11px] font-bold text-white shadow-sm transition">Mark Picked Up</button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="py-4 text-center text-gray-500">No items ready for pickup.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- EXPENSES LEDGER LIST -->
+    <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card">
+        <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">Recent Cash Drawer Expenses Logs</h3>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-gray-400">
+                <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
                     <tr>
                         <th class="py-2.5 px-3">Date</th>
                         <th class="py-2.5 px-3">Cashier / Logged by</th>
@@ -383,20 +461,20 @@ new class extends Component {
                         <th class="py-2.5 px-3 text-right">Amount</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-300/30">
+                <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30">
                     @forelse ($expenses as $ex)
-                        <tr class="hover:bg-surface-400/20 transition-all">
-                            <td class="py-3 px-3">{{ $ex->incurred_at }}</td>
-                            <td class="py-3 px-3 font-semibold text-white">{{ $ex->cashier_name }}</td>
+                        <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition-all">
+                            <td class="py-3 px-3 text-gray-700 dark:text-gray-300">{{ $ex->incurred_at }}</td>
+                            <td class="py-3 px-3 font-semibold text-gray-950 dark:text-white">{{ $ex->cashier_name }}</td>
                             <td class="py-3 px-3">
                                 @if ($ex->type === 'laba')
-                                    <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 uppercase tracking-wider">Operational (Laba)</span>
+                                    <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-650 dark:text-blue-400 uppercase tracking-wider">Operational (Laba)</span>
                                 @else
-                                    <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 uppercase tracking-wider">Capital / Goods (Modal)</span>
+                                    <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 dark:bg-purple-950/30 text-purple-650 dark:text-purple-400 uppercase tracking-wider">Capital / Goods (Modal)</span>
                                 @endif
                             </td>
-                            <td class="py-3 px-3 font-medium text-gray-700">{{ $ex->description }}</td>
-                            <td class="py-3 px-3 text-right font-bold text-red-400">Rp. {{ number_format($ex->amount) }}</td>
+                            <td class="py-3 px-3 font-medium text-gray-750 dark:text-gray-300">{{ $ex->description }}</td>
+                            <td class="py-3 px-3 text-right font-bold text-red-650 dark:text-red-400">Rp. {{ number_format($ex->amount) }}</td>
                         </tr>
                     @empty
                         <tr>
@@ -415,28 +493,28 @@ new class extends Component {
         @endphp
         @if ($selInvoice)
             <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white border border-surface-200/60 shadow-2xl p-6 relative text-xs">
+                <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white dark:bg-surface-650 border border-gray-200 dark:border-surface-300/40 shadow-2xl p-6 relative text-xs text-gray-805 dark:text-gray-200">
                     
                     <!-- Header -->
-                    <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-700/50 pb-3 mb-4">
+                    <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-750 pb-3 mb-4">
                         <div>
-                            <h3 class="text-lg font-bold text-white">
+                            <h3 class="text-lg font-bold text-gray-950 dark:text-white">
                                 {{ $paymentType === 'dp' ? 'Register Down Payment' : 'Invoice Payment Checkout' }}
                             </h3>
-                            <p class="text-xs text-gray-400 mt-0.5">Invoice #{{ str_pad($selInvoice->id, 5, '0', STR_PAD_LEFT) }} &bull; Customer: {{ $selInvoice->customer->name }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Invoice #{{ str_pad($selInvoice->id, 5, '0', STR_PAD_LEFT) }} &bull; Customer: {{ $selInvoice->customer->name }}</p>
                         </div>
-                        <button wire:click="closeCheckout" class="text-gray-400 hover:text-gray-600">
+                        <button wire:click="closeCheckout" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
 
                     <!-- Items Summary -->
                     <div class="mb-4 space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                        <span class="block font-semibold text-gray-500 uppercase tracking-wider text-[10px]">Order Items</span>
+                        <span class="block font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Order Items</span>
                         @foreach ($selInvoice->orders as $o)
-                            <div class="flex justify-between text-[11px] text-gray-700">
+                            <div class="flex justify-between text-[11px] text-gray-700 dark:text-gray-300">
                                 <span>{{ $o->quantity }}x {{ $o->file_name }}</span>
-                                <span class="font-semibold text-white">Rp. {{ number_format($o->subtotal) }}</span>
+                                <span class="font-semibold text-gray-950 dark:text-white">Rp. {{ number_format($o->subtotal) }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -445,14 +523,14 @@ new class extends Component {
                     <div class="space-y-4">
                         @if ($selInvoice->status == 0)
                             <div>
-                                <label class="block font-semibold text-gray-500 mb-1.5 uppercase tracking-wider text-[10px]">Payment Type</label>
+                                <label class="block font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider text-[10px]">Payment Type</label>
                                 <div class="flex gap-4">
-                                    <label class="flex items-center gap-2 font-bold cursor-pointer text-gray-700">
-                                        <input type="radio" wire:model.live="paymentType" value="dp" class="text-cyan-500 focus:ring-cyan-500">
+                                    <label class="flex items-center gap-2 font-bold cursor-pointer text-gray-700 dark:text-gray-300">
+                                        <input type="radio" wire:model.live="paymentType" value="dp" class="text-cyan-500 focus:ring-cyan-500 bg-white dark:bg-surface-600 border-gray-300 dark:border-surface-200">
                                         <span>Down Payment (DP)</span>
                                     </label>
-                                    <label class="flex items-center gap-2 font-bold cursor-pointer text-gray-700">
-                                        <input type="radio" wire:model.live="paymentType" value="settle" class="text-cyan-500 focus:ring-cyan-500">
+                                    <label class="flex items-center gap-2 font-bold cursor-pointer text-gray-700 dark:text-gray-300">
+                                        <input type="radio" wire:model.live="paymentType" value="settle" class="text-cyan-500 focus:ring-cyan-500 bg-white dark:bg-surface-600 border-gray-300 dark:border-surface-200">
                                         <span>Full Settlement</span>
                                     </label>
                                 </div>
@@ -465,29 +543,29 @@ new class extends Component {
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block font-semibold text-gray-500 mb-1 uppercase tracking-wider text-[10px]">Payment Method</label>
-                                <select wire:model="inputMethod" class="w-full rounded-lg border border-gray-250 dark:border-gray-700 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white font-medium">
-                                    <option value="Cash">Cash</option>
-                                    <option value="Transfer">Bank Transfer</option>
-                                    <option value="QRIS">QRIS</option>
+                                <label class="block font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider text-[10px]">Payment Method</label>
+                                <select wire:model="inputMethod" class="w-full rounded-lg border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-gray-900 dark:text-gray-100 font-medium">
+                                    <option value="Cash" class="text-gray-900 bg-white">Cash</option>
+                                    <option value="Transfer" class="text-gray-900 bg-white">Bank Transfer</option>
+                                    <option value="QRIS" class="text-gray-900 bg-white">QRIS</option>
                                 </select>
                             </div>
 
                             @if ($paymentType === 'settle')
                                 <div>
-                                    <label class="block font-semibold text-gray-500 mb-1 uppercase tracking-wider text-[10px]">Additional Discount (Rp.)</label>
-                                    <input type="number" wire:model.live="inputDiscount" class="w-full rounded-lg border border-gray-250 dark:border-gray-700 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-white font-medium">
-                                    @error('inputDiscount') <span class="text-red-400 text-[10px]">{{ $message }}</span> @enderror
+                                    <label class="block font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider text-[10px]">Additional Discount (Rp.)</label>
+                                    <input type="number" wire:model.live="inputDiscount" class="w-full rounded-lg border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-cyan-500 text-gray-900 dark:text-gray-100 font-medium">
+                                    @error('inputDiscount') <span class="text-red-650 dark:text-red-400 text-[10px]">{{ $message }}</span> @enderror
                                 </div>
                             @endif
                         </div>
 
                         <div>
-                            <label class="block font-semibold text-gray-500 mb-1 uppercase tracking-wider text-[10px]">
+                            <label class="block font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider text-[10px]">
                                 {{ $paymentType === 'dp' ? 'DP Amount Received (Rp.)' : 'Total Cash Paid by Customer (Rp.)' }}
                             </label>
-                            <input type="number" wire:model.live="inputAmount" class="w-full rounded-lg border border-gray-250 dark:border-gray-700 bg-surface-600/50 py-2.5 px-3 focus:outline-none focus:border-cyan-500 text-white font-bold text-sm">
-                            @error('inputAmount') <span class="text-red-400 text-[10px]">{{ $message }}</span> @enderror
+                            <input type="number" wire:model.live="inputAmount" class="w-full rounded-lg border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 py-2.5 px-3 focus:outline-none focus:border-cyan-500 text-gray-900 dark:text-gray-100 font-bold text-sm">
+                            @error('inputAmount') <span class="text-red-650 dark:text-red-400 text-[10px]">{{ $message }}</span> @enderror
                         </div>
 
                         <!-- Calculations Preview -->
@@ -498,24 +576,24 @@ new class extends Component {
                             $paid = (int) $inputAmount;
                             $change = $paid - $netToPay;
                         @endphp
-                        <div class="p-3.5 rounded-xl bg-gray-50/40 border border-gray-150 dark:border-gray-700/50 space-y-2">
+                        <div class="p-3.5 rounded-xl bg-gray-50 dark:bg-surface-700/30 border border-gray-200 dark:border-surface-700/50 space-y-2">
                             @if ($paymentType === 'dp')
                                 <div class="flex justify-between">
-                                    <span class="text-gray-400">Total Invoice:</span>
-                                    <span class="text-white font-bold">Rp. {{ number_format($selInvoice->grand_total) }}</span>
+                                    <span class="text-gray-500 dark:text-gray-400">Total Invoice:</span>
+                                    <span class="text-gray-950 dark:text-white font-bold">Rp. {{ number_format($selInvoice->grand_total) }}</span>
                                 </div>
                                 <div class="flex justify-between text-cyan-600 dark:text-cyan-400 font-semibold">
                                     <span>Down Payment Paid:</span>
                                     <span>Rp. {{ number_format($paid) }}</span>
                                 </div>
-                                <div class="flex justify-between border-t border-gray-200/50 dark:border-gray-700/50 pt-2 text-red-400 font-bold">
+                                <div class="flex justify-between border-t border-gray-200/50 dark:border-gray-700/50 pt-2 text-red-600 dark:text-red-400 font-bold">
                                     <span>Remaining Balance (AR):</span>
                                     <span>Rp. {{ number_format(max(0, $selInvoice->grand_total - $paid)) }}</span>
                                 </div>
                             @else
                                 <div class="flex justify-between">
-                                    <span class="text-gray-400">Remaining Balance:</span>
-                                    <span class="text-white font-bold">Rp. {{ number_format($receivable) }}</span>
+                                    <span class="text-gray-500 dark:text-gray-400">Remaining Balance:</span>
+                                    <span class="text-gray-950 dark:text-white font-bold">Rp. {{ number_format($receivable) }}</span>
                                 </div>
                                 @if ($discount > 0)
                                     <div class="flex justify-between text-purple-600 dark:text-purple-400 font-semibold">
@@ -524,8 +602,8 @@ new class extends Component {
                                     </div>
                                 @endif
                                 <div class="flex justify-between font-medium">
-                                    <span class="text-gray-400">Net Settle Amount:</span>
-                                    <span class="text-white font-bold">Rp. {{ number_format(max(0, $receivable - $discount)) }}</span>
+                                    <span class="text-gray-500 dark:text-gray-400">Net Settle Amount:</span>
+                                    <span class="text-gray-950 dark:text-white font-bold">Rp. {{ number_format(max(0, $receivable - $discount)) }}</span>
                                 </div>
                                 <div class="flex justify-between text-emerald-600 dark:text-emerald-400 border-t border-gray-200/50 dark:border-gray-700/50 pt-2 font-bold text-sm">
                                     <span>Change (Kembalian):</span>
@@ -536,7 +614,7 @@ new class extends Component {
 
                         <!-- Actions -->
                         <div class="flex gap-3 pt-2">
-                            <button type="button" wire:click="closeCheckout" class="flex-1 rounded-xl border border-surface-200 hover:bg-gray-50 dark:hover:bg-gray-900/50 text-gray-700 font-bold py-2.5 transition">
+                            <button type="button" wire:click="closeCheckout" class="flex-1 rounded-xl border border-gray-300 dark:border-surface-200 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold py-2.5 transition">
                                 Cancel
                             </button>
                             <button type="button" wire:click="processCheckout" class="flex-1 rounded-lg bg-alja-magenta hover:bg-alja-magenta-hover text-white font-bold py-2.5 transition shadow-sm">

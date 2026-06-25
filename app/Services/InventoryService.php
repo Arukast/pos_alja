@@ -64,9 +64,12 @@ class InventoryService
             $operatorName = $params['operator_name'] ?? null;
             $notes = $params['notes'] ?? 'Print failure';
 
+            // Load parent material first to get its branch scoping
+            $material = Material::findOrFail($materialId);
+
             // 1. Create wasted material record
             $waste = WastedMaterial::create([
-                'branch_id' => 1,
+                'branch_id' => $material->branch_id ?: 1,
                 'logged_at' => now()->toDateString(),
                 'material_id' => $materialId,
                 'machine_id' => $machineId,
@@ -78,7 +81,6 @@ class InventoryService
             ]);
 
             // 2. Adjust parent material stock counters
-            $material = Material::findOrFail($materialId);
             $material->wasted_stock = (float)$material->wasted_stock + $quantity;
             $material->remaining_stock = (float)$material->current_stock - (float)$material->sold_stock - $material->wasted_stock;
             $material->save();

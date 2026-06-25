@@ -34,7 +34,12 @@ new class extends Component {
 
     public function startOrderProduction($orderId)
     {
-        $order = Order::findOrFail($orderId);
+        $order = Order::with('invoice')->findOrFail($orderId);
+        
+        if (auth()->user()->branch_id && $order->invoice->branch_id !== auth()->user()->branch_id) {
+            abort(403, 'Unauthorized branch access.');
+        }
+
         $order->status = 1; // Processing/Printing
         $order->save();
 
@@ -61,7 +66,12 @@ new class extends Component {
 
     public function completeOrderProduction($orderId)
     {
-        $order = Order::findOrFail($orderId);
+        $order = Order::with('invoice')->findOrFail($orderId);
+        
+        if (auth()->user()->branch_id && $order->invoice->branch_id !== auth()->user()->branch_id) {
+            abort(403, 'Unauthorized branch access.');
+        }
+
         $order->status = 2; // Completed / Done
         $order->save();
 
@@ -103,28 +113,41 @@ new class extends Component {
 
     public function with(): array
     {
+        $branchId = auth()->user()->branch_id ?: 1;
+
         // 1. Dynamic Quick Stat Counters
-        $queueCount = Order::where('status', 0)->count();
-        $printingCount = Order::where('status', 1)->count();
-        $completedToday = Order::where('status', 2)->whereDate('updated_at', now()->toDateString())->count();
-        $wasteToday = WastedMaterial::whereDate('logged_at', now()->toDateString())->sum('quantity');
+        $queueCount = Order::where('status', 0)
+            ->whereHas('invoice', fn($q) => $q->where('branch_id', $branchId))
+            ->count();
+        $printingCount = Order::where('status', 1)
+            ->whereHas('invoice', fn($q) => $q->where('branch_id', $branchId))
+            ->count();
+        $completedToday = Order::where('status', 2)
+            ->whereDate('updated_at', now()->toDateString())
+            ->whereHas('invoice', fn($q) => $q->where('branch_id', $branchId))
+            ->count();
+        $wasteToday = WastedMaterial::where('branch_id', $branchId)
+            ->whereDate('logged_at', now()->toDateString())
+            ->sum('quantity');
 
         // 2. Load active queue (status 0: pending, status 1: printing)
         $activeOrders = Order::with('invoice.customer')
             ->whereIn('status', [0, 1])
+            ->whereHas('invoice', fn($q) => $q->where('branch_id', $branchId))
             ->orderBy('id', 'asc')
             ->limit(10)
             ->get();
 
         // 3. Load materials and machines options
-        $allMaterials = Material::orderBy('name')->get();
-        $allMachines = Machine::orderBy('name')->get();
+        $allMaterials = Material::where('branch_id', $branchId)->orderBy('name')->get();
+        $allMachines = Machine::where('branch_id', $branchId)->orderBy('name')->get();
         
         // Load designers list for dropdown
-        $designersList = User::where('role', 'designer')->get();
+        $designersList = User::where('role', 'designer')->where('branch_id', $branchId)->get();
 
         // 4. Load recent wasted logs
         $recentWaste = WastedMaterial::with(['material', 'machine'])
+            ->where('branch_id', $branchId)
             ->orderBy('id', 'desc')
             ->limit(8)
             ->get();
@@ -174,7 +197,7 @@ new class extends Component {
     <!-- Quick stats grid -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat 1 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Jobs in Queue</p>
@@ -191,7 +214,7 @@ new class extends Component {
         </div>
 
         <!-- Stat 2 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Currently Printing</p>
@@ -207,7 +230,7 @@ new class extends Component {
         </div>
 
         <!-- Stat 3 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Jobs Completed (Today)</p>
@@ -223,7 +246,7 @@ new class extends Component {
         </div>
 
         <!-- Stat 4 -->
-        <div class="relative overflow-hidden rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-5 shadow-card transition-all duration-200 hover:shadow-card-hover hover-lift">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Failed / Waste logged</p>
@@ -242,7 +265,7 @@ new class extends Component {
     <!-- Active print queue board & Wasted logs -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Live print queue board -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card lg:col-span-2">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card lg:col-span-2">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h3 class="text-lg font-bold text-white">Active Print Tickets</h3>
@@ -284,14 +307,14 @@ new class extends Component {
         </div>
 
         <!-- Log failed prints / quick actions -->
-        <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card lg:col-span-1">
+        <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card lg:col-span-1">
             <h3 class="text-lg font-bold text-white">Log Print Waste</h3>
             <p class="mt-1 text-xs text-gray-500 mb-4">Report failed runs to adjust inventory.</p>
 
             <form wire:submit.prevent="logWaste" class="space-y-4 text-xs">
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Select Material *</label>
-                    <select wire:model="materialId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-red-500 text-white" required>
+                    <select wire:model="materialId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-red-500 text-white" required>
                         <option value="">-- Choose Material --</option>
                         @foreach ($allMaterials as $m)
                             <option value="{{ $m->id }}">{{ $m->name }} {{ $m->dimensions ? "({$m->dimensions})" : '' }}</option>
@@ -301,7 +324,7 @@ new class extends Component {
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Printer Machine</label>
-                    <select wire:model="machineId" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-red-500 text-white">
+                    <select wire:model="machineId" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-red-500 text-white">
                         <option value="">-- Choose Machine --</option>
                         @foreach ($allMachines as $mac)
                             <option value="{{ $mac->id }}">{{ $mac->name }}</option>
@@ -312,17 +335,17 @@ new class extends Component {
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold text-gray-500 mb-1">Wasted Qty *</label>
-                        <input type="number" step="any" min="0.01" wire:model="quantity" placeholder="e.g. 1.5 or 5" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-red-500 text-white" required>
+                        <input type="number" step="any" min="0.01" wire:model="quantity" placeholder="e.g. 1.5 or 5" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-red-500 text-white" required>
                     </div>
                     <div>
                         <label class="block font-semibold text-gray-500 mb-1">Dimensions (m)</label>
-                        <input type="text" wire:model="dimensions" placeholder="e.g. 2x1" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-red-500 text-white">
+                        <input type="text" wire:model="dimensions" placeholder="e.g. 2x1" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-red-500 text-white">
                     </div>
                 </div>
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Responsible Designer</label>
-                    <select wire:model="designerName" class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-red-500 text-white">
+                    <select wire:model="designerName" class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-red-500 text-white">
                         <option value="">-- Choose Designer --</option>
                         @foreach ($designersList as $des)
                             <option value="{{ $des->name }}">{{ $des->name }}</option>
@@ -332,7 +355,7 @@ new class extends Component {
 
                 <div>
                     <label class="block font-semibold text-gray-500 mb-1">Failure Reason *</label>
-                    <textarea wire:model="notes" placeholder="e.g. Paper jam, head clog, color mismatch..." class="w-full rounded-xl border border-surface-200 bg-surface-600/50 py-2 px-3 focus:outline-none focus:border-red-500 text-white h-16 resize-none" required></textarea>
+                    <textarea wire:model="notes" placeholder="e.g. Paper jam, head clog, color mismatch..." class="w-full rounded-xl border border-gray-300 dark:border-surface-200 bg-white dark:bg-surface-600/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 py-2 px-3 focus:outline-none focus:border-red-500 text-white h-16 resize-none" required></textarea>
                 </div>
 
                 <button type="submit" class="w-full rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold py-2 transition shadow-sm">
@@ -343,12 +366,12 @@ new class extends Component {
     </div>
 
     <!-- LOG OF RECENT FAILURES/WASTED MATERIALS -->
-    <div class="rounded-xl border border-surface-300/40 bg-surface-500/60 backdrop-blur-sm p-6 shadow-card">
+    <div class="rounded-xl border border-gray-200 dark:border-surface-300/40 bg-white dark:bg-surface-500/60 shadow-sm dark:shadow-card backdrop-blur-sm p-6 shadow-card">
         <h3 class="text-lg font-bold text-white mb-4">Recent Logged Print Failures</h3>
 
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs text-gray-400">
-                <thead class="bg-surface-600/80 text-gray-500 uppercase tracking-wider font-semibold">
+                <thead class="bg-gray-100 dark:bg-surface-600/80 text-gray-650 dark:text-gray-400 uppercase tracking-wider font-semibold">
                     <tr>
                         <th class="py-2.5 px-3">Date</th>
                         <th class="py-2.5 px-3">Material</th>
@@ -359,9 +382,9 @@ new class extends Component {
                         <th class="py-2.5 px-3">Reason</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-300/30">
+                <tbody class="divide-y divide-gray-100 dark:divide-surface-300/30">
                     @forelse ($recentWaste as $wItem)
-                        <tr class="hover:bg-surface-400/20 transition-all text-red-600">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition-all text-red-600">
                             <td class="py-3 px-3">{{ $wItem->logged_at }}</td>
                             <td class="py-3 px-3 font-semibold text-white">
                                 {{ $wItem->material->name }} {{ $wItem->material->dimensions ? "({$wItem->material->dimensions})" : '' }}

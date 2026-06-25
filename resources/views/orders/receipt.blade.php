@@ -109,9 +109,13 @@
 
         <!-- Summary list -->
         <div class="space-y-1.5 font-sans font-medium text-[10px]">
+            @php
+                // Pre-discount total = sum of all line-item subtotals (always stored clean, before invoice-level discount)
+                $preDiscountTotal = $invoice->orders->sum('subtotal');
+            @endphp
             <div class="flex justify-between font-mono text-[11px] font-bold">
                 <span>Grand Total:</span>
-                <span>Rp. {{ number_format($invoice->grand_total + $invoice->discount) }}</span>
+                <span>Rp. {{ number_format($preDiscountTotal) }}</span>
             </div>
             
             @if ($invoice->discount > 0)
