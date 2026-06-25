@@ -1,14 +1,15 @@
 <?php
 
+use App\Livewire\Pages\Auth\ConfirmPassword;
+use App\Livewire\Pages\Auth\Login;
 use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
 
 Route::middleware('guest')->group(function () {
-    Volt::route('login', 'pages.auth.login')
+    Route::get('login', Login::class)
         ->name('login');
 });
 
 Route::middleware('auth')->group(function () {
-    Volt::route('confirm-password', 'pages.auth.confirm-password')
+    Route::get('confirm-password', ConfirmPassword::class)
         ->name('password.confirm');
 });

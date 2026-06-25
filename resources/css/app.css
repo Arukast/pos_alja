@@ -1,110 +1,160 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
 
-@layer base {
-    :root {
-        --alja-magenta: #E91E8C;
-        --alja-cyan: #00AEEF;
-        --alja-yellow: #FFF200;
-        --alja-key: #1A1A2E;
-        --alja-surface: #0D0D1A;
-    }
+@source "../../resources/views/**/*.blade.php";
+@source "../../resources/js/**/*.js";
 
-    /* Smooth scrollbar for the ALJA dark theme */
-    ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-        background: #0D0D1A;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #2A2A48;
-        border-radius: 99px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #3D3D65;
-    }
+@theme {
+    --font-sans: 'Outfit', var(--font-sans);
 
-    /* Selection color matching brand */
-    ::selection {
-        background: rgba(233, 30, 140, 0.3);
-        color: #fff;
+    /* ALJA CMYK Brand Palette */
+    --color-alja-magenta: #E91E8C;
+    --color-alja-magenta-hover: #D01A7E;
+    --color-alja-magenta-light: #F74EAA;
+    --color-alja-cyan: #00AEEF;
+    --color-alja-cyan-hover: #0099D6;
+    --color-alja-cyan-light: #33C1F5;
+    --color-alja-yellow: #FFF200;
+    --color-alja-yellow-hover: #E6DA00;
+    --color-alja-key: #1A1A2E;
+
+    /* Dark surfaces */
+    --color-surface-900: #0A0A16;
+    --color-surface-800: #0D0D1A;
+    --color-surface-700: #111122;
+    --color-surface-600: #141428;
+    --color-surface-500: #1A1A32;
+    --color-surface-400: #22223D;
+    --color-surface-300: #2A2A48;
+    --color-surface-200: #333358;
+    --color-surface-100: #3D3D65;
+
+    /* Glows & Shadows */
+    --shadow-glow-magenta: 0 0 20px -5px rgba(233, 30, 140, 0.35);
+    --shadow-glow-cyan: 0 0 20px -5px rgba(0, 174, 239, 0.35);
+    --shadow-glow-yellow: 0 0 20px -5px rgba(255, 242, 0, 0.25);
+    --shadow-card: 0 4px 24px -4px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 8px 32px -4px rgba(0, 0, 0, 0.4);
+
+    /* Borders */
+    --border-alja-subtle: rgba(233, 30, 140, 0.12);
+
+    /* Animations & Keyframes */
+    --animate-glow-pulse: glow-pulse 3s ease-in-out infinite;
+    --animate-slide-in: slide-in 0.4s ease-out;
+    --animate-fade-in: fade-in 0.3s ease-out;
+
+    @keyframes glow-pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+    }
+    @keyframes slide-in {
+        0% { transform: translateY(10px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes fade-in {
+        0% { opacity: 0; }
+        100% { opacity: 1; }
     }
 }
 
-@layer components {
-    /* CMYK color strip — signature branding element from the logo */
-    .cmyk-stripe {
-        display: flex;
-        gap: 3px;
-    }
-    .cmyk-stripe::before,
-    .cmyk-stripe::after {
-        content: none;
-    }
-    .cmyk-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 2px;
-        display: inline-block;
-    }
-    .cmyk-dot-m { background: var(--alja-magenta); }
-    .cmyk-dot-c { background: var(--alja-cyan); }
-    .cmyk-dot-y { background: var(--alja-yellow); }
-    .cmyk-dot-k { background: var(--alja-key); }
-
-    /* Horizontal CMYK bar accent — thin decorative line */
-    .cmyk-bar {
-        height: 3px;
-        background: linear-gradient(
-            to right,
-            var(--alja-magenta) 0%,
-            var(--alja-magenta) 33%,
-            var(--alja-yellow) 33%,
-            var(--alja-yellow) 55%,
-            var(--alja-cyan) 55%,
-            var(--alja-cyan) 100%
-        );
-        border-radius: 2px;
-    }
-
-    /* Glassmorphism card style */
-    .alja-glass {
-        background: rgba(20, 20, 40, 0.75);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(233, 30, 140, 0.08);
-    }
-
-    /* Smooth focus ring for inputs */
-    .alja-focus-ring:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.25);
-        border-color: var(--alja-magenta);
-    }
+:root {
+    --alja-magenta: #E91E8C;
+    --alja-cyan: #00AEEF;
+    --alja-yellow: #FFF200;
+    --alja-key: #1A1A2E;
+    --alja-surface: #0D0D1A;
 }
 
-@layer utilities {
-    /* Brand gradient text */
-    .text-alja-gradient {
-        background: linear-gradient(135deg, var(--alja-magenta), var(--alja-cyan));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
+/* Smooth scrollbar for the ALJA dark theme */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0D0D1A;
+}
+::-webkit-scrollbar-thumb {
+    background: #2A2A48;
+    border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3D3D65;
+}
 
-    /* Brand gradient background */
-    .bg-alja-gradient {
-        background: linear-gradient(135deg, var(--alja-magenta), #B0185F, var(--alja-cyan));
-    }
+/* Selection color matching brand */
+::selection {
+    background: rgba(233, 30, 140, 0.3);
+    color: #fff;
+}
 
-    /* Subtle hover lift */
-    .hover-lift {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .hover-lift:hover {
-        transform: translateY(-2px);
-    }
+/* CMYK color strip — signature branding element from the logo */
+.cmyk-stripe {
+    display: flex;
+    gap: 3px;
+}
+.cmyk-stripe::before,
+.cmyk-stripe::after {
+    content: none;
+}
+.cmyk-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+}
+.cmyk-dot-m { background: var(--alja-magenta); }
+.cmyk-dot-c { background: var(--alja-cyan); }
+.cmyk-dot-y { background: var(--alja-yellow); }
+.cmyk-dot-k { background: var(--alja-key); }
+
+/* Horizontal CMYK bar accent — thin decorative line */
+.cmyk-bar {
+    height: 3px;
+    background: linear-gradient(
+        to right,
+        var(--alja-magenta) 0%,
+        var(--alja-magenta) 33%,
+        var(--alja-yellow) 33%,
+        var(--alja-yellow) 55%,
+        var(--alja-cyan) 55%,
+        var(--alja-cyan) 100%
+    );
+    border-radius: 2px;
+}
+
+/* Glassmorphism card style */
+.alja-glass {
+    background: rgba(20, 20, 40, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(233, 30, 140, 0.08);
+}
+
+/* Smooth focus ring for inputs */
+.alja-focus-ring:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.25);
+    border-color: var(--alja-magenta);
+}
+
+/* Brand gradient text */
+.text-alja-gradient {
+    background: linear-gradient(135deg, var(--alja-magenta), var(--alja-cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Brand gradient background */
+.bg-alja-gradient {
+    background: linear-gradient(135deg, var(--alja-magenta), #B0185F, var(--alja-cyan));
+}
+
+/* Subtle hover lift */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-2px);
 }

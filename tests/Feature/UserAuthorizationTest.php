@@ -2,6 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Dashboards\Cashier;
+use App\Livewire\Dashboards\Designer;
+use App\Livewire\Dashboards\Manager;
+use App\Livewire\Dashboards\Owner;
+use App\Livewire\Dashboards\Production;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -31,8 +36,8 @@ class UserAuthorizationTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
         $response->assertStatus(200);
-        $response->assertSeeVolt('dashboards.manager');
-        $response->assertDontSeeVolt('dashboards.owner');
+        $response->assertSeeLivewire(Manager::class);
+        $response->assertDontSeeLivewire(Owner::class);
     }
 
     /**
@@ -44,8 +49,8 @@ class UserAuthorizationTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
         $response->assertStatus(200);
-        $response->assertSeeVolt('dashboards.owner');
-        $response->assertDontSeeVolt('dashboards.manager');
+        $response->assertSeeLivewire(Owner::class);
+        $response->assertDontSeeLivewire(Manager::class);
     }
 
     /**
@@ -57,8 +62,8 @@ class UserAuthorizationTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
         $response->assertStatus(200);
-        $response->assertSeeVolt('dashboards.cashier');
-        $response->assertDontSeeVolt('dashboards.manager');
+        $response->assertSeeLivewire(Cashier::class);
+        $response->assertDontSeeLivewire(Manager::class);
     }
 
     /**
@@ -70,8 +75,8 @@ class UserAuthorizationTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
         $response->assertStatus(200);
-        $response->assertSeeVolt('dashboards.designer');
-        $response->assertDontSeeVolt('dashboards.manager');
+        $response->assertSeeLivewire(Designer::class);
+        $response->assertDontSeeLivewire(Manager::class);
     }
 
     /**
@@ -83,7 +88,7 @@ class UserAuthorizationTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
         $response->assertStatus(200);
-        $response->assertSeeVolt('dashboards.production');
-        $response->assertDontSeeVolt('dashboards.manager');
+        $response->assertSeeLivewire(Production::class);
+        $response->assertDontSeeLivewire(Manager::class);
     }
 }
