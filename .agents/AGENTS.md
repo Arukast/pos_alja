@@ -24,9 +24,30 @@
 - **Multi-Branch Tenancy:** The application supports multiple physical branches. Tables containing branch-specific data must include a `branch_id` foreign key.
   - Ensure queries and dashboards scope data to the active user's branch (`auth()->user()->branch_id`) to prevent cross-branch data leakage, unless explicitly handled for the owner role (e.g., the owner dashboard can view all branches combined or switch active branches).
   - Restrict access to ticket and receipt routes (`/orders/{invoice}/ticket` and `/orders/{invoice}/receipt`) using middleware/policies to block cross-branch data access for non-owner roles.
+- **Legacy Data & Schema Mapping:** For reference during data migrations and troubleshooting imported database records:
+  - **Migration Command:** Run mapping tasks using `php artisan db:migrate-legacy` (implemented in `MigrateLegacyData.php`).
+  - **Database Connection:** Reads from `mysql_migration` (legacy MariaDB database) and writes to PostgreSQL.
+  - **Password Security Reset:** MD5 passwords from legacy users are not preserved. They are reset to a default Bcrypt/Argon2 password (`password123`) upon migration.
+  - **Schema Mappings:**
+    - `admin` -> `users` (maps levels: `bm` to `manager`, `owner` to `owner`, `kasir` to `cashier`, `setting` to `designer`, `produksi` to `production`).
+    - `kostumer` -> `customers`
+    - `produk` -> `products`
+    - `bahan` -> `materials`
+    - `mesin` -> `machines`
+    - `jenis_finishing` -> `finishings`
+    - `jenis_potong` -> `cuts`
+    - `jenis_display` -> `displays`
+    - `harga_jual` -> `pricing_matrices`
+    - `invoice` -> `invoices`
+    - `orderan` -> `orders`
+    - `pengeluaran` -> `expenses`
+    - `bahan_gagal` -> `wasted_materials`
+    - `stok` -> `stock_ledgers`
 - **Theme Support (Light/Dark Mode):** Ensure UI components support both light and dark modes dynamically using Tailwind's `dark:` variant and `localStorage` state. 
   - All interactive elements, dropdowns, inputs, text labels, and modal backgrounds must use responsive Tailwind classes (e.g. `bg-white dark:bg-surface-600 border border-gray-200 dark:border-surface-300/50`) to ensure proper readability and contrast in both themes. Avoid hardcoding absolute dark/light background colors.
 
 ## Workflow Instructions
-- For local development, assume the user is using the standard Laravel setup (`php artisan serve` and `npm run dev`) with a PostgreSQL database, unless they specifically ask for their custom local Docker configuration (`xampp-docker`).
-- When proposing documentation, do NOT use emojis. Ensure technical guides provide complete, end-to-end instructions for both installation and post-installation usage.
+- **Docker Environment:** Assume the project is run and tested inside a Docker Compose container stack. All PHP and Artisan commands must be proposed to run inside the container (e.g. `docker exec -it -w /var/www/html/pos_alja local-php83 php artisan <command>`).
+- **Interactive & Privileged Commands:** Avoid proposing `sudo` or interactive command prompts unless requested.
+- **Documentation style:** When proposing documentation, do NOT use emojis. Ensure technical guides provide complete, end-to-end instructions for both installation and post-installation usage.
+
