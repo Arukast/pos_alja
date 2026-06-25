@@ -1,6 +1,6 @@
 @props([ 'badge' => '', 'title' => '', 'description' => '', 'theme' => 'owner',
-// 'owner', 'manager', 'cashier', 'designer', 'production' ]) @php $gradients =
-[ 'owner' => 'from-brand-primary/10 to-brand-primary/5 border
+/* 'owner', 'manager', 'cashier', 'designer', 'production' */ ]) @php $gradients
+= [ 'owner' => 'from-brand-primary/10 to-brand-primary/5 border
 border-brand-primary/20 text-gray-900 dark:text-white dark:border-none
 dark:from-brand-primary dark:via-[#B0185F] dark:to-surface-700', 'manager' =>
 'from-brand-secondary/15 to-brand-secondary/5 border border-brand-secondary/20
