@@ -10,8 +10,15 @@ jobs:
   laravel-tests:
     runs-on: ubuntu-latest
 
+    # Grant permissions required for git-auto-commit-action to write back to the branch
+    permissions:
+      contents: write
+
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@v4
+      with:
+        # Fetch all history so git checkout works properly for auto-commits
+        fetch-depth: 0
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
@@ -21,7 +28,7 @@ jobs:
         coverage: none
 
     - name: Setup Node.js
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
@@ -38,8 +45,19 @@ jobs:
     - name: Install NPM Dependencies
       run: npm ci
 
-    - name: Check Code Style (Pint)
-      run: ./vendor/bin/pint --test
+    - name: Run Code Style Fixes (Pint)
+      run: ./vendor/bin/pint
+
+    - name: Commit Auto-Formatted Style Changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "style: auto-fix code formatting with Pint"
+
+    - name: Security Check (Composer Audit)
+      run: composer audit
+
+    - name: Run Static Analysis (Larastan)
+      run: ./vendor/bin/phpstan analyse --memory-limit=1G
 
     - name: Build Assets
       run: npm run build

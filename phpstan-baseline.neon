@@ -1,0 +1,73 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Strict comparison using \=\=\= between mixed~\(0\|0\.0\|''''\|''0''\|''0000\-00\-00''\|''0000\-00\-00 00\:00\:00''\|array\{\}\|false\|null\) and ''0'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Console/Commands/MigrateLegacyData.php
+
+		-
+			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/VerifyEmailController.php
+
+		-
+			message: '#^Relation ''customer'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Livewire/Dashboards/Cashier.php
+
+		-
+			message: '#^Call to static method where\(\) on an unknown class App\\Livewire\\Dashboards\\PricingMatrix\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Livewire/Dashboards/Designer.php
+
+		-
+			message: '#^Relation ''customer'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Livewire/Dashboards/Designer.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: app/Livewire/Dashboards/Owner.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$invoice\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Dashboards/Production.php
+
+		-
+			message: '#^Cannot access property \$material_id on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Livewire/Dashboards/Production.php
+
+		-
+			message: '#^Cannot access property \$product_id on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Livewire/Dashboards/Production.php
+
+		-
+			message: '#^Relation ''invoice'' is not found in App\\Models\\Order model\.$#'
+			identifier: larastan.relationExistence
+			count: 7
+			path: app/Livewire/Dashboards/Production.php
+
+		-
+			message: '#^Relation ''machine'' is not found in App\\Models\\WastedMaterial model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Livewire/Dashboards/Production.php
+
+		-
+			message: '#^Relation ''material'' is not found in App\\Models\\WastedMaterial model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Livewire/Dashboards/Production.php

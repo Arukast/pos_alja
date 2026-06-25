@@ -150,7 +150,11 @@ We have configured standard GitHub integration files to automate workflows, ensu
 #### 1. GitHub Actions CI Pipeline
 * **File:** [.github/workflows/ci.yml](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/workflows/ci.yml)
   * Sets up PHP 8.3 and Node 20 environment on push/PR to `main`.
-  * Installs dependencies, runs Laravel Pint syntax checks, compiles assets using Vite, and executes PHPUnit tests.
+  * Installs dependencies and runs key generation.
+  * **Code Style Auto-Commit:** If code styling issues are detected, Pint fixes them and automatically commits the clean files back to the branch.
+  * **Vulnerability Scanning:** Runs built-in package auditor `composer audit` to flag any vulnerable libraries.
+  * **Static Analysis:** Executes Larastan static analyzer to catch bugs prior to tests running.
+  * Compiles assets using Vite and executes PHPUnit tests.
 
 #### 2. Dependabot Configuration
 * **File:** [.github/dependabot.yml](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/dependabot.yml)
@@ -162,5 +166,11 @@ We have configured standard GitHub integration files to automate workflows, ensu
   * [feature_request.md](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/ISSUE_TEMPLATE/feature_request.md) — Feature proposal template.
 * **PR Template:**
   * [pull_request_template.md](file:///home/arukast/Projects/localDev/projects/pos_alja/.github/pull_request_template.md) — Standardized checklist and verification guide.
+
+#### 4. Static Analysis Setup
+* **Files:**
+  * [phpstan.neon](file:///home/arukast/Projects/localDev/projects/pos_alja/phpstan.neon) — Basic static analysis ruleset (checking level 5).
+  * [phpstan-baseline.neon](file:///home/arukast/Projects/localDev/projects/pos_alja/phpstan-baseline.neon) — Pre-existing code lint exclusions to keep the CI check passing cleanly for future additions.
+
 
 
