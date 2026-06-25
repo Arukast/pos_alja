@@ -13,6 +13,10 @@ new class extends Component
      */
     public function deleteUser(Logout $logout): void
     {
+        if (!in_array(Auth::user()->role, ['owner', 'manager'])) {
+            abort(403, 'Unauthorized.');
+        }
+
         $this->validate([
             'password' => ['required', 'string', 'current_password'],
         ]);

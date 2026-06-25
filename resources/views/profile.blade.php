@@ -19,11 +19,13 @@
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-surface-500/60 backdrop-blur-sm border border-surface-300/40 shadow-card rounded-2xl">
-                <div class="max-w-xl">
-                    <livewire:profile.delete-user-form />
+            @if (in_array(auth()->user()->role, ['owner', 'manager']))
+                <div class="p-4 sm:p-8 bg-surface-500/60 backdrop-blur-sm border border-surface-300/40 shadow-card rounded-2xl">
+                    <div class="max-w-xl">
+                        <livewire:profile.delete-user-form />
+                    </div>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 </x-app-layout>
