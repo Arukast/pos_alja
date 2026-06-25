@@ -16,6 +16,13 @@ class LegacyMigrationTest extends TestCase
      */
     public function test_legacy_data_migration_command_runs_successfully(): void
     {
+        // Skip the test if mysql_migration connection is not available (e.g. in CI)
+        try {
+            DB::connection('mysql_migration')->getPdo();
+        } catch (\Exception $e) {
+            $this->markTestSkipped('Legacy MariaDB connection is not available.');
+        }
+
         // Assert postgres/test tables are empty first
         $this->assertEquals(0, DB::table('branches')->count());
         $this->assertEquals(0, DB::table('users')->count());
