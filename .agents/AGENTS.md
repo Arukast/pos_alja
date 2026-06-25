@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## General Project Rules
-- **Framework & Stack:** This project is built using Laravel 11, PostgreSQL, Livewire 3, Tailwind CSS, and Laravel Reverb.
+- **Framework & Stack:** This project is built using Laravel 11, PostgreSQL, Livewire 4, Tailwind CSS, and Laravel Reverb.
 - **Privacy & Security:** Do not hardcode personal user data in the source code, comments, or documentation. Always use generic names (e.g., "Generic Print Shop", "admin_owner", "test@example.com").
   - **SQL Injection Prevention:** Avoid raw SQL queries. Always utilize Eloquent ORM, Query Builder parameter bindings, or safe input sanitization.
   - **XSS Prevention:** Escape dynamic parameters in templates using double curly braces `{{ $value }}`. For inline JavaScript contexts, always use `\Illuminate\Support\Js::from($value)` to prevent code breaks or injections.
