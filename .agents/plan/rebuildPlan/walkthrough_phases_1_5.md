@@ -1,12 +1,11 @@
-# Walkthrough - POS Rebuild Phases
+# Walkthrough Archive - POS Rebuild Phases 1 to 5
 
-This walkthrough documents the verified implementations of the print shop POS rebuild project.
+This archive documents the historical implementations and configurations from the initial phases of the print shop POS rebuild project.
 
 ---
 
 ## Phase 1 & 2: Database Migration & Role skeletons (Completed)
 
-* See complete migration verification details below in the historical logs section.
 * Replaced legacy user level designations with standard English names: `manager` (formerly `bm`), `owner` (formerly `owner`), `cashier` (formerly `kasir`), `designer` (formerly `setting`), and `production` (formerly `produksi`).
 
 ---
@@ -16,13 +15,13 @@ This walkthrough documents the verified implementations of the print shop POS re
 * **Service:** [PricingService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/PricingService.php) calculates dynamic quotes.
 * **Component:** [designer.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/designer.blade.php) handles order drafts.
 * **Route:** `/orders/{invoice}/ticket` renders work orders [ticket.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/orders/ticket.blade.php).
-* **Test:** [PricingServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/PricingServiceTest.php) passes successfully (3 tests, 12 assertions).
+* **Test:** [PricingServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/PricingServiceTest.php) passes successfully.
 
 ---
 
 ## Phase 4: Expenses, Inventory & Waste (Completed)
 
-We have built database models for expenses and print failure logs, created an inventory service to manage restocking arithmetic, integrated expense logging on the cashier board, added stock management controls on the manager board, and embedded failed print logs on the operator board.
+We built database models for expenses and print failure logs, created an inventory service to manage restocking arithmetic, integrated expense logging on the cashier board, added stock management controls on the manager board, and embedded failed print logs on the operator board.
 
 ### Changes Made
 
@@ -89,7 +88,7 @@ docker exec -it -w /var/www/html/pos_alja local-php83 ./vendor/bin/phpunit tests
 
 ## Phase 5: Cashiering & Live WebSockets (Completed)
 
-We have built cashier payment checkout flows (including down payments and final invoice settlements), designed receipt layouts optimized for 80mm thermal receipt printers, and configured Laravel Reverb WebSockets to synchronize dashboard orders in real time.
+We built cashier payment checkout flows (including down payments and final invoice settlements), designed receipt layouts optimized for 80mm thermal receipt printers, and configured Laravel Reverb WebSockets to synchronize dashboard orders in real time.
 
 ### Changes Made
 
@@ -134,11 +133,6 @@ docker exec -it -w /var/www/html/pos_alja local-php83 ./vendor/bin/phpunit tests
 
 ### 3. Verify Real-time WebSockets Sync (Manual)
 1. Start the Laravel Reverb WebSocket server inside the PHP Docker container:
-   > [!NOTE]
-   > Laravel Reverb requires the `pcntl` extension to catch system signals (SIGINT, etc.). We have added `pcntl` to the [Dockerfile](file:///home/arukast/Projects/localDev/php83/Dockerfile). 
-   > Before running Reverb, rebuild the container using:
-   > `sudo docker compose -f /home/arukast/Projects/localDev/docker-compose.yml up -d --build php83`
-
    ```bash
    sudo docker exec -it -w /var/www/html/pos_alja local-php83 php artisan reverb:start
    ```
@@ -156,39 +150,3 @@ docker exec -it -w /var/www/html/pos_alja local-php83 ./vendor/bin/phpunit tests
 * **Nginx Routing Resolution:** Replaced the rewrite-rule loop with a conditional root strategy (`if (-d ...)` in `default.conf`). Nginx now dynamically sets the root directory to the `/public` folder if it exists (for Laravel apps) or falls back to the project root (for flat legacy PHP apps), resolving the 403 Forbidden directory index error.
 * **Reverb Port Conflict Fix:** Mapped Laravel Reverb internally from port `8080` (used by phpMyAdmin on the host) to port `8084` on the host within `docker-compose.yml` and `.env`, allowing successful client WebSocket connections.
 * **Asset Compilation:** Rebuilt assets on the host to bake in the updated WebSocket ports.
-* **Documentation:** Created a comprehensive `README.md` at [README.md](file:///home/arukast/Projects/localDev/projects/pos_alja/README.md) detailing the system architecture, event sequences, glossary of Indonesian terms, and setup commands.
-
----
-
-## Phase 6: Bug Fixes Across Dashboard Pages (Completed)
-
-Fixed 7 bugs found across all 5 dashboard pages and the receipt page:
-
-### 1. Designer — Ghost Customer Selection (Stale `customerId`)
-* **File:** [designer.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/designer.blade.php)
-* Added `updatedCustomerSearch()` lifecycle hook to reset `customerId` when user manually edits the search field after already picking a customer. Prevents a stale customer ID being silently attached to a new search.
-
-### 2. Designer — XSS / JS Crash on Customer Names with Apostrophes
-* **File:** [designer.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/designer.blade.php)
-* Replaced `'{{ $c->name }}'` in `wire:click="selectCustomer()"` with `\Illuminate\Support\Js::from($c->name)` which produces a properly JSON-encoded, XSS-safe JS string. This prevents names like `O'Brien` from breaking the Livewire wire:click call.
-
-### 3. Cashier — `dpCollectedToday` Queried Wrong Date Column
-* **File:** [cashier.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/cashier.blade.php)
-* Changed `whereDate('created_date', ...)` to `whereDate('dp_date', ...)` — the DP counter now correctly reflects invoices where the Down Payment was paid *today*, not just created today.
-
-### 4. Cashier — `settlementsToday` Queried Wrong Date Column
-* **File:** [cashier.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/cashier.blade.php)
-* Changed `whereDate('created_date', ...)` to `whereDate('payment_date', ...)` — settlements counter now reflects invoices *settled* today, not created today.
-
-### 5. Cashier — Pickup Queue Not Refreshing After `markAsPickedUp()`
-* **File:** [cashier.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/cashier.blade.php)
-* Added `$this->dispatch('$refresh')` after marking an invoice as picked up. The WebSocket `OrderUpdated` event only refreshes other roles via Reverb; this direct dispatch ensures the cashier's own component re-renders immediately even when Reverb is not running.
-
-### 6. Owner — SVG Sparkline Divide-by-Zero Crash
-* **File:** [owner.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/owner.blade.php)
-* Fixed `($idx / ($count - 1)) * 300` crashing with division-by-zero when there is only 1 sparkline data point. Guard: when `$count === 1`, the single point is placed at horizontal center (x=150) instead of dividing by zero.
-
-### 7. Receipt — Grand Total Double-Counting Discount
-* **File:** [receipt.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/orders/receipt.blade.php)
-* The old code showed `$invoice->grand_total + $invoice->discount` as the original amount, but `grand_total` is stored *post-discount* in the DB already. This caused the displayed "pre-discount total" to be inflated. Fixed by computing the true pre-discount total from `$invoice->orders->sum('subtotal')` which is always stored as the raw line-item sum.
-
