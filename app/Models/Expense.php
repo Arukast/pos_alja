@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Expense extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'branch_id',
@@ -16,6 +17,7 @@ class Expense extends Model
         'description',
         'cashier_name',
         'type', // modal, laba
+        'category',
     ];
 
     public function branch()

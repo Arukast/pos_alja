@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class WastedMaterial extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $table = 'wasted_materials';
 
@@ -16,10 +17,11 @@ class WastedMaterial extends Model
         'logged_at',
         'material_id',
         'machine_id',
+        'order_id',
+        'designer_id',
+        'operator_id',
         'quantity',
         'dimensions',
-        'designer_name',
-        'operator_name',
         'notes',
     ];
 
@@ -36,5 +38,20 @@ class WastedMaterial extends Model
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function designer()
+    {
+        return $this->belongsTo(User::class, 'designer_id');
+    }
+
+    public function operator()
+    {
+        return $this->belongsTo(User::class, 'operator_id');
     }
 }

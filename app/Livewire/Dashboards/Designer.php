@@ -4,15 +4,15 @@ namespace App\Livewire\Dashboards;
 
 use App\Events\OrderUpdated;
 use App\Exceptions\PricingMatrixNotFoundException;
+use App\Models\ActivityLog;
+use App\Models\Attribute;
 use App\Models\Branch;
 use App\Models\Customer;
-use App\Models\Cut;
-use App\Models\Display;
-use App\Models\Finishing;
 use App\Models\Invoice;
 use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Order;
+use App\Models\OrderStatusLog;
 use App\Models\Product;
 use App\Services\PricingService;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +69,13 @@ class Designer extends Component
 
     public string $notes = '';
 
+    // Manual price overrides
+    public bool $isManualPrice = false;
+
+    public int $manualPrice = 0;
+
+    public int $manualCost = 0;
+
     // Active calculations
     public int $calcPrice = 0;
 
@@ -76,7 +83,7 @@ class Designer extends Component
 
     public int $calcSubtotal = 0;
 
-    public int $calcMatrixId = 0;
+    public ?string $calcMatrixId = null;
 
     public bool $isCalculated = false;
 
@@ -97,16 +104,14 @@ class Designer extends Component
         $this->deadline = now()->addDay()->format('Y-m-d\TH:i');
     }
 
-    public function selectCustomer(int $id): void
+    public function selectCustomer(string $id): void
     {
-        $this->customerId = (string) $id;
+        $this->customerId = $id;
         $this->customerSearch = Customer::find($id)->name ?? '';
     }
 
     public function updatedCustomerSearch(): void
     {
-        // Reset the selected customer ID if the user manually edits the search field
-        // after a customer was already selected — prevents ghost/stale selection
         $this->customerId = '';
     }
 
@@ -128,7 +133,20 @@ class Designer extends Component
             'type' => $this->customerType,
         ]);
 
-        $this->customerId = (string) $customer->id;
+        // Audit Log for customer creation
+        ActivityLog::create([
+            'branch_id' => auth()->user()->branch_id,
+            'user_id' => auth()->user()->id,
+            'username' => auth()->user()->username,
+            'role' => auth()->user()->role,
+            'action' => 'CREATE',
+            'description' => "Created customer: {$customer->name} ({$customer->type})",
+            'model_type' => Customer::class,
+            'model_id' => $customer->id,
+            'payload' => $customer->toArray(),
+        ]);
+
+        $this->customerId = $customer->id;
         $this->customerSearch = $customer->name;
         $this->showNewCustomerForm = false;
 
@@ -140,7 +158,7 @@ class Designer extends Component
         if (in_array($propertyName, [
             'productId', 'materialId', 'machineId', 'finishingId',
             'cutId', 'displayId', 'sides', 'finishingSides',
-            'quantity', 'width', 'length',
+            'quantity', 'width', 'length', 'isManualPrice', 'manualPrice', 'manualCost',
         ])) {
             $this->calculateQuote();
         }
@@ -155,20 +173,46 @@ class Designer extends Component
             return;
         }
 
+        if ($this->isManualPrice) {
+            // Manual pricing override bypasses the matrix lookups
+            $this->calcPrice = $this->manualPrice;
+            $this->calcCost = $this->manualCost;
+            $product = Product::findOrFail($this->productId);
+
+            if ($product->pricing_type === 'area') {
+                $area = ($this->width > 0 && $this->length > 0) ? ($this->width * $this->length) : 1.0;
+                $this->calcSubtotal = (int) round($this->calcPrice * $this->quantity * $area);
+            } else {
+                $this->calcSubtotal = $this->calcPrice * $this->quantity;
+            }
+
+            $this->calcMatrixId = null;
+            $this->isCalculated = true;
+
+            return;
+        }
+
         try {
+            // Fetch customer type if selected to apply tiered pricing
+            $custType = 'Reguler';
+            if ($this->customerId) {
+                $custType = Customer::find($this->customerId)->type ?? 'Reguler';
+            }
+
             $pricingService = new PricingService;
             $quote = $pricingService->calculateQuote([
                 'product_id' => $this->productId,
                 'material_id' => $this->materialId,
-                'machine_id' => $this->machineId ?: 0,
-                'finishing_id' => $this->finishingId ?: 0,
-                'cut_id' => $this->cutId ?: 0,
-                'display_id' => $this->displayId ?: 0,
+                'machine_id' => $this->machineId ?: null,
+                'finishing_id' => $this->finishingId ?: null,
+                'cut_id' => $this->cutId ?: null,
+                'display_id' => $this->displayId ?: null,
                 'sides' => $this->sides ?: 1,
                 'finishing_sides' => $this->finishingSides ?: 0,
                 'quantity' => $this->quantity ?: 1,
                 'width' => $this->width ?: 0,
                 'length' => $this->length ?: 0,
+                'customer_type' => $custType,
             ]);
 
             $this->calcPrice = $quote['unit_price'];
@@ -191,12 +235,13 @@ class Designer extends Component
             return;
         }
 
-        $productName = Product::find($this->productId)->name;
+        $product = Product::find($this->productId);
+        $productName = $product->name;
         $materialName = Material::find($this->materialId)->name;
         $machineName = $this->machineId ? Machine::find($this->machineId)->name : 'N/A';
-        $finishingName = $this->finishingId ? Finishing::find($this->finishingId)->name : 'N/A';
-        $cutName = $this->cutId ? Cut::find($this->cutId)->name : 'N/A';
-        $displayName = $this->displayId ? Display::find($this->displayId)->name : 'N/A';
+        $finishingName = $this->finishingId ? Attribute::find($this->finishingId)->name : 'N/A';
+        $cutName = $this->cutId ? Attribute::find($this->cutId)->name : 'N/A';
+        $displayName = $this->displayId ? Attribute::find($this->displayId)->name : 'N/A';
 
         $specDetails = ["Material: {$materialName}"];
         if ($this->machineId) {
@@ -211,19 +256,25 @@ class Designer extends Component
         if ($this->displayId) {
             $specDetails[] = "Display: {$displayName}";
         }
-        if ($this->productId == 5) {
+        if ($product->pricing_type === 'area') {
             $specDetails[] = "Size: {$this->length}m x {$this->width}m";
         }
+        if ($this->isManualPrice) {
+            $specDetails[] = 'Manual Price Override';
+        }
+
+        $areaMultiplier = $product->pricing_type === 'area' ? ($this->width * $this->length) : 1;
+        $totalItemCost = (int) round($this->calcCost * $this->quantity * $areaMultiplier);
 
         $this->items[] = [
             'id' => uniqid(),
             'product_id' => $this->productId,
             'product_name' => $productName,
             'material_id' => $this->materialId,
-            'machine_id' => $this->machineId ?: 0,
-            'finishing_id' => $this->finishingId ?: 0,
-            'cut_id' => $this->cutId ?: 0,
-            'display_id' => $this->displayId ?: 0,
+            'machine_id' => $this->machineId ?: null,
+            'finishing_id' => $this->finishingId ?: null,
+            'cut_id' => $this->cutId ?: null,
+            'display_id' => $this->displayId ?: null,
             'sides' => $this->sides,
             'finishing_sides' => $this->finishingSides,
             'quantity' => $this->quantity,
@@ -235,14 +286,15 @@ class Designer extends Component
             'unit_price' => $this->calcPrice,
             'unit_cost' => $this->calcCost,
             'subtotal' => $this->calcSubtotal,
-            'cost' => $this->calcCost * $this->quantity * ($this->productId == 5 ? ($this->width * $this->length) : 1),
-            'profit' => $this->calcSubtotal - ($this->calcCost * $this->quantity * ($this->productId == 5 ? ($this->width * $this->length) : 1)),
+            'cost' => $totalItemCost,
+            'profit' => $this->calcSubtotal - $totalItemCost,
             'details_string' => implode(', ', $specDetails),
+            'is_manual_price' => $this->isManualPrice,
         ];
 
         $this->reset([
             'productId', 'materialId', 'machineId', 'finishingId', 'cutId', 'displayId',
-            'sides', 'finishingSides', 'fileName', 'notes',
+            'sides', 'finishingSides', 'fileName', 'notes', 'isManualPrice', 'manualPrice', 'manualCost',
             'calcPrice', 'calcCost', 'calcSubtotal', 'calcMatrixId', 'isCalculated', 'calcError',
         ]);
 
@@ -285,42 +337,88 @@ class Designer extends Component
             $grandTotal = max(0, $grandTotal - $discountAmount);
             $totalProfit = $grandTotal - $totalCost;
 
+            $activeBranchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
+            $branch = Branch::find($activeBranchId);
+
+            // Generate clean prefix: e.g. "Main Branch (Jakarta)" -> "MBJ" or "MN"
+            $branchPrefix = 'BR';
+            if ($branch) {
+                $cleanedName = preg_replace('/[^A-Za-z0-9 ]/', '', $branch->name);
+                $words = explode(' ', $cleanedName);
+                if (count($words) >= 2) {
+                    $branchPrefix = strtoupper(substr($words[0], 0, 1).substr($words[1], 0, 1));
+                } else {
+                    $branchPrefix = strtoupper(substr($cleanedName, 0, 2));
+                }
+            }
+
+            // Generate branch-prefixed structured invoice number
+            $todayDate = now()->format('Ymd');
+            $count = Invoice::where('created_date', now()->toDateString())
+                ->where('branch_id', $activeBranchId)
+                ->count();
+            $sequence = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+            $invoiceNumber = "INV-{$branchPrefix}-{$todayDate}-{$sequence}";
+
             $invoice = Invoice::create([
-                'branch_id' => auth()->user()->branch_id ?: (Branch::first()->id ?? 1),
+                'invoice_number' => $invoiceNumber,
+                'branch_id' => $activeBranchId,
                 'created_date' => now()->toDateString(),
                 'customer_id' => $this->customerId,
-                'status' => 0,
+                'designer_id' => auth()->user()->id, // Relational assignment
+                'status' => 0, // Unpaid
                 'discount' => $discountAmount,
                 'dp_amount' => 0,
                 'accounts_receivable' => $grandTotal,
-                'dp_paid' => 0,
-                'settlement_amount' => 0,
                 'grand_total' => $grandTotal,
                 'total_cost' => $totalCost,
                 'total_profit' => $totalProfit,
-                'customer_service' => auth()->user()->name,
                 'deadline' => $this->deadline,
                 'pickup_status' => 0,
                 'source' => $this->source === 'Offline' ? 0 : 1,
             ]);
 
             foreach ($this->items as $item) {
-                Order::create([
+                $order = Order::create([
                     'invoice_id' => $invoice->id,
-                    'pricing_matrix_id' => $item['pricing_matrix_id'] ?? 0,
+                    'pricing_matrix_id' => $item['pricing_matrix_id'],
+                    'operator_id' => null,
                     'file_name' => $item['file_name'],
                     'notes' => $item['notes'] ?: $item['details_string'],
-                    'area' => $item['product_id'] == 5 ? ($item['width'] * $item['length']) : 0.0,
+                    'area' => $item['width'] * $item['length'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'subtotal' => $item['subtotal'],
                     'cost' => $item['cost'],
                     'profit' => $item['profit'],
                     'ordered_at' => now()->toDateString(),
-                    'status' => 0,
+                    'status' => 0, // Pending
                     'pickup_status' => 0,
+                    'is_manual_price' => $item['is_manual_price'],
+                ]);
+
+                // Create initial Status log for each order item
+                OrderStatusLog::create([
+                    'order_id' => $order->id,
+                    'status' => 0, // Pending
+                    'user_id' => auth()->user()->id,
+                    'user_name' => auth()->user()->name,
+                    'notes' => 'Order created by designer',
                 ]);
             }
+
+            // Create global Activity Log
+            ActivityLog::create([
+                'branch_id' => $activeBranchId,
+                'user_id' => auth()->user()->id,
+                'username' => auth()->user()->username,
+                'role' => auth()->user()->role,
+                'action' => 'CREATE',
+                'description' => "Placed order invoice: {$invoice->invoice_number} (Grand Total: {$invoice->grand_total})",
+                'model_type' => Invoice::class,
+                'model_id' => $invoice->id,
+                'payload' => $invoice->toArray(),
+            ]);
         });
 
         event(new OrderUpdated);
@@ -358,9 +456,9 @@ class Designer extends Component
         $hasSides = false;
         $hasFinishingSides = false;
 
-        $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? 1);
+        $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
 
-        if ($this->productId) {
+        if ($this->productId && $branchId) {
             $matrices = PricingMatrix::where('product_id', $this->productId)->where('branch_id', $branchId)->get();
 
             $materialIds = $matrices->pluck('material_id')->unique();
@@ -369,36 +467,36 @@ class Designer extends Component
             $machineIds = $matrices->pluck('machine_id')->unique()->filter();
             if ($machineIds->isNotEmpty()) {
                 $machines = Machine::whereIn('id', $machineIds)->where('branch_id', $branchId)->get();
-                $hasMachines = $matrices->contains(fn ($m) => $m->machine_id > 0);
+                $hasMachines = $matrices->contains(fn ($m) => ! empty($m->machine_id));
             }
 
             $finishingIds = $matrices->pluck('finishing_id')->unique()->filter();
             if ($finishingIds->isNotEmpty()) {
-                $finishings = Finishing::whereIn('id', $finishingIds)->get();
-                $hasFinishings = $matrices->contains(fn ($m) => $m->finishing_id > 0);
+                $finishings = Attribute::whereIn('id', $finishingIds)->where('type', 'finishing')->get();
+                $hasFinishings = $matrices->contains(fn ($m) => ! empty($m->finishing_id));
             }
 
             $cutIds = $matrices->pluck('cut_id')->unique()->filter();
             if ($cutIds->isNotEmpty()) {
-                $cuts = Cut::whereIn('id', $cutIds)->get();
-                $hasCuts = $matrices->contains(fn ($m) => $m->cut_id > 0);
+                $cuts = Attribute::whereIn('id', $cutIds)->where('type', 'cut')->get();
+                $hasCuts = $matrices->contains(fn ($m) => ! empty($m->cut_id));
             }
 
             $displayIds = $matrices->pluck('display_id')->unique()->filter();
             if ($displayIds->isNotEmpty()) {
-                $displays = Display::whereIn('id', $displayIds)->get();
-                $hasDisplays = $matrices->contains(fn ($m) => $m->display_id > 0);
+                $displays = Attribute::whereIn('id', $displayIds)->where('type', 'display')->get();
+                $hasDisplays = $matrices->contains(fn ($m) => ! empty($m->display_id));
             }
 
             $hasSides = $matrices->contains(fn ($m) => $m->sides > 1)
-                || in_array((int) $this->productId, [1, 4, 6, 7, 8, 10]);
+                || in_array(Product::find($this->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
 
             $hasFinishingSides = $matrices->contains(fn ($m) => $m->finishing_sides > 0);
         }
 
         $activeInvoices = Invoice::with('customer')
             ->where('branch_id', $branchId)
-            ->orderBy('id', 'desc')
+            ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 

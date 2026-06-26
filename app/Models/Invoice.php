@@ -2,44 +2,43 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
+        'invoice_number',
         'branch_id',
         'created_date',
         'payment_date',
         'dp_date',
         'customer_id',
+        'designer_id',
         'status',
         'discount',
         'dp_amount',
         'accounts_receivable',
-        'dp_paid',
-        'settlement_amount',
         'grand_total',
-        'payment_method',
-        'payment_amount',
-        'change_amount',
         'total_cost',
         'total_profit',
-        'customer_service',
         'deadline',
         'pickup_status',
         'pickup_date',
         'source',
-        'cashier_name',
-        'cashier_dp_name',
-        'payment_dp_method',
     ];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function designer()
+    {
+        return $this->belongsTo(User::class, 'designer_id');
     }
 
     public function orders()
@@ -50,5 +49,31 @@ class Invoice extends Model
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Recalculate accounts receivable and status based on payments.
+     */
+    public function recalculatePayments(): void
+    {
+        $totalPaid = $this->payments()->sum('amount');
+        $this->accounts_receivable = max(0, $this->grand_total - $totalPaid);
+
+        if ($this->accounts_receivable <= 0) {
+            $this->status = 2; // Fully Paid
+            $this->payment_date = $this->payment_date ?: now()->toDateString();
+        } elseif ($totalPaid > 0) {
+            $this->status = 1; // Down Payment Paid
+            $this->dp_date = $this->dp_date ?: now()->toDateString();
+        } else {
+            $this->status = 0; // Unpaid
+        }
+
+        $this->save();
     }
 }

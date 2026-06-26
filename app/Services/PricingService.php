@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\PricingMatrixNotFoundException;
 use App\Models\PricingMatrix;
+use App\Models\Product;
 
 class PricingService
 {
@@ -14,99 +15,111 @@ class PricingService
      */
     public function calculateQuote(array $params): array
     {
-        $productId = (int) ($params['product_id'] ?? 0);
-        $materialId = (int) ($params['material_id'] ?? 0);
-        $machineId = (int) ($params['machine_id'] ?? 0);
-        $finishingId = (int) ($params['finishing_id'] ?? 0);
-        $cutId = (int) ($params['cut_id'] ?? 0);
-        $displayId = (int) ($params['display_id'] ?? 0);
+        $productId = $params['product_id'] ?? null;
+        $materialId = $params['material_id'] ?? null;
+        $machineId = $params['machine_id'] ?? null;
+        $finishingId = $params['finishing_id'] ?? null;
+        $cutId = $params['cut_id'] ?? null;
+        $displayId = $params['display_id'] ?? null;
         $sides = (int) ($params['sides'] ?? 1);
         $finishingSides = (int) ($params['finishing_sides'] ?? 0);
         $quantity = (float) ($params['quantity'] ?? 1);
         $width = (float) ($params['width'] ?? 0);
         $length = (float) ($params['length'] ?? 0);
+        $customerType = $params['customer_type'] ?? 'Reguler';
 
-        // Build base query
+        // Load product to check pricing type and name
+        $product = Product::findOrFail($productId);
+
+        // Build base query matching product, material and customer tier type
         $query = PricingMatrix::query()
             ->where('product_id', $productId)
-            ->where('material_id', $materialId);
+            ->where('material_id', $materialId)
+            ->where('customer_type', $customerType);
 
-        // Filter based on product category (mapping legacy wo_hitung_harga.php queries)
-        switch ($productId) {
-            case 1: // Merchandise
-                $query->where('machine_id', $machineId)
-                    ->where('finishing_id', $finishingId)
+        // Match options, replacing 0/empty strings with null
+        $machineUuid = ! empty($machineId) ? $machineId : null;
+        $finishingUuid = ! empty($finishingId) ? $finishingId : null;
+        $cutUuid = ! empty($cutId) ? $cutId : null;
+        $displayUuid = ! empty($displayId) ? $displayId : null;
+
+        $query->where('machine_id', $machineUuid);
+
+        // Filter based on product category rules dynamically
+        switch ($product->name) {
+            case 'Merchandise':
+                $query->where('finishing_id', $finishingUuid)
                     ->where('sides', $sides)
                     ->where('finishing_sides', $finishingSides);
                 break;
 
-            case 2: // Jasa Desain
-                $query->where('machine_id', $machineId);
+            case 'Jasa Desain':
                 break;
 
-            case 3: // Display
-                $query->where('machine_id', $machineId)
-                    ->where('display_id', $displayId);
+            case 'Display':
+                $query->where('display_id', $displayUuid);
                 break;
 
-            case 4: // Print Kertas
-                $query->where('machine_id', $machineId)
-                    ->where('sides', $sides)
-                    ->where('finishing_id', $finishingId)
+            case 'Print Kertas':
+                $query->where('sides', $sides)
+                    ->where('finishing_id', $finishingUuid)
                     ->where('finishing_sides', $finishingSides)
-                    ->where('cut_id', $cutId);
+                    ->where('cut_id', $cutUuid);
                 break;
 
-            case 5: // Large Format
-                $query->where('machine_id', $machineId)
-                    ->where('finishing_id', $finishingId);
+            case 'Large Format':
+                $query->where('finishing_id', $finishingUuid);
                 break;
 
-            case 6: // ID Card
-                $query->where('machine_id', $machineId)
-                    ->where('display_id', $displayId)
+            case 'ID Card':
+                $query->where('display_id', $displayUuid)
                     ->where('sides', $sides);
                 break;
 
-            case 7: // Stempel
-                $query->where('machine_id', $machineId)
-                    ->where('finishing_id', $finishingId)
+            case 'Stempel':
+                $query->where('finishing_id', $finishingUuid)
                     ->where('sides', $sides);
                 break;
 
-            case 8: // Kartu Nama
-                $query->where('machine_id', $machineId)
-                    ->where('finishing_id', $finishingId)
+            case 'Kartu Nama':
+                $query->where('finishing_id', $finishingUuid)
                     ->where('sides', $sides)
                     ->where('finishing_sides', $finishingSides)
-                    ->where('display_id', $displayId);
+                    ->where('display_id', $displayUuid);
                 break;
 
-            case 9: // Produk Jadi
-                $query->where('machine_id', $machineId);
+            case 'Produk Jadi':
                 break;
 
-            case 10: // NOTA
-                $query->where('machine_id', $machineId)
-                    ->where('sides', $sides);
+            case 'NOTA':
+                $query->where('sides', $sides);
                 break;
 
-            case 11: // DTF Large Format
-                $query->where('machine_id', $machineId);
+            case 'DTF Large Format':
                 break;
 
             default:
-                throw new PricingMatrixNotFoundException(
-                    "Invalid product category ID: {$productId}",
-                    $params
-                );
+                // Fallback matching to handle arbitrary product categories
+                if (! empty($finishingUuid)) {
+                    $query->where('finishing_id', $finishingUuid);
+                }
+                if (! empty($cutUuid)) {
+                    $query->where('cut_id', $cutUuid);
+                }
+                if (! empty($displayUuid)) {
+                    $query->where('display_id', $displayUuid);
+                }
+                break;
         }
 
-        $matrix = $query->first();
+        // Apply automatic bulk tiered discount: fetch highest min_qty <= quantity ordered
+        $matrix = $query->where('min_qty', '<=', $quantity)
+            ->orderBy('min_qty', 'desc')
+            ->first();
 
         if (! $matrix) {
             throw new PricingMatrixNotFoundException(
-                "Pricing matrix record not found for product ID: {$productId} matching these parameters.",
+                "Pricing matrix record not found for product: {$product->name} matching these parameters.",
                 $params
             );
         }
@@ -116,8 +129,8 @@ class PricingService
         $unitCost = (int) $matrix->cost;
         $area = 0.0;
 
-        if ($productId === 5) {
-            // Large Format (banners) multiplies by area in square meters (panjang * lebar)
+        if ($product->pricing_type === 'area') {
+            // Area-based pricing (panjang * lebar)
             if ($width <= 0 || $length <= 0) {
                 $width = 1.0;
                 $length = 1.0;
@@ -130,7 +143,7 @@ class PricingService
             $cost = $unitCost * $quantity;
         }
 
-        // Standard round values to integers for currency
+        // Round values to integers for currency
         $subtotal = (int) round($subtotal);
         $cost = (int) round($cost);
         $profit = $subtotal - $cost;

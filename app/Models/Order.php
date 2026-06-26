@@ -2,17 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'invoice_id',
         'pricing_matrix_id',
+        'operator_id',
         'file_name',
+        'file_path',
+        'preview_path',
         'notes',
         'area',
         'quantity',
@@ -24,6 +28,7 @@ class Order extends Model
         'status',
         'pickup_status',
         'pickup_date',
+        'is_manual_price',
     ];
 
     public function invoice()
@@ -34,5 +39,15 @@ class Order extends Model
     public function pricingMatrix()
     {
         return $this->belongsTo(PricingMatrix::class);
+    }
+
+    public function operator()
+    {
+        return $this->belongsTo(User::class, 'operator_id');
+    }
+
+    public function statusLogs()
+    {
+        return $this->hasMany(OrderStatusLog::class);
     }
 }
