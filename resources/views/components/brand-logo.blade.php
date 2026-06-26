@@ -4,10 +4,10 @@ $brandFullname = config('brand.fullname', 'ALJA Digital Printing'); $sizeClasses
 = [ 'sm' => 'text-sm font-bold tracking-wide text-gray-800 dark:text-white',
 'md' => 'text-base font-bold tracking-wide text-gray-800 dark:text-white', 'lg'
 => 'text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white', ];
-@endphp
+$mergedAttributes = $attributes->merge(['class' => 'flex items-center
+gap-2.5']); @endphp
 
-<div {{ $attributes->
-    merge(['class' => 'flex items-center gap-2.5']) }}>
+<div {{ $mergedAttributes }}>
     <!-- Centralized Brand Dots decoration -->
     <x-brand-dots size="{{ $size === 'lg' ? 'md' : 'sm' }}" />
 
