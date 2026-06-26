@@ -83,6 +83,12 @@
         >
             User Management
         </button>
+        <button
+            wire:click="setTab('audit')"
+            class="py-2.5 px-4 text-xs font-semibold border-b-2 transition-all duration-200 {{ $activeTab === 'audit' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-400 hover:text-gray-200' }}"
+        >
+            Audit Trail
+        </button>
     </div>
 
     @if ($activeTab === 'finance')
@@ -140,6 +146,31 @@
                     ></path>
                 </svg>
                 <span>Active {{ $period }} Transactions</span>
+            </div>
+
+            <!-- Cash Distribution Breakdown -->
+            <div
+                class="border-gray-150 dark:border-surface-300/30 mt-3 flex flex-wrap items-center justify-between gap-1 border-t pt-3 text-[10px] text-gray-500 dark:text-gray-400"
+            >
+                <span class="flex items-center gap-1"
+                    ><span
+                        class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                    ></span>
+                    Cash: Rp. {{ number_format($cashPayments, 0, ',', '.')
+                    }}</span
+                >
+                <span class="flex items-center gap-1"
+                    ><span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                    Transfer: Rp. {{ number_format($transferPayments, 0, ',',
+                    '.') }}</span
+                >
+                <span class="flex items-center gap-1"
+                    ><span
+                        class="h-1.5 w-1.5 rounded-full bg-purple-500"
+                    ></span>
+                    QRIS: Rp. {{ number_format($qrisPayments, 0, ',', '.')
+                    }}</span
+                >
             </div>
         </div>
 
@@ -502,5 +533,103 @@
     @elseif ($activeTab === 'users') {{-- Shared UserManagement sub-component
     handles search, table, CRUD modal & its own alert --}}
     <livewire:admin.user-management mode="owner" />
+    @elseif ($activeTab === 'audit')
+    <div
+        class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm"
+    >
+        <div class="mb-4 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                    System Audit Trail
+                </h3>
+                <p class="mt-1 text-xs text-gray-500">
+                    Real-time logs of system actions and modifications.
+                </p>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-gray-400">
+                <thead
+                    class="dark:bg-surface-600/80 text-gray-650 bg-gray-100 font-semibold tracking-wider uppercase dark:text-gray-400"
+                >
+                    <tr>
+                        <th class="rounded-l-lg px-3 py-2.5">Timestamp</th>
+                        <th class="px-3 py-2.5">User</th>
+                        <th class="px-3 py-2.5">Role</th>
+                        <th class="px-3 py-2.5">Action</th>
+                        <th class="px-3 py-2.5">Description</th>
+                        <th class="rounded-r-lg px-3 py-2.5">Payload</th>
+                    </tr>
+                </thead>
+                <tbody
+                    class="dark:divide-surface-300/30 divide-y divide-gray-100 text-[11px]"
+                >
+                    @forelse ($activityLogs as $log)
+                    <tr
+                        class="dark:hover:bg-surface-400/20 transition-colors duration-150 hover:bg-gray-50"
+                    >
+                        <td
+                            class="px-3 py-2.5 font-medium whitespace-nowrap text-gray-500"
+                        >
+                            {{ $log->created_at->format('Y-m-d H:i:s') }}
+                        </td>
+                        <td
+                            class="px-3 py-2.5 font-semibold text-gray-900 dark:text-white"
+                        >
+                            {{ $log->username }}
+                        </td>
+                        <td class="px-3 py-2.5">
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                                {{ $log->role === 'owner' ? 'bg-red-500/10 text-red-500' : '' }}
+                                {{ $log->role === 'manager' ? 'bg-blue-500/10 text-blue-500' : '' }}
+                                {{ $log->role === 'cashier' ? 'bg-emerald-500/10 text-emerald-500' : '' }}
+                                {{ $log->role === 'designer' ? 'bg-purple-500/10 text-purple-500' : '' }}
+                                {{ $log->role === 'production' ? 'bg-amber-500/10 text-amber-500' : '' }}
+                            "
+                            >
+                                {{ $log->role }}
+                            </span>
+                        </td>
+                        <td
+                            class="text-brand-secondary px-3 py-2.5 font-bold uppercase"
+                        >
+                            {{ $log->action }}
+                        </td>
+                        <td
+                            class="px-3 py-2.5 text-gray-700 dark:text-gray-300"
+                        >
+                            {{ $log->description }}
+                        </td>
+                        <td
+                            class="max-w-xs truncate px-3 py-2.5 text-gray-500"
+                            title="{{ json_encode($log->payload) }}"
+                        >
+                            @if ($log->payload)
+                            <code
+                                class="dark:bg-surface-600 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-600 dark:text-gray-300"
+                            >
+                                {{ json_encode($log->payload) }}
+                            </code>
+                            @else - @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td
+                            colspan="6"
+                            class="py-8 text-center text-gray-400 dark:text-gray-600"
+                        >
+                            No activity logs recorded.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4">{{ $activityLogs->links() }}</div>
+    </div>
     @endif
 </div>

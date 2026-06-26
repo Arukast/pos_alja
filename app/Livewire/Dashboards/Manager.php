@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboards;
 
+use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Machine;
 use App\Models\Material;
@@ -42,7 +43,7 @@ class Manager extends Component
     public function addMaterialStock(): void
     {
         $this->validate([
-            'selectedMaterialId' => 'required|integer|exists:materials,id',
+            'selectedMaterialId' => 'required|string|uuid|exists:materials,id',
             'addStockQuantity' => 'required|numeric|min:0.01',
             'addStockNotes' => 'nullable|string|max:255',
         ]);
@@ -64,7 +65,7 @@ class Manager extends Component
 
     public function render()
     {
-        $branchId = auth()->user()->branch_id ?: 1;
+        $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
         // 1. Dynamic Quick Stat Counters
         $materialCount = Material::where('branch_id', $branchId)->count();
@@ -77,7 +78,7 @@ class Manager extends Component
             ->join('materials', 'stock_ledgers.material_id', '=', 'materials.id')
             ->where('materials.branch_id', $branchId)
             ->select('stock_ledgers.*', 'materials.name as material_name', 'materials.category as material_category')
-            ->orderBy('stock_ledgers.id', 'desc')
+            ->orderBy('stock_ledgers.created_at', 'desc')
             ->limit(8)
             ->get();
 
@@ -91,7 +92,7 @@ class Manager extends Component
         $allMaterials = Material::where('branch_id', $branchId)->orderBy('name')->get();
 
         // 5. Recent Expenses
-        $expenses = Expense::where('branch_id', $branchId)->orderBy('id', 'desc')->limit(8)->get();
+        $expenses = Expense::where('branch_id', $branchId)->orderBy('created_at', 'desc')->limit(8)->get();
 
         return view('livewire.dashboards.manager', compact(
             'materialCount',

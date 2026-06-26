@@ -444,7 +444,7 @@
                         class="dark:divide-surface-300/30 divide-y divide-gray-100 text-[11px]"
                     >
                         @foreach ($materialsList as $mItem) @php $isLow =
-                        $mItem->remaining_stock <= 10.0; @endphp
+                        $mItem->remaining_stock <= $mItem->min_stock; @endphp
                         <tr
                             class="hover:bg-gray-50 dark:hover:bg-surface-400/20 transition-colors duration-150 {{ $isLow ? 'bg-red-500/5 text-red-400' : '' }}"
                         >

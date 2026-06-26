@@ -15,13 +15,14 @@ class InventoryManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected Branch $branch;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         // Seed branch
-        Branch::create([
-            'id' => 1,
+        $this->branch = Branch::create([
             'name' => 'Main Branch',
         ]);
     }
@@ -31,7 +32,10 @@ class InventoryManagementTest extends TestCase
      */
     public function test_cashier_can_log_expenses(): void
     {
-        $user = User::factory()->create(['role' => 'cashier']);
+        $user = User::factory()->create([
+            'role' => 'cashier',
+            'branch_id' => $this->branch->id,
+        ]);
 
         Livewire::actingAs($user)
             ->test(Cashier::class)
@@ -56,10 +60,13 @@ class InventoryManagementTest extends TestCase
      */
     public function test_manager_can_restock_materials(): void
     {
-        $user = User::factory()->create(['role' => 'manager']);
+        $user = User::factory()->create([
+            'role' => 'manager',
+            'branch_id' => $this->branch->id,
+        ]);
 
         $material = Material::create([
-            'branch_id' => 1,
+            'branch_id' => $this->branch->id,
             'name' => 'Flexy 340gr',
             'category' => 'meter',
             'type' => 'outdoor',
@@ -69,6 +76,7 @@ class InventoryManagementTest extends TestCase
             'sold_stock' => 0,
             'wasted_stock' => 0,
             'remaining_stock' => 100,
+            'min_stock' => 10,
         ]);
 
         Livewire::actingAs($user)

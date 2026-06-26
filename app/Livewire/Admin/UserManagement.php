@@ -21,7 +21,7 @@ class UserManagement extends Component
     // Modal state
     public bool $showUserModal = false;
 
-    public ?int $userIdBeingEdited = null;
+    public ?string $userIdBeingEdited = null;
 
     // Form fields
     public string $formName = '';
@@ -38,12 +38,21 @@ class UserManagement extends Component
 
     public string $formRole = 'cashier';
 
-    public int $formBranchId = 1;
+    public string $formBranchId = '';
 
     // Alert feedback
     public bool $showSuccessAlert = false;
 
     public string $successMessage = '';
+
+    private function isPrimaryOwner($user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->role === 'owner' && ($user->username === 'admin_owner' || $user->username === 'primary' || $user->id === 1 || $user->id === '1');
+    }
 
     public function openCreateModal(): void
     {
@@ -56,18 +65,18 @@ class UserManagement extends Component
         $this->formAddress = '';
         $this->formPassword = '';
         $this->formRole = 'cashier';
-        $this->formBranchId = auth()->user()->branch_id ?: 1;
+        $this->formBranchId = auth()->user()->branch_id ?: (Branch::value('id') ?: '');
         $this->showUserModal = true;
     }
 
-    public function openEditModal(int $userId): void
+    public function openEditModal(string $userId): void
     {
         $this->resetErrorBag();
         $user = User::findOrFail($userId);
 
         if ($this->mode === 'owner') {
-            // Secondary owners (ID > 1) cannot edit other owners
-            if ($user->role === 'owner' && auth()->user()->id !== 1) {
+            // Secondary owners cannot edit other owners
+            if ($user->role === 'owner' && ! $this->isPrimaryOwner(auth()->user())) {
                 abort(403, 'Unauthorized.');
             }
         } else {
@@ -89,7 +98,7 @@ class UserManagement extends Component
         $this->formAddress = $user->address ?? '';
         $this->formPassword = '';
         $this->formRole = $user->role;
-        $this->formBranchId = $user->branch_id ?: 1;
+        $this->formBranchId = $user->branch_id ?: (Branch::value('id') ?: '');
         $this->showUserModal = true;
     }
 
@@ -109,7 +118,7 @@ class UserManagement extends Component
         ];
 
         if ($this->mode === 'owner') {
-            $rules['formBranchId'] = 'required|integer|exists:branches,id';
+            $rules['formBranchId'] = 'required|string|uuid|exists:branches,id';
         }
 
         $rules['formPassword'] = $this->userIdBeingEdited
@@ -122,10 +131,10 @@ class UserManagement extends Component
             $user = User::findOrFail($this->userIdBeingEdited);
 
             if ($this->mode === 'owner') {
-                if ($user->role === 'owner' && auth()->user()->id !== 1) {
+                if ($user->role === 'owner' && ! $this->isPrimaryOwner(auth()->user())) {
                     abort(403, 'Unauthorized.');
                 }
-                if ($this->formRole === 'owner' && auth()->user()->id !== 1) {
+                if ($this->formRole === 'owner' && ! $this->isPrimaryOwner(auth()->user())) {
                     abort(403, 'Unauthorized.');
                 }
             } else {
@@ -158,13 +167,13 @@ class UserManagement extends Component
             $this->successMessage = 'User updated successfully!';
         } else {
             // Secondary owner cannot create owner accounts
-            if ($this->mode === 'owner' && $this->formRole === 'owner' && auth()->user()->id !== 1) {
+            if ($this->mode === 'owner' && $this->formRole === 'owner' && ! $this->isPrimaryOwner(auth()->user())) {
                 abort(403, 'Unauthorized.');
             }
 
             $branchId = $this->mode === 'owner'
                 ? $this->formBranchId
-                : (auth()->user()->branch_id ?: 1);
+                : (auth()->user()->branch_id ?: Branch::value('id'));
 
             User::create([
                 'name' => $this->formName,
@@ -183,12 +192,12 @@ class UserManagement extends Component
         $this->showSuccessAlert = true;
     }
 
-    public function deleteUser(int $userId): void
+    public function deleteUser(string $userId): void
     {
         $user = User::findOrFail($userId);
 
         if ($this->mode === 'owner') {
-            if ($user->role === 'owner' && auth()->user()->id !== 1) {
+            if ($user->role === 'owner' && ! $this->isPrimaryOwner(auth()->user())) {
                 abort(403, 'Unauthorized.');
             }
         } else {
@@ -224,7 +233,7 @@ class UserManagement extends Component
             $usersList = $query->orderBy('users.name')->get();
         } else {
             // Manager sees only own branch users
-            $query = User::where('branch_id', $branchId ?: 1);
+            $query = User::where('branch_id', $branchId ?: Branch::value('id'));
             if (! empty($this->userSearch)) {
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%'.$this->userSearch.'%')

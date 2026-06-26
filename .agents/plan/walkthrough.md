@@ -305,3 +305,19 @@ Verify the correct operation using the following steps:
 - Updated `InventoryService` `logWaste` method to accept and write `designer_id` and `operator_id` keys to ensure data integrity with the PostgreSQL schema.
 - Added a full suite of automated tests in [ProductionDashboardTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/ProductionDashboardTest.php) testing rendering, status transition logs, operator assignments, stock deductions (both area and unit-based), and waste logging.
 
+### Step 3: Owner Dashboard Refactoring (June 2026)
+- Refactored [Owner.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Owner.php) to use `Livewire\WithPagination`, handle UUID branch parameters without integer casting, and query the `payments` table for actual incoming cash flow and cash distribution breakdown (`Cash`, `Transfer`, `QRIS`).
+- Updated the net profit calculation (`revenue - cost`) and the profit trend line sparkline coordinates calculation.
+- Refactored the designer leaderboard query to group by `users.id`, `users.name` and join `users` on `invoices.designer_id = users.id` to show designer performance.
+- Added paginated System Audit Trail logs from the `activity_logs` table.
+- Updated [owner.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/owner.blade.php) to show payment distribution metrics, add the Audit Trail tab button, and display the audit trail logs with pagination links.
+
+### Step 4: Manager Dashboard Refactoring (June 2026)
+- Refactored [Manager.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Manager.php) restocking validation rules to accept UUID strings and query dynamic branch UUID fallbacks.
+- Corrected stock ledger history and recent expenses queries to order records by `created_at` timestamp instead of auto-incrementing integer IDs.
+- Updated [manager.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/manager.blade.php) low stock threshold validation to check against `min_stock` dynamically instead of a hardcoded value of `10.0`.
+
+### Test Suite Updates (June 2026)
+- Updated [UserManagement.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Admin/UserManagement.php) component parameters, types, and primary owner checks to be compatible with UUID-based schemas.
+- Refactored [InventoryManagementTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/InventoryManagementTest.php), [UserManagementTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/UserManagementTest.php), and [BranchAuthorizationAndScopingTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/BranchAuthorizationAndScopingTest.php) to seed branches without hardcoding integer IDs and dynamically resolve branch UUIDs.
+

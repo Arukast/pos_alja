@@ -27,8 +27,8 @@ class BranchAuthorizationAndScopingTest extends TestCase
     {
         parent::setUp();
 
-        $this->branch1 = Branch::create(['id' => 1, 'name' => 'Branch One']);
-        $this->branch2 = Branch::create(['id' => 2, 'name' => 'Branch Two']);
+        $this->branch1 = Branch::create(['name' => 'Branch One']);
+        $this->branch2 = Branch::create(['name' => 'Branch Two']);
 
         $this->customer = Customer::create([
             'name' => 'Jane Customer',
@@ -47,6 +47,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
         ]);
 
         $invoiceAtBranch2 = Invoice::create([
+            'invoice_number' => 'INV-TEST-0001',
             'branch_id' => $this->branch2->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $this->customer->id,
@@ -74,6 +75,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
 
         // Accessing own branch - expect 200
         $invoiceAtBranch1 = Invoice::create([
+            'invoice_number' => 'INV-TEST-0002',
             'branch_id' => $this->branch1->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $this->customer->id,
@@ -110,6 +112,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
         ]);
 
         $invoiceAtBranch2 = Invoice::create([
+            'invoice_number' => 'INV-TEST-0003',
             'branch_id' => $this->branch2->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $this->customer->id,
@@ -147,6 +150,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
 
         // Invoice in branch 1
         $inv1 = Invoice::create([
+            'invoice_number' => 'INV-TEST-0004',
             'branch_id' => $this->branch1->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $this->customer->id,
@@ -160,6 +164,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
 
         // Invoice in branch 2
         $inv2 = Invoice::create([
+            'invoice_number' => 'INV-TEST-0005',
             'branch_id' => $this->branch2->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $this->customer->id,
@@ -213,6 +218,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
         ]);
 
         $invoice = Invoice::create([
+            'invoice_number' => 'INV-TEST-0006',
             'branch_id' => $this->branch1->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $this->customer->id,

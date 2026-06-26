@@ -23,8 +23,8 @@ class UserManagementTest extends TestCase
     {
         parent::setUp();
 
-        $this->branch1 = Branch::create(['id' => 1, 'name' => 'Branch One']);
-        $this->branch2 = Branch::create(['id' => 2, 'name' => 'Branch Two']);
+        $this->branch1 = Branch::create(['name' => 'Branch One']);
+        $this->branch2 = Branch::create(['name' => 'Branch Two']);
     }
 
     /**
@@ -276,7 +276,7 @@ class UserManagementTest extends TestCase
             ->set('formUsername', $secondaryOwner->username)
             ->set('formEmail', $secondaryOwner->email)
             ->set('formRole', 'owner')
-            ->set('formBranchId', 1)
+            ->set('formBranchId', $this->branch1->id)
             ->call('saveUser')
             ->assertHasNoErrors();
 
