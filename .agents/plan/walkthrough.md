@@ -334,4 +334,5 @@ Verify the correct operation using the following steps:
     - [update-profile-information-form.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/profile/update-profile-information-form.blade.php) (resolved split `@if` directive blocks and added `<!-- prettier-ignore -->` around the unverified email paragraph to prevent compiler syntax errors).
 
 
-
+### Database Sessions UUID Fix (June 2026)
+- Modified [0001_01_01_000000_create_users_table.php](file:///home/arukast/Projects/localDev/projects/pos_alja/database/migrations/0001_01_01_000000_create_users_table.php) to change the `user_id` column type on the `sessions` table from `foreignId` (bigint) to `uuid`. This prevents the query exceptions (invalid input syntax for type bigint) when the session payload stores a UUID in `user_id` for authenticated sessions in PostgreSQL.
