@@ -86,6 +86,8 @@
   - **Blade Template Formatting & Formatter Safety:** To prevent auto-formatting tools (e.g. Prettier, Pint, or pre-commit hooks) from introducing syntax compilation errors:
     - Avoid using inline Blade conditional tags (like `@if ... @endif`) on the same line as HTML text content. Instead, use inline PHP ternary expressions inside double curly braces: `{{ $condition ? $value : '' }}`. This ensures the formatter treats the expression as a single statement and doesn't split it.
     - Ensure PHP arrow operators (`->`) in Blade views are never split across multiple lines. Keep the variable, operator, and method call together on a single line.
+    - **HTML Tag Attributes:** To prevent Prettier from splitting the PHP arrow operator (`->`) across lines inside HTML tags, declare merged attributes within a `@php` block first, then echo the variable (e.g. `{{ $mergedAttributes }}`) on the tag.
+    - **Prettier Ignore:** Use `<!-- prettier-ignore -->` comments before HTML tags (like `<p>`) where inline blade directives (e.g. `@if`) or long string concatenations must be kept verbatim to prevent line wrapping from splitting the directive name from its condition.
 - **Container Network Ports:**
   - Reverb runs internally on container port `8080`, mapped externally to host port `8084` to prevent conflict with other services. Always ensure WebSocket client URLs connect through the host mapped port.
 - **Dependency Management:**
