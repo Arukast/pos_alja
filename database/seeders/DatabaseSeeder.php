@@ -34,11 +34,11 @@ class DatabaseSeeder extends Seeder
 
         // 2. Users (Staff)
         $roles = [
-            ['name' => 'Owner Account', 'email' => 'owner@example.com', 'username' => 'admin_owner', 'role' => 'owner', 'branch_id' => null],
-            ['name' => 'Manager Account', 'email' => 'manager@example.com', 'username' => 'admin_manager', 'role' => 'manager', 'branch_id' => $branchMain->id],
-            ['name' => 'Cashier Account', 'email' => 'cashier@example.com', 'username' => 'user_cashier', 'role' => 'cashier', 'branch_id' => $branchMain->id],
-            ['name' => 'Designer Account', 'email' => 'designer@example.com', 'username' => 'user_designer', 'role' => 'designer', 'branch_id' => $branchMain->id],
-            ['name' => 'Production Account', 'email' => 'production@example.com', 'username' => 'user_production', 'role' => 'production', 'branch_id' => $branchMain->id],
+            ['name' => 'Owner Account', 'email' => 'owner@example.com', 'username' => 'owner', 'role' => 'owner', 'branch_id' => null],
+            ['name' => 'Manager Account', 'email' => 'manager@example.com', 'username' => 'manager', 'role' => 'manager', 'branch_id' => $branchMain->id],
+            ['name' => 'Cashier Account', 'email' => 'cashier@example.com', 'username' => 'cashier', 'role' => 'cashier', 'branch_id' => $branchMain->id],
+            ['name' => 'Designer Account', 'email' => 'designer@example.com', 'username' => 'designer', 'role' => 'designer', 'branch_id' => $branchMain->id],
+            ['name' => 'Production Account', 'email' => 'production@example.com', 'username' => 'production', 'role' => 'production', 'branch_id' => $branchMain->id],
         ];
 
         foreach ($roles as $roleData) {
