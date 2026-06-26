@@ -244,13 +244,13 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-semibold text-gray-500"
-                                >#{{ str_pad($oItem->invoice_id, 5, '0',
-                                STR_PAD_LEFT) }}-{{ $oItem->id }}</span
+                                >{{ $oItem->invoice->invoice_number }}</span
                             >
                             <span
                                 class="inline-block rounded bg-cyan-50 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-cyan-600 uppercase dark:bg-cyan-950/30 dark:text-cyan-400"
                             >
-                                CS: {{ $oItem->invoice->customer_service }}
+                                CS: {{ $oItem->invoice->designer ?
+                                $oItem->invoice->designer->name : 'N/A' }}
                             </span>
                         </div>
                         <h4 class="mt-1 text-sm font-bold text-white">
@@ -274,7 +274,7 @@
                     >
                         @if ($oItem->status == 0)
                         <button
-                            wire:click="startOrderProduction({{ $oItem->id }})"
+                            wire:click="startOrderProduction('{{ $oItem->id }}')"
                             class="rounded border border-orange-500 px-3 py-1.5 text-xs font-bold text-orange-500 transition hover:bg-orange-500 hover:text-white"
                         >
                             Start Printing
@@ -289,7 +289,7 @@
                             Printing...
                         </span>
                         <button
-                            wire:click="completeOrderProduction({{ $oItem->id }})"
+                            wire:click="completeOrderProduction('{{ $oItem->id }}')"
                             class="rounded bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-600"
                         >
                             Mark Done
@@ -382,14 +382,12 @@
                         >Responsible Designer</label
                     >
                     <select
-                        wire:model="designerName"
+                        wire:model="designerId"
                         class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
                     >
                         <option value="">-- Choose Designer --</option>
                         @foreach ($designersList as $des)
-                        <option value="{{ $des->name }}">
-                            {{ $des->name }}
-                        </option>
+                        <option value="{{ $des->id }}">{{ $des->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -461,10 +459,12 @@
                             }}
                         </td>
                         <td class="px-3 py-3 text-gray-400">
-                            {{ $wItem->designer_name ?: '-' }}
+                            {{ $wItem->designer ? $wItem->designer->name : '-'
+                            }}
                         </td>
                         <td class="px-3 py-3 font-semibold text-gray-400">
-                            {{ $wItem->operator_name }}
+                            {{ $wItem->operator ? $wItem->operator->name : '-'
+                            }}
                         </td>
                         <td class="px-3 py-3 font-medium italic">
                             {{ $wItem->notes }}

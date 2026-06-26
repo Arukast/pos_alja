@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Material;
 use App\Models\WastedMaterial;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class InventoryService
 {
@@ -26,6 +27,7 @@ class InventoryService
 
             // Log in stock_ledgers
             DB::table('stock_ledgers')->insert([
+                'id' => (string) Str::uuid(),
                 'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),
@@ -53,8 +55,9 @@ class InventoryService
             $quantity = (float) $params['quantity'];
             $machineId = ! empty($params['machine_id']) ? $params['machine_id'] : null;
             $dimensions = $params['dimensions'] ?? null;
-            $designerName = $params['designer_name'] ?? null;
-            $operatorName = $params['operator_name'] ?? null;
+            $designerId = $params['designer_id'] ?? null;
+            $operatorId = $params['operator_id'] ?? null;
+            $orderId = $params['order_id'] ?? null;
             $notes = $params['notes'] ?? 'Print failure';
 
             // Load parent material first to get its branch scoping
@@ -66,10 +69,11 @@ class InventoryService
                 'logged_at' => now()->toDateString(),
                 'material_id' => $materialId,
                 'machine_id' => $machineId,
+                'order_id' => $orderId,
+                'designer_id' => $designerId,
+                'operator_id' => $operatorId,
                 'quantity' => $quantity,
                 'dimensions' => $dimensions,
-                'designer_name' => $designerName,
-                'operator_name' => $operatorName,
                 'notes' => $notes,
             ]);
 
@@ -80,6 +84,7 @@ class InventoryService
 
             // 3. Log in stock_ledgers
             DB::table('stock_ledgers')->insert([
+                'id' => (string) Str::uuid(),
                 'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),
@@ -110,6 +115,7 @@ class InventoryService
 
             // Log in stock ledgers
             DB::table('stock_ledgers')->insert([
+                'id' => (string) Str::uuid(),
                 'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),

@@ -292,8 +292,16 @@ Verify the correct operation using the following steps:
 2. **Run Tests**:
    ```bash
    docker exec -it -w /var/www/html/pos_alja local-php83 php artisan test --filter=CashieringTest
+   docker exec -it -w /var/www/html/pos_alja local-php83 php artisan test --filter=ProductionDashboardTest
    ```
    All test cases must pass successfully.
 3. **Manual Flow Check**:
    - Log in as cashier. Settle down payments and print receipt. Verify receipt uses payments relation values and displays without errors.
+
+### Step 2: Production Dashboard Refactoring (June 2026)
+- Refactored [Production.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Production.php) component to handle UUID strings for order IDs, designer IDs, and operator IDs.
+- Updated `startOrderProduction` and `completeOrderProduction` to store status transitions in `order_status_logs`, update the `orders.operator_id = auth()->user()->id`, and dynamically query `pricing_matrices` and `products` to calculate and deduct correct inventory amounts (area-based vs unit-based).
+- Refactored [production.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/production.blade.php) view to pass quoted UUIDs, use the designer dropdown with `designerId` UUID values, and display designer/operator names using Eloquent relations on `wasted_materials` instead of string values.
+- Updated `InventoryService` `logWaste` method to accept and write `designer_id` and `operator_id` keys to ensure data integrity with the PostgreSQL schema.
+- Added a full suite of automated tests in [ProductionDashboardTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/ProductionDashboardTest.php) testing rendering, status transition logs, operator assignments, stock deductions (both area and unit-based), and waste logging.
 

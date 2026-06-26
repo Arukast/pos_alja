@@ -3,9 +3,11 @@
 namespace App\Livewire\Dashboards;
 
 use App\Events\OrderUpdated;
+use App\Models\Branch;
 use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Order;
+use App\Models\OrderStatusLog;
 use App\Models\User;
 use App\Models\WastedMaterial;
 use App\Services\InventoryService;
@@ -27,7 +29,7 @@ class Production extends Component
 
     public string $dimensions = '';
 
-    public string $designerName = '';
+    public string $designerId = '';
 
     public string $operatorName = '';
 
@@ -43,7 +45,7 @@ class Production extends Component
         $this->operatorName = auth()->user()->name;
     }
 
-    public function startOrderProduction(int $orderId): void
+    public function startOrderProduction(string $orderId): void
     {
         $order = Order::with('invoice')->findOrFail($orderId);
 
@@ -51,23 +53,35 @@ class Production extends Component
             abort(403, 'Unauthorized branch access.');
         }
 
-        $order->status = 1; // Processing/Printing
-        $order->save();
+        DB::transaction(function () use ($order) {
+            $order->status = 1; // Processing/Printing
+            $order->operator_id = auth()->user()->id;
+            $order->save();
 
-        // Proactively deduct stock when production starts if a pricing matrix is linked
-        if ($order->pricing_matrix_id > 0) {
-            $matrix = DB::table('pricing_matrices')->find($order->pricing_matrix_id);
-            if ($matrix && $matrix->material_id) {
-                // If it is large format (BANNER, product_id 5) deduct by printed area
-                $qtyToDeduct = (float) $order->quantity;
-                if ($matrix->product_id == 5) {
-                    $qtyToDeduct = (float) ($order->area * $order->quantity);
+            // Proactively deduct stock when production starts if a pricing matrix is linked
+            if ($order->pricing_matrix_id) {
+                $matrix = DB::table('pricing_matrices')->where('id', $order->pricing_matrix_id)->first();
+                if ($matrix && $matrix->material_id) {
+                    $product = DB::table('products')->where('id', $matrix->product_id)->first();
+                    $isArea = $product && $product->pricing_type === 'area';
+
+                    $qtyToDeduct = $isArea
+                        ? (float) ($order->area * $order->quantity)
+                        : (float) $order->quantity;
+
+                    $inventoryService = new InventoryService;
+                    $inventoryService->deductStockOnPrint($matrix->material_id, $qtyToDeduct);
                 }
-
-                $inventoryService = new InventoryService;
-                $inventoryService->deductStockOnPrint($matrix->material_id, $qtyToDeduct);
             }
-        }
+
+            OrderStatusLog::create([
+                'order_id' => $order->id,
+                'status' => 1,
+                'user_id' => auth()->user()->id,
+                'user_name' => auth()->user()->name,
+                'notes' => 'Production started',
+            ]);
+        });
 
         $this->successMessage = 'Order production started and inventory adjusted!';
         $this->showSuccessAlert = true;
@@ -75,7 +89,7 @@ class Production extends Component
         event(new OrderUpdated);
     }
 
-    public function completeOrderProduction(int $orderId): void
+    public function completeOrderProduction(string $orderId): void
     {
         $order = Order::with('invoice')->findOrFail($orderId);
 
@@ -83,8 +97,19 @@ class Production extends Component
             abort(403, 'Unauthorized branch access.');
         }
 
-        $order->status = 2; // Completed / Done
-        $order->save();
+        DB::transaction(function () use ($order) {
+            $order->status = 2; // Completed / Done
+            $order->operator_id = auth()->user()->id;
+            $order->save();
+
+            OrderStatusLog::create([
+                'order_id' => $order->id,
+                'status' => 2,
+                'user_id' => auth()->user()->id,
+                'user_name' => auth()->user()->name,
+                'notes' => 'Production completed',
+            ]);
+        });
 
         $this->successMessage = 'Order marked as completed!';
         $this->showSuccessAlert = true;
@@ -95,27 +120,26 @@ class Production extends Component
     public function logWaste(): void
     {
         $this->validate([
-            'materialId' => 'required|integer|exists:materials,id',
-            'machineId' => 'nullable|integer',
+            'materialId' => 'required|string|exists:materials,id',
+            'machineId' => 'nullable|string|exists:machines,id',
             'quantity' => 'required|numeric|min:0.01',
             'dimensions' => 'nullable|string|max:50',
-            'designerName' => 'nullable|string|max:255',
-            'operatorName' => 'required|string|max:255',
+            'designerId' => 'nullable|string|exists:users,id',
             'notes' => 'required|string|max:500',
         ]);
 
         $inventoryService = new InventoryService;
         $inventoryService->logWaste([
-            'material_id' => (int) $this->materialId,
-            'machine_id' => (int) ($this->machineId ?: 0),
+            'material_id' => $this->materialId,
+            'machine_id' => $this->machineId ?: null,
             'quantity' => (float) $this->quantity,
             'dimensions' => $this->dimensions,
-            'designer_name' => $this->designerName,
-            'operator_name' => $this->operatorName,
+            'designer_id' => $this->designerId ?: null,
+            'operator_id' => auth()->user()->id,
             'notes' => $this->notes,
         ]);
 
-        $this->reset(['materialId', 'machineId', 'quantity', 'dimensions', 'designerName', 'notes']);
+        $this->reset(['materialId', 'machineId', 'quantity', 'dimensions', 'designerId', 'notes']);
         $this->operatorName = auth()->user()->name;
 
         $this->successMessage = 'Failed print/waste logged successfully!';
@@ -124,7 +148,7 @@ class Production extends Component
 
     public function render()
     {
-        $branchId = auth()->user()->branch_id ?: 1;
+        $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
         // 1. Dynamic Quick Stat Counters
         $queueCount = Order::where('status', 0)
@@ -145,7 +169,7 @@ class Production extends Component
         $activeOrders = Order::with('invoice.customer')
             ->whereIn('status', [0, 1])
             ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('id', 'asc')
+            ->orderBy('created_at', 'asc')
             ->limit(10)
             ->get();
 
@@ -157,9 +181,9 @@ class Production extends Component
         $designersList = User::where('role', 'designer')->where('branch_id', $branchId)->get();
 
         // 4. Load recent wasted logs
-        $recentWaste = WastedMaterial::with(['material', 'machine'])
+        $recentWaste = WastedMaterial::with(['material', 'machine', 'designer', 'operator'])
             ->where('branch_id', $branchId)
-            ->orderBy('id', 'desc')
+            ->orderBy('created_at', 'desc')
             ->limit(8)
             ->get();
 
