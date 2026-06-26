@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## General Project Rules
-- **Framework & Stack:** This project is built using Laravel 11, PostgreSQL, Livewire 4, Tailwind CSS, and Laravel Reverb.
+- **Framework & Stack:** This project is built using Laravel 13, PostgreSQL, Livewire 4, Tailwind CSS v4 (configured via Vite plugin and CSS `@theme` variables, no longer using `tailwind.config.js`), and Laravel Reverb.
 - **Privacy & Security:** Do not hardcode personal user data in the source code, comments, or documentation. Always use generic names (e.g., "Generic Print Shop", "admin_owner", "test@example.com").
   - **SQL Injection Prevention:** Avoid raw SQL queries. Always utilize Eloquent ORM, Query Builder parameter bindings, or safe input sanitization.
   - **XSS Prevention:** Escape dynamic parameters in templates using double curly braces `{{ $value }}`. For inline JavaScript contexts, always use `\Illuminate\Support\Js::from($value)` to prevent code breaks or injections.
@@ -11,16 +11,16 @@
     - **Invoice level:** `grand_total` (Omset), `total_cost` (HPP), `total_profit` (Laba).
     - **Order level:** `subtotal` (Subtotal), `cost` (HPP), `profit` (Laba).
   - **Material Waste:** Use `WastedMaterial` model and `wasted_materials` database table (Bahan Gagal).
-- **Role-Based Access Control:** Strict role segregation applies: `owner`, `manager` (bm), `cashier` (kasir), `designer` (setting), and `production` (produksi). Ensure gates and middleware enforce these boundaries.
+- **Role-Based Access Control:** Strict role segregation applies with English names: `owner`, `manager`, `cashier`, `designer`, and `production`. These role strings are natively stored in the database. Ensure gates and middleware enforce these boundaries.
   - **Profile & Settings Rule:** Only `owner` and `manager` are authorized to update user profiles (name and email). All other roles can only view their profile info and update their passwords.
   - **Role-Specific Dashboard Responsibilities:**
     - **Owner:** Cross-branch financial analytics (Omset/HPP/Laba, Expenses), period filters (Daily, Weekly, Monthly), branch selection toggle, individual designer performance leaderboard, and dynamic SVG sparkline charts mapping net profits.
-    - **Manager (bm):** Material inventory management, stock ledgers, display/finishing master data, pricing engine matrices, and user profile management.
-    - **Cashier (kasir):** Checkouts, down payments (DP), balance settlements, cashier drawer expenses, receipt printing, and customer pickup queue (`pickup_status = 0` / Not Picked Up, and invoice `status = 2` / Paid).
-    - **Designer (setting):** Customer select/creation wizard, parameter inputs (sizes, dimensions, options), real-time pricing calculator preview, and printable job tickets (Work Order sheets).
-    - **Production (produksi):** Print queue lists, printer machine assignments, waste logging, and updating job status to completed (decrementing stock ledgers).
+    - **Manager:** Material inventory management, stock ledgers, display/finishing master data, pricing engine matrices, and user profile management.
+    - **Cashier:** Checkouts, down payments (DP), balance settlements, cashier drawer expenses, receipt printing, and customer pickup queue (`pickup_status = 0` / Not Picked Up, and invoice `status = 2` / Paid).
+    - **Designer:** Customer select/creation wizard, parameter inputs (sizes, dimensions, options), real-time pricing calculator preview, and printable job tickets (Work Order sheets).
+    - **Production:** Print queue lists, printer machine assignments, waste logging, and updating job status to completed (decrementing stock ledgers).
 - **Real-Time Reactivity:** When data state changes (e.g., creating an order, updating payment, completing a print job), ensure `OrderUpdated` or equivalent WebSocket broadcast events are dispatched to keep Livewire UI components in sync without manual page reloads.
-- **Aesthetics & UI:** Prioritize visual excellence. Build dynamic, responsive designs with smooth interactions (micro-animations, modern typography). Maintain styling conventions primarily through Tailwind CSS instead of inline styles. 
+- **Aesthetics & UI:** Prioritize visual excellence. Build dynamic, responsive designs with smooth interactions (micro-animations, modern typography). Maintain styling conventions primarily through Tailwind CSS instead of inline styles. Use a sidebar navigation layout instead of a top navigation bar for the frontend dashboard interface. 
 - **Service-Oriented Architecture (API-Ready):** Core business logic must reside in isolated PHP Service classes. Livewire components/controllers should call these services rather than implementing business logic directly.
   - `PricingService`: Handles complex pricing matrix matching by product category parameters (Merchandise, Large Format, Print Kertas, etc.).
   - `InventoryService`: Manages stock ledger adjustments and logging material waste.
@@ -28,26 +28,27 @@
   - Ensure queries and dashboards scope data to the active user's branch (`auth()->user()->branch_id`) to prevent cross-branch data leakage, unless explicitly handled for the owner role (e.g., the owner dashboard can view all branches combined or switch active branches).
   - Restrict access to ticket and receipt routes (`/orders/{invoice}/ticket` and `/orders/{invoice}/receipt`) using middleware/policies to block cross-branch data access for non-owner roles.
 - **Legacy Data & Schema Mapping:** For reference during data migrations and troubleshooting imported database records:
-  - **Migration Command:** Run mapping tasks using `php artisan db:migrate-legacy` (implemented in `MigrateLegacyData.php`).
+  - **Migration Command:** Legacy data migration command `php artisan db:migrate-legacy` (implemented in `MigrateLegacyData.php`) is now disabled/superseded in the redesign as the database has fully transitioned to the new UUIDv7-based schema.
   - **Database Connection:** Reads from `mysql_migration` (legacy MariaDB database) and writes to PostgreSQL.
   - **Password Security Reset:** MD5 passwords from legacy users are not preserved. They are reset to a default Bcrypt/Argon2 password (`password123`) upon migration.
   - **Schema Mappings:**
-    - `admin` -> `users` (maps levels: `bm` to `manager`, `owner` to `owner`, `kasir` to `cashier`, `setting` to `designer`, `produksi` to `production`).
+    - `admin` -> `users` (maps level/role: `owner` -> `owner`, `bm` -> `manager`, `kasir` -> `cashier`, `setting` -> `designer`, `produksi` -> `production`).
     - `kostumer` -> `customers`
     - `produk` -> `products`
     - `bahan` -> `materials`
     - `mesin` -> `machines`
-    - `jenis_finishing` -> `finishings`
-    - `jenis_potong` -> `cuts`
-    - `jenis_display` -> `displays`
+    - `jenis_finishing` -> `attributes` (with `type` column set to `'finishing'`)
+    - `jenis_potong` -> `attributes` (with `type` column set to `'cut'`)
+    - `jenis_display` -> `attributes` (with `type` column set to `'display'`)
     - `harga_jual` -> `pricing_matrices`
     - `invoice` -> `invoices`
     - `orderan` -> `orders`
     - `pengeluaran` -> `expenses`
     - `bahan_gagal` -> `wasted_materials`
     - `stok` -> `stock_ledgers`
-- **Theme Support (Light/Dark Mode):** Ensure UI components support both light and dark modes dynamically using Tailwind's `dark:` variant and `localStorage` state. 
+- **Theme Support (Light/Dark Mode) & Tailwind CSS v4 Styling:** Ensure UI components support both light and dark modes dynamically using Tailwind's `dark:` variant and `localStorage` state.
   - All interactive elements, dropdowns, inputs, text labels, and modal backgrounds must use responsive Tailwind classes (e.g. `bg-white dark:bg-surface-600 border border-gray-200 dark:border-surface-300/50`) to ensure proper readability and contrast in both themes. Avoid hardcoding absolute dark/light background colors.
+  - **Tailwind CSS v4 Configuration Rule:** Do NOT edit or create `tailwind.config.js`. Any custom theme configurations, fonts, brand colors, keyframes, and animations must be defined directly in `resources/css/app.css` using the `@theme` directive.
 
 ## Technical & Database Specifications
 - **Database Status Codes:**
@@ -65,6 +66,7 @@
 - **Testing & Database Portability:**
   - The automated test environment utilizes an SQLite in-memory database (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), while production uses PostgreSQL.
   - All migrations, queries, and Eloquent interactions must remain dialect-agnostic and fully compatible with SQLite. Do not use PostgreSQL-specific or MariaDB-specific raw query statements.
+  - **UUIDv7 Assertions:** Since all keys in the new database schema are UUIDs, all unit and feature tests must mock records and assert database states using valid UUID strings (Laravel `Str::uuid()`) rather than auto-incrementing integers.
 - **WebSocket Broadcast Structure:**
   - Real-time updates rely on the `App\Events\OrderUpdated` event class broadcasting to a public channel named `orders`. Livewire dashboards should register Echo listeners (e.g., `protected $listeners = ['echo:orders,OrderUpdated' => '$refresh'];`) to automatically update UI states.
 
