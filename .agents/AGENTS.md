@@ -82,10 +82,11 @@
 - **Coding Standards & Formatting:**
   - Adhere strictly to **PSR-12** standards for PHP classes and code structure.
   - Indent PHP files, Blade views, and JS templates using **4 spaces** (per `.editorconfig`). For YAML and Markdown files, use **2 spaces**.
+  - **Livewire Separation of Concerns:** Maintain a clean separation between backend and frontend files by using class-based Livewire components. The controller logic must reside in `app/Livewire/` and frontend templates in `resources/views/livewire/` (avoid single-file Volt components to keep code clean and readable).
 - **Container Network Ports:**
   - Reverb runs internally on container port `8080`, mapped externally to host port `8084` to prevent conflict with other services. Always ensure WebSocket client URLs connect through the host mapped port.
 - **Dependency Management:**
-  - Avoid installing external PHP or JavaScript packages unless explicitly requested or absolutely necessary. Rely on core Laravel 11, Livewire 4, Alpine, and Tailwind utilities.
+  - Avoid installing external PHP or JavaScript packages unless explicitly requested or absolutely necessary. Rely on core Laravel 13, Livewire 4, Alpine, and Tailwind utilities.
   - When dependencies are added or updated, always commit both the package definition files (`composer.json`, `package.json`) and their lock files (`composer.lock`, `package-lock.json`) together to maintain reproducible builds.
   - Verify container and PHP system extension requirements (e.g., the `pcntl` extension needed for Laravel Reverb signal handling) before introducing new packages.
 
