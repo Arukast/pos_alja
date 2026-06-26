@@ -3,9 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>
-            Receipt #{{ str_pad($invoice->id, 5, '0', STR_PAD_LEFT) }}
-        </title>
+        <title>Receipt {{ $invoice->invoice_number }}</title>
         @vite(['resources/css/app.css'])
         <style>
             body {
@@ -93,18 +91,15 @@
             <!-- Meta Info -->
             <div class="space-y-1">
                 <div class="flex justify-between">
-                    <span
-                        >Inv: #{{ str_pad($invoice->id, 5, '0', STR_PAD_LEFT)
-                        }}</span
-                    >
+                    <span>Inv: {{ $invoice->invoice_number }}</span>
                     <span>Date: {{ $invoice->created_date }}</span>
                 </div>
+                @php $cashierName =
+                $invoice->payments->sortByDesc('created_at')->first()?->cashier_name
+                ?: '-'; @endphp
                 <div class="flex justify-between">
-                    <span>CS: {{ $invoice->customer_service }}</span>
-                    <span
-                        >Cashier: {{ $invoice->cashier_name ?:
-                        ($invoice->cashier_dp_name ?: '-') }}</span
-                    >
+                    <span>CS: {{ $invoice->designer?->name ?: '-' }}</span>
+                    <span>Cashier: {{ $cashierName }}</span>
                 </div>
                 <div>
                     <span
@@ -150,7 +145,15 @@
             <!-- Summary list -->
             <div class="space-y-1.5 font-sans text-[10px] font-medium">
                 @php $preDiscountTotal = $invoice->orders->sum('subtotal');
-                @endphp
+                $dpPaid = (int) $invoice->payments->where('type',
+                'down_payment')->sum('amount'); $paymentDpMethod =
+                $invoice->payments->where('type',
+                'down_payment')->first()?->payment_method; $settlementAmount =
+                (int) $invoice->payments->where('type',
+                'settlement')->sum('amount'); $paymentMethod =
+                $invoice->payments->where('type',
+                'settlement')->first()?->payment_method; $totalPaid = (int)
+                $invoice->payments->sum('amount'); @endphp
                 <div
                     class="flex justify-between font-mono text-[11px] font-bold"
                 >
@@ -169,31 +172,22 @@
                     <span>Net Total:</span>
                     <span>Rp. {{ number_format($invoice->grand_total) }}</span>
                 </div>
-                @endif @if ($invoice->dp_paid > 0)
+                @endif @if ($dpPaid > 0)
                 <div class="flex justify-between text-cyan-600">
-                    <span>DP Paid ({{ $invoice->payment_dp_method }}):</span>
-                    <span>Rp. {{ number_format($invoice->dp_paid) }}</span>
+                    <span>DP Paid ({{ $paymentDpMethod }}):</span>
+                    <span>Rp. {{ number_format($dpPaid) }}</span>
                 </div>
-                @endif @if ($invoice->settlement_amount > 0)
+                @endif @if ($settlementAmount > 0)
                 <div class="flex justify-between text-emerald-600">
-                    <span>Settlement ({{ $invoice->payment_method }}):</span>
-                    <span
-                        >Rp. {{ number_format($invoice->settlement_amount)
-                        }}</span
-                    >
+                    <span>Settlement ({{ $paymentMethod }}):</span>
+                    <span>Rp. {{ number_format($settlementAmount) }}</span>
                 </div>
-                @endif @if ($invoice->payment_amount > 0)
-                <div class="flex justify-between text-gray-500">
-                    <span>Cash Received:</span>
-                    <span
-                        >Rp. {{ number_format($invoice->payment_amount) }}</span
-                    >
-                </div>
-                <div class="flex justify-between font-bold text-emerald-600">
-                    <span>Change (Kembalian):</span>
-                    <span
-                        >Rp. {{ number_format($invoice->change_amount) }}</span
-                    >
+                @endif @if ($totalPaid > 0)
+                <div
+                    class="flex justify-between font-mono font-bold text-gray-500"
+                >
+                    <span>Total Paid:</span>
+                    <span>Rp. {{ number_format($totalPaid) }}</span>
                 </div>
                 @endif @if ($invoice->accounts_receivable > 0)
                 <div

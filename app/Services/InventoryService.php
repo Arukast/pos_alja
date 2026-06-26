@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Branch;
 use App\Models\Material;
 use App\Models\WastedMaterial;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ class InventoryService
 
             // Log in stock_ledgers
             DB::table('stock_ledgers')->insert([
-                'branch_id' => $material->branch_id ?: 1,
+                'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),
                 'initial_stock' => $material->initial_stock,
@@ -48,9 +49,9 @@ class InventoryService
     public function logWaste(array $params): WastedMaterial
     {
         return DB::transaction(function () use ($params) {
-            $materialId = (int) $params['material_id'];
+            $materialId = $params['material_id'];
             $quantity = (float) $params['quantity'];
-            $machineId = (int) ($params['machine_id'] ?? 0);
+            $machineId = ! empty($params['machine_id']) ? $params['machine_id'] : null;
             $dimensions = $params['dimensions'] ?? null;
             $designerName = $params['designer_name'] ?? null;
             $operatorName = $params['operator_name'] ?? null;
@@ -61,7 +62,7 @@ class InventoryService
 
             // 1. Create wasted material record
             $waste = WastedMaterial::create([
-                'branch_id' => $material->branch_id ?: 1,
+                'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'logged_at' => now()->toDateString(),
                 'material_id' => $materialId,
                 'machine_id' => $machineId,
@@ -79,7 +80,7 @@ class InventoryService
 
             // 3. Log in stock_ledgers
             DB::table('stock_ledgers')->insert([
-                'branch_id' => $material->branch_id ?: 1,
+                'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),
                 'initial_stock' => (float) $material->initial_stock,
@@ -99,7 +100,7 @@ class InventoryService
     /**
      * Deduct stock for printed layout items.
      */
-    public function deductStockOnPrint(int $materialId, float $quantity): Material
+    public function deductStockOnPrint(string $materialId, float $quantity): Material
     {
         return DB::transaction(function () use ($materialId, $quantity) {
             $material = Material::findOrFail($materialId);
@@ -109,7 +110,7 @@ class InventoryService
 
             // Log in stock ledgers
             DB::table('stock_ledgers')->insert([
-                'branch_id' => $material->branch_id ?: 1,
+                'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toDateString(),
                 'initial_stock' => (float) $material->initial_stock,

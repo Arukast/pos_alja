@@ -3,8 +3,10 @@
 namespace App\Livewire\Dashboards;
 
 use App\Events\OrderUpdated;
+use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Invoice;
+use App\Models\Payment;
 use Livewire\Component;
 
 class Cashier extends Component
@@ -23,7 +25,7 @@ class Cashier extends Component
     public string $incurredAt = '';
 
     // Checkout properties
-    public ?int $selectedInvoiceId = null;
+    public ?string $selectedInvoiceId = null;
 
     public string $paymentType = 'settle'; // 'dp' or 'settle'
 
@@ -53,7 +55,7 @@ class Cashier extends Component
         ]);
 
         Expense::create([
-            'branch_id' => auth()->user()->branch_id ?: 1,
+            'branch_id' => auth()->user()->branch_id ?: Branch::value('id'),
             'amount' => (int) $this->amount,
             'type' => $this->type,
             'incurred_at' => $this->incurredAt,
@@ -69,7 +71,7 @@ class Cashier extends Component
         $this->showSuccessAlert = true;
     }
 
-    public function selectInvoice(int $id, string $type = 'settle'): void
+    public function selectInvoice(string $id, string $type = 'settle'): void
     {
         $this->selectedInvoiceId = $id;
         $this->paymentType = $type;
@@ -102,14 +104,17 @@ class Cashier extends Component
 
             $dpAmt = (int) $this->inputAmount;
 
-            $invoice->dp_amount = $dpAmt;
-            $invoice->dp_paid = $dpAmt;
-            $invoice->payment_dp_method = $this->inputMethod;
-            $invoice->cashier_dp_name = auth()->user()->name;
-            $invoice->dp_date = now()->toDateString();
-            $invoice->accounts_receivable = $invoice->grand_total - $dpAmt;
-            $invoice->status = 1; // Down Payment
-            $invoice->save();
+            Payment::create([
+                'branch_id' => $invoice->branch_id ?: Branch::value('id'),
+                'invoice_id' => $invoice->id,
+                'user_id' => auth()->user()->id,
+                'amount' => $dpAmt,
+                'payment_method' => $this->inputMethod,
+                'type' => 'down_payment',
+                'cashier_name' => auth()->user()->name,
+            ]);
+
+            $invoice->recalculatePayments();
 
             $this->successMessage = 'Down Payment registered successfully!';
         } else {
@@ -131,18 +136,24 @@ class Cashier extends Component
             }
 
             // Adjust invoice totals
-            $invoice->discount += $discount;
-            $invoice->grand_total -= $discount;
-            $invoice->total_profit = max(0, $invoice->total_profit - $discount);
-            $invoice->settlement_amount = $amountToPay;
-            $invoice->payment_amount = $cashPaid;
-            $invoice->change_amount = $cashPaid - $amountToPay;
-            $invoice->payment_method = $this->inputMethod;
-            $invoice->cashier_name = auth()->user()->name;
-            $invoice->payment_date = now()->toDateString();
-            $invoice->accounts_receivable = 0;
-            $invoice->status = 2; // Paid / Lunas
-            $invoice->save();
+            if ($discount > 0) {
+                $invoice->discount += $discount;
+                $invoice->grand_total = max(0, $invoice->grand_total - $discount);
+                $invoice->total_profit = max(0, $invoice->total_profit - $discount);
+                $invoice->save();
+            }
+
+            Payment::create([
+                'branch_id' => $invoice->branch_id ?: Branch::value('id'),
+                'invoice_id' => $invoice->id,
+                'user_id' => auth()->user()->id,
+                'amount' => $amountToPay,
+                'payment_method' => $this->inputMethod,
+                'type' => 'settlement',
+                'cashier_name' => auth()->user()->name,
+            ]);
+
+            $invoice->recalculatePayments();
 
             $this->successMessage = 'Payment settled and invoice closed!';
         }
@@ -153,7 +164,7 @@ class Cashier extends Component
         $this->showSuccessAlert = true;
     }
 
-    public function markAsPickedUp(int $invoiceId): void
+    public function markAsPickedUp(string $invoiceId): void
     {
         $invoice = Invoice::findOrFail($invoiceId);
 
@@ -177,7 +188,7 @@ class Cashier extends Component
 
     public function render()
     {
-        $branchId = auth()->user()->branch_id ?: 1;
+        $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
         // Load recent expenses logged by this branch
         $expenses = Expense::where('branch_id', $branchId)
@@ -200,14 +211,16 @@ class Cashier extends Component
 
         // Calculate checkout metrics for this branch
         $awaitingCount = Invoice::where('branch_id', $branchId)->where('status', 0)->count();
-        $dpCollectedToday = Invoice::where('branch_id', $branchId)
-            ->whereDate('dp_date', now()->toDateString())  // Use dp_date: the date DP was actually paid
-            ->where('status', 1)
-            ->sum('dp_amount');
-        $settlementsToday = Invoice::where('branch_id', $branchId)
-            ->whereDate('payment_date', now()->toDateString())  // Use payment_date: the date settlement occurred
-            ->where('status', 2)
-            ->sum('settlement_amount');
+
+        $dpCollectedToday = Payment::where('branch_id', $branchId)
+            ->where('type', 'down_payment')
+            ->whereDate('created_at', now()->toDateString())
+            ->sum('amount');
+
+        $settlementsToday = Payment::where('branch_id', $branchId)
+            ->where('type', 'settlement')
+            ->whereDate('created_at', now()->toDateString())
+            ->sum('amount');
 
         // Fetch paid, not yet picked up invoices for Customer Pickup Queue in this branch
         $pickupQueue = Invoice::with('customer')

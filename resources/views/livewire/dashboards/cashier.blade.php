@@ -245,7 +245,7 @@
                             class="dark:hover:bg-surface-400/20 transition-all hover:bg-gray-50"
                         >
                             <td class="px-3 py-3 font-semibold text-white">
-                                #{{ str_pad($inv->id, 5, '0', STR_PAD_LEFT) }}
+                                {{ $inv->invoice_number }}
                             </td>
                             <td class="px-3 py-3">
                                 <p class="font-bold text-gray-800">
@@ -280,14 +280,14 @@
                             >
                                 @if ($inv->status == 0)
                                 <button
-                                    wire:click="selectInvoice({{ $inv->id }}, 'dp')"
+                                    wire:click="selectInvoice('{{ $inv->id }}', 'dp')"
                                     class="rounded bg-cyan-500 px-2 py-1 text-[11px] font-bold text-white shadow-sm transition hover:bg-cyan-600"
                                 >
                                     Register DP
                                 </button>
                                 @endif
                                 <button
-                                    wire:click="selectInvoice({{ $inv->id }}, 'settle')"
+                                    wire:click="selectInvoice('{{ $inv->id }}', 'settle')"
                                     class="rounded bg-emerald-500 px-2 py-1 text-[11px] font-bold text-white shadow-sm transition hover:bg-emerald-600"
                                 >
                                     Checkout
@@ -435,7 +435,7 @@
                         <td
                             class="px-3 py-3 font-semibold text-gray-950 dark:text-white"
                         >
-                            #{{ str_pad($inv->id, 5, '0', STR_PAD_LEFT) }}
+                            {{ $inv->invoice_number }}
                         </td>
                         <td class="px-3 py-3">
                             <p
@@ -455,7 +455,7 @@
                         </td>
                         <td class="px-3 py-3 text-right">
                             <button
-                                wire:click="markAsPickedUp({{ $inv->id }})"
+                                wire:click="markAsPickedUp('{{ $inv->id }}')"
                                 class="bg-brand-primary hover:bg-brand-primary/90 rounded px-3 py-1 text-[11px] font-bold text-white shadow-sm transition"
                             >
                                 Mark Picked Up
@@ -566,9 +566,8 @@
                         'Invoice Payment Checkout' }}
                     </h3>
                     <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        Invoice #{{ str_pad($selInvoice->id, 5, '0',
-                        STR_PAD_LEFT) }} &bull; Customer: {{
-                        $selInvoice->customer->name }}
+                        Invoice {{ $selInvoice->invoice_number }} &bull;
+                        Customer: {{ $selInvoice->customer->name }}
                     </p>
                 </div>
                 <button

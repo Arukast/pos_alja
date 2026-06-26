@@ -263,9 +263,26 @@ The test suite utilizes SQLite in-memory databases. We must adjust test seeders 
 
 ---
 
-## 4. Verification Plan
+## 4. Refactoring Implementation (June 2026)
 
-Once all components have been refactored, verify correct operation using the following steps:
+### Step 0: InventoryService Refactoring
+- Updated method parameter type hints from `int` to `string` in [InventoryService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/InventoryService.php).
+- Removed integer casts `(int)` from `material_id` and `machine_id` keys in `logWaste()` and `deductStockOnPrint()`.
+- Replaced hardcoded `branch_id` default fallbacks of `1` with `Branch::value('id')` to support UUIDs across SQLite and PostgreSQL.
+
+### Step 1: Cashier Dashboard Refactoring
+- Refactored [Cashier.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Cashier.php) to handle UUID fields for `selectedInvoiceId` and method inputs.
+- Rewrote the checkout processing logic to insert payment logs inside the `payments` table and trigger `$invoice->recalculatePayments()`.
+- Updated cashier statistics (`dpCollectedToday`, `settlementsToday`) to query the `payments` table.
+- Updated [cashier.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/cashier.blade.php) and [receipt.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/orders/receipt.blade.php) to display `invoice_number` instead of formatted auto-increment IDs.
+- Quoted all wire click variables for UUID arguments in Blade templates.
+- Refactored [CashieringTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/CashieringTest.php) to seed branch UUIDs and verify assertions against the `payments` table.
+
+---
+
+## 5. Verification Plan
+
+Verify the correct operation using the following steps:
 
 1. **Database Reset**:
    ```bash
@@ -274,10 +291,9 @@ Once all components have been refactored, verify correct operation using the fol
    Ensure migrations and seeders execute without error.
 2. **Run Tests**:
    ```bash
-   docker exec -it -w /var/www/html/pos_alja local-php83 php artisan test
+   docker exec -it -w /var/www/html/pos_alja local-php83 php artisan test --filter=CashieringTest
    ```
    All test cases must pass successfully.
 3. **Manual Flow Check**:
-   * Log in as a designer. Place a new order with multiple items (with tiered discount quantities) and check invoice number structure.
-   * Log in as cashier. Settle down payments and print receipt. Check that the cash drawer expense registers with valid category choices.
-   * Log in as operator. Start order printing and verify stock levels in manager dashboard decrease automatically.
+   - Log in as cashier. Settle down payments and print receipt. Verify receipt uses payments relation values and displays without errors.
+

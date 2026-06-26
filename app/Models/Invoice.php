@@ -62,6 +62,7 @@ class Invoice extends Model
     public function recalculatePayments(): void
     {
         $totalPaid = $this->payments()->sum('amount');
+        $this->dp_amount = (int) $this->payments()->where('type', 'down_payment')->sum('amount');
         $this->accounts_receivable = max(0, $this->grand_total - $totalPaid);
 
         if ($this->accounts_receivable <= 0) {

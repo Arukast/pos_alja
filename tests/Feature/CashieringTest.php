@@ -17,13 +17,14 @@ class CashieringTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected Branch $branch;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         // Seed branch
-        Branch::create([
-            'id' => 1,
+        $this->branch = Branch::create([
             'name' => 'Main Branch',
         ]);
     }
@@ -35,26 +36,27 @@ class CashieringTest extends TestCase
     {
         Event::fake();
 
-        $user = User::factory()->create(['role' => 'cashier']);
+        $user = User::factory()->create([
+            'role' => 'cashier',
+            'branch_id' => $this->branch->id,
+        ]);
         $customer = Customer::create([
             'name' => 'John Customer',
             'type' => 'Retail',
         ]);
 
         $invoice = Invoice::create([
-            'branch_id' => 1,
+            'invoice_number' => 'INV-MB-20260627-0001',
+            'branch_id' => $this->branch->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $customer->id,
             'status' => 0,
             'discount' => 0,
             'dp_amount' => 0,
             'accounts_receivable' => 100000,
-            'dp_paid' => 0,
-            'settlement_amount' => 0,
             'grand_total' => 100000,
             'total_cost' => 60000,
             'total_profit' => 40000,
-            'customer_service' => 'Designer CS',
             'deadline' => 'Tomorrow',
             'pickup_status' => 0,
             'source' => 0,
@@ -73,10 +75,15 @@ class CashieringTest extends TestCase
             'id' => $invoice->id,
             'status' => 1, // Down Payment
             'dp_amount' => 40000,
-            'dp_paid' => 40000,
             'accounts_receivable' => 60000,
-            'payment_dp_method' => 'Transfer',
-            'cashier_dp_name' => $user->name,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'invoice_id' => $invoice->id,
+            'amount' => 40000,
+            'type' => 'down_payment',
+            'payment_method' => 'Transfer',
+            'cashier_name' => $user->name,
         ]);
 
         Event::assertDispatched(OrderUpdated::class);
@@ -89,7 +96,10 @@ class CashieringTest extends TestCase
     {
         Event::fake();
 
-        $user = User::factory()->create(['role' => 'cashier']);
+        $user = User::factory()->create([
+            'role' => 'cashier',
+            'branch_id' => $this->branch->id,
+        ]);
         $customer = Customer::create([
             'name' => 'Jane Customer',
             'type' => 'Retail',
@@ -97,19 +107,17 @@ class CashieringTest extends TestCase
 
         // Settle from Unpaid status
         $invoice = Invoice::create([
-            'branch_id' => 1,
+            'invoice_number' => 'INV-MB-20260627-0002',
+            'branch_id' => $this->branch->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $customer->id,
             'status' => 0,
             'discount' => 0,
             'dp_amount' => 0,
             'accounts_receivable' => 150000,
-            'dp_paid' => 0,
-            'settlement_amount' => 0,
             'grand_total' => 150000,
             'total_cost' => 90000,
             'total_profit' => 60000,
-            'customer_service' => 'Designer CS',
             'deadline' => 'Tomorrow',
             'pickup_status' => 0,
             'source' => 0,
@@ -131,9 +139,12 @@ class CashieringTest extends TestCase
             'discount' => 10000,
             'grand_total' => 140000,
             'accounts_receivable' => 0,
-            'settlement_amount' => 140000,
-            'payment_amount' => 140000,
-            'change_amount' => 0,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'invoice_id' => $invoice->id,
+            'amount' => 140000,
+            'type' => 'settlement',
             'payment_method' => 'QRIS',
             'cashier_name' => $user->name,
         ]);
@@ -146,26 +157,27 @@ class CashieringTest extends TestCase
      */
     public function test_checkout_validation_guards_insufficient_amount(): void
     {
-        $user = User::factory()->create(['role' => 'cashier']);
+        $user = User::factory()->create([
+            'role' => 'cashier',
+            'branch_id' => $this->branch->id,
+        ]);
         $customer = Customer::create([
             'name' => 'Test Customer',
             'type' => 'Retail',
         ]);
 
         $invoice = Invoice::create([
-            'branch_id' => 1,
+            'invoice_number' => 'INV-MB-20260627-0003',
+            'branch_id' => $this->branch->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $customer->id,
             'status' => 0,
             'discount' => 0,
             'dp_amount' => 0,
             'accounts_receivable' => 100000,
-            'dp_paid' => 0,
-            'settlement_amount' => 0,
             'grand_total' => 100000,
             'total_cost' => 60000,
             'total_profit' => 40000,
-            'customer_service' => 'Designer CS',
             'deadline' => 'Tomorrow',
             'pickup_status' => 0,
             'source' => 0,
@@ -187,26 +199,27 @@ class CashieringTest extends TestCase
      */
     public function test_receipt_print_page_is_renderable(): void
     {
-        $user = User::factory()->create(['role' => 'cashier']);
+        $user = User::factory()->create([
+            'role' => 'cashier',
+            'branch_id' => $this->branch->id,
+        ]);
         $customer = Customer::create([
             'name' => 'Alice Customer',
             'type' => 'Retail',
         ]);
 
         $invoice = Invoice::create([
-            'branch_id' => 1,
+            'invoice_number' => 'INV-MB-20260627-0004',
+            'branch_id' => $this->branch->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $customer->id,
             'status' => 2,
             'discount' => 0,
             'dp_amount' => 0,
             'accounts_receivable' => 0,
-            'dp_paid' => 0,
-            'settlement_amount' => 50000,
             'grand_total' => 50000,
             'total_cost' => 30000,
             'total_profit' => 20000,
-            'customer_service' => 'Designer CS',
             'deadline' => 'Tomorrow',
             'pickup_status' => 0,
             'source' => 0,
@@ -215,6 +228,6 @@ class CashieringTest extends TestCase
         $response = $this->actingAs($user)->get("/orders/{$invoice->id}/receipt");
         $response->assertStatus(200);
         $response->assertSee('Alice Customer');
-        $response->assertSee('ALJA DIGIPRINT');
+        $response->assertSee(config('brand.fullname', 'ALJA DIGIPRINT'));
     }
 }
