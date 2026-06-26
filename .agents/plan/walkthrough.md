@@ -324,5 +324,14 @@ Verify the correct operation using the following steps:
   - Refactored [LegacyMigrationTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/LegacyMigrationTest.php) to mark legacy migration tests as skipped unconditionally.
   - Refactored [BranchAuthorizationAndScopingTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/BranchAuthorizationAndScopingTest.php) to clean up deprecated database columns (`dp_paid`, `settlement_amount`, `customer_service`) from assertions and creation logs.
   - Refactored unit tests [InventoryServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/InventoryServiceTest.php) and [PricingServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/PricingServiceTest.php) to utilize proper UUID strings and the new consolidated database attributes schema, avoiding any foreign key constraints violations.
+  - Fixed syntax errors inside multiple Blade view components:
+    - [dropdown-link.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/dropdown-link.blade.php) (corrected broken `$attributes->merge` arrow syntax split).
+    - [text-input.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/text-input.blade.php) (corrected broken `$attributes->merge` arrow syntax split).
+    - [primary-button.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/primary-button.blade.php) (unified `$attributes->merge` line split).
+    - [brand-logo.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/brand-logo.blade.php) (unified `$attributes->merge` line split).
+    - [brand-dots.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/brand-dots.blade.php) (unified `$attributes->merge` line split).
+    - [brand-stripe.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/brand-stripe.blade.php) (unified `$attributes->merge` line split).
+    - [update-profile-information-form.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/profile/update-profile-information-form.blade.php) (resolved split `@if` directive blocks).
+
 
 
