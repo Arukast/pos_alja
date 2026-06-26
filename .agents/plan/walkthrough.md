@@ -47,3 +47,13 @@ We have refactored the entire application to extract hardcoded brand strings, vi
 * Visual styles compile correctly under the Tailwind CSS v4 compiler setup.
 * All component files render correctly without server-side Blade execution errors.
 * Multi-branch printed invoices and job tickets successfully output dynamic data, securing correct store and branch representations.
+
+### Fixes for Compiled View Syntax Errors
+* **Ternary Operator syntax error fixed:** Corrected an incomplete ternary expression inside the `@php` block of `resources/views/components/brand-dots.blade.php` (`$dotClass = $size === 'md' ? 'w-3 h-3 rounded-sm' : 'w-2 h-2 rounded-sm';`). Previously, the condition check `$size === 'md' ?` was truncated, causing PHP ParseErrors on any page compiling this template.
+* **Component attribute syntax errors fixed:**
+  * Fixed [dropdown-link.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/dropdown-link.blade.php) where `$attributes->merge` was split across a line break (`$attributes-` and `>merge`), throwing `unexpected token ">"` parse exceptions.
+  * Fixed [text-input.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/text-input.blade.php) where the attributes expression was malformed (`{{ $attributes- />merge(...) }}`).
+* **Unified multi-line ternary statements:** Unified split ternary expressions onto single lines in [designer.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/designer.blade.php), [manager.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/manager.blade.php), and [production.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/production.blade.php) to prevent compilation/parser errors.
+* **Removed comments inside @props directives:** Stripped multiline and inline PHP comments from all new component `@props` declarations (specifically in `brand-glow-blobs.blade.php`, `brand-header-banner.blade.php`, `brand-logo.blade.php`, and `brand-dots.blade.php`). This prevents the Blade compiler's regex parser from breaking, ensuring properties like `$mode` and `$theme` are successfully recognized and assigned.
+* **Simplified PHP block comment in receipt view:** Cleaned up the multiline comment inside the `@php` block in `resources/views/orders/receipt.blade.php` to prevent PHP parse/compilation errors.
+

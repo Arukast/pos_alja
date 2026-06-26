@@ -107,13 +107,10 @@
                     <div
                         class="border-gray-250 dark:bg-surface-600 dark:divide-surface-300/30 max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-lg border bg-white shadow-lg dark:border-gray-700/50"
                     >
-                        @forelse ($customers as $c) {{-- Use Js::from() to
-                        safely JSON-encode the name inside HTML attributes --}}
-                        {{-- This prevents apostrophes/special chars from
-                        breaking the wire:click JS call --}}
+                        @forelse ($customers as $c)
                         <button
                             type="button"
-                            wire:click="selectCustomer({{ $c->id }}, {{ \Illuminate\Support\Js::from($c->name) }})"
+                            wire:click="selectCustomer({{ $c->id }})"
                             class="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 hover:bg-teal-50 dark:text-gray-200 dark:hover:bg-teal-950/20"
                         >
                             {{ $c->name }} ({{ $c->phone ?: 'No Phone' }}) -
@@ -761,9 +758,8 @@
                                 Job Ticket
                             </a>
                         </td>
-                        @empty
                     </tr>
-
+                    @empty
                     <tr>
                         <td
                             colspan="6"

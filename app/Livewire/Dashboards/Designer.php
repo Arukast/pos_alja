@@ -97,10 +97,10 @@ class Designer extends Component
         $this->deadline = now()->addDay()->format('Y-m-d\TH:i');
     }
 
-    public function selectCustomer(int $id, string $name): void
+    public function selectCustomer(int $id): void
     {
         $this->customerId = (string) $id;
-        $this->customerSearch = $name;
+        $this->customerSearch = Customer::find($id)->name ?? '';
     }
 
     public function updatedCustomerSearch(): void

@@ -1,4 +1,4 @@
-@props([ 'mode' => 'app', // 'app' or 'guest' ]) @if ($mode === 'guest')
+@props([ 'mode' => 'app', ]) @if ($mode === 'guest')
 <!-- Background Glow Blobs — Brand-inspired ambient lighting -->
 <div
     class="bg-brand-primary animate-glow-pulse pointer-events-none absolute top-[-15%] left-[-5%] h-[550px] w-[550px] rounded-full opacity-0 blur-[150px] dark:opacity-[0.12]"

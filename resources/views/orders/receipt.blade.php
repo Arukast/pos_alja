@@ -149,9 +149,8 @@
 
             <!-- Summary list -->
             <div class="space-y-1.5 font-sans text-[10px] font-medium">
-                @php // Pre-discount total = sum of all line-item subtotals
-                (always stored clean, before invoice-level discount)
-                $preDiscountTotal = $invoice->orders->sum('subtotal'); @endphp
+                @php $preDiscountTotal = $invoice->orders->sum('subtotal');
+                @endphp
                 <div
                     class="flex justify-between font-mono text-[11px] font-bold"
                 >

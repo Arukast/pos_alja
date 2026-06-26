@@ -1,5 +1,4 @@
-@props([ 'type' => 'short', /* 'short' (ALJAPOS) or 'full' (ALJA Digital
-Printing) */ 'size' => 'md', /* 'sm', 'md', 'lg' */ ]) @php $brandName =
+@props([ 'type' => 'short', 'size' => 'md', ]) @php $brandName =
 config('brand.name', 'ALJA'); $brandSubname = config('brand.subname', 'POS');
 $brandFullname = config('brand.fullname', 'ALJA Digital Printing'); $sizeClasses
 = [ 'sm' => 'text-sm font-bold tracking-wide text-gray-800 dark:text-white',

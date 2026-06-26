@@ -1,4 +1,4 @@
-@props([ 'size' => 'sm', /* 'sm' or 'md' */ ]) @php $dotClass = 'w-3 h-3
+@props([ 'size' => 'sm', ]) @php $dotClass = $size === 'md' ? 'w-3 h-3
 rounded-sm' : 'w-2 h-2 rounded-sm'; $gapClass = $size === 'md' ? 'gap-1.5' :
 'gap-1'; @endphp
 
