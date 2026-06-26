@@ -5,9 +5,9 @@
         </h2>
 
         <p class="mt-1 text-sm text-gray-400">
-            @if (in_array(auth()->user()->role, ['owner', 'manager'])) {{
-            __("Update your account's profile information and email address.")
-            }} @else {{ __("View your account's profile information.") }} @endif
+            {{ in_array(auth()->user()->role, ['owner', 'manager']) ? __("Update
+            your account's profile information and email address.") : __("View
+            your account's profile information.") }}
         </p>
     </header>
 
