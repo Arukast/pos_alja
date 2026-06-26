@@ -2,7 +2,10 @@
 
 namespace Tests\Unit;
 
+use App\Models\Branch;
+use App\Models\Machine;
 use App\Models\Material;
+use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -14,18 +17,18 @@ class InventoryServiceTest extends TestCase
 
     private InventoryService $inventoryService;
 
+    private string $branchId;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->inventoryService = new InventoryService;
 
         // Seed branch
-        DB::table('branches')->insert([
-            'id' => 1,
+        $branch = Branch::create([
             'name' => 'Main Branch',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
+        $this->branchId = $branch->id;
     }
 
     /**
@@ -34,9 +37,8 @@ class InventoryServiceTest extends TestCase
     public function test_add_stock_adjusts_material_and_writes_ledger(): void
     {
         // 1. Seed base material
-        DB::table('materials')->insert([
-            'id' => 1,
-            'branch_id' => 1,
+        $material = Material::create([
+            'branch_id' => $this->branchId,
             'name' => 'Chromo Paper',
             'category' => 'lembar',
             'type' => 'kertas',
@@ -46,24 +48,20 @@ class InventoryServiceTest extends TestCase
             'sold_stock' => 10,
             'wasted_stock' => 5,
             'remaining_stock' => 85, // 100 - 10 - 5
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
-
-        $material = Material::find(1);
 
         // 2. Add stock
         $this->inventoryService->addStock($material, 50.0, 'Purchased new sheets');
 
         // 3. Assert material stock counts updated
-        $updatedMaterial = Material::find(1);
+        $updatedMaterial = Material::find($material->id);
         $this->assertEquals(85.0, $updatedMaterial->initial_stock); // sisa stock before
         $this->assertEquals(50.0, $updatedMaterial->added_stock);
         $this->assertEquals(135.0, $updatedMaterial->current_stock); // 85 + 50
         $this->assertEquals(120.0, $updatedMaterial->remaining_stock); // 135 - 10 - 5
 
         // 4. Assert ledger log written
-        $ledger = DB::table('stock_ledgers')->where('material_id', 1)->first();
+        $ledger = DB::table('stock_ledgers')->where('material_id', $material->id)->first();
         $this->assertNotNull($ledger);
         $this->assertEquals(85.0, $ledger->initial_stock);
         $this->assertEquals(50.0, $ledger->added_stock);
@@ -76,9 +74,8 @@ class InventoryServiceTest extends TestCase
      */
     public function test_log_waste_adjusts_material_and_writes_ledger(): void
     {
-        DB::table('materials')->insert([
-            'id' => 2,
-            'branch_id' => 1,
+        $material = Material::create([
+            'branch_id' => $this->branchId,
             'name' => 'Vinyl Matte Banner',
             'category' => 'meter',
             'type' => 'outdoor',
@@ -88,33 +85,41 @@ class InventoryServiceTest extends TestCase
             'sold_stock' => 40,
             'wasted_stock' => 10,
             'remaining_stock' => 150,
-            'created_at' => now(),
-            'updated_at' => now(),
+        ]);
+
+        $designer = User::factory()->create(['role' => 'designer']);
+        $operator = User::factory()->create(['role' => 'production']);
+        $machine = Machine::create([
+            'branch_id' => $this->branchId,
+            'name' => 'Roland Soljet',
         ]);
 
         // Log waste
         $this->inventoryService->logWaste([
-            'material_id' => 2,
+            'material_id' => $material->id,
             'quantity' => 12.5,
-            'machine_id' => 0,
-            'designer_name' => 'Designer CS',
-            'operator_name' => 'Operator Print',
+            'machine_id' => $machine->id,
+            'designer_id' => $designer->id,
+            'operator_id' => $operator->id,
             'notes' => 'Tinta luntur',
         ]);
 
         // Assert wasted log created
-        $waste = DB::table('wasted_materials')->where('material_id', 2)->first();
+        $waste = DB::table('wasted_materials')->where('material_id', $material->id)->first();
         $this->assertNotNull($waste);
         $this->assertEquals(12.5, $waste->quantity);
         $this->assertEquals('Tinta luntur', $waste->notes);
+        $this->assertEquals($designer->id, $waste->designer_id);
+        $this->assertEquals($operator->id, $waste->operator_id);
+        $this->assertEquals($machine->id, $waste->machine_id);
 
         // Assert material stock counts updated
-        $updatedMaterial = Material::find(2);
+        $updatedMaterial = Material::find($material->id);
         $this->assertEquals(22.5, $updatedMaterial->wasted_stock); // 10 + 12.5
         $this->assertEquals(137.5, $updatedMaterial->remaining_stock); // 200 - 40 - 22.5
 
         // Assert ledger log written
-        $ledger = DB::table('stock_ledgers')->where('material_id', 2)->first();
+        $ledger = DB::table('stock_ledgers')->where('material_id', $material->id)->first();
         $this->assertNotNull($ledger);
         $this->assertEquals(22.5, $ledger->wasted_stock);
         $this->assertEquals(137.5, $ledger->remaining_stock);

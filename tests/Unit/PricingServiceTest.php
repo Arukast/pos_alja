@@ -3,9 +3,15 @@
 namespace Tests\Unit;
 
 use App\Exceptions\PricingMatrixNotFoundException;
+use App\Models\Attribute;
+use App\Models\Branch;
+use App\Models\Machine;
+use App\Models\Material;
+use App\Models\PricingMatrix;
+use App\Models\Product;
 use App\Services\PricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class PricingServiceTest extends TestCase
@@ -14,17 +20,16 @@ class PricingServiceTest extends TestCase
 
     private PricingService $pricingService;
 
+    private Branch $branch;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->pricingService = new PricingService;
 
         // Setup base branch
-        DB::table('branches')->insert([
-            'id' => 1,
+        $this->branch = Branch::create([
             'name' => 'Test Branch',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
     }
 
@@ -33,57 +38,53 @@ class PricingServiceTest extends TestCase
      */
     public function test_merchandise_pricing_calculation(): void
     {
-        // 1. Seed product, material, machine, finishing using DB::table to force exact IDs
-        DB::table('products')->insert(['id' => 1, 'name' => 'Merchandise', 'created_at' => now(), 'updated_at' => now()]);
-        DB::table('materials')->insert([
-            'id' => 10,
+        // 1. Seed product, material, machine, finishing using models
+        $product = Product::create([
+            'name' => 'Merchandise',
+            'pricing_type' => 'unit',
+        ]);
+
+        $material = Material::create([
+            'branch_id' => $this->branch->id,
             'name' => 'Mug Putih',
             'category' => 'pcs',
             'type' => 'Merchandise',
-            'branch_id' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
-        DB::table('machines')->insert([
-            'id' => 20,
+
+        $machine = Machine::create([
+            'branch_id' => $this->branch->id,
             'name' => 'Mug Press Machine',
-            'branch_id' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
-        DB::table('finishings')->insert([
-            'id' => 30,
+
+        $finishing = Attribute::create([
+            'branch_id' => $this->branch->id,
             'name' => 'No Finishing',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'type' => 'finishing',
         ]);
 
         // 2. Seed pricing matrix
-        DB::table('pricing_matrices')->insert([
-            'id' => 100,
-            'branch_id' => 1,
-            'product_id' => 1,
-            'material_id' => 10,
-            'machine_id' => 20,
-            'finishing_id' => 30,
-            'cut_id' => 0,
-            'display_id' => 0,
+        $matrix = PricingMatrix::create([
+            'branch_id' => $this->branch->id,
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'machine_id' => $machine->id,
+            'finishing_id' => $finishing->id,
+            'cut_id' => null,
+            'display_id' => null,
             'sides' => 1,
             'finishing_sides' => 0,
             'price' => 15000,
             'cost' => 8000,
             'profit' => 7000,
             'min_qty' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         // 3. Test dynamic calculation
         $result = $this->pricingService->calculateQuote([
-            'product_id' => 1,
-            'material_id' => 10,
-            'machine_id' => 20,
-            'finishing_id' => 30,
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'machine_id' => $machine->id,
+            'finishing_id' => $finishing->id,
             'sides' => 1,
             'finishing_sides' => 0,
             'quantity' => 5,
@@ -102,56 +103,51 @@ class PricingServiceTest extends TestCase
      */
     public function test_large_format_banner_pricing_calculation(): void
     {
-        // Force Product ID to 5 (Large Format)
-        DB::table('products')->insert(['id' => 5, 'name' => 'Large Format', 'created_at' => now(), 'updated_at' => now()]);
-        DB::table('materials')->insert([
-            'id' => 11,
+        $product = Product::create([
+            'name' => 'Large Format',
+            'pricing_type' => 'area',
+        ]);
+
+        $material = Material::create([
+            'branch_id' => $this->branch->id,
             'name' => 'Flexy 340gr',
             'category' => 'meter',
             'type' => 'outdoor',
-            'branch_id' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        DB::table('machines')->insert([
-            'id' => 21,
-            'name' => 'Flora Outdoor',
-            'branch_id' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        DB::table('finishings')->insert([
-            'id' => 31,
-            'name' => 'Mata Ayam',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
-        DB::table('pricing_matrices')->insert([
-            'id' => 101,
-            'branch_id' => 1,
-            'product_id' => 5,
-            'material_id' => 11,
-            'machine_id' => 21,
-            'finishing_id' => 31,
-            'cut_id' => 0,
-            'display_id' => 0,
+        $machine = Machine::create([
+            'branch_id' => $this->branch->id,
+            'name' => 'Flora Outdoor',
+        ]);
+
+        $finishing = Attribute::create([
+            'branch_id' => $this->branch->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        PricingMatrix::create([
+            'branch_id' => $this->branch->id,
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'machine_id' => $machine->id,
+            'finishing_id' => $finishing->id,
+            'cut_id' => null,
+            'display_id' => null,
             'sides' => 1,
             'finishing_sides' => 0,
             'price' => 25000, // Rp. 25,000 per square meter
             'cost' => 12000,  // Rp. 12,000 HPP cost per sq meter
             'profit' => 13000,
             'min_qty' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         // Calculate quote for 3 banners of dimensions 2.0m x 1.5m
         $result = $this->pricingService->calculateQuote([
-            'product_id' => 5,
-            'material_id' => 11,
-            'machine_id' => 21,
-            'finishing_id' => 31,
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'machine_id' => $machine->id,
+            'finishing_id' => $finishing->id,
             'quantity' => 3,
             'width' => 1.5,
             'length' => 2.0,
@@ -170,11 +166,16 @@ class PricingServiceTest extends TestCase
      */
     public function test_throws_exception_when_pricing_matrix_not_found(): void
     {
+        $product = Product::create([
+            'name' => 'Merchandise',
+            'pricing_type' => 'unit',
+        ]);
+
         $this->expectException(PricingMatrixNotFoundException::class);
 
         $this->pricingService->calculateQuote([
-            'product_id' => 999, // Non-existent product category
-            'material_id' => 1,
+            'product_id' => $product->id,
+            'material_id' => (string) Str::uuid(), // Non-existent material UUID
             'quantity' => 10,
         ]);
     }

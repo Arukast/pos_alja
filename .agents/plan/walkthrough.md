@@ -320,4 +320,9 @@ Verify the correct operation using the following steps:
 ### Test Suite Updates (June 2026)
 - Updated [UserManagement.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Admin/UserManagement.php) component parameters, types, and primary owner checks to be compatible with UUID-based schemas.
 - Refactored [InventoryManagementTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/InventoryManagementTest.php), [UserManagementTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/UserManagementTest.php), and [BranchAuthorizationAndScopingTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/BranchAuthorizationAndScopingTest.php) to seed branches without hardcoding integer IDs and dynamically resolve branch UUIDs.
+- **Step 5 Rebuild & Cleanups**:
+  - Refactored [LegacyMigrationTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/LegacyMigrationTest.php) to mark legacy migration tests as skipped unconditionally.
+  - Refactored [BranchAuthorizationAndScopingTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/BranchAuthorizationAndScopingTest.php) to clean up deprecated database columns (`dp_paid`, `settlement_amount`, `customer_service`) from assertions and creation logs.
+  - Refactored unit tests [InventoryServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/InventoryServiceTest.php) and [PricingServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/PricingServiceTest.php) to utilize proper UUID strings and the new consolidated database attributes schema, avoiding any foreign key constraints violations.
+
 
