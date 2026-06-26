@@ -357,7 +357,7 @@ class Designer extends Component
             $count = Invoice::where('created_date', now()->toDateString())
                 ->where('branch_id', $activeBranchId)
                 ->count();
-            $sequence = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+            $sequence = str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT);
             $invoiceNumber = "INV-{$branchPrefix}-{$todayDate}-{$sequence}";
 
             $invoice = Invoice::create([

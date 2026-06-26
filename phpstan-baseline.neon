@@ -43,31 +43,8 @@ parameters:
 			path: app/Livewire/Dashboards/Production.php
 
 		-
-			message: '#^Cannot access property \$material_id on array\<mixed\>\|object\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Livewire/Dashboards/Production.php
-
-		-
-			message: '#^Cannot access property \$product_id on array\<mixed\>\|object\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Livewire/Dashboards/Production.php
-
-		-
 			message: '#^Relation ''invoice'' is not found in App\\Models\\Order model\.$#'
 			identifier: larastan.relationExistence
 			count: 7
 			path: app/Livewire/Dashboards/Production.php
 
-		-
-			message: '#^Relation ''machine'' is not found in App\\Models\\WastedMaterial model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Livewire/Dashboards/Production.php
-
-		-
-			message: '#^Relation ''material'' is not found in App\\Models\\WastedMaterial model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Livewire/Dashboards/Production.php

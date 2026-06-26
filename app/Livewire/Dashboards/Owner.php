@@ -155,28 +155,26 @@ class Owner extends Component
         $svgPath = 'M 0 80 L 300 80'; // Default flat line
         $svgPoints = [];
 
-        if (count($sparklinePoints) > 0) {
-            $maxVal = max($sparklinePoints);
-            $minVal = min($sparklinePoints);
-            $valRange = $maxVal - $minVal;
+        $maxVal = max($sparklinePoints);
+        $minVal = min($sparklinePoints);
+        $valRange = $maxVal - $minVal;
 
-            if ($maxVal > 0 || $minVal < 0) {
-                $svgPoints = [];
-                $count = count($sparklinePoints);
-                for ($idx = 0; $idx < $count; $idx++) {
-                    // Guard: if only 1 point, avoid divide-by-zero ($count - 1 = 0)
-                    $x = $count > 1 ? (int) (($idx / ($count - 1)) * 300) : 150;
-                    $val = $sparklinePoints[$idx];
-                    if ($valRange > 0) {
-                        $y = 80 - (int) ((($val - $minVal) / $valRange) * 60);
-                    } else {
-                        $y = 50;
-                    }
-                    $svgPoints[] = "$x $y";
+        if ($maxVal > 0 || $minVal < 0) {
+            $svgPoints = [];
+            $count = count($sparklinePoints);
+            for ($idx = 0; $idx < $count; $idx++) {
+                // Guard: if only 1 point, avoid divide-by-zero ($count - 1 = 0)
+                $x = $count > 1 ? (int) (($idx / ($count - 1)) * 300) : 150;
+                $val = $sparklinePoints[$idx];
+                if ($valRange > 0) {
+                    $y = 80 - (int) ((($val - $minVal) / $valRange) * 60);
+                } else {
+                    $y = 50;
                 }
-                if ($svgPoints) {
-                    $svgPath = 'M '.implode(' L ', $svgPoints);
-                }
+                $svgPoints[] = "$x $y";
+            }
+            if ($svgPoints) {
+                $svgPath = 'M '.implode(' L ', $svgPoints);
             }
         }
 
