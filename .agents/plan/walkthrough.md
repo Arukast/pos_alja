@@ -331,7 +331,7 @@ Verify the correct operation using the following steps:
     - [brand-logo.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/brand-logo.blade.php) (declared `$mergedAttributes` in `@php` block).
     - [brand-dots.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/brand-dots.blade.php) (declared `$mergedAttributes` in `@php` block).
     - [brand-stripe.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/brand-stripe.blade.php) (declared `$mergedAttributes` in `@php` block).
-    - [update-profile-information-form.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/profile/update-profile-information-form.blade.php) (resolved split `@if` directive blocks).
+    - [update-profile-information-form.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/profile/update-profile-information-form.blade.php) (resolved split `@if` directive blocks and added `<!-- prettier-ignore -->` around the unverified email paragraph to prevent compiler syntax errors).
 
 
 

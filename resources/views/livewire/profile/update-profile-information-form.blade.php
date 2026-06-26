@@ -58,15 +58,15 @@
             \Illuminate\Contracts\Auth\MustVerifyEmail && !
             auth()->user()->hasVerifiedEmail())
             <div>
+                <!-- prettier-ignore -->
                 <p class="mt-2 text-sm text-gray-300">
-                    {{ __('Your email address is unverified.') }} @if
-                    (in_array(auth()->user()->role, ['owner', 'manager']))
+                    {{ __('Your email address is unverified.') }}
+                    @if (in_array(auth()->user()->role, ['owner', 'manager']))
                     <button
                         wire:click.prevent="sendVerification"
                         class="text-brand-secondary hover:text-brand-secondary-light focus:ring-brand-primary/50 focus:ring-offset-surface-700 rounded-md text-sm underline focus:ring-2 focus:ring-offset-2 focus:outline-none"
                     >
-                        {{ __('Click here to re-send the verification email.')
-                        }}
+                        {{ __('Click here to re-send the verification email.') }}
                     </button>
                     @endif
                 </p>
