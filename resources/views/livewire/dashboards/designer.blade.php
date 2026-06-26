@@ -504,8 +504,8 @@
                             Rp. {{ number_format($calcSubtotal) }}
                         </div>
                         <div class="mt-0.5 text-[10px] text-gray-400">
-                            Unit Price: Rp. {{ number_format($calcPrice) }} @if
-                            ($productId == 5) / m² @endif
+                            Unit Price: Rp. {{ number_format($calcPrice) }}{{
+                            $productId == 5 ? ' / m²' : '' }}
                         </div>
                         @elseif ($calcError)
                         <span
