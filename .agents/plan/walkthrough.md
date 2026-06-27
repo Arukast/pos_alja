@@ -117,3 +117,25 @@ docker exec -it -w /var/www/html/pos_alja local-php83 php artisan test
 ### Manual Verification
 1. **Re-seed**: `php artisan migrate:fresh --seed` (verifies PostgreSQL schema compatibility).
 2. **Order Flow**: Intake order $\rightarrow$ cashier DP payment log $\rightarrow$ production print start (stock deduction) & completion $\rightarrow$ final cash settlement.
+
+---
+
+## Phase 1 — CSS Design System (Completed)
+
+We have rebuilt the CSS design system in `resources/css/app.css` to support both light and dark themes using Tailwind CSS v4 variables, and cleaned up legacy styles.
+
+### Changes Made
+
+- **Theme Surface Tokens**: Registered light mode surface tokens inside `@theme` in [app.css](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/css/app.css):
+  - `--color-light-bg: #F8F9FA`
+  - `--color-light-surface: #FFFFFF`
+  - `--color-light-surface-2: #F1F3F5`
+  - `--color-light-border: #E5E7EB`
+  - `--color-light-text: #111827`
+  - `--color-light-muted: #6B7280`
+- **Removed Helper Classes**: Cleaned up the file by removing obsolete custom CSS classes that can be expressed as Tailwind CSS v4 utility classes:
+  - `:root` wrapper with duplicate `--brand-*` definitions.
+  - `.brand-stripe`, `.brand-dot`, and `.brand-dot-*` colors.
+  - `.brand-glass`, `.brand-focus-ring`, gradients, and `.hover-lift`.
+- **Dynamic Scrollbars & Selection**: Refactored `::selection` and scrollbars to dynamically adapt to light/dark themes and reference `@theme` properties.
+- **Dynamic Accent Stripes**: Refactored `.brand-stripe-bar` to reference dynamic `@theme` variables so it responds correctly to runtime branding color overrides.

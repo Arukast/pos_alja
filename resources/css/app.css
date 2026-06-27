@@ -18,6 +18,14 @@
     --color-brand-accent-hover: #E6DA00;
     --color-brand-dark: #1A1A2E;
 
+    /* Light surfaces */
+    --color-light-bg: #F8F9FA;
+    --color-light-surface: #FFFFFF;
+    --color-light-surface-2: #F1F3F5;
+    --color-light-border: #E5E7EB;
+    --color-light-text: #111827;
+    --color-light-muted: #6B7280;
+
     /* Dark surfaces */
     --color-surface-900: #0A0A16;
     --color-surface-800: #0D0D1A;
@@ -58,103 +66,49 @@
     }
 }
 
-:root {
-    --brand-primary: #E91E8C;
-    --brand-secondary: #00AEEF;
-    --brand-accent: #FFF200;
-    --brand-dark: #1A1A2E;
-    --brand-surface: #0D0D1A;
-}
-
-/* Smooth scrollbar for the brand dark theme */
+/* Smooth scrollbar styling */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #0D0D1A;
+    background: var(--color-surface-800);
 }
 ::-webkit-scrollbar-thumb {
-    background: #2A2A48;
+    background: var(--color-surface-300);
     border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #3D3D65;
+    background: var(--color-surface-100);
+}
+
+:root:not(.dark) ::-webkit-scrollbar-track {
+    background: var(--color-light-surface-2);
+}
+:root:not(.dark) ::-webkit-scrollbar-thumb {
+    background: var(--color-light-border);
+}
+:root:not(.dark) ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-light-muted);
 }
 
 /* Selection color matching brand */
 ::selection {
-    background: rgba(233, 30, 140, 0.3);
+    background: color-mix(in srgb, var(--color-brand-primary) 30%, transparent);
     color: #fff;
 }
-
-/* Brand color strip — signature branding element from the logo */
-.brand-stripe {
-    display: flex;
-    gap: 3px;
-}
-.brand-stripe::before,
-.brand-stripe::after {
-    content: none;
-}
-.brand-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    display: inline-block;
-}
-.brand-dot-primary { background: var(--brand-primary); }
-.brand-dot-secondary { background: var(--brand-secondary); }
-.brand-dot-accent { background: var(--brand-accent); }
-.brand-dot-dark { background: var(--brand-dark); }
 
 /* Horizontal brand bar accent — thin decorative line */
 .brand-stripe-bar {
     height: 3px;
     background: linear-gradient(
         to right,
-        var(--brand-primary) 0%,
-        var(--brand-primary) 33%,
-        var(--brand-accent) 33%,
-        var(--brand-accent) 55%,
-        var(--brand-secondary) 55%,
-        var(--brand-secondary) 100%
+        var(--color-brand-primary) 0%,
+        var(--color-brand-primary) 33%,
+        var(--color-brand-accent) 33%,
+        var(--color-brand-accent) 55%,
+        var(--color-brand-secondary) 55%,
+        var(--color-brand-secondary) 100%
     );
     border-radius: 2px;
-}
-
-/* Glassmorphism card style */
-.brand-glass {
-    background: rgba(20, 20, 40, 0.75);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(233, 30, 140, 0.08);
-}
-
-/* Smooth focus ring for inputs */
-.brand-focus-ring:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.25);
-    border-color: var(--brand-primary);
-}
-
-/* Brand gradient text */
-.text-brand-gradient {
-    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Brand gradient background */
-.bg-brand-gradient {
-    background: linear-gradient(135deg, var(--brand-primary), #B0185F, var(--brand-secondary));
-}
-
-/* Subtle hover lift */
-.hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.hover-lift:hover {
-    transform: translateY(-2px);
 }
