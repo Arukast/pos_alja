@@ -71,9 +71,8 @@
   - Real-time updates rely on the `App\Events\OrderUpdated` event class broadcasting to a public channel named `orders`. Livewire dashboards should register Echo listeners (e.g., `protected $listeners = ['echo:orders,OrderUpdated' => '$refresh'];`) to automatically update UI states.
 
 ## Development, Coding, & DevOps Best Practices
-- **Environment Configurations:**
-  - Never hardcode or commit `.env` file credentials.
-  - When introducing new configurations or environment dependencies, append placeholder entries to `.env.example` immediately.
+- **Code Modularity:** Keep the code modular and aim for smaller modules/files. From the start, split the code into small, focused files rather than putting everything in one place. Smaller files are easier to read, easier to fix, and easier for AI to work with in future sessions without getting confused.
+- **Environment Variables & Secrets:** Always use environment variables. API keys, passwords, and tokens should never appear directly in your code. Store them in a `.env` file using environment variables, and make sure that file is listed in `.gitignore` so it never gets pushed to GitHub accidentally. Never hardcode or commit `.env` file credentials. When introducing new configurations or environment dependencies, append placeholder entries to `.env.example` immediately.
 - **Database Migrations:**
   - Never edit migrations that have already been merged/deployed. Create a new migration file for schema adjustments.
   - Keep all schema definitions dialect-agnostic so they execute cleanly on both SQLite (for tests) and PostgreSQL (for production).
