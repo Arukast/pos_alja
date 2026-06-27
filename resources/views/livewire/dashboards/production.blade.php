@@ -1,5 +1,4 @@
-<div class="space-y-6 text-gray-200">
-    <!-- Header banner -->
+<div class="text-light-text space-y-6 dark:text-gray-100">
     <!-- Header banner -->
     <x-brand-header-banner
         badge="Print Shop Production Line"
@@ -11,13 +10,13 @@
     <!-- Alert Feedback -->
     @if ($showSuccessAlert)
     <div
-        class="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 backdrop-blur-sm transition"
+        class="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-50 p-4 text-emerald-800 backdrop-blur-sm transition dark:bg-emerald-950/20 dark:text-emerald-300"
         x-data="{ show: true }"
         x-show="show"
     >
         <div class="flex items-center">
             <svg
-                class="mr-2 h-5 w-5 text-emerald-400"
+                class="mr-2 h-5 w-5 text-emerald-500 dark:text-emerald-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -29,14 +28,15 @@
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 ></path>
             </svg>
-            <span class="text-sm font-semibold text-emerald-300"
+            <span
+                class="text-sm font-bold text-emerald-700 dark:text-emerald-300"
                 >{{ $successMessage }}</span
             >
         </div>
         <button
             type="button"
             @click="show = false; $wire.set('showSuccessAlert', false)"
-            class="text-emerald-400 hover:text-emerald-300"
+            class="text-emerald-500 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
         >
             <svg
                 class="h-4 w-4"
@@ -59,20 +59,24 @@
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat 1 -->
         <div
-            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Jobs in Queue
                     </p>
-                    <h3 class="mt-1 text-2xl font-bold text-white">
+                    <h3
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
+                    >
                         {{ $queueCount }} Jobs
                     </h3>
                 </div>
-                <div class="bg-brand-accent/10 rounded-lg p-3 text-orange-500">
+                <div
+                    class="bg-brand-accent/10 text-brand-primary rounded-xl p-3"
+                >
                     <svg
                         class="h-6 w-6"
                         fill="none"
@@ -89,10 +93,10 @@
                 </div>
             </div>
             <div
-                class="mt-4 flex items-center text-xs font-semibold text-orange-500"
+                class="text-brand-primary mt-4 flex items-center text-xs font-bold"
             >
                 <span
-                    class="mr-2 h-2 w-2 animate-ping rounded-full bg-orange-500"
+                    class="bg-brand-primary mr-2 h-2 w-2 animate-ping rounded-full"
                 ></span>
                 <span>Ready to assign to printers</span>
             </div>
@@ -100,21 +104,23 @@
 
         <!-- Stat 2 -->
         <div
-            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Currently Printing
                     </p>
-                    <h3 class="mt-1 text-2xl font-bold text-white">
+                    <h3
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
+                    >
                         {{ $printingCount }} active
                     </h3>
                 </div>
                 <div
-                    class="rounded-lg bg-amber-50 p-3 text-amber-500 dark:bg-amber-900/20"
+                    class="rounded-xl bg-amber-100/50 p-3 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
                 >
                     <svg
                         class="h-6 w-6"
@@ -132,7 +138,7 @@
                 </div>
             </div>
             <div
-                class="mt-4 flex items-center text-xs font-semibold text-amber-500"
+                class="mt-4 flex items-center text-xs font-bold text-amber-500"
             >
                 <span>Active print machine runs</span>
             </div>
@@ -140,20 +146,24 @@
 
         <!-- Stat 3 -->
         <div
-            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Jobs Completed (Today)
                     </p>
-                    <h3 class="mt-1 text-2xl font-bold text-white">
+                    <h3
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
+                    >
                         {{ $completedToday }} jobs
                     </h3>
                 </div>
-                <div class="rounded-lg bg-emerald-500/10 p-3 text-emerald-400">
+                <div
+                    class="rounded-xl bg-emerald-500/10 p-3 text-emerald-500 dark:text-emerald-400"
+                >
                     <svg
                         class="h-6 w-6"
                         fill="none"
@@ -170,7 +180,7 @@
                 </div>
             </div>
             <div
-                class="mt-4 flex items-center text-xs font-semibold text-emerald-400"
+                class="mt-4 flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400"
             >
                 <span>Finished today</span>
             </div>
@@ -178,20 +188,24 @@
 
         <!-- Stat 4 -->
         <div
-            class="hover-lift shadow-card hover:shadow-card-hover dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Failed / Waste logged
                     </p>
-                    <h3 class="mt-1 text-2xl font-bold text-white">
+                    <h3
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
+                    >
                         {{ number_format($wasteToday, 2) }} units
                     </h3>
                 </div>
-                <div class="rounded-lg bg-red-500/10 p-3 text-red-400">
+                <div
+                    class="text-red-550 dark:text-red-405 rounded-xl bg-red-500/10 p-3"
+                >
                     <svg
                         class="h-6 w-6"
                         fill="none"
@@ -208,7 +222,7 @@
                 </div>
             </div>
             <div
-                class="mt-4 flex items-center text-xs font-semibold text-red-400"
+                class="text-red-550 dark:text-red-405 mt-4 flex items-center text-xs font-bold"
             >
                 <span>Loss registered today</span>
             </div>
@@ -219,19 +233,21 @@
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Live print queue board -->
         <div
-            class="shadow-card dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm lg:col-span-2"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm lg:col-span-2"
         >
             <div class="mb-4 flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-bold text-white">
+                    <h3
+                        class="text-light-text text-lg font-bold dark:text-white"
+                    >
                         Active Print Tickets
                     </h3>
-                    <p class="mt-1 text-xs text-gray-500">
+                    <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
                         Work orders prioritized by job deadline.
                     </p>
                 </div>
                 <span
-                    class="rounded-full bg-orange-50 px-3 py-1 text-[10px] font-bold tracking-wider text-orange-600 uppercase dark:bg-orange-950/30 dark:text-orange-400"
+                    class="bg-brand-primary/10 text-brand-primary rounded-full px-3 py-1 text-[10px] font-bold tracking-wider uppercase"
                     >Queue: {{ $queueCount + $printingCount }} active</span
                 >
             </div>
@@ -239,31 +255,37 @@
             <div class="space-y-3.5">
                 @forelse ($activeOrders as $oItem)
                 <div
-                    class="bg-gray-50/20/10 flex flex-col gap-3 rounded-lg border border-gray-100 p-4 transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between dark:border-gray-700/30"
+                    class="bg-light-surface-2/65 dark:bg-surface-700/35 border-light-border dark:border-surface-300/30 flex flex-col gap-3 rounded-xl border p-4 transition-all hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
                 >
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-semibold text-gray-500"
+                            <span
+                                class="text-light-muted text-xs font-bold dark:text-gray-400"
                                 >{{ $oItem->invoice->invoice_number }}</span
                             >
                             <span
-                                class="inline-block rounded bg-cyan-50 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-cyan-600 uppercase dark:bg-cyan-950/30 dark:text-cyan-400"
+                                class="bg-brand-primary/10 text-brand-primary inline-block rounded px-1.5 py-0.5 text-[9px] font-black tracking-wider uppercase"
                             >
                                 CS: {{ $oItem->invoice->designer ?
                                 $oItem->invoice->designer->name : 'N/A' }}
                             </span>
                         </div>
-                        <h4 class="mt-1 text-sm font-bold text-white">
+                        <h4
+                            class="text-light-text mt-1 text-sm font-extrabold dark:text-white"
+                        >
                             {{ $oItem->file_name }}
                         </h4>
-                        <p class="mt-1 text-xs text-gray-400">
+                        <p
+                            class="text-light-muted dark:text-gray-350 mt-1 text-xs leading-relaxed font-semibold"
+                        >
                             Specs: {{ $oItem->notes }}
                         </p>
                         <p
-                            class="mt-0.5 text-[10px] font-semibold text-gray-400"
+                            class="text-light-muted mt-1.5 text-[10px] font-bold dark:text-gray-400"
                         >
                             Quantity:
-                            <span class="text-gray-800"
+                            <span
+                                class="text-light-text font-extrabold dark:text-white"
                                 >{{ $oItem->quantity }}</span
                             >
                             &bull; Client: {{ $oItem->invoice->customer->name }}
@@ -274,14 +296,15 @@
                     >
                         @if ($oItem->status == 0)
                         <button
+                            id="btn-start-print-{{ $oItem->id }}"
                             wire:click="startOrderProduction('{{ $oItem->id }}')"
-                            class="rounded border border-orange-500 px-3 py-1.5 text-xs font-bold text-orange-500 transition hover:bg-orange-500 hover:text-white"
+                            class="border-brand-primary text-brand-primary hover:bg-brand-primary/10 cursor-pointer rounded-xl border px-4 py-2 text-xs font-bold transition"
                         >
                             Start Printing
                         </button>
                         @else
                         <span
-                            class="mr-2 inline-flex animate-pulse items-center text-[10px] font-bold text-amber-500"
+                            class="mr-2 inline-flex animate-pulse items-center text-[10px] font-extrabold text-amber-500"
                         >
                             <span
                                 class="mr-1.5 h-1.5 w-1.5 rounded-full bg-amber-500"
@@ -289,8 +312,9 @@
                             Printing...
                         </span>
                         <button
+                            id="btn-complete-print-{{ $oItem->id }}"
                             wire:click="completeOrderProduction('{{ $oItem->id }}')"
-                            class="rounded bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-600"
+                            class="hover:bg-emerald-650 cursor-pointer rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition"
                         >
                             Mark Done
                         </button>
@@ -298,7 +322,9 @@
                     </div>
                 </div>
                 @empty
-                <div class="py-6 text-center text-xs text-gray-500">
+                <div
+                    class="text-light-muted dark:text-gray-550 py-8 text-center text-xs font-semibold"
+                >
                     No jobs currently in the print queue.
                 </div>
                 @endforelse
@@ -307,26 +333,38 @@
 
         <!-- Log failed prints / quick actions -->
         <div
-            class="shadow-card dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm lg:col-span-1"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
         >
-            <h3 class="text-lg font-bold text-white">Log Print Waste</h3>
-            <p class="mt-1 mb-4 text-xs text-gray-500">
+            <h3 class="text-light-text text-lg font-bold dark:text-white">
+                Log Print Waste
+            </h3>
+            <p class="text-light-muted mt-1 mb-4 text-xs dark:text-gray-400">
                 Report failed runs to adjust inventory.
             </p>
 
             <form wire:submit.prevent="logWaste" class="space-y-4 text-xs">
                 <div>
-                    <label class="mb-1 block font-semibold text-gray-500"
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
                         >Select Material *</label
                     >
                     <select
+                        id="waste-material-id"
                         wire:model="materialId"
-                        class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-xs transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
                         required
                     >
-                        <option value="">-- Choose Material --</option>
+                        <option
+                            value=""
+                            class="text-light-muted dark:text-gray-400"
+                        >
+                            -- Choose Material --
+                        </option>
                         @foreach ($allMaterials as $m)
-                        <option value="{{ $m->id }}">
+                        <option
+                            value="{{ $m->id }}"
+                            class="text-light-text font-semibold dark:text-gray-200"
+                        >
                             {{ $m->name }} {{ $m->dimensions ?
                             "({$m->dimensions})" : '' }}
                         </option>
@@ -335,78 +373,109 @@
                 </div>
 
                 <div>
-                    <label class="mb-1 block font-semibold text-gray-500"
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
                         >Printer Machine</label
                     >
                     <select
+                        id="waste-machine-id"
                         wire:model="machineId"
-                        class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-xs transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
                     >
-                        <option value="">-- Choose Machine --</option>
+                        <option
+                            value=""
+                            class="text-light-muted dark:text-gray-400"
+                        >
+                            -- Choose Machine --
+                        </option>
                         @foreach ($allMachines as $mac)
-                        <option value="{{ $mac->id }}">{{ $mac->name }}</option>
+                        <option
+                            value="{{ $mac->id }}"
+                            class="text-light-text font-semibold dark:text-gray-200"
+                        >
+                            {{ $mac->name }}
+                        </option>
                         @endforeach
                     </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="mb-1 block font-semibold text-gray-500"
+                        <label
+                            class="text-light-muted mb-1 block font-bold dark:text-gray-400"
                             >Wasted Qty *</label
                         >
                         <input
+                            id="waste-quantity"
                             type="number"
                             step="any"
                             min="0.01"
                             wire:model="quantity"
                             placeholder="e.g. 1.5 or 5"
-                            class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
+                            class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-xs transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
                             required
                         />
                     </div>
                     <div>
-                        <label class="mb-1 block font-semibold text-gray-500"
+                        <label
+                            class="text-light-muted mb-1 block font-bold dark:text-gray-400"
                             >Dimensions (m)</label
                         >
                         <input
+                            id="waste-dimensions"
                             type="text"
                             wire:model="dimensions"
                             placeholder="e.g. 2x1"
-                            class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
+                            class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-xs transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label class="mb-1 block font-semibold text-gray-500"
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
                         >Responsible Designer</label
                     >
                     <select
+                        id="waste-designer-id"
                         wire:model="designerId"
-                        class="dark:border-surface-200 dark:bg-surface-600/50 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-xs transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
                     >
-                        <option value="">-- Choose Designer --</option>
+                        <option
+                            value=""
+                            class="text-light-muted dark:text-gray-400"
+                        >
+                            -- Choose Designer --
+                        </option>
                         @foreach ($designersList as $des)
-                        <option value="{{ $des->id }}">{{ $des->name }}</option>
+                        <option
+                            value="{{ $des->id }}"
+                            class="text-light-text dark:text-gray-200"
+                        >
+                            {{ $des->name }}
+                        </option>
                         @endforeach
                     </select>
                 </div>
 
                 <div>
-                    <label class="mb-1 block font-semibold text-gray-500"
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
                         >Failure Reason *</label
                     >
                     <textarea
+                        id="waste-notes"
                         wire:model="notes"
                         placeholder="e.g. Paper jam, head clog, color mismatch..."
-                        class="dark:border-surface-200 dark:bg-surface-600/50 h-16 w-full resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 text-white placeholder-gray-400 focus:border-red-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-500"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary h-16 w-full resize-none rounded-xl border bg-white px-3 py-2 transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
                         required
                     ></textarea>
                 </div>
 
                 <button
+                    id="btn-submit-waste"
                     type="submit"
-                    class="w-full rounded-lg bg-red-500 py-2 font-bold text-white shadow-sm transition hover:bg-red-600"
+                    class="w-full cursor-pointer rounded-xl bg-red-500 py-2.5 font-bold text-white shadow-sm transition hover:bg-red-600"
                 >
                     Submit Material Waste Log
                 </button>
@@ -416,63 +485,88 @@
 
     <!-- LOG OF RECENT FAILURES/WASTED MATERIALS -->
     <div
-        class="shadow-card dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm"
+        class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
     >
-        <h3 class="mb-4 text-lg font-bold text-white">
+        <h3 class="text-light-text mb-4 text-lg font-bold dark:text-white">
             Recent Logged Print Failures
         </h3>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs text-gray-400">
+        <div
+            class="border-light-border dark:border-surface-300/30 overflow-x-auto rounded-2xl border"
+        >
+            <table
+                class="text-light-muted dark:text-gray-450 w-full text-left text-xs"
+            >
                 <thead
-                    class="text-gray-650 dark:bg-surface-600/80 bg-gray-100 font-semibold tracking-wider uppercase dark:text-gray-400"
+                    class="bg-light-surface-2 dark:bg-surface-500 text-light-muted text-xs font-semibold tracking-wider uppercase dark:text-gray-400"
                 >
                     <tr>
-                        <th class="px-3 py-2.5">Date</th>
-                        <th class="px-3 py-2.5">Material</th>
-                        <th class="px-3 py-2.5">Printer</th>
-                        <th class="px-3 py-2.5">Wasted Qty</th>
-                        <th class="px-3 py-2.5">Designer</th>
-                        <th class="px-3 py-2.5">Operator</th>
-                        <th class="px-3 py-2.5">Reason</th>
+                        <th class="rounded-l-xl px-4 py-3">Date</th>
+                        <th class="px-4 py-3">Material</th>
+                        <th class="px-4 py-3">Printer</th>
+                        <th class="px-4 py-3">Wasted Qty</th>
+                        <th class="px-4 py-3">Designer</th>
+                        <th class="px-4 py-3">Operator</th>
+                        <th class="rounded-r-xl px-4 py-3 text-right">
+                            Reason
+                        </th>
                     </tr>
                 </thead>
                 <tbody
-                    class="dark:divide-surface-300/30 divide-y divide-gray-100"
+                    class="divide-light-border dark:divide-surface-300/30 divide-y text-[11px]"
                 >
                     @forelse ($recentWaste as $wItem)
                     <tr
-                        class="dark:hover:bg-surface-400/20 text-red-600 transition-all hover:bg-gray-50"
+                        class="even:bg-light-bg/50 dark:even:bg-surface-500/20 hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 text-red-600 transition-colors duration-150 dark:text-red-400"
                     >
-                        <td class="px-3 py-3">{{ $wItem->logged_at }}</td>
-                        <td class="px-3 py-3 font-semibold text-white">
-                            {{ $wItem->material->name }} {{
-                            $wItem->material->dimensions ?
-                            "({$wItem->material->dimensions})" : '' }}
+                        <td class="px-4 py-3 font-semibold">
+                            {{ $wItem->logged_at }}
                         </td>
-                        <td class="px-3 py-3 font-medium text-gray-700">
+                        <td
+                            class="text-light-text px-4 py-3 font-bold dark:text-white"
+                        >
+                            {{ $wItem->material->name }} @if
+                            ($wItem->material->dimensions)
+                            <span
+                                class="text-light-muted text-[9px] font-semibold dark:text-gray-400"
+                                >({{ $wItem->material->dimensions }})</span
+                            >
+                            @endif
+                        </td>
+                        <td
+                            class="text-light-text px-4 py-3 font-bold dark:text-gray-300"
+                        >
                             {{ $wItem->machine ? $wItem->machine->name : 'N/A'
                             }}
                         </td>
-                        <td class="px-3 py-3 font-bold">
+                        <td class="px-4 py-3 font-extrabold">
                             {{ $wItem->quantity }} {{ $wItem->material->category
                             }}
                         </td>
-                        <td class="px-3 py-3 text-gray-400">
+                        <td
+                            class="text-light-muted px-4 py-3 font-semibold dark:text-gray-400"
+                        >
                             {{ $wItem->designer ? $wItem->designer->name : '-'
                             }}
                         </td>
-                        <td class="px-3 py-3 font-semibold text-gray-400">
+                        <td
+                            class="text-light-muted px-4 py-3 font-bold dark:text-gray-400"
+                        >
                             {{ $wItem->operator ? $wItem->operator->name : '-'
                             }}
                         </td>
-                        <td class="px-3 py-3 font-medium italic">
+                        <td
+                            class="px-4 py-3 text-right leading-relaxed font-medium italic"
+                        >
                             {{ $wItem->notes }}
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="py-4 text-center text-gray-500">
+                        <td
+                            colspan="7"
+                            class="text-light-muted py-6 text-center font-semibold dark:text-gray-500"
+                        >
                             No print failures logged.
                         </td>
                     </tr>

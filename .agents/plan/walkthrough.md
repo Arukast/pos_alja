@@ -177,4 +177,33 @@ We have rebuilt all 12 shared Blade UI components to be fully compatible with th
 - **Brand Header Banner (`brand-header-banner.blade.php`)**: Cleaned up contrasting gradients in light mode to use a subtle border-matched gradient. Standardized typography colors using `text-light-text` and `text-light-muted`.
 - **Brand Stripe (`brand-stripe.blade.php`)**: Verified as accent element using the `.brand-stripe-bar` CSS class.
 
+---
 
+## Phase 4 — Dashboard Rebuilds (Completed)
+
+We have rebuilt the visual layouts of all 5 role-based dashboards to support the new light/dark mode design system, accessibility contrast guidelines, and the ALJA brand identity.
+
+### Changes Made
+
+- **Owner Dashboard (`owner.blade.php`)**:
+  - Replaced the root layout spacing with high-contrast text sizing (`text-light-text dark:text-gray-100`).
+  - Redesigned branch selector and period controls to adapt cleanly to light and dark modes within the header banner slot.
+  - Standardized financial KPI cards (Omset, HPP, Laba, Expenses), the SVG sparkline margins trend chart, and the Designer Leaderboard.
+  - Standardized the Audit Trail table structure, headers, alternating row colors, and payload codes.
+- **Manager Dashboard (`manager.blade.php`)**:
+  - Rebuilt inventory stock trackers, machinery status cards, and the restocking form.
+  - Updated the restocking forms inputs, selectors, textareas, and submit buttons to be theme-aware.
+  - Standardized the Inventory Ledger and Material Inventory Levels tables, with dynamic red-alert highlight rows for low stock levels.
+  - Rebuilt the drawer expenses card lists.
+- **Cashier Dashboard (`cashier.blade.php`)**:
+  - Redesigned the awaiting checkout queue table, customer pickup queue, and expenses tables.
+  - Updated status badges/pills to match standard color mappings for Paid, Down Payment, and Unpaid states.
+  - Rebuilt the Checkout Modal with proper backdrop-blur overlays, brand gradient stripes, input payment types, bank transfer/QRIS select dropdowns, and calculations previews.
+- **Designer Dashboard (`designer.blade.php`)**:
+  - Redesigned the customer search intake and customer creation form layout.
+  - Styled all Quote Calculator option dropdowns, inputs, and prepress textareas.
+  - Standardized the estimated subtotal block and the pre-queued draft order summary table.
+  - Re-stylized the recently placed invoices list table and job ticket Work Order links.
+- **Production Dashboard (`production.blade.php`)**:
+  - Rebuilt active print queue tickets as readable rows with clear statuses (Pending/Printing), operator badges, and action buttons.
+  - Restyled print waste forms and the failed runs audit tables.

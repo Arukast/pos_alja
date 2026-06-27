@@ -1,11 +1,11 @@
 @php $role = auth()->user()->role; $currentRoute = request()->route() ?
 request()->route()->getName() : ''; $currentTab = request()->query('tab');
-$isActive = function($route, $tab = null) use ($currentRoute, $currentTab) { if
+$isActive = function ($route, $tab = null) use ($currentRoute, $currentTab) { if
 ($currentRoute !== $route) { return false; } if ($route === 'profile') { return
 true; } if ($tab === null) { return empty($currentTab); } return $currentTab ===
 $tab; }; $initials = collect(explode(' ', auth()->user()->name)) ->map(fn($n) =>
-mb_substr($n, 0, 1)) ->take(2) ->join(''); // Reusable desktop navigation item
-builder $navItem = function($label, $route, $tab = null, $iconHtml, $hash =
+mb_substr($n, 0, 1)) ->take(2) ->join(''); /* Reusable desktop navigation item
+builder */ $navItem = function ($label, $route, $tab = null, $iconHtml, $hash =
 null) use ($isActive) { $active = $isActive($route, $tab); $url = route($route,
 array_filter(['tab' => $tab])) . ($hash ?: ''); $activeClass = 'bg-brand-primary
 text-white shadow-glow-primary'; $inactiveClass = 'text-light-muted
@@ -15,10 +15,10 @@ dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; $class = $active
 class=\"{$class} flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all
 duration-300\" title=\"{$label}\">" . $iconHtml . "<" . "span
 x-show=\"sidebarOpen\" x-transition.opacity.duration.300ms class=\"truncate
-text-sm font-semibold\">{$label}<" . "/span><" . "/a>"; }; // Reusable mobile
-navigation item builder $mobileNavItem = function($label, $route, $tab = null,
-$iconHtml, $hash = null) use ($isActive) { $active = $isActive($route, $tab);
-$url = route($route, array_filter(['tab' => $tab])) . ($hash ?: '');
+text-sm font-semibold\">{$label}<" . "/span><" . "/a>"; }; /* Reusable mobile
+navigation item builder */ $mobileNavItem = function ($label, $route, $tab =
+null, $iconHtml, $hash = null) use ($isActive) { $active = $isActive($route,
+$tab); $url = route($route, array_filter(['tab' => $tab])) . ($hash ?: '');
 $activeClass = 'bg-brand-primary text-white shadow-glow-primary'; $inactiveClass
 = 'text-light-muted hover:bg-brand-primary/10 hover:text-brand-primary
 dark:text-gray-300 dark:hover:bg-brand-primary/10

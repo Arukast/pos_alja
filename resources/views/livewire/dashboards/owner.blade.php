@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="text-light-text space-y-6 dark:text-gray-100">
     <!-- Header banner -->
     <x-brand-header-banner
         badge="Executive Suite"
@@ -11,8 +11,9 @@
             <!-- Branch dropdown -->
             <div class="relative">
                 <select
+                    id="branch-selector"
                     wire:model.live="selectedBranchId"
-                    class="block w-40 cursor-pointer appearance-none rounded-xl border-0 bg-white/15 py-1.5 pr-8 pl-3 text-xs font-semibold text-white backdrop-blur-sm focus:ring-2 focus:ring-white/20"
+                    class="border-brand-primary/20 bg-brand-primary/10 text-light-text focus:ring-brand-primary/20 block w-40 cursor-pointer appearance-none rounded-xl border py-1.5 pr-8 pl-3 text-xs font-semibold backdrop-blur-sm focus:ring-2 focus:outline-none dark:border-white/20 dark:bg-white/15 dark:text-white dark:focus:ring-white/20"
                 >
                     <option value="all" class="bg-white text-gray-900">
                         All Branches
@@ -27,7 +28,7 @@
                     @endforeach
                 </select>
                 <div
-                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white"
+                    class="text-light-text pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 dark:text-white"
                 >
                     <svg
                         class="h-4 w-4 fill-current"
@@ -43,23 +44,26 @@
 
             <!-- Period selectors -->
             <div
-                class="flex items-center gap-1.5 rounded-xl bg-white/10 p-1 text-xs font-semibold backdrop-blur-sm"
+                class="bg-brand-primary/10 flex items-center gap-1.5 rounded-xl p-1 text-xs font-semibold backdrop-blur-sm dark:bg-white/10"
             >
                 <button
+                    id="period-daily"
                     wire:click="$set('period', 'Daily')"
-                    class="px-3 py-1.5 rounded-lg transition-all duration-200 {{ $period === 'Daily' ? 'bg-white text-brand-primary shadow-sm' : 'hover:bg-white/10' }}"
+                    class="px-3 py-1.5 rounded-lg transition-all duration-200 {{ $period === 'Daily' ? 'bg-brand-primary text-white dark:bg-white dark:text-brand-primary shadow-sm' : 'text-light-text dark:text-white hover:bg-brand-primary/15 dark:hover:bg-white/10' }}"
                 >
                     Daily
                 </button>
                 <button
+                    id="period-weekly"
                     wire:click="$set('period', 'Weekly')"
-                    class="px-3 py-1.5 rounded-lg transition-all duration-200 {{ $period === 'Weekly' ? 'bg-white text-brand-primary shadow-sm' : 'hover:bg-white/10' }}"
+                    class="px-3 py-1.5 rounded-lg transition-all duration-200 {{ $period === 'Weekly' ? 'bg-brand-primary text-white dark:bg-white dark:text-brand-primary shadow-sm' : 'text-light-text dark:text-white hover:bg-brand-primary/15 dark:hover:bg-white/10' }}"
                 >
                     Weekly
                 </button>
                 <button
+                    id="period-monthly"
                     wire:click="$set('period', 'Monthly')"
-                    class="px-3 py-1.5 rounded-lg transition-all duration-200 {{ $period === 'Monthly' ? 'bg-white text-brand-primary shadow-sm' : 'hover:bg-white/10' }}"
+                    class="px-3 py-1.5 rounded-lg transition-all duration-200 {{ $period === 'Monthly' ? 'bg-brand-primary text-white dark:bg-white dark:text-brand-primary shadow-sm' : 'text-light-text dark:text-white hover:bg-brand-primary/15 dark:hover:bg-white/10' }}"
                 >
                     Monthly
                 </button>
@@ -69,23 +73,26 @@
 
     <!-- Tabs Menu -->
     <div
-        class="dark:border-surface-300/30 mb-2 flex gap-2 border-b border-gray-200"
+        class="dark:border-surface-300/30 border-light-border mb-4 flex gap-2 border-b"
     >
         <button
+            id="tab-finance"
             wire:click="setTab('finance')"
-            class="py-2.5 px-4 text-xs font-semibold border-b-2 transition-all duration-200 {{ $activeTab === 'finance' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-400 hover:text-gray-200' }}"
+            class="py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 {{ $activeTab === 'finance' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-light-muted hover:text-light-text dark:text-gray-400 dark:hover:text-white' }}"
         >
             Financial Overview
         </button>
         <button
+            id="tab-users"
             wire:click="setTab('users')"
-            class="py-2.5 px-4 text-xs font-semibold border-b-2 transition-all duration-200 {{ $activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-400 hover:text-gray-200' }}"
+            class="py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 {{ $activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-light-muted hover:text-light-text dark:text-gray-400 dark:hover:text-white' }}"
         >
             User Management
         </button>
         <button
+            id="tab-audit"
             wire:click="setTab('audit')"
-            class="py-2.5 px-4 text-xs font-semibold border-b-2 transition-all duration-200 {{ $activeTab === 'audit' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-400 hover:text-gray-200' }}"
+            class="py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 {{ $activeTab === 'audit' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-light-muted hover:text-light-text dark:text-gray-400 dark:hover:text-white' }}"
         >
             Audit Trail
         </button>
@@ -96,17 +103,17 @@
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat card 1 -->
         <div
-            class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card hover:shadow-card-hover hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Gross Revenue (Omset)
                     </p>
                     <h3
-                        class="mt-1 text-2xl font-bold text-gray-900 dark:text-white"
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
                     >
                         Rp. {{ number_format($revenue, 0, ',', '.') }}
                     </h3>
@@ -130,7 +137,7 @@
                 </div>
             </div>
             <div
-                class="mt-4 flex items-center text-xs text-emerald-600 dark:text-emerald-400"
+                class="mt-4 flex items-center text-xs font-medium text-emerald-600 dark:text-emerald-400"
             >
                 <svg
                     class="mr-1 h-4 w-4"
@@ -150,23 +157,23 @@
 
             <!-- Cash Distribution Breakdown -->
             <div
-                class="border-gray-150 dark:border-surface-300/30 mt-3 flex flex-wrap items-center justify-between gap-1 border-t pt-3 text-[10px] text-gray-500 dark:text-gray-400"
+                class="border-light-border dark:border-surface-300/30 text-light-muted mt-3 flex flex-wrap items-center justify-between gap-1 border-t pt-3 text-[10px] dark:text-gray-400"
             >
-                <span class="flex items-center gap-1"
+                <span class="flex items-center gap-1 font-semibold"
                     ><span
-                        class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                        class="bg-emerald-550 h-1.5 w-1.5 rounded-full"
                     ></span>
                     Cash: Rp. {{ number_format($cashPayments, 0, ',', '.')
                     }}</span
                 >
-                <span class="flex items-center gap-1"
-                    ><span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                <span class="flex items-center gap-1 font-semibold"
+                    ><span class="bg-blue-550 h-1.5 w-1.5 rounded-full"></span>
                     Transfer: Rp. {{ number_format($transferPayments, 0, ',',
                     '.') }}</span
                 >
-                <span class="flex items-center gap-1"
+                <span class="flex items-center gap-1 font-semibold"
                     ><span
-                        class="h-1.5 w-1.5 rounded-full bg-purple-500"
+                        class="bg-purple-550 h-1.5 w-1.5 rounded-full"
                     ></span>
                     QRIS: Rp. {{ number_format($qrisPayments, 0, ',', '.')
                     }}</span
@@ -176,23 +183,23 @@
 
         <!-- Stat card 2 -->
         <div
-            class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card hover:shadow-card-hover hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Base Cost (HPP)
                     </p>
                     <h3
-                        class="mt-1 text-2xl font-bold text-gray-900 dark:text-white"
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
                     >
                         Rp. {{ number_format($cost, 0, ',', '.') }}
                     </h3>
                 </div>
                 <div
-                    class="bg-brand-accent/10 text-brand-accent rounded-xl p-3"
+                    class="bg-brand-secondary/10 text-brand-secondary rounded-xl p-3"
                 >
                     <svg
                         class="h-6 w-6"
@@ -215,30 +222,32 @@
                     </svg>
                 </div>
             </div>
-            <div class="text-brand-accent/80 mt-4 flex items-center text-xs">
+            <div
+                class="text-light-muted mt-4 flex items-center text-xs font-semibold dark:text-gray-400"
+            >
                 <span>Material & consumable usage</span>
             </div>
         </div>
 
         <!-- Stat card 3 -->
         <div
-            class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card hover:shadow-card-hover hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Net Profit (Laba)
                     </p>
                     <h3
-                        class="mt-1 text-2xl font-bold text-gray-900 dark:text-white"
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
                     >
                         Rp. {{ number_format($profit, 0, ',', '.') }}
                     </h3>
                 </div>
                 <div
-                    class="rounded-xl bg-emerald-500/10 p-3 text-emerald-500 dark:text-emerald-400"
+                    class="text-emerald-550 rounded-xl bg-emerald-500/10 p-3 dark:text-emerald-400"
                 >
                     <svg
                         class="h-6 w-6"
@@ -256,7 +265,7 @@
                 </div>
             </div>
             <div
-                class="mt-4 flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                class="mt-4 flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400"
             >
                 <span
                     >Margin Rate: {{ number_format($marginRate, 1, ',', '.')
@@ -267,23 +276,23 @@
 
         <!-- Stat card 4 -->
         <div
-            class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card hover:shadow-card-hover hover-lift relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
                     <p
-                        class="text-xs font-medium tracking-wider text-gray-500 uppercase"
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
                     >
                         Expenses (Pengeluaran)
                     </p>
                     <h3
-                        class="mt-1 text-2xl font-bold text-gray-900 dark:text-white"
+                        class="text-light-text mt-1 text-2xl font-extrabold dark:text-white"
                     >
                         Rp. {{ number_format($expensesTotal, 0, ',', '.') }}
                     </h3>
                 </div>
                 <div
-                    class="rounded-xl bg-red-500/10 p-3 text-red-500 dark:text-red-400"
+                    class="text-red-550 rounded-xl bg-red-500/10 p-3 dark:text-red-400"
                 >
                     <svg
                         class="h-6 w-6"
@@ -301,7 +310,7 @@
                 </div>
             </div>
             <div
-                class="mt-4 flex items-center text-xs font-semibold text-red-500 dark:text-red-400"
+                class="text-red-550 mt-4 flex items-center text-xs font-bold dark:text-red-400"
             >
                 <span>Operational expenses</span>
             </div>
@@ -312,14 +321,16 @@
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Sales performance Sparkline graph -->
         <div
-            class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm lg:col-span-2"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-2"
         >
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3
+                        class="text-light-text text-lg font-bold dark:text-white"
+                    >
                         Profit Analysis Sparkline
                     </h3>
-                    <p class="mt-1 text-xs text-gray-500">
+                    <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
                         {{ $period === 'Daily' ? 'Last 7 days' : ($period ===
                         'Weekly' ? 'Weekly' : 'Monthly') }} net profit margins
                         trend.
@@ -435,7 +446,7 @@
                         y="50"
                         text-anchor="middle"
                         fill="currentColor"
-                        class="text-xs font-semibold text-gray-400 dark:text-gray-600"
+                        class="text-light-muted text-xs font-semibold dark:text-gray-500"
                     >
                         No sales recorded for this period
                     </text>
@@ -444,7 +455,7 @@
             </div>
 
             <div
-                class="mt-4 flex items-center justify-between text-[11px] font-semibold text-gray-500"
+                class="text-light-muted mt-4 flex items-center justify-between text-[11px] font-bold dark:text-gray-400"
             >
                 @if($period === 'Daily')
                 <span>7 days ago</span>
@@ -466,20 +477,20 @@
 
         <!-- Leaderboard / Staff performance -->
         <div
-            class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md"
         >
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+            <h3 class="text-light-text text-lg font-bold dark:text-white">
                 Designer Leaderboard
             </h3>
-            <p class="mt-1 text-xs text-gray-500">
+            <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
                 Intake metrics and order totals by CS designer.
             </p>
 
-            <div class="mt-4 space-y-4">
+            <div class="mt-4 space-y-3">
                 @forelse($leaders as $index => $leader) @php $colors = [
-                ['bg-brand-primary/15', 'text-brand-primary'],
-                ['bg-brand-secondary/15', 'text-brand-secondary'],
-                ['bg-brand-accent/15', 'text-brand-accent'], ]; $color =
+                ['bg-brand-primary/10', 'text-brand-primary'],
+                ['bg-brand-secondary/10', 'text-brand-secondary'],
+                ['bg-emerald-500/10', 'text-emerald-555'], ]; $color =
                 $colors[$index % count($colors)]; $initials = ''; $words =
                 explode(' ', $leader->name); foreach($words as $w) { $initials
                 .= strtoupper(substr($w, 0, 1)); } $initials = substr($initials,
@@ -488,33 +499,35 @@
                 'M' : 'Rp. ' . number_format($leader->total_value, 0, ',', '.');
                 @endphp
                 <div
-                    class="dark:hover:bg-surface-400/30 flex items-center justify-between rounded-lg p-2.5 transition-colors duration-150 hover:bg-gray-100"
+                    class="hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 flex items-center justify-between rounded-xl p-2.5 transition-colors duration-150"
                 >
                     <div class="flex items-center">
                         <div
-                            class="h-8 w-8 rounded-full {{ $color[0] }} {{ $color[1] }} flex items-center justify-center font-bold text-xs"
+                            class="h-8 w-8 rounded-full {{ $color[0] }} {{ $color[1] }} flex items-center justify-center font-extrabold text-xs"
                         >
                             {{ $initials }}
                         </div>
                         <div class="ml-3">
                             <p
-                                class="text-xs font-bold text-gray-900 dark:text-white"
+                                class="text-light-text text-xs font-bold dark:text-white"
                             >
                                 {{ $leader->name }}
                             </p>
-                            <p class="text-[10px] text-gray-500">
+                            <p
+                                class="text-light-muted text-[10px] dark:text-gray-400"
+                            >
                                 CS & Design Specialist
                             </p>
                         </div>
                     </div>
                     <div class="text-right">
                         <p
-                            class="text-xs font-bold text-gray-900 dark:text-white"
+                            class="text-light-text text-xs font-bold dark:text-white"
                         >
                             {{ $leader->orders_count }} orders
                         </p>
                         <p
-                            class="text-emerald-650 text-[10px] dark:text-emerald-400"
+                            class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400"
                         >
                             {{ $valStr }} val
                         </p>
@@ -522,7 +535,7 @@
                 </div>
                 @empty
                 <div
-                    class="py-8 text-center text-xs text-gray-400 dark:text-gray-600"
+                    class="text-light-muted py-8 text-center text-xs dark:text-gray-500"
                 >
                     No designer metrics for this period.
                 </div>
@@ -531,55 +544,59 @@
         </div>
     </div>
     @elseif ($activeTab === 'users') {{-- Shared UserManagement sub-component
-    handles search, table, CRUD modal & its own alert --}}
+    --}}
     <livewire:admin.user-management mode="owner" />
     @elseif ($activeTab === 'audit')
     <div
-        class="dark:border-surface-300/40 dark:bg-surface-500/60 dark:shadow-card shadow-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm backdrop-blur-sm"
+        class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
     >
         <div class="mb-4 flex items-center justify-between">
             <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                <h3 class="text-light-text text-lg font-bold dark:text-white">
                     System Audit Trail
                 </h3>
-                <p class="mt-1 text-xs text-gray-500">
+                <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
                     Real-time logs of system actions and modifications.
                 </p>
             </div>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs text-gray-400">
+        <div
+            class="border-light-border dark:border-surface-300/30 overflow-x-auto rounded-2xl border"
+        >
+            <table
+                class="text-light-muted dark:text-gray-450 w-full text-left text-xs"
+            >
                 <thead
-                    class="dark:bg-surface-600/80 text-gray-650 bg-gray-100 font-semibold tracking-wider uppercase dark:text-gray-400"
+                    class="bg-light-surface-2 dark:bg-surface-500 text-light-muted text-xs font-semibold tracking-wider uppercase dark:text-gray-400"
                 >
                     <tr>
-                        <th class="rounded-l-lg px-3 py-2.5">Timestamp</th>
-                        <th class="px-3 py-2.5">User</th>
-                        <th class="px-3 py-2.5">Role</th>
-                        <th class="px-3 py-2.5">Action</th>
-                        <th class="px-3 py-2.5">Description</th>
-                        <th class="rounded-r-lg px-3 py-2.5">Payload</th>
+                        <th class="rounded-l-xl px-4 py-3">Timestamp</th>
+                        <th class="px-4 py-3">User</th>
+                        <th class="px-4 py-3">Role</th>
+                        <th class="px-4 py-3">Action</th>
+                        <th class="px-4 py-3">Description</th>
+                        <th class="rounded-r-xl px-4 py-3">Payload</th>
                     </tr>
                 </thead>
                 <tbody
-                    class="dark:divide-surface-300/30 divide-y divide-gray-100 text-[11px]"
+                    class="divide-light-border dark:divide-surface-300/30 divide-y text-[11px]"
                 >
                     @forelse ($activityLogs as $log)
                     <tr
-                        class="dark:hover:bg-surface-400/20 transition-colors duration-150 hover:bg-gray-50"
+                        class="even:bg-light-bg/50 dark:even:bg-surface-500/20 hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 transition-colors duration-150"
                     >
                         <td
-                            class="px-3 py-2.5 font-medium whitespace-nowrap text-gray-500"
+                            class="text-light-muted px-4 py-3 font-medium whitespace-nowrap dark:text-gray-400"
                         >
                             {{ $log->created_at->format('Y-m-d H:i:s') }}
                         </td>
                         <td
-                            class="px-3 py-2.5 font-semibold text-gray-900 dark:text-white"
+                            class="text-light-text px-4 py-3 font-bold dark:text-white"
                         >
                             {{ $log->username }}
                         </td>
-                        <td class="px-3 py-2.5">
+                        <td class="px-4 py-3">
                             <span
                                 class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
                                 {{ $log->role === 'owner' ? 'bg-red-500/10 text-red-500' : '' }}
@@ -593,22 +610,22 @@
                             </span>
                         </td>
                         <td
-                            class="text-brand-secondary px-3 py-2.5 font-bold uppercase"
+                            class="text-brand-secondary px-4 py-3 font-bold uppercase"
                         >
                             {{ $log->action }}
                         </td>
                         <td
-                            class="px-3 py-2.5 text-gray-700 dark:text-gray-300"
+                            class="text-light-text px-4 py-3 font-medium dark:text-gray-300"
                         >
                             {{ $log->description }}
                         </td>
                         <td
-                            class="max-w-xs truncate px-3 py-2.5 text-gray-500"
+                            class="text-light-muted max-w-xs truncate px-4 py-3 dark:text-gray-400"
                             title="{{ json_encode($log->payload) }}"
                         >
                             @if ($log->payload)
                             <code
-                                class="dark:bg-surface-600 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-600 dark:text-gray-300"
+                                class="bg-light-surface-2 dark:bg-surface-500 text-light-text border-light-border rounded border px-1.5 py-0.5 text-[10px] dark:border-transparent dark:text-gray-300"
                             >
                                 {{ json_encode($log->payload) }}
                             </code>
@@ -619,7 +636,7 @@
                     <tr>
                         <td
                             colspan="6"
-                            class="py-8 text-center text-gray-400 dark:text-gray-600"
+                            class="text-light-muted py-8 text-center dark:text-gray-500"
                         >
                             No activity logs recorded.
                         </td>
