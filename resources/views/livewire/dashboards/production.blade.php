@@ -525,13 +525,9 @@
                         <td
                             class="text-light-text px-4 py-3 font-bold dark:text-white"
                         >
-                            {{ $wItem->material->name }} @if
-                            ($wItem->material->dimensions)
-                            <span
-                                class="text-light-muted text-[9px] font-semibold dark:text-gray-400"
-                                >({{ $wItem->material->dimensions }})</span
-                            >
-                            @endif
+                            {{ $wItem->material->name }} {{
+                            $wItem->material->dimensions ? '(' .
+                            $wItem->material->dimensions . ')' : '' }}
                         </td>
                         <td
                             class="text-light-text px-4 py-3 font-bold dark:text-gray-300"
