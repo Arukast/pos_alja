@@ -513,9 +513,13 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                         @click="
                             if (document.documentElement.classList.contains('dark')) {
                                 document.documentElement.classList.remove('dark');
+                                document.documentElement.classList.add('light');
+                                document.documentElement.setAttribute('data-theme', 'light');
                                 localStorage.setItem('theme', 'light');
                             } else {
                                 document.documentElement.classList.add('dark');
+                                document.documentElement.classList.remove('light');
+                                document.documentElement.setAttribute('data-theme', 'dark');
                                 localStorage.setItem('theme', 'dark');
                             }
                         "
@@ -526,28 +530,20 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     >
                         <svg
                             class="hidden h-5 w-5 shrink-0 dark:block"
-                            fill="none"
+                            fill="currentColor"
                             viewBox="0 0 24 24"
-                            stroke="currentColor"
                         >
                             <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M14 12a2 2 0 11-4 0 2 2 0 014 0z"
+                                d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM6.161 5.1a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 1 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59 1.59a.75.75 0 1 1-1.06-1.06l1.59-1.59a.75.75 0 0 1 1.06 0ZM12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5ZM3 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm14.25 0a.75.75 0 0 1 .75-.75H20.25a.75.75 0 0 1 0 1.5H18A.75.75 0 0 1 17.25 12Zm-11.089 5.64a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59-1.59a.75.75 0 1 1 1.06-1.06l1.59 1.59a.75.75 0 0 1-1.06 0ZM12 17.25a.75.75 0 0 1 .75.75V20.25a.75.75 0 0 1-1.5 0V18a.75.75 0 0 1 .75-.75Z"
                             />
                         </svg>
                         <svg
                             class="block h-5 w-5 shrink-0 dark:hidden"
-                            fill="none"
+                            fill="currentColor"
                             viewBox="0 0 24 24"
-                            stroke="currentColor"
                         >
                             <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z"
                             />
                         </svg>
                     </button>
@@ -843,9 +839,13 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                         @click="
                             if (document.documentElement.classList.contains('dark')) {
                                 document.documentElement.classList.remove('dark');
+                                document.documentElement.classList.add('light');
+                                document.documentElement.setAttribute('data-theme', 'light');
                                 localStorage.setItem('theme', 'light');
                             } else {
                                 document.documentElement.classList.add('dark');
+                                document.documentElement.classList.remove('light');
+                                document.documentElement.setAttribute('data-theme', 'dark');
                                 localStorage.setItem('theme', 'dark');
                             }
                         "
@@ -856,28 +856,20 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     >
                         <svg
                             class="hidden h-5 w-5 shrink-0 dark:block"
-                            fill="none"
+                            fill="currentColor"
                             viewBox="0 0 24 24"
-                            stroke="currentColor"
                         >
                             <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M14 12a2 2 0 11-4 0 2 2 0 014 0z"
+                                d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM6.161 5.1a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 1 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59 1.59a.75.75 0 1 1-1.06-1.06l1.59-1.59a.75.75 0 0 1 1.06 0ZM12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5ZM3 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm14.25 0a.75.75 0 0 1 .75-.75H20.25a.75.75 0 0 1 0 1.5H18A.75.75 0 0 1 17.25 12Zm-11.089 5.64a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59-1.59a.75.75 0 1 1 1.06-1.06l1.59 1.59a.75.75 0 0 1-1.06 0ZM12 17.25a.75.75 0 0 1 .75.75V20.25a.75.75 0 0 1-1.5 0V18a.75.75 0 0 1 .75-.75Z"
                             />
                         </svg>
                         <svg
                             class="block h-5 w-5 shrink-0 dark:hidden"
-                            fill="none"
+                            fill="currentColor"
                             viewBox="0 0 24 24"
-                            stroke="currentColor"
                         >
                             <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z"
                             />
                         </svg>
                     </button>

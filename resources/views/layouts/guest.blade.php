@@ -9,17 +9,24 @@
             {{ config('brand.fullname', 'ALJA Digital Printing') }} - Sign In
         </title>
 
-        <!-- Theme script to prevent flash of wrong theme -->
+        <!-- Theme script to prevent flash of wrong theme (defaults to light mode) -->
         <script>
-            if (
-                localStorage.getItem('theme') === 'light' ||
-                (!('theme' in localStorage) &&
-                    window.matchMedia('(prefers-color-scheme: light)').matches)
-            ) {
-                document.documentElement.classList.remove('dark');
-            } else {
-                document.documentElement.classList.add('dark');
+            function applyTheme() {
+                if (localStorage.getItem('theme') === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                    document.documentElement.setAttribute(
+                        'data-theme',
+                        'light'
+                    );
+                }
             }
+            applyTheme();
+            document.addEventListener('livewire:navigated', applyTheme);
         </script>
 
         <!-- Fonts -->

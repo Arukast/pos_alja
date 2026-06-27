@@ -339,16 +339,19 @@ To maintain a clean database schema history and speed up development rebuilds:
 
 ---
 
-## PHPStan / Larastan Analysis Fixes (Completed)
+## Theme Configuration & Toggle Fixes (Completed)
 
-We resolved the static analysis errors reported by PHPStan:
+We resolved the theme initialization, toggle, and icon bugs:
 
-1. **Relation and Property Warnings**:
-   - Added explicit return type declarations (`BelongsTo`, `HasMany`) to all relation methods in [StockLedger.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/StockLedger.php) and [Pricing.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Pricing.php).
-   - This allows Larastan to accurately discover relation existence and properties (such as the `material` relation on `StockLedger` and `product` relation on `Pricing`).
+1. **Tailwind CSS v4 Dark Mode Custom Variant**:
+   - Added `@custom-variant dark (&:where(.dark, .dark *));` to [app.css](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/css/app.css) to support class-based selector dark mode in Tailwind v4. Previously, Tailwind CSS v4 defaulted to media-query based dark mode, causing manual class toggles to have no effect.
 
-2. **Unreachable Code and Unused Method warnings**:
-   - Commented out the unused helper method `parseDate()` and the unreachable migration logic in [MigrateLegacyData.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Console/Commands/MigrateLegacyData.php) using standard block comments.
-   - This satisfies PHPStan's dead code analysis and method usage rules while preserving the legacy migration logic for database schema references.
+2. **Default Theme State Initialization**:
+   - Updated the inline theme script in [app.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/layouts/app.blade.php) and [guest.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/layouts/guest.blade.php) to default to light mode if no theme preference exists in `localStorage`.
+   - Set the default state explicitly using both classes (`light` / `dark`) and attributes (`data-theme="light"` / `data-theme="dark"`).
+
+3. **Theme Toggle and Sun Icon Fixes**:
+   - Fixed the toggle handlers in [navigation.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/layout/navigation.blade.php) (desktop and mobile) to toggle both the `dark`/`light` classes and the `data-theme` attribute.
+   - Repaired the malformed/corrupted SVG path for the sun icon (light mode icon) in both the desktop and mobile toggles with the correct, standard Heroicon sun path.
 
 

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/forms";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source "../../resources/views/**/*.blade.php";
 @source "../../resources/js/**/*.js";
 
