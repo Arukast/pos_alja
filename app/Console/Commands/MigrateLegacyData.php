@@ -23,9 +23,7 @@ class MigrateLegacyData extends Command
      */
     protected $description = 'Migrate historical data from the legacy MariaDB database to PostgreSQL';
 
-    /**
-     * Parse date value to a clean Y-m-d format or null.
-     */
+    /*
     private function parseDate($value)
     {
         if (empty($value) || $value === '0000-00-00' || $value === '0000-00-00 00:00:00' || $value === '0' || $value === '-') {
@@ -37,6 +35,7 @@ class MigrateLegacyData extends Command
             return null;
         }
     }
+    */
 
     /**
      * Execute the console command.
@@ -47,6 +46,7 @@ class MigrateLegacyData extends Command
 
         return 1;
 
+        /*
         $this->info('Starting migration from legacy MariaDB to PostgreSQL...');
 
         // Disable foreign key checks for clean batch imports depending on the driver
@@ -452,5 +452,6 @@ class MigrateLegacyData extends Command
         $this->info('Stock ledgers migrated: '.$migratedStockCount);
 
         $this->info('All legacy data successfully migrated to PostgreSQL!');
+        */
     }
 }

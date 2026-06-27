@@ -337,3 +337,18 @@ To maintain a clean database schema history and speed up development rebuilds:
 >        app/Exceptions/PricingMatrixNotFoundException.php
 > ```
 
+---
+
+## PHPStan / Larastan Analysis Fixes (Completed)
+
+We resolved the static analysis errors reported by PHPStan:
+
+1. **Relation and Property Warnings**:
+   - Added explicit return type declarations (`BelongsTo`, `HasMany`) to all relation methods in [StockLedger.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/StockLedger.php) and [Pricing.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Pricing.php).
+   - This allows Larastan to accurately discover relation existence and properties (such as the `material` relation on `StockLedger` and `product` relation on `Pricing`).
+
+2. **Unreachable Code and Unused Method warnings**:
+   - Commented out the unused helper method `parseDate()` and the unreachable migration logic in [MigrateLegacyData.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Console/Commands/MigrateLegacyData.php) using standard block comments.
+   - This satisfies PHPStan's dead code analysis and method usage rules while preserving the legacy migration logic for database schema references.
+
+
