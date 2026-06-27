@@ -10,39 +10,24 @@ null) use ($isActive) { $active = $isActive($route, $tab); $url = route($route,
 array_filter(['tab' => $tab])) . ($hash ?: ''); $activeClass = 'bg-brand-primary
 text-white shadow-glow-primary'; $inactiveClass = 'text-light-muted
 hover:bg-brand-primary/10 hover:text-brand-primary dark:text-gray-300
-dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; return "
-<a
-    href="{$url}"
-    wire:navigate
-    class="&quot; . ($active ? $activeClass : $inactiveClass) . &quot; flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300"
-    title="{$label}"
->
-    {$iconHtml}
-    <span
-        x-show="sidebarOpen"
-        x-transition.opacity.duration.300ms
-        class="truncate text-sm font-semibold"
-        >{$label}</span
-    >
-</a>
-"; }; // Reusable mobile navigation item builder $mobileNavItem =
-function($label, $route, $tab = null, $iconHtml, $hash = null) use ($isActive) {
-$active = $isActive($route, $tab); $url = route($route, array_filter(['tab' =>
-$tab])) . ($hash ?: ''); $activeClass = 'bg-brand-primary text-white
-shadow-glow-primary'; $inactiveClass = 'text-light-muted
-hover:bg-brand-primary/10 hover:text-brand-primary dark:text-gray-300
-dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; return "
-<a
-    href="{$url}"
-    wire:navigate
-    @click="mobileOpen = false"
-    class="&quot; . ($active ? $activeClass : $inactiveClass) . &quot; flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300"
-    title="{$label}"
->
-    {$iconHtml}
-    <span class="truncate text-sm font-semibold">{$label}</span>
-</a>
-"; }; // SVG Icons $icons = [ 'dashboard' => '<svg
+dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; $class = $active
+? $activeClass : $inactiveClass; return "<" . "a href=\"{$url}\" wire:navigate
+class=\"{$class} flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all
+duration-300\" title=\"{$label}\">" . $iconHtml . "<" . "span
+x-show=\"sidebarOpen\" x-transition.opacity.duration.300ms class=\"truncate
+text-sm font-semibold\">{$label}<" . "/span><" . "/a>"; }; // Reusable mobile
+navigation item builder $mobileNavItem = function($label, $route, $tab = null,
+$iconHtml, $hash = null) use ($isActive) { $active = $isActive($route, $tab);
+$url = route($route, array_filter(['tab' => $tab])) . ($hash ?: '');
+$activeClass = 'bg-brand-primary text-white shadow-glow-primary'; $inactiveClass
+= 'text-light-muted hover:bg-brand-primary/10 hover:text-brand-primary
+dark:text-gray-300 dark:hover:bg-brand-primary/10
+dark:hover:text-brand-primary'; $class = $active ? $activeClass :
+$inactiveClass; return "<" . "a href=\"{$url}\" wire:navigate
+@click=\"mobileOpen = false\" class=\"{$class} flex items-center gap-3
+rounded-xl px-3 py-2.5 transition-all duration-300\" title=\"{$label}\">" .
+$iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
+"/span><" . "/a>"; }; // SVG Icons $icons = [ 'dashboard' => '<svg
     class="h-5 w-5 shrink-0"
     fill="none"
     viewBox="0 0 24 24"

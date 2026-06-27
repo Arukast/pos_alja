@@ -156,3 +156,25 @@ We have rebuilt the layout shell and navigation header, transitioning the applic
 - **Role-Based Navigation Menus**: Implemented menu structures for all 5 roles (`owner`, `manager`, `cashier`, `designer`, `production`) exactly as mapped in the master design plan.
 - **Aesthetic and UX Enhancements**: Added dynamic theme switching, smooth transitions, initials-based user avatar, and hover tooltips for all navigation items.
 
+---
+
+## Phase 3 — Shared Components (Completed)
+
+We have rebuilt all 12 shared Blade UI components to be fully compatible with the new light/dark mode design system and the ALJA brand identity.
+
+### Changes Made
+
+- **Modal Component (`modal.blade.php`)**: Added the `<x-brand-stripe />` component to the top edge of the modal panel for consistent branding. Standardized the backdrop styling with `bg-black/50 backdrop-blur-sm` and borders with `border-light-border dark:border-surface-300/50`.
+- **Primary Button (`primary-button.blade.php`)**: Made focus ring-offset theme-aware (`focus:ring-offset-light-bg dark:focus:ring-offset-surface-800`).
+- **Secondary Button (`secondary-button.blade.php`)**: Redesigned to use the brand's secondary Cyan color (`bg-brand-secondary hover:bg-brand-secondary-hover`) and secondary glow (`shadow-glow-secondary`). Added theme-aware focus ring offsets.
+- **Danger Button (`danger-button.blade.php`)**: Retained standard red background styling but made the focus ring-offset theme-aware.
+- **Text Input (`text-input.blade.php`)**: Standardized inputs to use light-border and surface tokens: `border-light-border dark:border-surface-300/50 bg-white dark:bg-surface-500 text-light-text dark:text-gray-100 placeholder-light-muted dark:placeholder-gray-400`.
+- **Input Label (`input-label.blade.php`)**: Switched label colors to use `text-light-text dark:text-gray-300`.
+- **Input Error (`input-error.blade.php`)**: Re-stylized error messages to use higher contrast red: `text-red-600 dark:text-red-400 text-xs font-medium`.
+- **Dropdown (`dropdown.blade.php`)**: Updated default content classes to use the light mode border token (`border-light-border dark:border-surface-300/50`), removed the redundant ring style, and wrapped content in a `rounded-xl overflow-hidden` container.
+- **Dropdown Link (`dropdown-link.blade.php`)**: Made link hover and focus text/background colors theme-aware (`text-light-text dark:text-gray-300 hover:bg-brand-primary/10 hover:text-brand-primary`).
+- **Brand Logo (`brand-logo.blade.php`)**: Added support for configured image logos (`config('brand.logo')`) with size-appropriate heights (`sm`/`md`/`lg`), falling back to the standard brand dots and text style.
+- **Brand Header Banner (`brand-header-banner.blade.php`)**: Cleaned up contrasting gradients in light mode to use a subtle border-matched gradient. Standardized typography colors using `text-light-text` and `text-light-muted`.
+- **Brand Stripe (`brand-stripe.blade.php`)**: Verified as accent element using the `.brand-stripe-bar` CSS class.
+
+

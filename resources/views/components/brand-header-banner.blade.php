@@ -1,30 +1,30 @@
 @props([ 'badge' => '', 'title' => '', 'description' => '', 'theme' => 'owner',
 ]) @php $gradients = [ 'owner' => 'from-brand-primary/10 to-brand-primary/5
-border border-brand-primary/20 text-gray-900 dark:text-white dark:border-none
+border border-brand-primary/20 text-light-text dark:text-white dark:border-none
 dark:from-brand-primary dark:via-[#B0185F] dark:to-surface-700', 'manager' =>
 'from-brand-secondary/15 to-brand-secondary/5 border border-brand-secondary/20
-text-gray-900 dark:text-white dark:border-none dark:from-brand-secondary
-dark:via-[#0088BB] dark:to-surface-700', 'cashier' => 'from-cyan-100 to-blue-50
-border border-cyan-200 text-gray-900 dark:text-white dark:border-none
-dark:from-cyan-600 dark:to-blue-700', 'designer' => 'from-teal-100 to-emerald-50
-border border-teal-200 text-gray-900 dark:text-white dark:border-none
-dark:from-teal-600 dark:to-emerald-700', 'production' =>
-'from-brand-secondary/15 to-brand-secondary/5 border border-brand-secondary/20
-text-gray-900 dark:text-white dark:border-none dark:from-brand-secondary
-dark:via-[#0088BB] dark:to-surface-700', ]; $badgeBackgrounds = [ 'owner' =>
-'bg-brand-primary/10 text-brand-primary dark:bg-white/15 dark:text-white',
-'manager' => 'bg-brand-secondary/10 text-brand-secondary dark:bg-white/15
-dark:text-white', 'cashier' => 'bg-cyan-200 text-cyan-800 dark:bg-white/20
-dark:text-white', 'designer' => 'bg-teal-200 text-teal-800 dark:bg-white/20
-dark:text-white', 'production' => 'bg-brand-secondary/10 text-brand-secondary
-dark:bg-white/20 dark:text-white', ]; $descriptionTextColors = [ 'owner' =>
-'text-gray-600 dark:text-white/70', 'manager' => 'text-gray-600
-dark:text-white/70', 'cashier' => 'text-blue-800/80 dark:text-cyan-100',
-'designer' => 'text-emerald-800/80 dark:text-white/70', 'production' =>
-'text-gray-600 dark:text-white/70', ]; $gradientClass = $gradients[$theme] ??
-$gradients['owner']; $badgeBg = $badgeBackgrounds[$theme] ??
-$badgeBackgrounds['owner']; $descTextColor = $descriptionTextColors[$theme] ??
-'text-gray-600 dark:text-white/70'; @endphp
+text-light-text dark:text-white dark:border-none dark:from-brand-secondary
+dark:via-[#0088BB] dark:to-surface-700', 'cashier' => 'from-cyan-100/60
+to-blue-50/60 border border-cyan-200/60 text-light-text dark:text-white
+dark:border-none dark:from-cyan-600 dark:to-blue-700', 'designer' =>
+'from-teal-100/60 to-emerald-50/60 border border-teal-200/60 text-light-text
+dark:text-white dark:border-none dark:from-teal-600 dark:to-emerald-700',
+'production' => 'from-brand-secondary/15 to-brand-secondary/5 border
+border-brand-secondary/20 text-light-text dark:text-white dark:border-none
+dark:from-brand-secondary dark:via-[#0088BB] dark:to-surface-700', ];
+$badgeBackgrounds = [ 'owner' => 'bg-brand-primary/10 text-brand-primary
+dark:bg-white/15 dark:text-white', 'manager' => 'bg-brand-secondary/10
+text-brand-secondary dark:bg-white/15 dark:text-white', 'cashier' =>
+'bg-cyan-200 text-cyan-800 dark:bg-white/20 dark:text-white', 'designer' =>
+'bg-teal-200 text-teal-800 dark:bg-white/20 dark:text-white', 'production' =>
+'bg-brand-secondary/10 text-brand-secondary dark:bg-white/20 dark:text-white',
+]; $descriptionTextColors = [ 'owner' => 'text-light-muted dark:text-white/70',
+'manager' => 'text-light-muted dark:text-white/70', 'cashier' =>
+'text-light-muted dark:text-cyan-100', 'designer' => 'text-light-muted
+dark:text-white/70', 'production' => 'text-light-muted dark:text-white/70', ];
+$gradientClass = $gradients[$theme] ?? $gradients['owner']; $badgeBg =
+$badgeBackgrounds[$theme] ?? $badgeBackgrounds['owner']; $descTextColor =
+$descriptionTextColors[$theme] ?? 'text-light-muted dark:text-white/70'; @endphp
 
 <div
     class="relative overflow-hidden rounded-2xl bg-gradient-to-r {{ $gradientClass }} p-6 shadow-md dark:shadow-lg"
