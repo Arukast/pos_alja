@@ -52,5 +52,5 @@ return [
     |
     */
 
-    'logo' => env('BRAND_LOGO_PATH', null),
+    'logo' => env('BRAND_LOGO_PATH', 'images/Logo_Alja.png'),
 ];
