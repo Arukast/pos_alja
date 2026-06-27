@@ -6,7 +6,7 @@ use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Machine;
 use App\Models\Material;
-use App\Models\PricingMatrix;
+use App\Models\Pricing;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +73,7 @@ class Manager extends Component
         $materialCount = Material::where('branch_id', $branchId)->count();
         $machineCount = Machine::where('branch_id', $branchId)->count();
         $staffCount = User::where('branch_id', $branchId)->count();
-        $pricingRulesCount = PricingMatrix::where('branch_id', $branchId)->count();
+        $pricingRulesCount = Pricing::where('branch_id', $branchId)->count();
 
         // 2. Load stock ledger log history
         $stockLogs = DB::table('stock_ledgers')
@@ -86,7 +86,7 @@ class Manager extends Component
 
         // 3. Load entire material inventory list
         $materialsList = Material::where('branch_id', $branchId)
-            ->orderBy('remaining_stock', 'asc') // prioritize low stock
+            ->orderBy('current_stock', 'asc') // prioritize low stock
             ->limit(20)
             ->get();
 

@@ -40,14 +40,9 @@ return new class extends Migration
             $table->string('category', 50); // lembar, meter, pcs, display, finishing, potong, stempel
             $table->string('type')->nullable(); // Tipe bahan (Outdoor, Indoor, Kertas, etc.)
             $table->string('dimensions')->nullable(); // Ukuran bahan
-            $table->integer('cost')->default(0); // HPP Bahan
-            $table->integer('price')->default(0); // Harga Bahan
-            $table->decimal('initial_stock', 10, 2)->default(0);
-            $table->decimal('added_stock', 10, 2)->default(0);
+            $table->decimal('cost', 15, 2)->default(0); // HPP Bahan
+            $table->decimal('price', 15, 2)->default(0); // Harga Bahan
             $table->decimal('current_stock', 10, 2)->default(0);
-            $table->decimal('sold_stock', 10, 2)->default(0);
-            $table->decimal('wasted_stock', 10, 2)->default(0);
-            $table->decimal('remaining_stock', 10, 2)->default(0);
             $table->decimal('min_stock', 10, 2)->default(0); // Low stock alert threshold
             $table->softDeletes();
             $table->timestamps();
@@ -72,25 +67,42 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 6. Pricing Matrices
-        Schema::create('pricing_matrices', function (Blueprint $table) {
+        // 6. Pricing (replacing pricing_matrices)
+        Schema::create('pricing', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
             $table->foreignUuid('product_id')->constrained('products')->cascadeOnDelete();
             $table->foreignUuid('material_id')->constrained('materials')->cascadeOnDelete();
-            $table->foreignUuid('machine_id')->nullable()->constrained('machines')->nullOnDelete();
-            $table->foreignUuid('finishing_id')->nullable()->constrained('attributes')->nullOnDelete();
-            $table->foreignUuid('cut_id')->nullable()->constrained('attributes')->nullOnDelete();
-            $table->foreignUuid('display_id')->nullable()->constrained('attributes')->nullOnDelete();
-            $table->string('dimensions', 50)->nullable();
-            $table->integer('price')->default(0);
-            $table->integer('cost')->default(0); // HPP
-            $table->integer('profit')->default(0);
-            $table->integer('min_qty')->default(1);
-            $table->integer('sides')->default(1);
-            $table->integer('finishing_sides')->default(0);
             $table->string('customer_type', 50)->default('Reguler'); // Reguler, Mitra
+            $table->integer('min_qty')->default(1);
+            $table->decimal('price', 15, 2)->default(0);
+            $table->decimal('cost', 15, 2)->default(0); // HPP
+            $table->decimal('profit', 15, 2)->default(0);
             $table->softDeletes();
+            $table->timestamps();
+        });
+
+        // 6a. Attribute Pricing Modifiers
+        Schema::create('attribute_pricing', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
+            $table->foreignUuid('pricing_id')->constrained('pricing')->cascadeOnDelete();
+            $table->foreignUuid('attribute_id')->constrained('attributes')->cascadeOnDelete();
+            $table->decimal('price', 15, 2)->default(0);
+            $table->decimal('cost', 15, 2)->default(0);
+            $table->decimal('profit', 15, 2)->default(0);
+            $table->timestamps();
+        });
+
+        // 6b. Machine Pricing Modifiers
+        Schema::create('machine_pricing', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
+            $table->foreignUuid('pricing_id')->constrained('pricing')->cascadeOnDelete();
+            $table->foreignUuid('machine_id')->constrained('machines')->cascadeOnDelete();
+            $table->decimal('price', 15, 2)->default(0);
+            $table->decimal('cost', 15, 2)->default(0);
+            $table->decimal('profit', 15, 2)->default(0);
             $table->timestamps();
         });
 
@@ -99,21 +111,21 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('invoice_number', 50)->unique();
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
-            $table->date('created_date');
-            $table->date('payment_date')->nullable();
-            $table->date('dp_date')->nullable();
+            $table->timestampTz('created_date');
+            $table->timestampTz('payment_date')->nullable();
+            $table->timestampTz('dp_date')->nullable();
             $table->foreignUuid('customer_id')->constrained('customers');
             $table->foreignUuid('designer_id')->nullable()->constrained('users')->nullOnDelete(); // Designer/CS in charge
             $table->integer('status')->default(0); // 0: Belum Lunas, 1: Down Payment, 2: Lunas
-            $table->integer('discount')->default(0);
-            $table->integer('dp_amount')->default(0); // Total down payment registered
-            $table->integer('accounts_receivable')->default(0); // Sisa Piutang / AR
-            $table->integer('grand_total')->default(0);
-            $table->integer('total_cost')->default(0); // HPP
-            $table->integer('total_profit')->default(0);
-            $table->string('deadline')->nullable();
+            $table->decimal('discount', 15, 2)->default(0);
+            $table->decimal('dp_amount', 15, 2)->default(0); // Total down payment registered
+            $table->decimal('accounts_receivable', 15, 2)->default(0); // Sisa Piutang / AR
+            $table->decimal('grand_total', 15, 2)->default(0);
+            $table->decimal('total_cost', 15, 2)->default(0); // HPP
+            $table->decimal('total_profit', 15, 2)->default(0);
+            $table->timestampTz('deadline')->nullable();
             $table->integer('pickup_status')->default(0); // 0: Belum, 1: Done
-            $table->date('pickup_date')->nullable();
+            $table->timestampTz('pickup_date')->nullable();
             $table->integer('source')->default(0);
             $table->timestamps();
         });
@@ -122,7 +134,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('invoice_id')->constrained('invoices')->cascadeOnDelete();
-            $table->foreignUuid('pricing_matrix_id')->nullable()->constrained('pricing_matrices')->nullOnDelete();
+            $table->foreignUuid('pricing_id')->nullable()->constrained('pricing')->nullOnDelete();
             $table->foreignUuid('operator_id')->nullable()->constrained('users')->nullOnDelete(); // Production operator in charge
             $table->string('file_name')->nullable();
             $table->string('file_path')->nullable(); // Original file location
@@ -130,25 +142,25 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->decimal('area', 8, 2)->default(0); // Banner square meters area
             $table->decimal('quantity', 10, 2)->default(1);
-            $table->integer('unit_price')->default(0);
-            $table->integer('subtotal')->default(0);
-            $table->integer('cost')->default(0); // HPP
-            $table->integer('profit')->default(0);
-            $table->date('ordered_at');
+            $table->decimal('unit_price', 15, 2)->default(0);
+            $table->decimal('subtotal', 15, 2)->default(0);
+            $table->decimal('cost', 15, 2)->default(0); // HPP
+            $table->decimal('profit', 15, 2)->default(0);
+            $table->timestampTz('ordered_at');
             $table->integer('status')->default(0); // 0: Belum di Proses, 1: Sedang di Proses, 2: Telah Beres
             $table->integer('pickup_status')->default(0);
-            $table->date('pickup_date')->nullable();
+            $table->timestampTz('pickup_date')->nullable();
             $table->boolean('is_manual_price')->default(false); // Flag if manual override is used
             $table->timestamps();
         });
 
-        // 9. Payments (New)
+        // 9. Payments
         Schema::create('payments', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('branch_id')->constrained('branches')->cascadeOnDelete();
             $table->foreignUuid('invoice_id')->constrained('invoices')->cascadeOnDelete();
             $table->foreignUuid('user_id')->nullable()->constrained('users')->nullOnDelete(); // Cashier user
-            $table->integer('amount');
+            $table->decimal('amount', 15, 2);
             $table->string('payment_method', 50); // Cash, Transfer, QRIS
             $table->string('type', 20); // down_payment, settlement, partial
             $table->string('cashier_name'); // cache for audit
@@ -159,8 +171,8 @@ return new class extends Migration
         Schema::create('expenses', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
-            $table->date('incurred_at');
-            $table->integer('amount');
+            $table->timestampTz('incurred_at');
+            $table->decimal('amount', 15, 2);
             $table->text('description')->nullable();
             $table->string('cashier_name')->nullable();
             $table->string('type', 20); // modal, laba
@@ -172,7 +184,7 @@ return new class extends Migration
         Schema::create('wasted_materials', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
-            $table->date('logged_at');
+            $table->timestampTz('logged_at');
             $table->foreignUuid('material_id')->constrained('materials');
             $table->foreignUuid('machine_id')->nullable()->constrained('machines')->nullOnDelete();
             $table->foreignUuid('order_id')->nullable()->constrained('orders')->nullOnDelete(); // Optional order link
@@ -189,7 +201,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
             $table->foreignUuid('material_id')->constrained('materials');
-            $table->date('logged_at');
+            $table->timestampTz('logged_at');
             $table->decimal('initial_stock', 10, 2)->default(0);
             $table->decimal('added_stock', 10, 2)->default(0);
             $table->decimal('used_stock', 10, 2)->default(0);
@@ -199,7 +211,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 13. Order Status Logs (New)
+        // 13. Order Status Logs
         Schema::create('order_status_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('order_id')->constrained('orders')->cascadeOnDelete();
@@ -207,10 +219,10 @@ return new class extends Migration
             $table->foreignUuid('user_id')->nullable()->constrained('users')->nullOnDelete(); // Who did the status update
             $table->string('user_name'); // cached user name
             $table->string('notes')->nullable();
-            $table->timestamps();
+            $table->timestampsTz();
         });
 
-        // 14. Activity Logs (New)
+        // 14. Activity Logs
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
@@ -239,7 +251,9 @@ return new class extends Migration
         Schema::dropIfExists('payments');
         Schema::dropIfExists('orders');
         Schema::dropIfExists('invoices');
-        Schema::dropIfExists('pricing_matrices');
+        Schema::dropIfExists('machine_pricing');
+        Schema::dropIfExists('attribute_pricing');
+        Schema::dropIfExists('pricing');
         Schema::dropIfExists('attributes');
         Schema::dropIfExists('machines');
         Schema::dropIfExists('materials');

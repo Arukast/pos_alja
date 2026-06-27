@@ -3,14 +3,16 @@
 namespace Database\Seeders;
 
 use App\Models\Attribute;
+use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Machine;
+use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\PricingMatrix;
+use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -74,16 +76,14 @@ class DatabaseSeeder extends Seeder
 
         // 4. Materials
         $materials = [
-            ['name' => 'Flexi China 280g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000, 'remaining_stock' => 500, 'min_stock' => 50, 'branch_id' => $branchMain->id],
-            ['name' => 'Flexi Korea 440g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000, 'remaining_stock' => 300, 'min_stock' => 30, 'branch_id' => $branchMain->id],
-            ['name' => 'Art Paper 260g A3+', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500, 'remaining_stock' => 1000, 'min_stock' => 100, 'branch_id' => $branchMain->id],
-            ['name' => 'HVS 80g A4', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500, 'remaining_stock' => 5000, 'min_stock' => 500, 'branch_id' => $branchMain->id],
+            ['name' => 'Flexi China 280g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000, 'current_stock' => 500, 'min_stock' => 50, 'branch_id' => $branchMain->id],
+            ['name' => 'Flexi Korea 440g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000, 'current_stock' => 300, 'min_stock' => 30, 'branch_id' => $branchMain->id],
+            ['name' => 'Art Paper 260g A3+', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500, 'current_stock' => 1000, 'min_stock' => 100, 'branch_id' => $branchMain->id],
+            ['name' => 'HVS 80g A4', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500, 'current_stock' => 5000, 'min_stock' => 500, 'branch_id' => $branchMain->id],
         ];
 
         $materialModels = [];
         foreach ($materials as $m) {
-            $m['initial_stock'] = $m['remaining_stock'];
-            $m['current_stock'] = $m['remaining_stock'];
             $materialModels[$m['name']] = Material::create($m);
         }
 
@@ -130,14 +130,12 @@ class DatabaseSeeder extends Seeder
             'type' => 'Mitra',
         ]);
 
-        // 8. Pricing Matrices
+        // 8. Pricing
         // Large Format (Pricing type = area)
-        PricingMatrix::create([
+        $p1 = Pricing::create([
             'branch_id' => $branchMain->id,
             'product_id' => $productModels['Large Format']->id,
             'material_id' => $materialModels['Flexi China 280g']->id,
-            'machine_id' => $machineModels['Challenger FY-3208R']->id,
-            'finishing_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
             'price' => 20000,
             'cost' => 10000,
             'profit' => 10000,
@@ -145,13 +143,31 @@ class DatabaseSeeder extends Seeder
             'customer_type' => 'Reguler',
         ]);
 
+        // Machine pricing modifier
+        MachinePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p1->id,
+            'machine_id' => $machineModels['Challenger FY-3208R']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        // Attribute pricing modifier
+        AttributePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p1->id,
+            'attribute_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
         // Large Format Bulk Discount (Tiered)
-        PricingMatrix::create([
+        $p2 = Pricing::create([
             'branch_id' => $branchMain->id,
             'product_id' => $productModels['Large Format']->id,
             'material_id' => $materialModels['Flexi China 280g']->id,
-            'machine_id' => $machineModels['Challenger FY-3208R']->id,
-            'finishing_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
             'price' => 15000, // Discounted from 20000 to 15000 for 100+ meters
             'cost' => 10000,
             'profit' => 5000,
@@ -159,13 +175,29 @@ class DatabaseSeeder extends Seeder
             'customer_type' => 'Reguler',
         ]);
 
+        MachinePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p2->id,
+            'machine_id' => $machineModels['Challenger FY-3208R']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        AttributePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p2->id,
+            'attribute_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
         // Print Kertas (A3+ Art Paper)
-        PricingMatrix::create([
+        $p3 = Pricing::create([
             'branch_id' => $branchMain->id,
             'product_id' => $productModels['Print Kertas']->id,
             'material_id' => $materialModels['Art Paper 260g A3+']->id,
-            'machine_id' => $machineModels['Konica Minolta C1085']->id,
-            'finishing_id' => $attributeModels['Laminating Glossy']->id,
             'price' => 5000,
             'cost' => 2000,
             'profit' => 3000,
@@ -173,18 +205,52 @@ class DatabaseSeeder extends Seeder
             'customer_type' => 'Reguler',
         ]);
 
+        MachinePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p3->id,
+            'machine_id' => $machineModels['Konica Minolta C1085']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        AttributePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p3->id,
+            'attribute_id' => $attributeModels['Laminating Glossy']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
         // Print Kertas Bulk Discount (Tiered)
-        PricingMatrix::create([
+        $p4 = Pricing::create([
             'branch_id' => $branchMain->id,
             'product_id' => $productModels['Print Kertas']->id,
             'material_id' => $materialModels['Art Paper 260g A3+']->id,
-            'machine_id' => $machineModels['Konica Minolta C1085']->id,
-            'finishing_id' => $attributeModels['Laminating Glossy']->id,
             'price' => 4000, // Discounted for 100+ sheets
             'cost' => 2000,
             'profit' => 2000,
             'min_qty' => 100,
             'customer_type' => 'Reguler',
+        ]);
+
+        MachinePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p4->id,
+            'machine_id' => $machineModels['Konica Minolta C1085']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        AttributePricing::create([
+            'branch_id' => $branchMain->id,
+            'pricing_id' => $p4->id,
+            'attribute_id' => $attributeModels['Laminating Glossy']->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
         ]);
 
         // 9. Sample Transactions
@@ -195,7 +261,7 @@ class DatabaseSeeder extends Seeder
         $invoice1 = Invoice::create([
             'invoice_number' => 'INV-MN-'.date('Ymd').'-0001',
             'branch_id' => $branchMain->id,
-            'created_date' => now()->toDateString(),
+            'created_date' => now()->toIso8601String(),
             'customer_id' => $customerReguler->id,
             'designer_id' => $designerUser->id,
             'status' => 2, // Lunas
@@ -205,15 +271,15 @@ class DatabaseSeeder extends Seeder
             'grand_total' => 100000,
             'total_cost' => 50000,
             'total_profit' => 50000,
-            'deadline' => 'Hari Ini',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 1,
-            'pickup_date' => now()->toDateString(),
+            'pickup_date' => now()->toIso8601String(),
         ]);
 
-        $matrixLargeFormat = PricingMatrix::where('product_id', $productModels['Large Format']->id)->first();
+        $pricingLargeFormat = Pricing::where('product_id', $productModels['Large Format']->id)->first();
         Order::create([
             'invoice_id' => $invoice1->id,
-            'pricing_matrix_id' => $matrixLargeFormat->id,
+            'pricing_id' => $pricingLargeFormat->id,
             'file_name' => 'spanduk_toko.pdf',
             'area' => 5.0, // 5 sqm
             'quantity' => 1,
@@ -221,7 +287,7 @@ class DatabaseSeeder extends Seeder
             'subtotal' => 100000,
             'cost' => 50000,
             'profit' => 50000,
-            'ordered_at' => now()->toDateString(),
+            'ordered_at' => now()->toIso8601String(),
             'status' => 2, // Telah Beres
         ]);
 

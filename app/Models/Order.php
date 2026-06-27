@@ -12,7 +12,7 @@ class Order extends Model
 
     protected $fillable = [
         'invoice_id',
-        'pricing_matrix_id',
+        'pricing_id',
         'operator_id',
         'file_name',
         'file_path',
@@ -36,9 +36,9 @@ class Order extends Model
         return $this->belongsTo(Invoice::class);
     }
 
-    public function pricingMatrix()
+    public function pricing()
     {
-        return $this->belongsTo(PricingMatrix::class);
+        return $this->belongsTo(Pricing::class, 'pricing_id');
     }
 
     public function operator()

@@ -19,12 +19,7 @@ class Material extends Model
         'dimensions',
         'cost',
         'price',
-        'initial_stock',
-        'added_stock',
         'current_stock',
-        'sold_stock',
-        'wasted_stock',
-        'remaining_stock',
         'min_stock',
     ];
 

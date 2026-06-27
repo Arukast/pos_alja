@@ -32,13 +32,16 @@ erDiagram
 
     customers ||--o{ invoices : "has many"
 
-    products ||--o{ pricing_matrices : "has many"
-    materials ||--o{ pricing_matrices : "has many"
-    machines ||--o{ pricing_matrices : "has many"
-    attributes ||--o{ pricing_matrices : "finishing/cut/display"
+    products ||--o{ pricing : "has many"
+    materials ||--o{ pricing : "has many"
+    pricing ||--o{ attribute_pricing : "has many"
+    pricing ||--o{ machine_pricing : "has many"
+    attributes ||--o{ attribute_pricing : "has many"
+    machines ||--o{ machine_pricing : "has many"
 
     invoices ||--o{ orders : "has many"
     invoices ||--o{ payments : "has many"
+    pricing ||--o{ orders : "has many"
     orders ||--o{ order_status_logs : "has many"
     orders ||--o{ wasted_materials : "optional link"
 ```
@@ -54,9 +57,11 @@ For detailed field-level specifications, constraints, and validation parameters,
 | **`customers`** | Customers (`Reguler` / `Mitra`). | UUID | - |
 | **`products`** | Catalog items (pricing type: `unit` or `area`). | UUID | - |
 | **`materials`** | Raw inventory tracks (Paper, banners, etc.) with stock levels. | UUID | `branch_id` |
-| **`pricing_matrices`** | Price engine tier matching based on options and quantity thresholds. | UUID | `product_id`, `material_id`, `machine_id`, `finishing_id`, `cut_id`, `display_id` |
+| **`pricing`** | Core price matching tier by product, material, customer type, and quantity thresholds. | UUID | `branch_id`, `product_id`, `material_id` |
+| **`attribute_pricing`** | Additive price/cost modifiers for finishing, cuts, or displays. | UUID | `branch_id`, `pricing_id`, `attribute_id` |
+| **`machine_pricing`** | Additive price/cost modifiers for print machines. | UUID | `branch_id`, `pricing_id`, `machine_id` |
 | **`invoices`** | Main sale metadata (discount, AR, deadline, status). | UUID | `branch_id`, `customer_id`, `designer_id` |
-| **`orders`** | Print jobs/lines under an invoice. | UUID | `invoice_id`, `pricing_matrix_id`, `operator_id` |
+| **`orders`** | Print jobs/lines under an invoice. | UUID | `invoice_id`, `pricing_id`, `operator_id` |
 | **`payments`** | Tracks transaction logs (down payments, settlements). | UUID | `branch_id`, `invoice_id`, `user_id` |
 | **`expenses`** | Cashier drawer payouts. | UUID | `branch_id` |
 | **`wasted_materials`** | Logs failed prints and waste reasons. | UUID | `branch_id`, `material_id`, `machine_id`, `order_id`, `designer_id`, `operator_id` |
@@ -76,12 +81,15 @@ For detailed field-level specifications, constraints, and validation parameters,
 
 ### Designer Order Intake
 - **Numbering**: Dynamic prefix `INV-[BranchPrefix]-[YYYYMMDD]-[4-digit Seq]` (e.g. `INV-MN-20260627-0001`).
-- **Tiered Pricing**: Selects pricing matrix with max `min_qty` $\le$ quantity.
+- **Tiered Pricing**: Selects core pricing with max `min_qty` $\le$ quantity and sums corresponding attribute/machine modifiers.
 - **Manual Override**: Sets `is_manual_price = true` to allow custom input price/cost.
 
 ### Production Job Progression
 - **Handshake & Status**: Moves order to printing/completed, logging state changes, and sets operator ID.
 - **Deduction**: Deducts stock via `InventoryService` (area-based uses `quantity * width * length`, unit-based uses `quantity`).
+
+### Concurrency & Locking
+- **Row-Level Locking on Materials stock**: Any transaction that reads and writes `current_stock` in the `materials` table must utilize row-level locking (e.g., `SELECT ... FOR UPDATE` or `lockForUpdate()`) to prevent race conditions during concurrent multi-branch checkout or restocking operations.
 
 > [!IMPORTANT]
 > **Financial Metric Columns**:
@@ -237,3 +245,29 @@ We have rebuilt and polished all supporting views, authentication views, and pro
   - Replaced all instances of the legacy `text-alja-cyan` and `hover:text-alja-cyan-light` links with the brand's secondary colors (`text-brand-secondary hover:text-brand-secondary-light`).
 - **Receipt Print View (`receipt.blade.php`)**:
   - Reviewed print output formatting and verified proper stylesheet compilation. Polished the back link and print action buttons to include standard pointer cursors for improved desktop navigation.
+
+---
+
+## Phase 6 — PostgreSQL Schema Refactoring (Completed)
+
+We have refactored the database schema migrations and updated the Laravel application's models, services, views, seeders, and automated test suites to resolve architectural redundancies, temporal precision loss, and scalability bottlenecks.
+
+### Changes Made
+
+- **Refactored Migrations**: Merged the refactored schema specifications directly into the initial database migration file [2026_06_24_000000_create_pos_tables.php](file:///home/arukast/Projects/localDev/projects/pos_alja/database/migrations/2026_06_24_000000_create_pos_tables.php) to facilitate clean local development rebuilds, implementing:
+  - Removal of redundant running stock totals from `materials`.
+  - Date columns updated to timezone-aware `TIMESTAMPTZ` across operational tables.
+  - Deconstruction of the wide `pricing_matrices` table into a core `pricing` table and modifier tables `attribute_pricing` and `machine_pricing`.
+  - Standardization of all financial tracking columns to `NUMERIC(15,2)` precision.
+- **Created/Updated Models**:
+  - Created [Pricing.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Pricing.php), [AttributePricing.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/AttributePricing.php), and [MachinePricing.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/MachinePricing.php).
+  - Updated [Material.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Material.php) and [Order.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Order.php) to align with the new schema columns and relationships.
+  - Deprecated `PricingMatrix.php`.
+- **Refactored Inventory Service**: Refactored [InventoryService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/InventoryService.php) to use row-level locking via `lockForUpdate()` when querying and updating materials stock levels, preventing concurrency race conditions. All historical balances are logged to the `stock_ledgers` table.
+- **Refactored Pricing Service**: Refactored [PricingService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/PricingService.php) to support the deconstructed, additive pricing logic, summing modifier rates dynamically.
+- **Updated Dashboard Views**:
+  - Updated Livewire components ([Designer.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Designer.php), [Production.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Production.php), [Manager.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Manager.php)) to handle `pricing_id` instead of `pricing_matrix_id`.
+  - Updated [manager.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/manager.blade.php) to simplify the Detailed Stock Levels table, keeping only the cached `current_stock` and `min_stock` columns.
+- **Updated Seeders & Tests**:
+  - Updated [DatabaseSeeder.php](file:///home/arukast/Projects/localDev/projects/pos_alja/database/seeders/DatabaseSeeder.php) to seed the deconstructed pricing system.
+  - Updated all unit and feature tests ([PricingServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/PricingServiceTest.php), [InventoryServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/InventoryServiceTest.php), [InventoryManagementTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/InventoryManagementTest.php), [ProductionDashboardTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/ProductionDashboardTest.php)) to align with the new schema columns and test criteria.

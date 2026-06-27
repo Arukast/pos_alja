@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Exceptions\PricingMatrixNotFoundException;
-use App\Models\PricingMatrix;
+use App\Models\AttributePricing;
+use App\Models\MachinePricing;
+use App\Models\Pricing;
 use App\Models\Product;
 
 class PricingService
@@ -31,102 +33,54 @@ class PricingService
         // Load product to check pricing type and name
         $product = Product::findOrFail($productId);
 
-        // Build base query matching product, material and customer tier type
-        $query = PricingMatrix::query()
-            ->where('product_id', $productId)
+        // Fetch core pricing record matching product, material, customer tier type, and tiered min_qty
+        $pricing = Pricing::where('product_id', $productId)
             ->where('material_id', $materialId)
-            ->where('customer_type', $customerType);
-
-        // Match options, replacing 0/empty strings with null
-        $machineUuid = ! empty($machineId) ? $machineId : null;
-        $finishingUuid = ! empty($finishingId) ? $finishingId : null;
-        $cutUuid = ! empty($cutId) ? $cutId : null;
-        $displayUuid = ! empty($displayId) ? $displayId : null;
-
-        $query->where('machine_id', $machineUuid);
-
-        // Filter based on product category rules dynamically
-        switch ($product->name) {
-            case 'Merchandise':
-                $query->where('finishing_id', $finishingUuid)
-                    ->where('sides', $sides)
-                    ->where('finishing_sides', $finishingSides);
-                break;
-
-            case 'Jasa Desain':
-                break;
-
-            case 'Display':
-                $query->where('display_id', $displayUuid);
-                break;
-
-            case 'Print Kertas':
-                $query->where('sides', $sides)
-                    ->where('finishing_id', $finishingUuid)
-                    ->where('finishing_sides', $finishingSides)
-                    ->where('cut_id', $cutUuid);
-                break;
-
-            case 'Large Format':
-                $query->where('finishing_id', $finishingUuid);
-                break;
-
-            case 'ID Card':
-                $query->where('display_id', $displayUuid)
-                    ->where('sides', $sides);
-                break;
-
-            case 'Stempel':
-                $query->where('finishing_id', $finishingUuid)
-                    ->where('sides', $sides);
-                break;
-
-            case 'Kartu Nama':
-                $query->where('finishing_id', $finishingUuid)
-                    ->where('sides', $sides)
-                    ->where('finishing_sides', $finishingSides)
-                    ->where('display_id', $displayUuid);
-                break;
-
-            case 'Produk Jadi':
-                break;
-
-            case 'NOTA':
-                $query->where('sides', $sides);
-                break;
-
-            case 'DTF Large Format':
-                break;
-
-            default:
-                // Fallback matching to handle arbitrary product categories
-                if (! empty($finishingUuid)) {
-                    $query->where('finishing_id', $finishingUuid);
-                }
-                if (! empty($cutUuid)) {
-                    $query->where('cut_id', $cutUuid);
-                }
-                if (! empty($displayUuid)) {
-                    $query->where('display_id', $displayUuid);
-                }
-                break;
-        }
-
-        // Apply automatic bulk tiered discount: fetch highest min_qty <= quantity ordered
-        $matrix = $query->where('min_qty', '<=', $quantity)
+            ->where('customer_type', $customerType)
+            ->where('min_qty', '<=', $quantity)
             ->orderBy('min_qty', 'desc')
             ->first();
 
-        if (! $matrix) {
+        if (! $pricing) {
             throw new PricingMatrixNotFoundException(
-                "Pricing matrix record not found for product: {$product->name} matching these parameters.",
+                "Pricing record not found for product: {$product->name} matching these parameters.",
                 $params
             );
         }
 
-        // Calculate totals
-        $unitPrice = (int) $matrix->price;
-        $unitCost = (int) $matrix->cost;
+        // Fetch additive machine pricing modifier if machine is selected
+        $machinePrice = 0.0;
+        $machineCost = 0.0;
+        if (! empty($machineId)) {
+            $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
+                ->where('machine_id', $machineId)
+                ->first();
+            if ($machinePricing) {
+                $machinePrice = (float) $machinePricing->price;
+                $machineCost = (float) $machinePricing->cost;
+            }
+        }
+
+        // Fetch additive attribute modifier pricings (finishing, cut, display)
+        $attributePriceSum = 0.0;
+        $attributeCostSum = 0.0;
+        $attributeIds = array_filter([$finishingId, $cutId, $displayId]);
+        if (! empty($attributeIds)) {
+            $attrPricings = AttributePricing::where('pricing_id', $pricing->id)
+                ->whereIn('attribute_id', $attributeIds)
+                ->get();
+            foreach ($attrPricings as $ap) {
+                $attributePriceSum += (float) $ap->price;
+                $attributeCostSum += (float) $ap->cost;
+            }
+        }
+
+        // Sum base pricing + modifier pricing
+        $basePrice = (float) $pricing->price;
+        $baseCost = (float) $pricing->cost;
+
+        $unitPrice = $basePrice + $machinePrice + $attributePriceSum;
+        $unitCost = $baseCost + $machineCost + $attributeCostSum;
         $area = 0.0;
 
         if ($product->pricing_type === 'area') {
@@ -143,15 +97,15 @@ class PricingService
             $cost = $unitCost * $quantity;
         }
 
-        // Round values to integers for currency
-        $subtotal = (int) round($subtotal);
-        $cost = (int) round($cost);
-        $profit = $subtotal - $cost;
+        // Keep precision using float numbers for decimal currency support
+        $subtotal = round($subtotal, 2);
+        $cost = round($cost, 2);
+        $profit = round($subtotal - $cost, 2);
 
         return [
-            'pricing_matrix_id' => $matrix->id,
-            'unit_price' => $unitPrice,
-            'unit_cost' => $unitCost,
+            'pricing_id' => $pricing->id,
+            'unit_price' => round($unitPrice, 2),
+            'unit_cost' => round($unitCost, 2),
             'area' => $area,
             'quantity' => $quantity,
             'subtotal' => $subtotal,

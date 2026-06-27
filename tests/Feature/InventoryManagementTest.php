@@ -70,12 +70,7 @@ class InventoryManagementTest extends TestCase
             'name' => 'Flexy 340gr',
             'category' => 'meter',
             'type' => 'outdoor',
-            'initial_stock' => 100,
-            'added_stock' => 0,
             'current_stock' => 100,
-            'sold_stock' => 0,
-            'wasted_stock' => 0,
-            'remaining_stock' => 100,
             'min_stock' => 10,
         ]);
 
@@ -89,7 +84,7 @@ class InventoryManagementTest extends TestCase
 
         $this->assertDatabaseHas('materials', [
             'id' => $material->id,
-            'remaining_stock' => 150,
+            'current_stock' => 150,
         ]);
 
         $this->assertDatabaseHas('stock_ledgers', [

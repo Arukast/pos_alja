@@ -83,7 +83,7 @@ class Designer extends Component
 
     public int $calcSubtotal = 0;
 
-    public ?string $calcMatrixId = null;
+    public ?string $calcPricingId = null;
 
     public bool $isCalculated = false;
 
@@ -186,7 +186,7 @@ class Designer extends Component
                 $this->calcSubtotal = $this->calcPrice * $this->quantity;
             }
 
-            $this->calcMatrixId = null;
+            $this->calcPricingId = null;
             $this->isCalculated = true;
 
             return;
@@ -218,7 +218,7 @@ class Designer extends Component
             $this->calcPrice = $quote['unit_price'];
             $this->calcCost = $quote['unit_cost'];
             $this->calcSubtotal = $quote['subtotal'];
-            $this->calcMatrixId = $quote['pricing_matrix_id'];
+            $this->calcPricingId = $quote['pricing_id'];
             $this->isCalculated = true;
         } catch (PricingMatrixNotFoundException $e) {
             $this->calcError = 'Pricing configuration not found for these parameters.';
@@ -282,7 +282,7 @@ class Designer extends Component
             'length' => $this->length,
             'file_name' => $this->fileName ?: 'Unnamed_File',
             'notes' => $this->notes ?: '',
-            'pricing_matrix_id' => $this->calcMatrixId,
+            'pricing_id' => $this->calcPricingId,
             'unit_price' => $this->calcPrice,
             'unit_cost' => $this->calcCost,
             'subtotal' => $this->calcSubtotal,
@@ -295,7 +295,7 @@ class Designer extends Component
         $this->reset([
             'productId', 'materialId', 'machineId', 'finishingId', 'cutId', 'displayId',
             'sides', 'finishingSides', 'fileName', 'notes', 'isManualPrice', 'manualPrice', 'manualCost',
-            'calcPrice', 'calcCost', 'calcSubtotal', 'calcMatrixId', 'isCalculated', 'calcError',
+            'calcPrice', 'calcCost', 'calcSubtotal', 'calcPricingId', 'isCalculated', 'calcError',
         ]);
 
         $this->quantity = 1;
@@ -381,7 +381,7 @@ class Designer extends Component
             foreach ($this->items as $item) {
                 $order = Order::create([
                     'invoice_id' => $invoice->id,
-                    'pricing_matrix_id' => $item['pricing_matrix_id'],
+                    'pricing_id' => $item['pricing_id'],
                     'operator_id' => null,
                     'file_name' => $item['file_name'],
                     'notes' => $item['notes'] ?: $item['details_string'],

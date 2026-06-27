@@ -477,12 +477,9 @@
                     >
                         <tr>
                             <th class="rounded-l-xl px-4 py-3">Material</th>
-                            <th class="px-4 py-3">Initial</th>
-                            <th class="px-4 py-3">Added</th>
-                            <th class="px-4 py-3">Sold</th>
-                            <th class="px-4 py-3">Wasted</th>
+                            <th class="px-4 py-3">Min Stock</th>
                             <th class="rounded-r-xl px-4 py-3 text-right">
-                                Remaining Stock
+                                Current Stock
                             </th>
                         </tr>
                     </thead>
@@ -490,7 +487,7 @@
                         class="divide-light-border dark:divide-surface-300/30 divide-y text-[11px]"
                     >
                         @foreach ($materialsList as $mItem) @php $isLow =
-                        $mItem->remaining_stock <= $mItem->min_stock; @endphp
+                        $mItem->current_stock <= $mItem->min_stock; @endphp
                         <tr
                             class="hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 transition-colors duration-150 {{ $isLow ? 'bg-red-500/5 dark:bg-red-500/10 text-red-650 dark:text-red-400 font-semibold border-l-4 border-red-500' : 'even:bg-light-bg/50 dark:even:bg-surface-500/20' }}"
                         >
@@ -504,28 +501,11 @@
                                 >
                                 @endif
                             </td>
-                            <td class="px-4 py-3">
-                                {{ $mItem->initial_stock }}
-                            </td>
-                            <td
-                                class="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400"
-                            >
-                                +{{ $mItem->added_stock }}
-                            </td>
-                            <td
-                                class="text-brand-secondary px-4 py-3 font-bold"
-                            >
-                                {{ $mItem->sold_stock }}
-                            </td>
-                            <td
-                                class="text-red-550 px-4 py-3 font-bold dark:text-red-400"
-                            >
-                                {{ $mItem->wasted_stock }}
-                            </td>
+                            <td class="px-4 py-3">{{ $mItem->min_stock }}</td>
                             <td
                                 class="text-light-text px-4 py-3 text-right font-extrabold dark:text-white"
                             >
-                                {{ $mItem->remaining_stock }} @if ($isLow)
+                                {{ $mItem->current_stock }} @if ($isLow)
                                 <span
                                     class="ml-1 inline-block animate-pulse rounded bg-red-500/10 px-1.5 py-0.5 text-[8px] font-black tracking-wider text-red-600 uppercase dark:bg-red-950/30 dark:text-red-400"
                                     >Low</span

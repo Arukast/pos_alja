@@ -65,12 +65,7 @@ class ProductionDashboardTest extends TestCase
             'name' => 'Flexy 340gr',
             'category' => 'meter',
             'type' => 'outdoor',
-            'initial_stock' => 100,
-            'added_stock' => 0,
             'current_stock' => 100,
-            'sold_stock' => 0,
-            'wasted_stock' => 0,
-            'remaining_stock' => 100,
         ]);
 
         $this->areaProduct = Product::create([
@@ -95,10 +90,10 @@ class ProductionDashboardTest extends TestCase
     {
         Event::fake();
 
-        // Create a pricing matrix for area-based product
-        $matrixId = (string) Str::uuid();
-        DB::table('pricing_matrices')->insert([
-            'id' => $matrixId,
+        // Create a pricing tier for area-based product
+        $pricingId = (string) Str::uuid();
+        DB::table('pricing')->insert([
+            'id' => $pricingId,
             'branch_id' => $this->branch->id,
             'product_id' => $this->areaProduct->id,
             'material_id' => $this->material->id,
@@ -106,6 +101,7 @@ class ProductionDashboardTest extends TestCase
             'cost' => 15000,
             'profit' => 10000,
             'min_qty' => 1,
+            'customer_type' => 'Reguler',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -113,7 +109,7 @@ class ProductionDashboardTest extends TestCase
         $invoice = Invoice::create([
             'invoice_number' => 'INV-MB-20260627-0001',
             'branch_id' => $this->branch->id,
-            'created_date' => now()->toDateString(),
+            'created_date' => now()->toIso8601String(),
             'customer_id' => $this->customer->id,
             'designer_id' => $this->designerUser->id,
             'status' => 0,
@@ -127,7 +123,7 @@ class ProductionDashboardTest extends TestCase
 
         $order = Order::create([
             'invoice_id' => $invoice->id,
-            'pricing_matrix_id' => $matrixId,
+            'pricing_id' => $pricingId,
             'file_name' => 'banner_design.pdf',
             'area' => 2.00, // 2 square meters
             'quantity' => 2.00, // qty 2
@@ -135,7 +131,7 @@ class ProductionDashboardTest extends TestCase
             'subtotal' => 50000,
             'cost' => 30000,
             'profit' => 20000,
-            'ordered_at' => now()->toDateString(),
+            'ordered_at' => now()->toIso8601String(),
             'status' => 0, // Pending
         ]);
 
@@ -162,8 +158,7 @@ class ProductionDashboardTest extends TestCase
         // Stock deduction check: area-based, so quantity * area = 2 * 2 = 4 units deducted
         $this->assertDatabaseHas('materials', [
             'id' => $this->material->id,
-            'sold_stock' => 4.00,
-            'remaining_stock' => 96.00,
+            'current_stock' => 96.00,
         ]);
 
         Event::assertDispatched(OrderUpdated::class);
@@ -173,10 +168,10 @@ class ProductionDashboardTest extends TestCase
     {
         Event::fake();
 
-        // Create a pricing matrix for unit-based product
-        $matrixId = (string) Str::uuid();
-        DB::table('pricing_matrices')->insert([
-            'id' => $matrixId,
+        // Create a pricing tier for unit-based product
+        $pricingId = (string) Str::uuid();
+        DB::table('pricing')->insert([
+            'id' => $pricingId,
             'branch_id' => $this->branch->id,
             'product_id' => $this->unitProduct->id,
             'material_id' => $this->material->id,
@@ -184,6 +179,7 @@ class ProductionDashboardTest extends TestCase
             'cost' => 5000,
             'profit' => 5000,
             'min_qty' => 1,
+            'customer_type' => 'Reguler',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -191,7 +187,7 @@ class ProductionDashboardTest extends TestCase
         $invoice = Invoice::create([
             'invoice_number' => 'INV-MB-20260627-0002',
             'branch_id' => $this->branch->id,
-            'created_date' => now()->toDateString(),
+            'created_date' => now()->toIso8601String(),
             'customer_id' => $this->customer->id,
             'designer_id' => $this->designerUser->id,
             'status' => 0,
@@ -205,7 +201,7 @@ class ProductionDashboardTest extends TestCase
 
         $order = Order::create([
             'invoice_id' => $invoice->id,
-            'pricing_matrix_id' => $matrixId,
+            'pricing_id' => $pricingId,
             'file_name' => 'stickers.pdf',
             'area' => 0.00,
             'quantity' => 2.00, // qty 2
@@ -213,7 +209,7 @@ class ProductionDashboardTest extends TestCase
             'subtotal' => 20000,
             'cost' => 10000,
             'profit' => 10000,
-            'ordered_at' => now()->toDateString(),
+            'ordered_at' => now()->toIso8601String(),
             'status' => 0, // Pending
         ]);
 
@@ -225,8 +221,7 @@ class ProductionDashboardTest extends TestCase
         // Stock deduction check: unit-based, so quantity = 2 units deducted
         $this->assertDatabaseHas('materials', [
             'id' => $this->material->id,
-            'sold_stock' => 2.00,
-            'remaining_stock' => 98.00,
+            'current_stock' => 98.00,
         ]);
     }
 
@@ -237,7 +232,7 @@ class ProductionDashboardTest extends TestCase
         $invoice = Invoice::create([
             'invoice_number' => 'INV-MB-20260627-0003',
             'branch_id' => $this->branch->id,
-            'created_date' => now()->toDateString(),
+            'created_date' => now()->toIso8601String(),
             'customer_id' => $this->customer->id,
             'designer_id' => $this->designerUser->id,
             'status' => 0,
@@ -258,7 +253,7 @@ class ProductionDashboardTest extends TestCase
             'subtotal' => 20000,
             'cost' => 10000,
             'profit' => 10000,
-            'ordered_at' => now()->toDateString(),
+            'ordered_at' => now()->toIso8601String(),
             'status' => 1, // Printing
         ]);
 
@@ -313,8 +308,7 @@ class ProductionDashboardTest extends TestCase
 
         $this->assertDatabaseHas('materials', [
             'id' => $this->material->id,
-            'wasted_stock' => 3.50,
-            'remaining_stock' => 96.50,
+            'current_stock' => 96.50,
         ]);
     }
 }

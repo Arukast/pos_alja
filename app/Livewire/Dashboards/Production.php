@@ -58,11 +58,11 @@ class Production extends Component
             $order->operator_id = auth()->user()->id;
             $order->save();
 
-            // Proactively deduct stock when production starts if a pricing matrix is linked
-            if ($order->pricing_matrix_id) {
-                $matrix = DB::table('pricing_matrices')->where('id', $order->pricing_matrix_id)->first();
-                if ($matrix && $matrix->material_id) {
-                    $product = DB::table('products')->where('id', $matrix->product_id)->first();
+            // Proactively deduct stock when production starts if a pricing tier is linked
+            if ($order->pricing_id) {
+                $pricing = DB::table('pricing')->where('id', $order->pricing_id)->first();
+                if ($pricing && $pricing->material_id) {
+                    $product = DB::table('products')->where('id', $pricing->product_id)->first();
                     $isArea = $product && $product->pricing_type === 'area';
 
                     $qtyToDeduct = $isArea
@@ -70,7 +70,7 @@ class Production extends Component
                         : (float) $order->quantity;
 
                     $inventoryService = new InventoryService;
-                    $inventoryService->deductStockOnPrint($matrix->material_id, $qtyToDeduct);
+                    $inventoryService->deductStockOnPrint($pricing->material_id, $qtyToDeduct);
                 }
             }
 

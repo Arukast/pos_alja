@@ -57,7 +57,7 @@ class CashieringTest extends TestCase
             'grand_total' => 100000,
             'total_cost' => 60000,
             'total_profit' => 40000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
             'source' => 0,
         ]);
@@ -118,7 +118,7 @@ class CashieringTest extends TestCase
             'grand_total' => 150000,
             'total_cost' => 90000,
             'total_profit' => 60000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
             'source' => 0,
         ]);
@@ -178,7 +178,7 @@ class CashieringTest extends TestCase
             'grand_total' => 100000,
             'total_cost' => 60000,
             'total_profit' => 40000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
             'source' => 0,
         ]);
@@ -220,7 +220,7 @@ class CashieringTest extends TestCase
             'grand_total' => 50000,
             'total_cost' => 30000,
             'total_profit' => 20000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
             'source' => 0,
         ]);

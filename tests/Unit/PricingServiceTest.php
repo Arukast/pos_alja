@@ -4,10 +4,12 @@ namespace Tests\Unit;
 
 use App\Exceptions\PricingMatrixNotFoundException;
 use App\Models\Attribute;
+use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Machine;
+use App\Models\MachinePricing;
 use App\Models\Material;
-use App\Models\PricingMatrix;
+use App\Models\Pricing;
 use App\Models\Product;
 use App\Services\PricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,21 +64,34 @@ class PricingServiceTest extends TestCase
             'type' => 'finishing',
         ]);
 
-        // 2. Seed pricing matrix
-        $matrix = PricingMatrix::create([
+        // 2. Seed pricing
+        $pricing = Pricing::create([
             'branch_id' => $this->branch->id,
             'product_id' => $product->id,
             'material_id' => $material->id,
-            'machine_id' => $machine->id,
-            'finishing_id' => $finishing->id,
-            'cut_id' => null,
-            'display_id' => null,
-            'sides' => 1,
-            'finishing_sides' => 0,
             'price' => 15000,
             'cost' => 8000,
             'profit' => 7000,
             'min_qty' => 1,
+            'customer_type' => 'Reguler',
+        ]);
+
+        MachinePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'machine_id' => $machine->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        AttributePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'attribute_id' => $finishing->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
         ]);
 
         // 3. Test dynamic calculation
@@ -126,20 +141,33 @@ class PricingServiceTest extends TestCase
             'type' => 'finishing',
         ]);
 
-        PricingMatrix::create([
+        $pricing = Pricing::create([
             'branch_id' => $this->branch->id,
             'product_id' => $product->id,
             'material_id' => $material->id,
-            'machine_id' => $machine->id,
-            'finishing_id' => $finishing->id,
-            'cut_id' => null,
-            'display_id' => null,
-            'sides' => 1,
-            'finishing_sides' => 0,
             'price' => 25000, // Rp. 25,000 per square meter
             'cost' => 12000,  // Rp. 12,000 HPP cost per sq meter
             'profit' => 13000,
             'min_qty' => 1,
+            'customer_type' => 'Reguler',
+        ]);
+
+        MachinePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'machine_id' => $machine->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        AttributePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'attribute_id' => $finishing->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
         ]);
 
         // Calculate quote for 3 banners of dimensions 2.0m x 1.5m

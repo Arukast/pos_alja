@@ -58,7 +58,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'grand_total' => 50000,
             'total_cost' => 30000,
             'total_profit' => 20000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
             'source' => 0,
         ]);
@@ -83,7 +83,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'grand_total' => 50000,
             'total_cost' => 30000,
             'total_profit' => 20000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
             'source' => 0,
         ]);
@@ -117,7 +117,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'grand_total' => 50000,
             'total_cost' => 30000,
             'total_profit' => 20000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
             'source' => 0,
         ]);
@@ -150,7 +150,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'accounts_receivable' => 50000,
             'total_cost' => 30000,
             'total_profit' => 20000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
         ]);
 
         // Invoice in branch 2
@@ -164,7 +164,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'accounts_receivable' => 90000,
             'total_cost' => 50000,
             'total_profit' => 40000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
         ]);
 
         // Expense in branch 1
@@ -219,7 +219,7 @@ class BranchAuthorizationAndScopingTest extends TestCase
             'accounts_receivable' => 0,
             'total_cost' => 30000,
             'total_profit' => 20000,
-            'deadline' => 'Tomorrow',
+            'deadline' => now()->addDay()->toIso8601String(),
             'pickup_status' => 0,
         ]);
 

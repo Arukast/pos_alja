@@ -42,12 +42,8 @@ class InventoryServiceTest extends TestCase
             'name' => 'Chromo Paper',
             'category' => 'lembar',
             'type' => 'kertas',
-            'initial_stock' => 100,
-            'added_stock' => 0,
             'current_stock' => 100,
-            'sold_stock' => 10,
-            'wasted_stock' => 5,
-            'remaining_stock' => 85, // 100 - 10 - 5
+            'min_stock' => 10,
         ]);
 
         // 2. Add stock
@@ -55,17 +51,14 @@ class InventoryServiceTest extends TestCase
 
         // 3. Assert material stock counts updated
         $updatedMaterial = Material::find($material->id);
-        $this->assertEquals(85.0, $updatedMaterial->initial_stock); // sisa stock before
-        $this->assertEquals(50.0, $updatedMaterial->added_stock);
-        $this->assertEquals(135.0, $updatedMaterial->current_stock); // 85 + 50
-        $this->assertEquals(120.0, $updatedMaterial->remaining_stock); // 135 - 10 - 5
+        $this->assertEquals(150.0, $updatedMaterial->current_stock); // 100 + 50
 
         // 4. Assert ledger log written
         $ledger = DB::table('stock_ledgers')->where('material_id', $material->id)->first();
         $this->assertNotNull($ledger);
-        $this->assertEquals(85.0, $ledger->initial_stock);
+        $this->assertEquals(100.0, $ledger->initial_stock);
         $this->assertEquals(50.0, $ledger->added_stock);
-        $this->assertEquals(120.0, $ledger->remaining_stock);
+        $this->assertEquals(150.0, $ledger->remaining_stock);
         $this->assertEquals('Purchased new sheets', $ledger->notes);
     }
 
@@ -79,12 +72,8 @@ class InventoryServiceTest extends TestCase
             'name' => 'Vinyl Matte Banner',
             'category' => 'meter',
             'type' => 'outdoor',
-            'initial_stock' => 200,
-            'added_stock' => 0,
             'current_stock' => 200,
-            'sold_stock' => 40,
-            'wasted_stock' => 10,
-            'remaining_stock' => 150,
+            'min_stock' => 10,
         ]);
 
         $designer = User::factory()->create(['role' => 'designer']);
@@ -115,13 +104,12 @@ class InventoryServiceTest extends TestCase
 
         // Assert material stock counts updated
         $updatedMaterial = Material::find($material->id);
-        $this->assertEquals(22.5, $updatedMaterial->wasted_stock); // 10 + 12.5
-        $this->assertEquals(137.5, $updatedMaterial->remaining_stock); // 200 - 40 - 22.5
+        $this->assertEquals(187.5, $updatedMaterial->current_stock); // 200 - 12.5
 
         // Assert ledger log written
         $ledger = DB::table('stock_ledgers')->where('material_id', $material->id)->first();
         $this->assertNotNull($ledger);
-        $this->assertEquals(22.5, $ledger->wasted_stock);
-        $this->assertEquals(137.5, $ledger->remaining_stock);
+        $this->assertEquals(12.5, $ledger->wasted_stock);
+        $this->assertEquals(187.5, $ledger->remaining_stock);
     }
 }
