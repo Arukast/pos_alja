@@ -10,12 +10,16 @@ null) use ($isActive) { $active = $isActive($route, $tab); $url = route($route,
 array_filter(['tab' => $tab])) . ($hash ?: ''); $activeClass = 'bg-brand-primary
 text-white shadow-glow-primary'; $inactiveClass = 'text-light-muted
 hover:bg-brand-primary/10 hover:text-brand-primary dark:text-gray-300
-dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; $class = $active
-? $activeClass : $inactiveClass; $iconHtml = view('components.icon', ['name' =>
-$iconName, 'class' => 'h-5 w-5 shrink-0 text-current'])->render(); return "<" .
-"a href=\"{$url}\" wire:navigate class=\"{$class} flex items-center gap-3
-rounded-xl px-3 py-2.5 transition-all duration-300\" title=\"{$label}\">" .
-$iconHtml . "<" . "span x-show=\"sidebarOpen\"
+dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; $activeStr =
+$active ? 'true' : 'false'; $hashCondition = $hash ? "currentHash === '{$hash}'"
+: "(currentHash === '' || currentHash === '#')"; $classCondition =
+"!{$activeStr} ? '{$inactiveClass}' : ({$hashCondition} ? '{$activeClass}' :
+'{$inactiveClass}')"; $classCondition = preg_replace('/\s+/', ' ',
+$classCondition); $iconHtml = view('components.icon', ['name' => $iconName,
+'class' => 'h-5 w-5 shrink-0 text-current'])->render(); return "<" . "a
+href=\"{$url}\" wire:navigate :class=\"{$classCondition}\" class=\"flex
+items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300\"
+title=\"{$label}\">" . $iconHtml . "<" . "span x-show=\"sidebarOpen\"
 x-transition.opacity.duration.300ms class=\"truncate text-sm
 font-semibold\">{$label}<" . "/span><" . "/a>"; }; /* Reusable mobile navigation
 item builder */ $mobileNavItem = function ($label, $route, $tab = null,
@@ -24,13 +28,17 @@ $url = route($route, array_filter(['tab' => $tab])) . ($hash ?: '');
 $activeClass = 'bg-brand-primary text-white shadow-glow-primary'; $inactiveClass
 = 'text-light-muted hover:bg-brand-primary/10 hover:text-brand-primary
 dark:text-gray-300 dark:hover:bg-brand-primary/10
-dark:hover:text-brand-primary'; $class = $active ? $activeClass :
-$inactiveClass; $iconHtml = view('components.icon', ['name' => $iconName,
-'class' => 'h-5 w-5 shrink-0 text-current'])->render(); return "<" . "a
-href=\"{$url}\" wire:navigate @click=\"mobileOpen = false\" class=\"{$class}
-flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300\"
-title=\"{$label}\">" . $iconHtml . "<" . "span class=\"truncate text-sm
-font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
+dark:hover:text-brand-primary'; $activeStr = $active ? 'true' : 'false';
+$hashCondition = $hash ? "currentHash === '{$hash}'" : "(currentHash === '' ||
+currentHash === '#')"; $classCondition = "!{$activeStr} ? '{$inactiveClass}' :
+({$hashCondition} ? '{$activeClass}' : '{$inactiveClass}')"; $classCondition =
+preg_replace('/\s+/', ' ', $classCondition); $iconHtml = view('components.icon',
+['name' => $iconName, 'class' => 'h-5 w-5 shrink-0 text-current'])->render();
+return "<" . "a href=\"{$url}\" wire:navigate @click=\"mobileOpen = false\"
+:class=\"{$classCondition}\" class=\"flex items-center gap-3 rounded-xl px-3
+py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
+"span class=\"truncate text-sm font-semibold\">{$label}<" . "/span><" . "/a>";
+}; @endphp
 
 <div class="flex h-full shrink-0">
     <!-- ========================================== -->
@@ -95,8 +103,7 @@ font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', 'finance', 'dashboard')
-                !!}
+                {!! $navItem('Dashboard', 'dashboard', null, 'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -134,8 +141,7 @@ font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', 'inventory', 'dashboard')
-                !!}
+                {!! $navItem('Dashboard', 'dashboard', null, 'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -147,8 +153,8 @@ font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
                     Inventory
                 </div>
                 {!! $navItem('Materials & Stock', 'dashboard', 'inventory',
-                'materials') !!} {!! $navItem('Stock Ledgers', 'dashboard',
-                'inventory', 'ledgers', '#stock-ledgers') !!}
+                'materials', '#materials') !!} {!! $navItem('Stock Ledgers',
+                'dashboard', 'inventory', 'ledgers', '#stock-ledgers') !!}
             </div>
 
             <div class="space-y-1">
@@ -447,8 +453,8 @@ font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
                 >
                     Overview
                 </div>
-                {!! $mobileNavItem('Dashboard', 'dashboard', 'finance',
-                'dashboard') !!}
+                {!! $mobileNavItem('Dashboard', 'dashboard', null, 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -480,8 +486,8 @@ font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
                 >
                     Overview
                 </div>
-                {!! $mobileNavItem('Dashboard', 'dashboard', 'inventory',
-                'dashboard') !!}
+                {!! $mobileNavItem('Dashboard', 'dashboard', null, 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -491,9 +497,9 @@ font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
                     Inventory
                 </div>
                 {!! $mobileNavItem('Materials & Stock', 'dashboard',
-                'inventory', 'materials') !!} {!! $mobileNavItem('Stock
-                Ledgers', 'dashboard', 'inventory', 'ledgers', '#stock-ledgers')
-                !!}
+                'inventory', 'materials', '#materials') !!} {!!
+                $mobileNavItem('Stock Ledgers', 'dashboard', 'inventory',
+                'ledgers', '#stock-ledgers') !!}
             </div>
 
             <div class="space-y-1">

@@ -57,8 +57,11 @@
                     this.sidebarOpen = !this.sidebarOpen;
                     localStorage.setItem('sidebarOpen', this.sidebarOpen);
                 },
-                mobileOpen: false
+                mobileOpen: false,
+                currentHash: window.location.hash
             }"
+            x-on:hashchange.window="currentHash = window.location.hash"
+            x-on:livewire:navigated.window="currentHash = window.location.hash"
         >
             <x-brand-glow-blobs />
 
