@@ -414,7 +414,7 @@
                             <td
                                 class="text-light-text px-4 py-3 font-bold dark:text-white"
                             >
-                                {{ $log->material_name }}
+                                {{ $log->material->name ?? '' }}
                             </td>
                             <td
                                 class="text-light-text px-4 py-3 font-semibold dark:text-gray-300"

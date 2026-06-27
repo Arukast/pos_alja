@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Exceptions\PricingMatrixNotFoundException;
+use App\Exceptions\PricingNotFoundException;
 use App\Models\Attribute;
 use App\Models\AttributePricing;
 use App\Models\Branch;
@@ -199,7 +199,7 @@ class PricingServiceTest extends TestCase
             'pricing_type' => 'unit',
         ]);
 
-        $this->expectException(PricingMatrixNotFoundException::class);
+        $this->expectException(PricingNotFoundException::class);
 
         $this->pricingService->calculateQuote([
             'product_id' => $product->id,

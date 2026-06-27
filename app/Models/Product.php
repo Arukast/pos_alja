@@ -13,8 +13,8 @@ class Product extends Model
 
     protected $fillable = ['name', 'pricing_type'];
 
-    public function pricingMatrices()
+    public function pricings()
     {
-        return $this->hasMany(PricingMatrix::class);
+        return $this->hasMany(Pricing::class);
     }
 }

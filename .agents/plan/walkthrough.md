@@ -271,3 +271,69 @@ We have refactored the database schema migrations and updated the Laravel applic
 - **Updated Seeders & Tests**:
   - Updated [DatabaseSeeder.php](file:///home/arukast/Projects/localDev/projects/pos_alja/database/seeders/DatabaseSeeder.php) to seed the deconstructed pricing system.
   - Updated all unit and feature tests ([PricingServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/PricingServiceTest.php), [InventoryServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/InventoryServiceTest.php), [InventoryManagementTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/InventoryManagementTest.php), [ProductionDashboardTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Feature/ProductionDashboardTest.php)) to align with the new schema columns and test criteria.
+
+---
+
+## Refactoring and Codebase Optimization (Completed)
+
+We have performed a comprehensive codebase review and refactoring session targeting technical debt, naming inconsistencies, raw database operations, and monolithic Livewire dashboard controllers.
+
+### 1. Cleaned Up Deprecated Files
+We removed model files that referenced non-existent tables in the redesigned schema:
+- **[Cut.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Cut.php)**, **[Display.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Display.php)**, and **[Finishing.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/Finishing.php)**: These models are now consolidated into the single `attributes` table and `Attribute` model. Overwritten with deprecation notices.
+- **[PricingMatrix.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Models/PricingMatrix.php)**: This model is superseded by the `pricing`, `attribute_pricing`, and `machine_pricing` tables. Overwritten with a deprecation notice.
+
+### 2. Standardized Exceptions and Namespaces
+- **[PricingNotFoundException.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Exceptions/PricingNotFoundException.php)**: Created to replace `PricingMatrixNotFoundException` to align with the deconstructed schema naming conventions.
+- Deprecated `PricingMatrixNotFoundException.php` and updated references across the entire application and tests.
+
+### 3. Extracted Core Business Logic into Services
+In alignment with PSR-12 and the project's Service-Oriented Architecture guidelines, we extracted transaction and database manipulation logic out of Livewire components and into dedicated service classes:
+- **[CustomerService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/CustomerService.php)**: Handles new customer registration and populates activity logs.
+- **[OrderService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/OrderService.php)**: Handles creating invoices, order items, status logs, activity logs, and transitions order production state (starts, completions, and stock deductions).
+- **[PaymentService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/PaymentService.php)**: Manages down payment recordings, settlements, and updates accounts receivable balances.
+
+### 4. Optimized and Modernized Dashboard Query Logic
+- **[Designer.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Designer.php)**:
+  - Replaced the queries on the non-existent `PricingMatrix` model inside the `render()` method with queries referencing the new pricing, machine_pricing, and attribute_pricing tables.
+  - Replaced custom order creation and customer creation transactions with invocations of `OrderService` and `CustomerService`.
+- **[Production.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Production.php)**:
+  - Replaced native transaction blocks for marking production start/completion with `OrderService` method calls.
+  - Removed raw `DB::table('pricing')` and `DB::table('products')` queries, replacing them with eager-loaded Eloquent models.
+  - Retained and imported `InventoryService` for the waste logging form actions.
+- **[Cashier.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Cashier.php)**:
+  - Moved custom cashier transaction logic to `PaymentService`.
+  - Replaced sorting clauses using non-temporal attributes `orderBy('id', 'desc')` with `orderBy('created_at', 'desc')`.
+- **[Manager.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Manager.php)**:
+  - Replaced the raw SQL join query on the `stock_ledgers` table with an Eloquent model query leveraging relationship eager loading (`StockLedger::with('material')`).
+- **[manager.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/dashboards/manager.blade.php)**:
+  - Updated the view to reference relation attributes `$log->material->name` instead of raw column attributes.
+- **[InventoryService.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Services/InventoryService.php)**:
+  - Replaced all raw `DB::table('stock_ledgers')->insert(...)` queries with Eloquent `StockLedger::create(...)` calls, enabling Eloquent's model events and automatic UUIDv7 generation.
+
+### 5. Deprecated Commands and Refactored Tests
+- **[MigrateLegacyData.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Console/Commands/MigrateLegacyData.php)**:
+  - Updated the command to return early with an error message, as it references outdated tables like `pricing_matrices` and is superseded by direct database provisioning.
+- **[PricingServiceTest.php](file:///home/arukast/Projects/localDev/projects/pos_alja/tests/Unit/PricingServiceTest.php)**:
+  - Updated expected exceptions and namespaces to use `PricingNotFoundException`.
+- **[phpstan-baseline.neon](file:///home/arukast/Projects/localDev/projects/pos_alja/phpstan-baseline.neon)**:
+  - Cleaned up baseline exceptions that are no longer thrown.
+
+### 6. Development Migration Consolidation
+To maintain a clean database schema history and speed up development rebuilds:
+- **[0001_01_01_000000_create_users_table.php](file:///home/arukast/Projects/localDev/projects/pos_alja/database/migrations/0001_01_01_000000_create_users_table.php)**: Added `$table->softDeletes();` directly into the initial users table schema declaration.
+- **[2026_06_25_085840_add_soft_deletes_to_users_table.php](file:///home/arukast/Projects/localDev/projects/pos_alja/database/migrations/2026_06_25_085840_add_soft_deletes_to_users_table.php)**: Deprecated/cleared (since its functionality is now built directly into the initial users table migration).
+- **[2026_06_27_000000_refactor_schema_details.php](file:///home/arukast/Projects/localDev/projects/pos_alja/database/migrations/2026_06_27_000000_refactor_schema_details.php)**: Deprecated/cleared (since its details are now built directly into the initial pos tables migration).
+
+> [!NOTE]
+> All deprecated migration, model, and exception files have been overwritten with deprecation/merged references. If you want them completely removed from the filesystem view of your workspace, you can safely run:
+> ```bash
+> git rm database/migrations/2026_06_25_085840_add_soft_deletes_to_users_table.php \
+>        database/migrations/2026_06_27_000000_refactor_schema_details.php \
+>        app/Models/Cut.php \
+>        app/Models/Display.php \
+>        app/Models/Finishing.php \
+>        app/Models/PricingMatrix.php \
+>        app/Exceptions/PricingMatrixNotFoundException.php
+> ```
+

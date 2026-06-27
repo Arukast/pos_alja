@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Exceptions\PricingMatrixNotFoundException;
+use App\Exceptions\PricingNotFoundException;
 use App\Models\AttributePricing;
 use App\Models\MachinePricing;
 use App\Models\Pricing;
@@ -13,7 +13,7 @@ class PricingService
     /**
      * Calculate quote for a given product and its configurations.
      *
-     * @throws PricingMatrixNotFoundException
+     * @throws PricingNotFoundException
      */
     public function calculateQuote(array $params): array
     {
@@ -42,7 +42,7 @@ class PricingService
             ->first();
 
         if (! $pricing) {
-            throw new PricingMatrixNotFoundException(
+            throw new PricingNotFoundException(
                 "Pricing record not found for product: {$product->name} matching these parameters.",
                 $params
             );

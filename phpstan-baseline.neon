@@ -19,12 +19,6 @@ parameters:
 			path: app/Livewire/Dashboards/Cashier.php
 
 		-
-			message: '#^Call to static method where\(\) on an unknown class App\\Livewire\\Dashboards\\PricingMatrix\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Livewire/Dashboards/Designer.php
-
-		-
 			message: '#^Relation ''customer'' is not found in App\\Models\\Invoice model\.$#'
 			identifier: larastan.relationExistence
 			count: 1

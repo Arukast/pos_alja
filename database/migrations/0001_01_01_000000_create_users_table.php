@@ -32,6 +32,7 @@ return new class extends Migration
             $table->string('role', 20); // bm, owner, kasir, setting, produksi
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->nullOnDelete();
             $table->rememberToken();
+            $table->softDeletes();
             $table->timestamps();
         });
 

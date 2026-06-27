@@ -3,19 +3,21 @@
 namespace App\Livewire\Dashboards;
 
 use App\Events\OrderUpdated;
-use App\Exceptions\PricingMatrixNotFoundException;
-use App\Models\ActivityLog;
+use App\Exceptions\PricingNotFoundException;
 use App\Models\Attribute;
+use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Machine;
+use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\Order;
-use App\Models\OrderStatusLog;
+use App\Models\Pricing;
 use App\Models\Product;
+use App\Services\CustomerService;
+use App\Services\OrderService;
 use App\Services\PricingService;
-use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Designer extends Component
@@ -125,26 +127,14 @@ class Designer extends Component
             'customerType' => 'required|string|in:Reguler,Mitra',
         ]);
 
-        $customer = Customer::create([
+        $customerService = new CustomerService;
+        $customer = $customerService->createCustomer([
             'name' => $this->customerName,
             'phone' => $this->customerPhone,
             'address' => $this->customerAddress,
             'email' => $this->customerEmail,
             'type' => $this->customerType,
-        ]);
-
-        // Audit Log for customer creation
-        ActivityLog::create([
-            'branch_id' => auth()->user()->branch_id,
-            'user_id' => auth()->user()->id,
-            'username' => auth()->user()->username,
-            'role' => auth()->user()->role,
-            'action' => 'CREATE',
-            'description' => "Created customer: {$customer->name} ({$customer->type})",
-            'model_type' => Customer::class,
-            'model_id' => $customer->id,
-            'payload' => $customer->toArray(),
-        ]);
+        ], auth()->user());
 
         $this->customerId = $customer->id;
         $this->customerSearch = $customer->name;
@@ -220,7 +210,7 @@ class Designer extends Component
             $this->calcSubtotal = $quote['subtotal'];
             $this->calcPricingId = $quote['pricing_id'];
             $this->isCalculated = true;
-        } catch (PricingMatrixNotFoundException $e) {
+        } catch (PricingNotFoundException $e) {
             $this->calcError = 'Pricing configuration not found for these parameters.';
         } catch (\Throwable $e) {
             $this->calcError = $e->getMessage();
@@ -322,104 +312,18 @@ class Designer extends Component
             return;
         }
 
-        DB::transaction(function () {
-            $grandTotal = 0;
-            $totalCost = 0;
-            $totalProfit = 0;
+        $activeBranchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
 
-            foreach ($this->items as $item) {
-                $grandTotal += $item['subtotal'];
-                $totalCost += $item['cost'];
-                $totalProfit += $item['profit'];
-            }
-
-            $discountAmount = (int) ($this->discount ?: 0);
-            $grandTotal = max(0, $grandTotal - $discountAmount);
-            $totalProfit = $grandTotal - $totalCost;
-
-            $activeBranchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
-            $branch = Branch::find($activeBranchId);
-
-            // Generate clean prefix: e.g. "Main Branch (Jakarta)" -> "MBJ" or "MN"
-            $branchPrefix = 'BR';
-            if ($branch) {
-                $cleanedName = preg_replace('/[^A-Za-z0-9 ]/', '', $branch->name);
-                $words = explode(' ', $cleanedName);
-                if (count($words) >= 2) {
-                    $branchPrefix = strtoupper(substr($words[0], 0, 1).substr($words[1], 0, 1));
-                } else {
-                    $branchPrefix = strtoupper(substr($cleanedName, 0, 2));
-                }
-            }
-
-            // Generate branch-prefixed structured invoice number
-            $todayDate = now()->format('Ymd');
-            $count = Invoice::where('created_date', now()->toDateString())
-                ->where('branch_id', $activeBranchId)
-                ->count();
-            $sequence = str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT);
-            $invoiceNumber = "INV-{$branchPrefix}-{$todayDate}-{$sequence}";
-
-            $invoice = Invoice::create([
-                'invoice_number' => $invoiceNumber,
-                'branch_id' => $activeBranchId,
-                'created_date' => now()->toDateString(),
-                'customer_id' => $this->customerId,
-                'designer_id' => auth()->user()->id, // Relational assignment
-                'status' => 0, // Unpaid
-                'discount' => $discountAmount,
-                'dp_amount' => 0,
-                'accounts_receivable' => $grandTotal,
-                'grand_total' => $grandTotal,
-                'total_cost' => $totalCost,
-                'total_profit' => $totalProfit,
-                'deadline' => $this->deadline,
-                'pickup_status' => 0,
-                'source' => $this->source === 'Offline' ? 0 : 1,
-            ]);
-
-            foreach ($this->items as $item) {
-                $order = Order::create([
-                    'invoice_id' => $invoice->id,
-                    'pricing_id' => $item['pricing_id'],
-                    'operator_id' => null,
-                    'file_name' => $item['file_name'],
-                    'notes' => $item['notes'] ?: $item['details_string'],
-                    'area' => $item['width'] * $item['length'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'subtotal' => $item['subtotal'],
-                    'cost' => $item['cost'],
-                    'profit' => $item['profit'],
-                    'ordered_at' => now()->toDateString(),
-                    'status' => 0, // Pending
-                    'pickup_status' => 0,
-                    'is_manual_price' => $item['is_manual_price'],
-                ]);
-
-                // Create initial Status log for each order item
-                OrderStatusLog::create([
-                    'order_id' => $order->id,
-                    'status' => 0, // Pending
-                    'user_id' => auth()->user()->id,
-                    'user_name' => auth()->user()->name,
-                    'notes' => 'Order created by designer',
-                ]);
-            }
-
-            // Create global Activity Log
-            ActivityLog::create([
-                'branch_id' => $activeBranchId,
-                'user_id' => auth()->user()->id,
-                'username' => auth()->user()->username,
-                'role' => auth()->user()->role,
-                'action' => 'CREATE',
-                'description' => "Placed order invoice: {$invoice->invoice_number} (Grand Total: {$invoice->grand_total})",
-                'model_type' => Invoice::class,
-                'model_id' => $invoice->id,
-                'payload' => $invoice->toArray(),
-            ]);
-        });
+        $orderService = new OrderService;
+        $orderService->createInvoice([
+            'customer_id' => $this->customerId,
+            'items' => $this->items,
+            'discount' => $this->discount,
+            'deadline' => $this->deadline,
+            'source' => $this->source,
+            'user_id' => auth()->user()->id,
+            'branch_id' => $activeBranchId,
+        ]);
 
         event(new OrderUpdated);
 
@@ -459,39 +363,33 @@ class Designer extends Component
         $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
 
         if ($this->productId && $branchId) {
-            $matrices = PricingMatrix::where('product_id', $this->productId)->where('branch_id', $branchId)->get();
+            $pricings = Pricing::where('product_id', $this->productId)->where('branch_id', $branchId)->get();
+            $pricingIds = $pricings->pluck('id');
 
-            $materialIds = $matrices->pluck('material_id')->unique();
+            $materialIds = $pricings->pluck('material_id')->unique();
             $materials = Material::whereIn('id', $materialIds)->where('branch_id', $branchId)->get();
 
-            $machineIds = $matrices->pluck('machine_id')->unique()->filter();
+            $machineIds = MachinePricing::whereIn('pricing_id', $pricingIds)->pluck('machine_id')->unique()->filter();
             if ($machineIds->isNotEmpty()) {
                 $machines = Machine::whereIn('id', $machineIds)->where('branch_id', $branchId)->get();
-                $hasMachines = $matrices->contains(fn ($m) => ! empty($m->machine_id));
+                $hasMachines = true;
             }
 
-            $finishingIds = $matrices->pluck('finishing_id')->unique()->filter();
-            if ($finishingIds->isNotEmpty()) {
-                $finishings = Attribute::whereIn('id', $finishingIds)->where('type', 'finishing')->get();
-                $hasFinishings = $matrices->contains(fn ($m) => ! empty($m->finishing_id));
+            $attributeIds = AttributePricing::whereIn('pricing_id', $pricingIds)->pluck('attribute_id')->unique()->filter();
+            if ($attributeIds->isNotEmpty()) {
+                $finishings = Attribute::whereIn('id', $attributeIds)->where('type', 'finishing')->get();
+                $hasFinishings = $finishings->isNotEmpty();
+
+                $cuts = Attribute::whereIn('id', $attributeIds)->where('type', 'cut')->get();
+                $hasCuts = $cuts->isNotEmpty();
+
+                $displays = Attribute::whereIn('id', $attributeIds)->where('type', 'display')->get();
+                $hasDisplays = $displays->isNotEmpty();
             }
 
-            $cutIds = $matrices->pluck('cut_id')->unique()->filter();
-            if ($cutIds->isNotEmpty()) {
-                $cuts = Attribute::whereIn('id', $cutIds)->where('type', 'cut')->get();
-                $hasCuts = $matrices->contains(fn ($m) => ! empty($m->cut_id));
-            }
+            $hasSides = in_array(Product::find($this->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
 
-            $displayIds = $matrices->pluck('display_id')->unique()->filter();
-            if ($displayIds->isNotEmpty()) {
-                $displays = Attribute::whereIn('id', $displayIds)->where('type', 'display')->get();
-                $hasDisplays = $matrices->contains(fn ($m) => ! empty($m->display_id));
-            }
-
-            $hasSides = $matrices->contains(fn ($m) => $m->sides > 1)
-                || in_array(Product::find($this->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
-
-            $hasFinishingSides = $matrices->contains(fn ($m) => $m->finishing_sides > 0);
+            $hasFinishingSides = $hasFinishings;
         }
 
         $activeInvoices = Invoice::with('customer')

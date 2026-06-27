@@ -7,9 +7,9 @@ use App\Models\Expense;
 use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Pricing;
+use App\Models\StockLedger;
 use App\Models\User;
 use App\Services\InventoryService;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -76,11 +76,11 @@ class Manager extends Component
         $pricingRulesCount = Pricing::where('branch_id', $branchId)->count();
 
         // 2. Load stock ledger log history
-        $stockLogs = DB::table('stock_ledgers')
-            ->join('materials', 'stock_ledgers.material_id', '=', 'materials.id')
-            ->where('materials.branch_id', $branchId)
-            ->select('stock_ledgers.*', 'materials.name as material_name', 'materials.category as material_category')
-            ->orderBy('stock_ledgers.created_at', 'desc')
+        $stockLogs = StockLedger::with('material')
+            ->whereHas('material', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
+            })
+            ->orderBy('created_at', 'desc')
             ->limit(8)
             ->get();
 

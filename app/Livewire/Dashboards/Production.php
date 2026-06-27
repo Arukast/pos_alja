@@ -7,11 +7,10 @@ use App\Models\Branch;
 use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Order;
-use App\Models\OrderStatusLog;
 use App\Models\User;
 use App\Models\WastedMaterial;
 use App\Services\InventoryService;
-use Illuminate\Support\Facades\DB;
+use App\Services\OrderService;
 use Livewire\Component;
 
 class Production extends Component
@@ -53,35 +52,8 @@ class Production extends Component
             abort(403, 'Unauthorized branch access.');
         }
 
-        DB::transaction(function () use ($order) {
-            $order->status = 1; // Processing/Printing
-            $order->operator_id = auth()->user()->id;
-            $order->save();
-
-            // Proactively deduct stock when production starts if a pricing tier is linked
-            if ($order->pricing_id) {
-                $pricing = DB::table('pricing')->where('id', $order->pricing_id)->first();
-                if ($pricing && $pricing->material_id) {
-                    $product = DB::table('products')->where('id', $pricing->product_id)->first();
-                    $isArea = $product && $product->pricing_type === 'area';
-
-                    $qtyToDeduct = $isArea
-                        ? (float) ($order->area * $order->quantity)
-                        : (float) $order->quantity;
-
-                    $inventoryService = new InventoryService;
-                    $inventoryService->deductStockOnPrint($pricing->material_id, $qtyToDeduct);
-                }
-            }
-
-            OrderStatusLog::create([
-                'order_id' => $order->id,
-                'status' => 1,
-                'user_id' => auth()->user()->id,
-                'user_name' => auth()->user()->name,
-                'notes' => 'Production started',
-            ]);
-        });
+        $orderService = new OrderService;
+        $orderService->startProduction($order, auth()->user());
 
         $this->successMessage = 'Order production started and inventory adjusted!';
         $this->showSuccessAlert = true;
@@ -97,19 +69,8 @@ class Production extends Component
             abort(403, 'Unauthorized branch access.');
         }
 
-        DB::transaction(function () use ($order) {
-            $order->status = 2; // Completed / Done
-            $order->operator_id = auth()->user()->id;
-            $order->save();
-
-            OrderStatusLog::create([
-                'order_id' => $order->id,
-                'status' => 2,
-                'user_id' => auth()->user()->id,
-                'user_name' => auth()->user()->name,
-                'notes' => 'Production completed',
-            ]);
-        });
+        $orderService = new OrderService;
+        $orderService->completeProduction($order, auth()->user());
 
         $this->successMessage = 'Order marked as completed!';
         $this->showSuccessAlert = true;

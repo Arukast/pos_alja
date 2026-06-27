@@ -43,6 +43,10 @@ class MigrateLegacyData extends Command
      */
     public function handle()
     {
+        $this->error('The legacy migration command (db:migrate-legacy) is disabled/superseded in the redesign as the database has fully transitioned to the new UUIDv7-based schema.');
+
+        return 1;
+
         $this->info('Starting migration from legacy MariaDB to PostgreSQL...');
 
         // Disable foreign key checks for clean batch imports depending on the driver

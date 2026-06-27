@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\PaymentService;
 use Livewire\Component;
 
 class Cashier extends Component
@@ -95,6 +96,7 @@ class Cashier extends Component
     public function processCheckout(): void
     {
         $invoice = Invoice::findOrFail($this->selectedInvoiceId);
+        $paymentService = new PaymentService;
 
         if ($this->paymentType === 'dp') {
             $this->validate([
@@ -102,19 +104,10 @@ class Cashier extends Component
                 'inputMethod' => 'required|string|in:Cash,Transfer,QRIS',
             ]);
 
-            $dpAmt = (int) $this->inputAmount;
-
-            Payment::create([
-                'branch_id' => $invoice->branch_id ?: Branch::value('id'),
-                'invoice_id' => $invoice->id,
-                'user_id' => auth()->user()->id,
-                'amount' => $dpAmt,
+            $paymentService->registerDownPayment($invoice, [
+                'amount' => (int) $this->inputAmount,
                 'payment_method' => $this->inputMethod,
-                'type' => 'down_payment',
-                'cashier_name' => auth()->user()->name,
-            ]);
-
-            $invoice->recalculatePayments();
+            ], auth()->user());
 
             $this->successMessage = 'Down Payment registered successfully!';
         } else {
@@ -135,25 +128,11 @@ class Cashier extends Component
                 return;
             }
 
-            // Adjust invoice totals
-            if ($discount > 0) {
-                $invoice->discount += $discount;
-                $invoice->grand_total = max(0, $invoice->grand_total - $discount);
-                $invoice->total_profit = max(0, $invoice->total_profit - $discount);
-                $invoice->save();
-            }
-
-            Payment::create([
-                'branch_id' => $invoice->branch_id ?: Branch::value('id'),
-                'invoice_id' => $invoice->id,
-                'user_id' => auth()->user()->id,
-                'amount' => $amountToPay,
+            $paymentService->settleInvoice($invoice, [
+                'discount' => $discount,
+                'amount_to_pay' => $amountToPay,
                 'payment_method' => $this->inputMethod,
-                'type' => 'settlement',
-                'cashier_name' => auth()->user()->name,
-            ]);
-
-            $invoice->recalculatePayments();
+            ], auth()->user());
 
             $this->successMessage = 'Payment settled and invoice closed!';
         }
@@ -192,7 +171,7 @@ class Cashier extends Component
 
         // Load recent expenses logged by this branch
         $expenses = Expense::where('branch_id', $branchId)
-            ->orderBy('id', 'desc')
+            ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
@@ -205,7 +184,7 @@ class Cashier extends Component
         $activeInvoices = Invoice::with('customer')
             ->where('branch_id', $branchId)
             ->whereIn('status', [0, 1]) // 0: Unpaid, 1: DP
-            ->orderBy('id', 'desc')
+            ->orderBy('created_at', 'desc')
             ->limit(8)
             ->get();
 

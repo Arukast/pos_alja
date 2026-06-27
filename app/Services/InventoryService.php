@@ -4,9 +4,9 @@ namespace App\Services;
 
 use App\Models\Branch;
 use App\Models\Material;
+use App\Models\StockLedger;
 use App\Models\WastedMaterial;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class InventoryService
 {
@@ -26,8 +26,7 @@ class InventoryService
             $materialLocked->save();
 
             // Log in stock_ledgers (retains historical stock counters)
-            DB::table('stock_ledgers')->insert([
-                'id' => (string) Str::uuid(),
+            StockLedger::create([
                 'branch_id' => $materialLocked->branch_id ?: Branch::value('id'),
                 'material_id' => $materialLocked->id,
                 'logged_at' => now()->toIso8601String(), // upgraded to TIMESTAMPTZ compatible string
@@ -37,8 +36,6 @@ class InventoryService
                 'wasted_stock' => 0.0,
                 'remaining_stock' => $newStock,
                 'notes' => $notes ?: "Manual stock addition: +{$quantity}",
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             return $materialLocked;
@@ -84,8 +81,7 @@ class InventoryService
             $material->save();
 
             // 3. Log in stock_ledgers
-            DB::table('stock_ledgers')->insert([
-                'id' => (string) Str::uuid(),
+            StockLedger::create([
                 'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toIso8601String(), // upgraded to TIMESTAMPTZ compatible string
@@ -95,8 +91,6 @@ class InventoryService
                 'wasted_stock' => $quantity,
                 'remaining_stock' => $newStock,
                 'notes' => "Failed Print logged: -{$quantity} ({$notes})",
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             return $waste;
@@ -118,8 +112,7 @@ class InventoryService
             $material->save();
 
             // Log in stock ledgers
-            DB::table('stock_ledgers')->insert([
-                'id' => (string) Str::uuid(),
+            StockLedger::create([
                 'branch_id' => $material->branch_id ?: Branch::value('id'),
                 'material_id' => $material->id,
                 'logged_at' => now()->toIso8601String(), // upgraded to TIMESTAMPTZ compatible string
@@ -129,8 +122,6 @@ class InventoryService
                 'wasted_stock' => 0.0,
                 'remaining_stock' => $newStock,
                 'notes' => "Printed order item stock deduction: -{$quantity}",
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             return $material;
