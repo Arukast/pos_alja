@@ -210,7 +210,7 @@ class Owner extends Component
                 $endDateTime = now()->startOfDay()->addHours($endHour)->subSecond();
 
                 $pQuery = Payment::whereBetween('created_at', [$startDateTime, $endDateTime]);
-                $iQuery = Invoice::whereBetween('created_at', [$startDateTime, $endDateTime]);
+                $iQuery = Invoice::whereBetween('created_date', [$startDateTime, $endDateTime]);
 
                 if ($branchId !== 'all') {
                     $pQuery->where('branch_id', $branchId);
@@ -230,7 +230,7 @@ class Owner extends Component
                 $endDateTime = $date->copy()->endOfDay();
 
                 $pQuery = Payment::whereBetween('created_at', [$startDateTime, $endDateTime]);
-                $iQuery = Invoice::whereBetween('created_at', [$startDateTime, $endDateTime]);
+                $iQuery = Invoice::whereBetween('created_date', [$startDateTime, $endDateTime]);
 
                 if ($branchId !== 'all') {
                     $pQuery->where('branch_id', $branchId);
@@ -249,7 +249,7 @@ class Owner extends Component
                 $weekEnd = now()->subWeeks($i)->endOfWeek()->endOfDay();
 
                 $pQuery = Payment::whereBetween('created_at', [$weekStart, $weekEnd]);
-                $iQuery = Invoice::whereBetween('created_at', [$weekStart, $weekEnd]);
+                $iQuery = Invoice::whereBetween('created_date', [$weekStart, $weekEnd]);
 
                 if ($branchId !== 'all') {
                     $pQuery->where('branch_id', $branchId);
