@@ -112,6 +112,28 @@ For detailed field-level specifications, constraints, and validation parameters,
 
 ---
 
+## Sidebar Navigation Refactoring & Unified Icon System (Completed)
+
+We completed a cohesive frontend refactoring of the main sidebar layout:
+
+1. **Removed Redundant Account Category**:
+   - Removed the redundant `ACCOUNT` navigation category and the `Profile & Settings` link from both the desktop sidebar and the mobile drawer body of [navigation.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/layout/navigation.blade.php).
+
+2. **Standardized Section Dividers**:
+   - Eliminated the lone, inconsistent border divider from the sidebar body, allowing category typography to handle structural grouping cleanly.
+
+3. **Unified Icon Blade Component**:
+   - Created a reusable, dynamic Blade component [icon.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/components/icon.blade.php) utilizing custom manual SVGs (including `house`/`dashboard`, `trophy`/`leaderboard`, `book-x`/`audit`, and `users`/`user-management`) along with standard sidebar SVGs.
+   - Allowed class merging using `{{ $attributes->merge(['class' => '...']) }}`.
+   - Refactored `$navItem` and `$mobileNavItem` in [navigation.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/layout/navigation.blade.php) to use the new component dynamically via `view('components.icon')`.
+
+4. **Footer Profile Popover**:
+   - Converted the user profile row in the desktop and mobile footers of [navigation.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/layout/navigation.blade.php) into an interactive button trigger.
+   - Implemented a clean, absolute-positioned context popover menu housing Profile Info, Account Settings, and Log Out actions that toggles directly above the footer card.
+   - Styled the user's name using Tailwind's `truncate` utility to ensure no text overlaps with theme toggles.
+
+---
+
 ## 4. Verification & Verification Results
 
 ### Automated Test Runs

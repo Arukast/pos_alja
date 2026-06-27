@@ -5,223 +5,34 @@ $isActive = function ($route, $tab = null) use ($currentRoute, $currentTab) { if
 true; } if ($tab === null) { return empty($currentTab); } return $currentTab ===
 $tab; }; $initials = collect(explode(' ', auth()->user()->name)) ->map(fn($n) =>
 mb_substr($n, 0, 1)) ->take(2) ->join(''); /* Reusable desktop navigation item
-builder */ $navItem = function ($label, $route, $tab = null, $iconHtml, $hash =
+builder */ $navItem = function ($label, $route, $tab = null, $iconName, $hash =
 null) use ($isActive) { $active = $isActive($route, $tab); $url = route($route,
 array_filter(['tab' => $tab])) . ($hash ?: ''); $activeClass = 'bg-brand-primary
 text-white shadow-glow-primary'; $inactiveClass = 'text-light-muted
 hover:bg-brand-primary/10 hover:text-brand-primary dark:text-gray-300
 dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; $class = $active
-? $activeClass : $inactiveClass; return "<" . "a href=\"{$url}\" wire:navigate
-class=\"{$class} flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all
-duration-300\" title=\"{$label}\">" . $iconHtml . "<" . "span
-x-show=\"sidebarOpen\" x-transition.opacity.duration.300ms class=\"truncate
-text-sm font-semibold\">{$label}<" . "/span><" . "/a>"; }; /* Reusable mobile
-navigation item builder */ $mobileNavItem = function ($label, $route, $tab =
-null, $iconHtml, $hash = null) use ($isActive) { $active = $isActive($route,
-$tab); $url = route($route, array_filter(['tab' => $tab])) . ($hash ?: '');
+? $activeClass : $inactiveClass; $iconHtml = view('components.icon', ['name' =>
+$iconName, 'class' => 'h-5 w-5 shrink-0 text-current'])->render(); return "<" .
+"a href=\"{$url}\" wire:navigate class=\"{$class} flex items-center gap-3
+rounded-xl px-3 py-2.5 transition-all duration-300\" title=\"{$label}\">" .
+$iconHtml . "<" . "span x-show=\"sidebarOpen\"
+x-transition.opacity.duration.300ms class=\"truncate text-sm
+font-semibold\">{$label}<" . "/span><" . "/a>"; }; /* Reusable mobile navigation
+item builder */ $mobileNavItem = function ($label, $route, $tab = null,
+$iconName, $hash = null) use ($isActive) { $active = $isActive($route, $tab);
+$url = route($route, array_filter(['tab' => $tab])) . ($hash ?: '');
 $activeClass = 'bg-brand-primary text-white shadow-glow-primary'; $inactiveClass
 = 'text-light-muted hover:bg-brand-primary/10 hover:text-brand-primary
 dark:text-gray-300 dark:hover:bg-brand-primary/10
 dark:hover:text-brand-primary'; $class = $active ? $activeClass :
-$inactiveClass; return "<" . "a href=\"{$url}\" wire:navigate
-@click=\"mobileOpen = false\" class=\"{$class} flex items-center gap-3
-rounded-xl px-3 py-2.5 transition-all duration-300\" title=\"{$label}\">" .
-$iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
-"/span><" . "/a>"; }; /* SVG Icons */ $icons = [ 'dashboard' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11V11a1 1 0 00-1-1h-3m-6 0a1 1 0 00-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-    /></svg
->', 'leaderboard' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.475 3.475 0 012.67 2.67 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.475 3.475 0 01-2.67 2.67 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.475 3.475 0 01-2.67-2.67 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.475 3.475 0 012.67-2.67z"
-    /></svg
->', 'audit' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-    /></svg
->', 'users' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 009 11V7a2 2 0 00-2-2H6a2 2 0 00-2 2v2c0 2.518.553 4.908 1.547 7.053m6-10.053a9 9 0 018.667-3.342M18 16a3 3 0 11-6 0 3 3 0 016 0z"
-    /></svg
->', 'materials' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-    /></svg
->', 'ledgers' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-    /></svg
->', 'finishing' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-    /></svg
->', 'pricing' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-    /></svg
->', 'payments' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-    /></svg
->', 'pickup' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-    /></svg
->', 'expenses' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 11-18 0 9 9 0 0118 0z"
-    /></svg
->', 'new_order' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-    /></svg
->', 'order_list' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-    /></svg
->', 'print_queue' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-    /></svg
->', 'waste' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-    /></svg
->', 'profile' => '<svg
-    class="h-5 w-5 shrink-0"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
->
-    <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-    /></svg
->' ]; @endphp
+$inactiveClass; $iconHtml = view('components.icon', ['name' => $iconName,
+'class' => 'h-5 w-5 shrink-0 text-current'])->render(); return "<" . "a
+href=\"{$url}\" wire:navigate @click=\"mobileOpen = false\" class=\"{$class}
+flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-300\"
+title=\"{$label}\">" . $iconHtml . "<" . "span class=\"truncate text-sm
+font-semibold\">{$label}<" . "/span><" . "/a>"; }; @endphp
 
-<div>
+<div class="flex h-full shrink-0">
     <!-- ========================================== -->
     <!-- 1. DESKTOP SIDEBAR                         -->
     <!-- ========================================== -->
@@ -284,8 +95,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', 'finance',
-                $icons['dashboard']) !!}
+                {!! $navItem('Dashboard', 'dashboard', 'finance', 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -297,8 +108,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Insights
                 </div>
                 {!! $navItem('Designer Leaderboard', 'dashboard', 'finance',
-                $icons['leaderboard'], '#leaderboard') !!} {!! $navItem('Audit
-                Trail', 'dashboard', 'audit', $icons['audit']) !!}
+                'leaderboard', '#leaderboard') !!} {!! $navItem('Audit Trail',
+                'dashboard', 'audit', 'audit') !!}
             </div>
 
             <div class="space-y-1">
@@ -309,8 +120,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Administration
                 </div>
-                {!! $navItem('User Management', 'dashboard', 'users',
-                $icons['users']) !!}
+                {!! $navItem('User Management', 'dashboard', 'users', 'users')
+                !!}
             </div>
 
             <!-- ================= MANAGER NAV ================= -->
@@ -323,8 +134,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', 'inventory',
-                $icons['dashboard']) !!}
+                {!! $navItem('Dashboard', 'dashboard', 'inventory', 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -336,9 +147,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Inventory
                 </div>
                 {!! $navItem('Materials & Stock', 'dashboard', 'inventory',
-                $icons['materials']) !!} {!! $navItem('Stock Ledgers',
-                'dashboard', 'inventory', $icons['ledgers'], '#stock-ledgers')
-                !!}
+                'materials') !!} {!! $navItem('Stock Ledgers', 'dashboard',
+                'inventory', 'ledgers', '#stock-ledgers') !!}
             </div>
 
             <div class="space-y-1">
@@ -350,9 +160,9 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Configuration
                 </div>
                 {!! $navItem('Display & Finishing', 'dashboard', 'inventory',
-                $icons['finishing'], '#display-finishing') !!} {!!
-                $navItem('Pricing Matrices', 'dashboard', 'inventory',
-                $icons['pricing'], '#pricing-matrices') !!}
+                'finishing', '#display-finishing') !!} {!! $navItem('Pricing
+                Matrices', 'dashboard', 'inventory', 'pricing',
+                '#pricing-matrices') !!}
             </div>
 
             <div class="space-y-1">
@@ -363,8 +173,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Administration
                 </div>
-                {!! $navItem('User Management', 'dashboard', 'users',
-                $icons['users']) !!}
+                {!! $navItem('User Management', 'dashboard', 'users', 'users')
+                !!}
             </div>
 
             <!-- ================= CASHIER NAV ================= -->
@@ -377,8 +187,7 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', null,
-                $icons['dashboard']) !!}
+                {!! $navItem('Dashboard', 'dashboard', null, 'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -389,11 +198,10 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Operations
                 </div>
-                {!! $navItem('Payment Queue', 'dashboard', null,
-                $icons['payments'], '#payment-queue') !!} {!! $navItem('Pickup
-                Queue', 'dashboard', null, $icons['pickup'], '#pickup-queue')
-                !!} {!! $navItem('Expenses', 'dashboard', null,
-                $icons['expenses'], '#expenses') !!}
+                {!! $navItem('Payment Queue', 'dashboard', null, 'payments',
+                '#payment-queue') !!} {!! $navItem('Pickup Queue', 'dashboard',
+                null, 'pickup', '#pickup-queue') !!} {!! $navItem('Expenses',
+                'dashboard', null, 'expenses', '#expenses') !!}
             </div>
 
             <!-- ================= DESIGNER NAV ================= -->
@@ -406,8 +214,7 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', null,
-                $icons['dashboard']) !!}
+                {!! $navItem('Dashboard', 'dashboard', null, 'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -418,10 +225,9 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Orders
                 </div>
-                {!! $navItem('New Order', 'dashboard', null,
-                $icons['new_order'], '#new-order') !!} {!! $navItem('Order
-                List', 'dashboard', null, $icons['order_list'], '#order-list')
-                !!}
+                {!! $navItem('New Order', 'dashboard', null, 'new_order',
+                '#new-order') !!} {!! $navItem('Order List', 'dashboard', null,
+                'order_list', '#order-list') !!}
             </div>
 
             <!-- ================= PRODUCTION NAV ================= -->
@@ -434,8 +240,7 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', null,
-                $icons['dashboard']) !!}
+                {!! $navItem('Dashboard', 'dashboard', null, 'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -446,53 +251,83 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Operations
                 </div>
-                {!! $navItem('Print Queue', 'dashboard', null,
-                $icons['print_queue'], '#print-queue') !!} {!! $navItem('Waste
-                Logging', 'dashboard', null, $icons['waste'], '#waste-logging')
-                !!}
+                {!! $navItem('Print Queue', 'dashboard', null, 'print_queue',
+                '#print-queue') !!} {!! $navItem('Waste Logging', 'dashboard',
+                null, 'waste', '#waste-logging') !!}
             </div>
             @endif
-
-            <!-- ================= SHARED ACCOUNT SECTION ================= -->
-            <div
-                class="border-light-border dark:border-surface-300/20 space-y-1 border-t pt-4"
-            >
-                <div
-                    x-show="sidebarOpen"
-                    x-transition.opacity.duration.300ms
-                    class="text-light-muted mb-1.5 px-3 text-[10px] font-bold tracking-widest uppercase dark:text-gray-400"
-                >
-                    Account
-                </div>
-                {!! $navItem('Profile & Settings', 'profile', null,
-                $icons['profile']) !!}
-            </div>
         </div>
 
-        <!-- Sidebar Footer (User info & Actions) -->
+        <!-- Sidebar Footer (User info & Popover Actions) -->
         <div
-            class="border-light-border dark:border-surface-300/40 bg-light-surface-2/50 dark:bg-surface-600/30 border-t p-3"
+            class="border-light-border dark:border-surface-300/40 bg-light-surface-2/50 dark:bg-surface-600/30 relative z-40 border-t p-3"
+            x-data="{ popoverOpen: false }"
+            @click.outside="popoverOpen = false"
         >
+            <!-- Popover Menu -->
             <div
-                class="flex transition-all duration-300"
-                :class="sidebarOpen ? 'flex-row items-center justify-between gap-2' : 'flex-col items-center gap-4 py-2'"
+                x-show="popoverOpen"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                class="border-light-border bg-light-surface dark:border-surface-300/40 dark:bg-surface-700 absolute right-3 bottom-[100%] left-3 z-50 mb-2 rounded-xl border p-2 shadow-lg"
+                style="bottom: 100%; display: none"
             >
-                <!-- User Avatar details -->
-                <div class="flex min-w-0 items-center gap-3">
+                <div class="space-y-1">
+                    <a
+                        href="{{ route('profile') }}"
+                        wire:navigate
+                        class="text-light-muted hover:bg-brand-primary/10 hover:text-brand-primary dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition dark:text-gray-300"
+                    >
+                        <x-icon
+                            name="profile"
+                            class="h-4 w-4 shrink-0 text-current"
+                        />
+                        <span>Profile & Settings</span>
+                    </a>
                     <div
-                        class="bg-brand-primary/10 text-brand-primary flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold"
-                        title="{{ auth()->user()->name }} ({{ auth()->user()->role }})"
+                        class="border-light-border dark:border-surface-300/20 my-1 border-t"
+                    ></div>
+                    <button
+                        wire:click="logout"
+                        class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-red-500 transition hover:bg-red-500/10 dark:hover:bg-red-500/20"
+                    >
+                        <x-icon
+                            name="logout"
+                            class="h-4 w-4 shrink-0 text-current"
+                        />
+                        <span>Log Out</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer Details & Toggles Row -->
+            <div
+                class="flex items-center justify-between gap-1.5 transition-all duration-300"
+                :class="sidebarOpen ? 'flex-row' : 'flex-col gap-3 py-1'"
+            >
+                <!-- Trigger Button holding profile details -->
+                <button
+                    @click="popoverOpen = !popoverOpen"
+                    class="hover:bg-brand-primary/5 dark:hover:bg-surface-400/10 flex min-w-0 items-center gap-2.5 rounded-lg p-1 text-left transition duration-200 focus:outline-none"
+                    :class="sidebarOpen ? 'flex-1' : 'w-full justify-center'"
+                    title="{{ auth()->user()->name }} ({{ auth()->user()->role }})"
+                >
+                    <div
+                        class="bg-brand-primary/10 text-brand-primary flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold transition duration-200 group-hover:scale-105"
                     >
                         {{ $initials }}
                     </div>
                     <div
                         x-show="sidebarOpen"
                         x-transition.opacity.duration.300ms
-                        class="min-w-0"
+                        class="min-w-0 flex-1"
                     >
-                        <p
-                            class="text-light-text max-w-[95px] truncate text-xs font-semibold dark:text-white"
-                        >
+                        <!-- prettier-ignore -->
+                        <p class="text-light-text truncate text-xs font-semibold dark:text-white">
                             {{ auth()->user()->name }}
                         </p>
                         <p
@@ -501,12 +336,12 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                             {{ $role }}
                         </p>
                     </div>
-                </div>
+                </button>
 
-                <!-- Theme toggle & logout actions -->
+                <!-- Theme toggle action -->
                 <div
-                    class="flex"
-                    :class="sidebarOpen ? 'flex-row gap-1' : 'flex-col gap-2'"
+                    class="flex shrink-0"
+                    :class="sidebarOpen ? 'flex-row' : 'flex-col'"
                 >
                     <!-- Theme Toggle -->
                     <button
@@ -528,47 +363,14 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                         aria-label="Toggle Dark/Light Mode"
                         id="desktop-theme-toggle"
                     >
-                        <svg
+                        <x-icon
+                            name="sun"
                             class="hidden h-5 w-5 shrink-0 dark:block"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM6.161 5.1a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 1 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59 1.59a.75.75 0 1 1-1.06-1.06l1.59-1.59a.75.75 0 0 1 1.06 0ZM12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5ZM3 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm14.25 0a.75.75 0 0 1 .75-.75H20.25a.75.75 0 0 1 0 1.5H18A.75.75 0 0 1 17.25 12Zm-11.089 5.64a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59-1.59a.75.75 0 1 1 1.06-1.06l1.59 1.59a.75.75 0 0 1-1.06 0ZM12 17.25a.75.75 0 0 1 .75.75V20.25a.75.75 0 0 1-1.5 0V18a.75.75 0 0 1 .75-.75Z"
-                            />
-                        </svg>
-                        <svg
+                        />
+                        <x-icon
+                            name="moon"
                             class="block h-5 w-5 shrink-0 dark:hidden"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z"
-                            />
-                        </svg>
-                    </button>
-
-                    <!-- Logout Button -->
-                    <button
-                        wire:click="logout"
-                        class="text-light-muted flex items-center justify-center rounded-xl p-2 transition duration-200 hover:bg-red-500/10 hover:text-red-500 dark:text-gray-400 dark:hover:bg-red-500/20 dark:hover:text-red-400"
-                        title="Log Out"
-                        aria-label="Log Out"
-                        id="desktop-logout-btn"
-                    >
-                        <svg
-                            class="h-5 w-5 shrink-0"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                            />
-                        </svg>
+                        />
                     </button>
                 </div>
             </div>
@@ -646,7 +448,7 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Overview
                 </div>
                 {!! $mobileNavItem('Dashboard', 'dashboard', 'finance',
-                $icons['dashboard']) !!}
+                'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -656,9 +458,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Insights
                 </div>
                 {!! $mobileNavItem('Designer Leaderboard', 'dashboard',
-                'finance', $icons['leaderboard'], '#leaderboard') !!} {!!
-                $mobileNavItem('Audit Trail', 'dashboard', 'audit',
-                $icons['audit']) !!}
+                'finance', 'leaderboard', '#leaderboard') !!} {!!
+                $mobileNavItem('Audit Trail', 'dashboard', 'audit', 'audit') !!}
             </div>
 
             <div class="space-y-1">
@@ -668,7 +469,7 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Administration
                 </div>
                 {!! $mobileNavItem('User Management', 'dashboard', 'users',
-                $icons['users']) !!}
+                'users') !!}
             </div>
 
             <!-- ================= MANAGER NAV (MOBILE) ================= -->
@@ -680,7 +481,7 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Overview
                 </div>
                 {!! $mobileNavItem('Dashboard', 'dashboard', 'inventory',
-                $icons['dashboard']) !!}
+                'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -690,9 +491,9 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Inventory
                 </div>
                 {!! $mobileNavItem('Materials & Stock', 'dashboard',
-                'inventory', $icons['materials']) !!} {!! $mobileNavItem('Stock
-                Ledgers', 'dashboard', 'inventory', $icons['ledgers'],
-                '#stock-ledgers') !!}
+                'inventory', 'materials') !!} {!! $mobileNavItem('Stock
+                Ledgers', 'dashboard', 'inventory', 'ledgers', '#stock-ledgers')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -702,9 +503,9 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Configuration
                 </div>
                 {!! $mobileNavItem('Display & Finishing', 'dashboard',
-                'inventory', $icons['finishing'], '#display-finishing') !!} {!!
+                'inventory', 'finishing', '#display-finishing') !!} {!!
                 $mobileNavItem('Pricing Matrices', 'dashboard', 'inventory',
-                $icons['pricing'], '#pricing-matrices') !!}
+                'pricing', '#pricing-matrices') !!}
             </div>
 
             <div class="space-y-1">
@@ -714,7 +515,7 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Administration
                 </div>
                 {!! $mobileNavItem('User Management', 'dashboard', 'users',
-                $icons['users']) !!}
+                'users') !!}
             </div>
 
             <!-- ================= CASHIER NAV (MOBILE) ================= -->
@@ -725,8 +526,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $mobileNavItem('Dashboard', 'dashboard', null,
-                $icons['dashboard']) !!}
+                {!! $mobileNavItem('Dashboard', 'dashboard', null, 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -736,11 +537,10 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Operations
                 </div>
                 {!! $mobileNavItem('Payment Queue', 'dashboard', null,
-                $icons['payments'], '#payment-queue') !!} {!!
-                $mobileNavItem('Pickup Queue', 'dashboard', null,
-                $icons['pickup'], '#pickup-queue') !!} {!!
-                $mobileNavItem('Expenses', 'dashboard', null,
-                $icons['expenses'], '#expenses') !!}
+                'payments', '#payment-queue') !!} {!! $mobileNavItem('Pickup
+                Queue', 'dashboard', null, 'pickup', '#pickup-queue') !!} {!!
+                $mobileNavItem('Expenses', 'dashboard', null, 'expenses',
+                '#expenses') !!}
             </div>
 
             <!-- ================= DESIGNER NAV (MOBILE) ================= -->
@@ -751,8 +551,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $mobileNavItem('Dashboard', 'dashboard', null,
-                $icons['dashboard']) !!}
+                {!! $mobileNavItem('Dashboard', 'dashboard', null, 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -761,10 +561,9 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Orders
                 </div>
-                {!! $mobileNavItem('New Order', 'dashboard', null,
-                $icons['new_order'], '#new-order') !!} {!! $mobileNavItem('Order
-                List', 'dashboard', null, $icons['order_list'], '#order-list')
-                !!}
+                {!! $mobileNavItem('New Order', 'dashboard', null, 'new_order',
+                '#new-order') !!} {!! $mobileNavItem('Order List', 'dashboard',
+                null, 'order_list', '#order-list') !!}
             </div>
 
             <!-- ================= PRODUCTION NAV (MOBILE) ================= -->
@@ -775,8 +574,8 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                 >
                     Overview
                 </div>
-                {!! $mobileNavItem('Dashboard', 'dashboard', null,
-                $icons['dashboard']) !!}
+                {!! $mobileNavItem('Dashboard', 'dashboard', null, 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -786,42 +585,74 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                     Operations
                 </div>
                 {!! $mobileNavItem('Print Queue', 'dashboard', null,
-                $icons['print_queue'], '#print-queue') !!} {!!
-                $mobileNavItem('Waste Logging', 'dashboard', null,
-                $icons['waste'], '#waste-logging') !!}
+                'print_queue', '#print-queue') !!} {!! $mobileNavItem('Waste
+                Logging', 'dashboard', null, 'waste', '#waste-logging') !!}
             </div>
             @endif
-
-            <!-- ================= SHARED ACCOUNT SECTION (MOBILE) ================= -->
-            <div
-                class="border-light-border dark:border-surface-300/20 space-y-1 border-t pt-4"
-            >
-                <div
-                    class="text-light-muted mb-1.5 px-3 text-[10px] font-bold tracking-widest uppercase dark:text-gray-400"
-                >
-                    Account
-                </div>
-                {!! $mobileNavItem('Profile & Settings', 'profile', null,
-                $icons['profile']) !!}
-            </div>
         </div>
 
-        <!-- Footer of Drawer (Mobile) -->
+        <!-- Footer of Drawer (Mobile Popover Actions) -->
         <div
-            class="border-light-border dark:border-surface-300/40 bg-light-surface-2/50 dark:bg-surface-600/30 border-t p-3"
+            class="border-light-border dark:border-surface-300/40 bg-light-surface-2/50 dark:bg-surface-600/30 relative z-40 border-t p-3"
+            x-data="{ mobilePopoverOpen: false }"
+            @click.outside="mobilePopoverOpen = false"
         >
-            <div class="flex items-center justify-between gap-2">
-                <!-- User details -->
-                <div class="flex min-w-0 items-center gap-3">
+            <!-- Mobile Popover Menu -->
+            <div
+                x-show="mobilePopoverOpen"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                class="border-light-border bg-light-surface dark:border-surface-300/40 dark:bg-surface-700 absolute right-3 bottom-[100%] left-3 z-50 mb-2 rounded-xl border p-2 shadow-lg"
+                style="bottom: 100%; display: none"
+            >
+                <div class="space-y-1">
+                    <a
+                        href="{{ route('profile') }}"
+                        wire:navigate
+                        @click="mobileOpen = false"
+                        class="text-light-muted hover:bg-brand-primary/10 hover:text-brand-primary dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition dark:text-gray-300"
+                    >
+                        <x-icon
+                            name="profile"
+                            class="h-4 w-4 shrink-0 text-current"
+                        />
+                        <span>Profile & Settings</span>
+                    </a>
+                    <div
+                        class="border-light-border dark:border-surface-300/20 my-1 border-t"
+                    ></div>
+                    <button
+                        wire:click="logout"
+                        class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-red-500 transition hover:bg-red-500/10 dark:hover:bg-red-500/20"
+                    >
+                        <x-icon
+                            name="logout"
+                            class="h-4 w-4 shrink-0 text-current"
+                        />
+                        <span>Log Out</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-1.5">
+                <!-- User details trigger button -->
+                <button
+                    @click="mobilePopoverOpen = !mobilePopoverOpen"
+                    class="hover:bg-brand-primary/5 dark:hover:bg-surface-400/10 flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 text-left transition duration-200 focus:outline-none"
+                    title="{{ auth()->user()->name }} ({{ auth()->user()->role }})"
+                >
                     <div
                         class="bg-brand-primary/10 text-brand-primary flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold"
                     >
                         {{ $initials }}
                     </div>
-                    <div class="min-w-0">
-                        <p
-                            class="text-light-text max-w-[100px] truncate text-xs font-semibold dark:text-white"
-                        >
+                    <div class="min-w-0 flex-1">
+                        <!-- prettier-ignore -->
+                        <p class="text-light-text truncate text-xs font-semibold dark:text-white">
                             {{ auth()->user()->name }}
                         </p>
                         <p
@@ -830,9 +661,9 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                             {{ $role }}
                         </p>
                     </div>
-                </div>
+                </button>
 
-                <!-- Theme toggle & logout actions -->
+                <!-- Theme toggle action -->
                 <div class="flex gap-1">
                     <!-- Theme Toggle -->
                     <button
@@ -854,47 +685,14 @@ $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
                         aria-label="Toggle Dark/Light Mode"
                         id="mobile-theme-toggle"
                     >
-                        <svg
+                        <x-icon
+                            name="sun"
                             class="hidden h-5 w-5 shrink-0 dark:block"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM6.161 5.1a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 1 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59 1.59a.75.75 0 1 1-1.06-1.06l1.59-1.59a.75.75 0 0 1 1.06 0ZM12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5ZM3 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm14.25 0a.75.75 0 0 1 .75-.75H20.25a.75.75 0 0 1 0 1.5H18A.75.75 0 0 1 17.25 12Zm-11.089 5.64a.75.75 0 0 1 1.06 0l1.59 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.59a.75.75 0 0 1 0-1.06Zm11.678 0a.75.75 0 0 1 0 1.06l-1.59-1.59a.75.75 0 1 1 1.06-1.06l1.59 1.59a.75.75 0 0 1-1.06 0ZM12 17.25a.75.75 0 0 1 .75.75V20.25a.75.75 0 0 1-1.5 0V18a.75.75 0 0 1 .75-.75Z"
-                            />
-                        </svg>
-                        <svg
+                        />
+                        <x-icon
+                            name="moon"
                             class="block h-5 w-5 shrink-0 dark:hidden"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z"
-                            />
-                        </svg>
-                    </button>
-
-                    <!-- Logout Button -->
-                    <button
-                        wire:click="logout"
-                        class="text-light-muted flex items-center justify-center rounded-xl p-2 transition duration-200 hover:bg-red-500/10 hover:text-red-500 dark:text-gray-400 dark:hover:bg-red-500/20 dark:hover:text-red-400"
-                        title="Log Out"
-                        aria-label="Log Out"
-                        id="mobile-logout-btn"
-                    >
-                        <svg
-                            class="h-5 w-5 shrink-0"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                            />
-                        </svg>
+                        />
                     </button>
                 </div>
             </div>
