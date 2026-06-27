@@ -21,6 +21,31 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $type = 'minimal';
+
+        if (isset($this->command)) {
+            $type = $this->command->choice(
+                'Which seeder type would you like to run?',
+                [
+                    'minimal' => 'Minimal (1 user per role, 1 branch)',
+                    'huge' => 'Huge Dataset (3 branches, larger team, 5000+ invoices/payments/expenses/waste logs)',
+                    'original' => 'Original Standard (Jakarta & Bandung, 1 user per role, some demo data)',
+                ],
+                'minimal'
+            );
+        }
+
+        if ($type === 'huge') {
+            $this->call(HugeDatasetSeeder::class);
+        } elseif ($type === 'original') {
+            $this->seedOriginal();
+        } else {
+            $this->call(MinimalUserSeeder::class);
+        }
+    }
+
+    public function seedOriginal(): void
+    {
         // 1. Branches
         $branchMain = Branch::create([
             'name' => 'Main Branch (Jakarta)',
