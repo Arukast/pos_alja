@@ -1,4 +1,5 @@
 <div class="text-light-text space-y-6 dark:text-gray-100">
+    @if ($activeTab === 'finance' || $activeTab === 'leaderboard')
     <!-- Header banner -->
     <x-brand-header-banner
         badge="Executive Suite"
@@ -70,35 +71,7 @@
             </div>
         </div>
     </x-brand-header-banner>
-
-    <!-- Tabs Menu -->
-    <div
-        class="dark:border-surface-300/30 border-light-border mb-4 flex gap-2 border-b"
-    >
-        <button
-            id="tab-finance"
-            wire:click="setTab('finance')"
-            class="py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 {{ $activeTab === 'finance' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-light-muted hover:text-light-text dark:text-gray-400 dark:hover:text-white' }}"
-        >
-            Financial Overview
-        </button>
-        <button
-            id="tab-users"
-            wire:click="setTab('users')"
-            class="py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 {{ $activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-light-muted hover:text-light-text dark:text-gray-400 dark:hover:text-white' }}"
-        >
-            User Management
-        </button>
-        <button
-            id="tab-audit"
-            wire:click="setTab('audit')"
-            class="py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 {{ $activeTab === 'audit' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-light-muted hover:text-light-text dark:text-gray-400 dark:hover:text-white' }}"
-        >
-            Audit Trail
-        </button>
-    </div>
-
-    @if ($activeTab === 'finance')
+    @endif @if ($activeTab === 'finance')
     <!-- Quick stats grid -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat card 1 -->
@@ -318,10 +291,10 @@
     </div>
 
     <!-- Analytical graphs & staff leaderboard -->
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="w-full">
         <!-- Sales performance Sparkline graph -->
         <div
-            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-2"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md"
         >
             <div class="flex items-center justify-between">
                 <div>
@@ -331,9 +304,9 @@
                         Profit Analysis Sparkline
                     </h3>
                     <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
-                        {{ $period === 'Daily' ? 'Last 7 days' : ($period ===
-                        'Weekly' ? 'Weekly' : 'Monthly') }} net profit margins
-                        trend.
+                        {{ $period === 'Daily' ? 'Today\'s hourly' : ($period
+                        === 'Weekly' ? 'Last 7 days' : 'Last 4 weeks') }} net
+                        profit margins trend.
                     </p>
                 </div>
                 <span
@@ -342,202 +315,484 @@
                 >
             </div>
 
-            <!-- Premium SVG Chart -->
-            <div class="relative mt-6 h-40 w-full">
-                <svg
-                    class="h-full w-full overflow-visible"
-                    viewBox="0 0 300 100"
-                    preserveAspectRatio="none"
-                >
-                    <!-- Grid Lines -->
-                    <line
-                        x1="0"
-                        y1="20"
-                        x2="300"
-                        y2="20"
-                        stroke="rgba(156, 163, 175, 0.2)"
-                        stroke-dasharray="4"
-                    />
-                    <line
-                        x1="0"
-                        y1="50"
-                        x2="300"
-                        y2="50"
-                        stroke="rgba(156, 163, 175, 0.2)"
-                        stroke-dasharray="4"
-                    />
-                    <line
-                        x1="0"
-                        y1="80"
-                        x2="300"
-                        y2="80"
-                        stroke="rgba(156, 163, 175, 0.2)"
-                        stroke-dasharray="4"
-                    />
-
-                    <!-- Gradient under graph -->
-                    <defs>
-                        <linearGradient
-                            id="chartGradient"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                        >
-                            <stop
-                                offset="0%"
-                                stop-color="var(--brand-primary)"
-                                stop-opacity="0.25"
-                            />
-                            <stop
-                                offset="100%"
-                                stop-color="var(--brand-primary)"
-                                stop-opacity="0.0"
-                            />
-                        </linearGradient>
-                    </defs>
-
-                    @if(count($sparklinePoints) > 1 && max($sparklinePoints) >
-                    0)
-                    <path
-                        d="{{ $svgPath }} L 300 100 L 0 100 Z"
-                        fill="url(#chartGradient)"
-                    />
-                    <!-- Graph line -->
-                    <path
-                        d="{{ $svgPath }}"
-                        fill="none"
-                        stroke="var(--brand-primary)"
-                        stroke-width="2.5"
-                        stroke-linecap="round"
-                    />
-
-                    <!-- Pulsing hover point -->
-                    @if(count($svgPoints) > 0) @php $lastPoint =
-                    end($svgPoints); $coords = explode(' ', $lastPoint); $cx =
-                    $coords[0] ?? 300; $cy = $coords[1] ?? 80; $cx =
-                    is_numeric($cx) ? $cx : 300; $cy = is_numeric($cy) ? $cy :
-                    80; @endphp
-                    <circle
-                        cx="{{ $cx }}"
-                        cy="{{ $cy }}"
-                        r="4.5"
-                        fill="var(--brand-primary)"
-                    />
-                    <circle
-                        cx="{{ $cx }}"
-                        cy="{{ $cy }}"
-                        r="9"
-                        fill="var(--brand-primary)"
-                        fill-opacity="0.2"
-                        class="animate-ping"
-                    />
-                    @endif @else
-                    <!-- Flat baseline and message -->
-                    <path
-                        d="M 0 80 L 300 80"
-                        fill="none"
-                        stroke="rgba(156, 163, 175, 0.4)"
-                        stroke-width="2"
-                        stroke-dasharray="4"
-                    />
-                    <text
-                        x="150"
-                        y="50"
-                        text-anchor="middle"
-                        fill="currentColor"
-                        class="text-light-muted text-xs font-semibold dark:text-gray-500"
-                    >
-                        No sales recorded for this period
-                    </text>
-                    @endif
-                </svg>
-            </div>
-
+            <!-- Premium ApexCharts Line Chart -->
             <div
-                class="text-light-muted mt-4 flex items-center justify-between text-[11px] font-bold dark:text-gray-400"
+                class="mt-2 w-full"
+                x-data="{
+                    chart: null,
+                    initChart() {
+                        const points = @js($sparklinePoints);
+                        const labels = @js($sparklineLabels);
+                        const isDark = document.documentElement.classList.contains('dark');
+                        
+                        const options = {
+                            series: [{
+                                name: 'Net Profit',
+                                data: points
+                            }],
+                            chart: {
+                                type: 'area',
+                                height: 160,
+                                sparkline: {
+                                    enabled: false
+                                },
+                                toolbar: {
+                                    show: false
+                                },
+                                animations: {
+                                    enabled: true,
+                                    easing: 'easeinout',
+                                    speed: 600
+                                }
+                            },
+                            stroke: {
+                                curve: 'smooth',
+                                width: 2.5,
+                                colors: [getComputedStyle(document.documentElement).getPropertyValue('--color-brand-primary').trim() || '#e82574']
+                            },
+                            fill: {
+                                type: 'gradient',
+                                gradient: {
+                                    shadeIntensity: 1,
+                                    opacityFrom: 0.35,
+                                    opacityTo: 0.05,
+                                    stops: [0, 90, 100]
+                                }
+                            },
+                            markers: {
+                                size: points.length > 0 ? 4 : 0,
+                                colors: [getComputedStyle(document.documentElement).getPropertyValue('--color-brand-primary').trim() || '#e82574'],
+                                strokeWidth: 2,
+                                hover: {
+                                    size: 6
+                                }
+                            },
+                            xaxis: {
+                                categories: labels,
+                                labels: {
+                                    style: {
+                                        colors: isDark ? '#9ca3af' : '#6b7280',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                        fontFamily: 'Outfit, sans-serif'
+                                    }
+                                },
+                                axisBorder: {
+                                    show: false
+                                },
+                                axisTicks: {
+                                    show: false
+                                }
+                            },
+                            yaxis: {
+                                labels: {
+                                    formatter: function(val) {
+                                        return 'Rp ' + new Intl.NumberFormat('id-ID').format(val);
+                                    },
+                                    style: {
+                                        colors: isDark ? '#9ca3af' : '#6b7280',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold',
+                                        fontFamily: 'Outfit, sans-serif'
+                                    }
+                                }
+                            },
+                            grid: {
+                                show: true,
+                                borderColor: isDark ? 'rgba(156, 163, 175, 0.15)' : 'rgba(156, 163, 175, 0.2)',
+                                strokeDashArray: 4,
+                                xaxis: {
+                                    lines: {
+                                        show: false
+                                    }
+                                },
+                                yaxis: {
+                                    lines: {
+                                        show: true
+                                    }
+                                },
+                                padding: {
+                                    top: -15,
+                                    right: 10,
+                                    bottom: 0,
+                                    left: 10
+                                }
+                            },
+                            tooltip: {
+                                theme: isDark ? 'dark' : 'light',
+                                x: {
+                                    show: true
+                                },
+                                y: {
+                                    formatter: function(val) {
+                                        return 'Rp ' + new Intl.NumberFormat('id-ID').format(val);
+                                    }
+                                }
+                            },
+                            colors: [getComputedStyle(document.documentElement).getPropertyValue('--color-brand-primary').trim() || '#e82574']
+                        };
+
+                        if (this.chart) {
+                            this.chart.destroy();
+                        }
+                        this.chart = new ApexCharts(this.$refs.chartContainer, options);
+                        this.chart.render();
+                    }
+                }"
+                wire:key="owner-sparkline-{{ $period }}-{{ $selectedBranchId }}-{{ count($sparklinePoints) }}"
+                x-init="initChart()"
+                x-on:theme-changed.window="initChart()"
+                class="relative"
             >
-                @if($period === 'Daily')
-                <span>7 days ago</span>
-                <span>4 days ago</span>
-                <span>Today</span>
-                @elseif($period === 'Weekly')
-                <span>Mon</span>
-                <span>Wed</span>
-                <span>Fri</span>
-                <span>Sun</span>
-                @else
-                <span>Week 1</span>
-                <span>Week 2</span>
-                <span>Week 3</span>
-                <span>Week 4</span>
-                @endif
+                <div x-ref="chartContainer" class="w-full"></div>
+            </div>
+        </div>
+    </div>
+    @elseif ($activeTab === 'leaderboard')
+    <!-- Designer Performance Leaderboard Tab -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Card 1: Top Revenue -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        >
+            <div class="flex items-center justify-between">
+                <div>
+                    <p
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                    >
+                        Top Performer (Omset)
+                    </p>
+                    <h3
+                        class="text-light-text mt-1 max-w-[150px] truncate text-base font-extrabold dark:text-white"
+                    >
+                        {{ $topRevenue->name ?? 'N/A' }}
+                    </h3>
+                </div>
+                <div class="bg-amber-550/10 text-amber-550 rounded-xl p-3">
+                    <svg
+                        class="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5a2 2 0 10-2 2h2zm0 0h4m-4 0H8m12-1a3 3 0 01-3 3h-1m-4-3a3 3 0 00-3 3H7m0 0a3 3 0 01-3-3V7a3 3 0 013-3h1m4 3a3 3 0 003-3h1"
+                        />
+                    </svg>
+                </div>
+            </div>
+            <div
+                class="mt-4 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+            >
+                <span
+                    >Rp. {{ $topRevenue ?
+                    number_format($topRevenue->total_value, 0, ',', '.') : '0'
+                    }}</span
+                >
+                <span
+                    class="text-light-muted text-[10px] font-normal dark:text-gray-400"
+                    >{{ $topRevenue ? $topRevenue->orders_count : 0 }}
+                    orders</span
+                >
             </div>
         </div>
 
-        <!-- Leaderboard / Staff performance -->
+        <!-- Card 2: Order Champion -->
         <div
-            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md"
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        >
+            <div class="flex items-center justify-between">
+                <div>
+                    <p
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                    >
+                        Order Champion
+                    </p>
+                    <h3
+                        class="text-light-text mt-1 max-w-[150px] truncate text-base font-extrabold dark:text-white"
+                    >
+                        {{ $orderChampion->name ?? 'N/A' }}
+                    </h3>
+                </div>
+                <div class="rounded-xl bg-blue-500/10 p-3 text-blue-500">
+                    <svg
+                        class="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.246.588 1.81l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.175 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118l-3.97-2.883c-.773-.564-.375-1.81.587-1.81h4.907a1 1 0 00.95-.69l1.519-4.674z"
+                        />
+                    </svg>
+                </div>
+            </div>
+            <div
+                class="mt-4 flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400"
+            >
+                <span
+                    >{{ $orderChampion ? $orderChampion->orders_count : 0 }}
+                    Orders</span
+                >
+                <span
+                    class="text-light-muted text-[10px] font-normal dark:text-gray-400"
+                    >Rp. {{ $orderChampion ?
+                    number_format($orderChampion->total_value, 0, ',', '.') :
+                    '0' }}</span
+                >
+            </div>
+        </div>
+
+        <!-- Card 3: Highest AOV -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        >
+            <div class="flex items-center justify-between">
+                <div>
+                    <p
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                    >
+                        Highest Avg Ticket (AOV)
+                    </p>
+                    <h3
+                        class="text-light-text mt-1 max-w-[150px] truncate text-base font-extrabold dark:text-white"
+                    >
+                        {{ $topAov->name ?? 'N/A' }}
+                    </h3>
+                </div>
+                <div class="rounded-xl bg-indigo-500/10 p-3 text-indigo-500">
+                    <svg
+                        class="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                        />
+                    </svg>
+                </div>
+            </div>
+            <div
+                class="mt-4 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400"
+            >
+                <span
+                    >Rp. {{ $topAov ? number_format($topAov->aov, 0, ',', '.') :
+                    '0' }}</span
+                >
+                <span
+                    class="text-light-muted text-[10px] font-normal dark:text-gray-400"
+                    >Average AOV</span
+                >
+            </div>
+        </div>
+
+        <!-- Card 4: Accuracy Leader -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        >
+            <div class="flex items-center justify-between">
+                <div>
+                    <p
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                    >
+                        Accuracy Leader
+                    </p>
+                    <h3
+                        class="text-light-text mt-1 max-w-[150px] truncate text-base font-extrabold dark:text-white"
+                    >
+                        {{ $accuracyLeader->name ?? 'N/A' }}
+                    </h3>
+                </div>
+                <div class="text-emerald-555 rounded-xl bg-emerald-500/10 p-3">
+                    <svg
+                        class="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                        />
+                    </svg>
+                </div>
+            </div>
+            <div
+                class="mt-4 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+            >
+                <span
+                    >{{ $accuracyLeader ? $accuracyLeader->waste_count : 0 }}
+                    wasted log(s)</span
+                >
+                <span
+                    class="text-light-muted text-[10px] font-normal dark:text-gray-400"
+                    >Lowest design errors</span
+                >
+            </div>
+        </div>
+    </div>
+
+    <!-- Main leaderboard grid content -->
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Detailed rankings table -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm lg:col-span-2"
         >
             <h3 class="text-light-text text-lg font-bold dark:text-white">
-                Designer Leaderboard
+                Designer Rankings
             </h3>
             <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
-                Intake metrics and order totals by CS designer.
+                Detailed performance metrics sorted by gross revenue generated.
             </p>
+            <div class="mt-6 overflow-x-auto">
+                <table class="w-full border-collapse text-left">
+                    <thead>
+                        <tr
+                            class="border-light-border dark:border-surface-300/20 text-light-muted border-b text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                        >
+                            <th class="pb-3 pl-4">Rank</th>
+                            <th class="pb-3">Designer</th>
+                            <th class="pb-3">Branch</th>
+                            <th class="pb-3 text-right">Orders</th>
+                            <th class="pb-3 text-right">Total Revenue</th>
+                            <th class="pb-3 text-right">Avg Order Value</th>
+                            <th class="pr-4 pb-3 text-right">Design Waste</th>
+                        </tr>
+                    </thead>
+                    <tbody
+                        class="divide-light-border dark:divide-surface-300/10 divide-y text-xs"
+                    >
+                        @forelse($leaders as $index => $leader) @php $rankColors
+                        = [ 0 => 'bg-amber-500 text-white', 1 => 'bg-slate-400
+                        text-white', 2 => 'bg-amber-700 text-white', ];
+                        $rankBadge = $rankColors[$index] ?? 'bg-gray-200
+                        dark:bg-surface-300/30 text-light-text dark:text-white';
+                        @endphp
+                        <tr
+                            class="hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 transition-colors duration-150"
+                        >
+                            <td class="py-4 pl-4">
+                                <span
+                                    class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold {{ $rankBadge }}"
+                                >
+                                    {{ $index + 1 }}
+                                </span>
+                            </td>
+                            <td class="py-4">
+                                <div
+                                    class="text-light-text font-bold dark:text-white"
+                                >
+                                    {{ $leader->name }}
+                                </div>
+                                <div
+                                    class="text-light-muted text-[10px] dark:text-gray-400"
+                                >
+                                    CS & Design Specialist
+                                </div>
+                            </td>
+                            <td
+                                class="text-light-muted py-4 font-medium dark:text-gray-400"
+                            >
+                                {{ $leader->branch_name ?? 'Global' }}
+                            </td>
+                            <td
+                                class="text-light-text py-4 text-right font-semibold dark:text-white"
+                            >
+                                {{ $leader->orders_count }}
+                            </td>
+                            <td
+                                class="py-4 text-right font-semibold text-emerald-600 dark:text-emerald-400"
+                            >
+                                Rp. {{ number_format($leader->total_value, 0,
+                                ',', '.') }}
+                            </td>
+                            <td
+                                class="py-4 text-right font-semibold text-indigo-600 dark:text-indigo-400"
+                            >
+                                Rp. {{ number_format($leader->aov, 0, ',', '.')
+                                }}
+                            </td>
+                            <td class="py-4 pr-4 text-right">
+                                <span
+                                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $leader->waste_count > 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' }}"
+                                >
+                                    {{ $leader->waste_count }} error(s)
+                                </span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td
+                                colspan="7"
+                                class="text-light-muted py-8 text-center text-xs dark:text-gray-500"
+                            >
+                                No designer metrics recorded for this period.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-            <div class="mt-4 space-y-3">
-                @forelse($leaders as $index => $leader) @php $colors = [
-                ['bg-brand-primary/10', 'text-brand-primary'],
-                ['bg-brand-secondary/10', 'text-brand-secondary'],
-                ['bg-emerald-500/10', 'text-emerald-555'], ]; $color =
-                $colors[$index % count($colors)]; $initials = ''; $words =
-                explode(' ', $leader->name); foreach($words as $w) { $initials
-                .= strtoupper(substr($w, 0, 1)); } $initials = substr($initials,
-                0, 2) ?: 'CS'; $valStr = $leader->total_value >= 1000000 ? 'Rp.
-                ' . number_format($leader->total_value / 1000000, 1, ',', '.') .
-                'M' : 'Rp. ' . number_format($leader->total_value, 0, ',', '.');
-                @endphp
-                <div
-                    class="hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 flex items-center justify-between rounded-xl p-2.5 transition-colors duration-150"
-                >
-                    <div class="flex items-center">
-                        <div
-                            class="h-8 w-8 rounded-full {{ $color[0] }} {{ $color[1] }} flex items-center justify-center font-extrabold text-xs"
+        <!-- Revenue contribution chart -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
+        >
+            <h3 class="text-light-text text-lg font-bold dark:text-white">
+                Revenue Share
+            </h3>
+            <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
+                Proportion of gross revenue generated by each designer.
+            </p>
+            <div class="mt-6 space-y-4">
+                @php $totalRevenueSum = $leaders->sum('total_value'); @endphp
+                @forelse($leaders as $leader) @php $percentage =
+                $totalRevenueSum > 0 ? ($leader->total_value / $totalRevenueSum)
+                * 100 : 0; @endphp
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-xs">
+                        <span
+                            class="text-light-text max-w-[120px] truncate font-bold dark:text-white"
+                            >{{ $leader->name }}</span
                         >
-                            {{ $initials }}
-                        </div>
-                        <div class="ml-3">
-                            <p
-                                class="text-light-text text-xs font-bold dark:text-white"
-                            >
-                                {{ $leader->name }}
-                            </p>
-                            <p
-                                class="text-light-muted text-[10px] dark:text-gray-400"
-                            >
-                                CS & Design Specialist
-                            </p>
-                        </div>
+                        <span
+                            class="text-light-muted font-semibold dark:text-gray-400"
+                            >{{ number_format($percentage, 1) }}%</span
+                        >
                     </div>
-                    <div class="text-right">
-                        <p
-                            class="text-light-text text-xs font-bold dark:text-white"
-                        >
-                            {{ $leader->orders_count }} orders
-                        </p>
-                        <p
-                            class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400"
-                        >
-                            {{ $valStr }} val
-                        </p>
+                    <div
+                        class="dark:bg-surface-300/20 h-2 w-full overflow-hidden rounded-full bg-gray-100"
+                    >
+                        <div
+                            class="bg-brand-primary h-full rounded-full transition-all duration-500"
+                            style="width: {{ $percentage }}%"
+                        ></div>
+                    </div>
+                    <div
+                        class="text-right text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                    >
+                        Rp. {{ number_format($leader->total_value, 0, ',', '.')
+                        }}
                     </div>
                 </div>
                 @empty
                 <div
-                    class="text-light-muted py-8 text-center text-xs dark:text-gray-500"
+                    class="text-light-muted py-6 text-center text-xs dark:text-gray-500"
                 >
-                    No designer metrics for this period.
+                    No share data available.
                 </div>
                 @endforelse
             </div>
@@ -545,12 +800,17 @@
     </div>
     @elseif ($activeTab === 'users') {{-- Shared UserManagement sub-component
     --}}
-    <livewire:admin.user-management mode="owner" />
+    <livewire:admin.user-management
+        mode="owner"
+        wire:key="owner-user-management"
+    />
     @elseif ($activeTab === 'audit')
     <div
         class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
     >
-        <div class="mb-4 flex items-center justify-between">
+        <div
+            class="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center"
+        >
             <div>
                 <h3 class="text-light-text text-lg font-bold dark:text-white">
                     System Audit Trail
@@ -558,6 +818,14 @@
                 <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
                     Real-time logs of system actions and modifications.
                 </p>
+            </div>
+            <div class="w-full md:w-72">
+                <input
+                    type="text"
+                    wire:model.live.debounce.300ms="auditSearch"
+                    placeholder="Search logs..."
+                    class="bg-light-surface-2 dark:bg-surface-500 border-light-border dark:border-surface-300/30 text-light-text focus:ring-brand-primary placeholder-light-muted w-full rounded-xl border px-4 py-2 text-xs focus:ring-1 focus:outline-none dark:text-white dark:placeholder-gray-400"
+                />
             </div>
         </div>
 
@@ -571,12 +839,71 @@
                     class="bg-light-surface-2 dark:bg-surface-500 text-light-muted text-xs font-semibold tracking-wider uppercase dark:text-gray-400"
                 >
                     <tr>
-                        <th class="rounded-l-xl px-4 py-3">Timestamp</th>
-                        <th class="px-4 py-3">User</th>
-                        <th class="px-4 py-3">Role</th>
-                        <th class="px-4 py-3">Action</th>
+                        <th
+                            class="hover:text-brand-primary cursor-pointer rounded-l-xl px-4 py-3 transition-colors duration-150 select-none"
+                            wire:click="sortByAudit('created_at')"
+                        >
+                            <div class="flex items-center space-x-1">
+                                <span>Timestamp</span>
+                                <span
+                                    class="text-[10px] {{ $auditSortField === 'created_at' ? 'text-brand-primary font-bold' : 'text-gray-400 dark:text-gray-600' }}"
+                                >
+                                    {{ $auditSortField === 'created_at' ?
+                                    ($auditSortDirection === 'asc' ? '↑' : '↓')
+                                    : '↕' }}
+                                </span>
+                            </div>
+                        </th>
+                        <th
+                            class="hover:text-brand-primary cursor-pointer px-4 py-3 transition-colors duration-150 select-none"
+                            wire:click="sortByAudit('username')"
+                        >
+                            <div class="flex items-center space-x-1">
+                                <span>User</span>
+                                <span
+                                    class="text-[10px] {{ $auditSortField === 'username' ? 'text-brand-primary font-bold' : 'text-gray-400 dark:text-gray-600' }}"
+                                >
+                                    {{ $auditSortField === 'username' ?
+                                    ($auditSortDirection === 'asc' ? '↑' : '↓')
+                                    : '↕' }}
+                                </span>
+                            </div>
+                        </th>
+                        <th
+                            class="hover:text-brand-primary cursor-pointer px-4 py-3 transition-colors duration-150 select-none"
+                            wire:click="sortByAudit('role')"
+                        >
+                            <div class="flex items-center space-x-1">
+                                <span>Role</span>
+                                <span
+                                    class="text-[10px] {{ $auditSortField === 'role' ? 'text-brand-primary font-bold' : 'text-gray-400 dark:text-gray-600' }}"
+                                >
+                                    {{ $auditSortField === 'role' ?
+                                    ($auditSortDirection === 'asc' ? '↑' : '↓')
+                                    : '↕' }}
+                                </span>
+                            </div>
+                        </th>
+                        <th
+                            class="hover:text-brand-primary cursor-pointer px-4 py-3 transition-colors duration-150 select-none"
+                            wire:click="sortByAudit('action')"
+                        >
+                            <div class="flex items-center space-x-1">
+                                <span>Action</span>
+                                <span
+                                    class="text-[10px] {{ $auditSortField === 'action' ? 'text-brand-primary font-bold' : 'text-gray-400 dark:text-gray-600' }}"
+                                >
+                                    {{ $auditSortField === 'action' ?
+                                    ($auditSortDirection === 'asc' ? '↑' : '↓')
+                                    : '↕' }}
+                                </span>
+                            </div>
+                        </th>
                         <th class="px-4 py-3">Description</th>
-                        <th class="rounded-r-xl px-4 py-3">Payload</th>
+                        <th class="px-4 py-3">Payload</th>
+                        <th class="rounded-r-xl px-4 py-3 text-right">
+                            Actions
+                        </th>
                     </tr>
                 </thead>
                 <tbody
@@ -631,11 +958,19 @@
                             </code>
                             @else - @endif
                         </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button
+                                wire:click="openAuditDetail('{{ $log->id }}')"
+                                class="bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary rounded px-2.5 py-1 font-bold transition-colors duration-150"
+                            >
+                                Detail
+                            </button>
+                        </td>
                     </tr>
                     @empty
                     <tr>
                         <td
-                            colspan="6"
+                            colspan="7"
                             class="text-light-muted py-8 text-center dark:text-gray-500"
                         >
                             No activity logs recorded.
@@ -647,6 +982,156 @@
         </div>
 
         <div class="mt-4">{{ $activityLogs->links() }}</div>
+    </div>
+    @endif {{-- VIEW AUDIT LOG DETAIL MODAL --}} @if ($showAuditDetailModal &&
+    $selectedAuditLog)
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+    >
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 text-light-text dark:text-gray-250 shadow-card animate-in fade-in zoom-in relative w-full max-w-2xl overflow-hidden rounded-2xl border bg-white p-6 pt-8 text-xs duration-200"
+        >
+            <x-brand-stripe />
+
+            {{-- Modal Header --}}
+            <div
+                class="border-light-border dark:border-surface-300/10 mb-5 flex items-center justify-between border-b pb-3"
+            >
+                <div>
+                    <h3
+                        class="text-light-text text-lg font-bold dark:text-white"
+                    >
+                        System Activity Log Details
+                    </h3>
+                    <p
+                        class="text-light-muted mt-0.5 text-xs dark:text-gray-400"
+                    >
+                        Detailed log metadata and state changes payload.
+                    </p>
+                </div>
+                <button
+                    wire:click="closeAuditDetail"
+                    class="text-light-muted hover:text-light-text dark:text-gray-450 transition-colors dark:hover:text-gray-300"
+                >
+                    <svg
+                        class="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                        ></path>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Details Grid --}}
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div
+                        class="bg-light-surface-2 dark:bg-surface-500/30 rounded-xl p-3"
+                    >
+                        <span
+                            class="text-light-muted block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                            >Timestamp</span
+                        >
+                        <span
+                            class="text-light-text mt-1 block text-sm font-semibold dark:text-white"
+                            >{{ $selectedAuditLog->created_at->format('Y-m-d
+                            H:i:s') }}</span
+                        >
+                    </div>
+                    <div
+                        class="bg-light-surface-2 dark:bg-surface-500/30 rounded-xl p-3"
+                    >
+                        <span
+                            class="text-light-muted block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                            >User (Username)</span
+                        >
+                        <span
+                            class="text-light-text mt-1 block text-sm font-semibold dark:text-white"
+                            >{{ $selectedAuditLog->username }}</span
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div
+                        class="bg-light-surface-2 dark:bg-surface-500/30 rounded-xl p-3"
+                    >
+                        <span
+                            class="text-light-muted block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                            >Role</span
+                        >
+                        <span
+                            class="text-light-text mt-1 block text-sm font-semibold uppercase dark:text-white"
+                            >{{ $selectedAuditLog->role }}</span
+                        >
+                    </div>
+                    <div
+                        class="bg-light-surface-2 dark:bg-surface-500/30 rounded-xl p-3"
+                    >
+                        <span
+                            class="text-light-muted block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                            >Action</span
+                        >
+                        <span
+                            class="text-brand-secondary mt-1 block text-sm font-bold uppercase"
+                            >{{ $selectedAuditLog->action }}</span
+                        >
+                    </div>
+                </div>
+
+                <div
+                    class="bg-light-surface-2 dark:bg-surface-500/30 rounded-xl p-3"
+                >
+                    <span
+                        class="text-light-muted block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                        >Description</span
+                    >
+                    <span
+                        class="text-light-text mt-1 block text-sm font-semibold whitespace-pre-wrap dark:text-white"
+                        >{{ $selectedAuditLog->description }}</span
+                    >
+                </div>
+
+                <div
+                    class="bg-light-surface-2 dark:bg-surface-500/30 rounded-xl p-3"
+                >
+                    <span
+                        class="text-light-muted mb-2 block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
+                        >Payload Data</span
+                    >
+                    @if ($selectedAuditLog->payload)
+                    <pre
+                        class="dark:bg-surface-650 border-light-border dark:border-surface-300/10 text-light-text max-h-60 overflow-auto rounded-lg border bg-white p-3 font-mono text-[10px] whitespace-pre dark:text-gray-300"
+                    ><code>{{ json_encode($selectedAuditLog->payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
+                    @else
+                    <span
+                        class="text-light-muted mt-1 block text-sm font-semibold dark:text-gray-400"
+                        >-</span
+                    >
+                    @endif
+                </div>
+            </div>
+
+            {{-- Action Buttons --}}
+            <div
+                class="border-light-border dark:border-surface-300/10 mt-6 flex justify-end border-t pt-4"
+            >
+                <button
+                    type="button"
+                    wire:click="closeAuditDetail"
+                    class="border-light-border hover:bg-light-surface dark:border-surface-300/20 dark:hover:bg-surface-500/20 rounded-xl border px-4 py-2 font-bold transition-colors"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
     </div>
     @endif
 </div>

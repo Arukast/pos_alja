@@ -45,6 +45,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     </head>
     <body
         class="bg-light-bg dark:bg-surface-800 text-light-text font-sans antialiased dark:text-gray-200"
@@ -111,7 +112,7 @@
                 <header
                     class="border-light-border dark:border-surface-300/40 bg-light-surface dark:bg-surface-700 shrink-0 border-b px-6 py-4 shadow-sm"
                 >
-                    <div class="mx-auto max-w-7xl">{{ $header }}</div>
+                    <div class="mx-auto max-w-[1600px]">{{ $header }}</div>
                 </header>
                 @endif
 

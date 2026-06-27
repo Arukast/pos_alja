@@ -8,7 +8,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-[1600px] space-y-6 sm:px-6 lg:px-8">
             <div
                 class="dark:bg-surface-600 border-light-border dark:border-surface-300/40 dark:shadow-card rounded-2xl border bg-white p-4 shadow-sm sm:p-8"
             >

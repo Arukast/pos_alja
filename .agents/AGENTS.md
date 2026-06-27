@@ -98,7 +98,6 @@
 - **Docker Environment:** Assume the project is run and tested inside a Docker Compose container stack. All PHP and Artisan commands must be proposed to run inside the container (e.g. `docker exec -it -w /var/www/html/pos_alja local-php83 php artisan <command>`).
 - **Interactive & Privileged Commands:** Avoid proposing `sudo` or interactive command prompts unless requested.
 - **Documentation style:** When proposing documentation, do NOT use emojis. Ensure technical guides provide complete, end-to-end instructions for both installation and post-installation usage.
-- **Walkthrough Logging:** After completing major changes, database modifications, or phase rebuilds, always update or append a detailed summary of the changes, modified files, and manual/automated verification steps to the main walkthrough file at [walkthrough.md](.agents/plan/walkthrough.md).
 
 
 

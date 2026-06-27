@@ -2,13 +2,18 @@
 
 namespace App\Livewire\Admin;
 
+use App\Events\OrderUpdated;
 use App\Models\Branch;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Services\UserService;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class UserManagement extends Component
 {
+    use WithPagination;
+
     /**
      * Operation mode: 'owner' or 'manager'.
      * Controls RBAC rules, role dropdown options, and branch selector visibility.
@@ -18,8 +23,24 @@ class UserManagement extends Component
     // Search & list
     public string $userSearch = '';
 
+    public bool $showDeactivated = false;
+
+    public function updatingUserSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingShowDeactivated(): void
+    {
+        $this->resetPage();
+    }
+
     // Modal state
     public bool $showUserModal = false;
+
+    public bool $showDetailModal = false;
+
+    public ?User $selectedUserForDetail = null;
 
     public ?string $userIdBeingEdited = null;
 
@@ -45,13 +66,13 @@ class UserManagement extends Component
 
     public string $successMessage = '';
 
-    private function isPrimaryOwner($user): bool
+    public function isPrimaryOwner($user): bool
     {
         if (! $user) {
             return false;
         }
 
-        return $user->role === 'owner' && ($user->username === 'admin_owner' || $user->username === 'primary' || $user->id === 1 || $user->id === '1');
+        return $user->role === 'owner' && ($user->username === 'admin_owner' || $user->username === 'primary' || $user->username === 'owner' || $user->id === 1 || $user->id === '1');
     }
 
     public function openCreateModal(): void
@@ -71,6 +92,7 @@ class UserManagement extends Component
 
     public function openEditModal(string $userId): void
     {
+        $this->closeDetailModal();
         $this->resetErrorBag();
         $user = User::findOrFail($userId);
 
@@ -110,22 +132,55 @@ class UserManagement extends Component
 
         $rules = [
             'formName' => 'required|string|max:255',
-            'formUsername' => 'required|string|max:255|unique:users,username,'.($this->userIdBeingEdited ?: 'NULL').',id,deleted_at,NULL',
-            'formEmail' => 'required|string|email|max:255|unique:users,email,'.($this->userIdBeingEdited ?: 'NULL').',id,deleted_at,NULL',
+            'formUsername' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('users', 'username')
+                    ->ignore($this->userIdBeingEdited)
+                    ->whereNull('deleted_at'),
+            ],
+            'formEmail' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')
+                    ->ignore($this->userIdBeingEdited)
+                    ->whereNull('deleted_at'),
+            ],
             'formPhone' => 'nullable|string|max:20',
             'formAddress' => 'nullable|string|max:255',
             'formRole' => 'required|string|in:'.$allowedRoles,
         ];
 
         if ($this->mode === 'owner') {
-            $rules['formBranchId'] = 'required|string|uuid|exists:branches,id';
+            if ($this->formRole === 'owner') {
+                $rules['formBranchId'] = 'nullable|string|uuid|exists:branches,id';
+            } else {
+                $rules['formBranchId'] = 'required|string|uuid|exists:branches,id';
+            }
         }
 
         $rules['formPassword'] = $this->userIdBeingEdited
             ? 'nullable|string|min:6'
             : 'required|string|min:6';
 
-        $this->validate($rules);
+        $messages = [
+            'formName.required' => 'The full name field is required.',
+            'formUsername.required' => 'The username field is required.',
+            'formUsername.unique' => 'This username has already been taken.',
+            'formEmail.required' => 'The email address field is required.',
+            'formEmail.email' => 'The email address must be a valid email address.',
+            'formEmail.unique' => 'This email address has already been taken.',
+            'formRole.required' => 'The staff role field is required.',
+            'formPassword.required' => 'The password field is required.',
+            'formPassword.min' => 'The password must be at least 6 characters.',
+            'formBranchId.required' => 'A physical branch must be assigned for staff roles other than Owner.',
+        ];
+
+        $this->validate($rules, $messages);
+        $userService = new UserService;
 
         if ($this->userIdBeingEdited) {
             $user = User::findOrFail($this->userIdBeingEdited);
@@ -156,14 +211,16 @@ class UserManagement extends Component
             ];
 
             if ($this->mode === 'owner') {
-                $data['branch_id'] = $this->formBranchId;
+                $data['branch_id'] = $this->formBranchId ?: null;
+            } else {
+                $data['branch_id'] = $user->branch_id;
             }
 
             if (! empty($this->formPassword)) {
-                $data['password'] = Hash::make($this->formPassword);
+                $data['password'] = $this->formPassword;
             }
 
-            $user->update($data);
+            $userService->updateUser($user, $data, auth()->user());
             $this->successMessage = 'User updated successfully!';
         } else {
             // Secondary owner cannot create owner accounts
@@ -172,10 +229,10 @@ class UserManagement extends Component
             }
 
             $branchId = $this->mode === 'owner'
-                ? $this->formBranchId
+                ? ($this->formBranchId ?: null)
                 : (auth()->user()->branch_id ?: Branch::value('id'));
 
-            User::create([
+            $data = [
                 'name' => $this->formName,
                 'username' => $this->formUsername,
                 'email' => $this->formEmail,
@@ -183,9 +240,17 @@ class UserManagement extends Component
                 'address' => $this->formAddress,
                 'role' => $this->formRole,
                 'branch_id' => $branchId,
-                'password' => Hash::make($this->formPassword),
-            ]);
+                'password' => $this->formPassword,
+            ];
+
+            $userService->createUser($data, auth()->user());
             $this->successMessage = 'User created successfully!';
+        }
+
+        try {
+            event(new OrderUpdated);
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         $this->showUserModal = false;
@@ -194,6 +259,7 @@ class UserManagement extends Component
 
     public function deleteUser(string $userId): void
     {
+        $this->closeDetailModal();
         $user = User::findOrFail($userId);
 
         if ($this->mode === 'owner') {
@@ -209,9 +275,63 @@ class UserManagement extends Component
             }
         }
 
-        $user->delete();
+        $userService = new UserService;
+        $userService->deleteUser($user, auth()->user());
+
+        try {
+            event(new OrderUpdated);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $this->successMessage = 'User deleted successfully!';
+        $this->showSuccessAlert = true;
+    }
+
+    public function openDetailModal(string $userId): void
+    {
+        $this->selectedUserForDetail = User::withTrashed()
+            ->leftJoin('branches', 'users.branch_id', '=', 'branches.id')
+            ->select('users.*', 'branches.name as branch_name')
+            ->where('users.id', $userId)
+            ->firstOrFail();
+
+        $this->showDetailModal = true;
+    }
+
+    public function closeDetailModal(): void
+    {
+        $this->showDetailModal = false;
+        $this->selectedUserForDetail = null;
+    }
+
+    public function restoreUser(string $userId): void
+    {
+        $user = User::onlyTrashed()->findOrFail($userId);
+
+        if ($this->mode === 'owner') {
+            if ($user->role === 'owner' && ! $this->isPrimaryOwner(auth()->user())) {
+                abort(403, 'Unauthorized.');
+            }
+        } else {
+            if (in_array($user->role, ['owner', 'manager'])) {
+                abort(403, 'Unauthorized.');
+            }
+            if (auth()->user()->branch_id && $user->branch_id !== auth()->user()->branch_id) {
+                abort(403, 'Unauthorized.');
+            }
+        }
+
+        $userService = new UserService;
+        $userService->restoreUser($user, auth()->user());
+
+        try {
+            event(new OrderUpdated);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        $this->successMessage = 'User restored successfully!';
         $this->showSuccessAlert = true;
     }
 
@@ -224,23 +344,29 @@ class UserManagement extends Component
             $query = User::query()
                 ->leftJoin('branches', 'users.branch_id', '=', 'branches.id')
                 ->select('users.*', 'branches.name as branch_name');
+            if ($this->showDeactivated) {
+                $query->onlyTrashed();
+            }
             if (! empty($this->userSearch)) {
                 $query->where(function ($q) {
                     $q->where('users.name', 'like', '%'.$this->userSearch.'%')
                         ->orWhere('users.username', 'like', '%'.$this->userSearch.'%');
                 });
             }
-            $usersList = $query->orderBy('users.name')->get();
+            $usersList = $query->orderBy('users.name')->paginate(15);
         } else {
             // Manager sees only own branch users
             $query = User::where('branch_id', $branchId ?: Branch::value('id'));
+            if ($this->showDeactivated) {
+                $query->onlyTrashed();
+            }
             if (! empty($this->userSearch)) {
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%'.$this->userSearch.'%')
                         ->orWhere('username', 'like', '%'.$this->userSearch.'%');
                 });
             }
-            $usersList = $query->orderBy('name')->get();
+            $usersList = $query->orderBy('name')->paginate(15);
         }
 
         $allBranches = Branch::all();

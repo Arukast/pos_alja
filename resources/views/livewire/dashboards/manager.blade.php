@@ -571,6 +571,9 @@
     </div>
     @elseif ($activeTab === 'users') {{-- Shared UserManagement sub-component
     --}}
-    <livewire:admin.user-management mode="manager" />
+    <livewire:admin.user-management
+        mode="manager"
+        wire:key="manager-user-management"
+    />
     @endif
 </div>

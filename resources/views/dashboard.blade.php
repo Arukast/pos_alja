@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-[1600px] sm:px-6 lg:px-8">
             @if (auth()->user()->role === 'manager')
             <livewire:dashboards.manager />
             @elseif (auth()->user()->role === 'owner')

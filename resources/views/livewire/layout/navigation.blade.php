@@ -114,9 +114,9 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Insights
                 </div>
-                {!! $navItem('Designer Leaderboard', 'dashboard', 'finance',
-                'leaderboard', '#leaderboard') !!} {!! $navItem('Audit Trail',
-                'dashboard', 'audit', 'audit') !!}
+                {!! $navItem('Designer Leaderboard', 'dashboard', 'leaderboard',
+                'leaderboard') !!} {!! $navItem('Audit Trail', 'dashboard',
+                'audit', 'audit') !!}
             </div>
 
             <div class="space-y-1">
@@ -464,8 +464,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                     Insights
                 </div>
                 {!! $mobileNavItem('Designer Leaderboard', 'dashboard',
-                'finance', 'leaderboard', '#leaderboard') !!} {!!
-                $mobileNavItem('Audit Trail', 'dashboard', 'audit', 'audit') !!}
+                'leaderboard', 'leaderboard') !!} {!! $mobileNavItem('Audit
+                Trail', 'dashboard', 'audit', 'audit') !!}
             </div>
 
             <div class="space-y-1">

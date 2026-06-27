@@ -19,11 +19,7 @@ parameters:
 			count: 1
 			path: app/Livewire/Dashboards/Designer.php
 
-		-
-			message: '#^If condition is always true\.$#'
-			identifier: if.alwaysTrue
-			count: 1
-			path: app/Livewire/Dashboards/Owner.php
+
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$invoice\.$#'
