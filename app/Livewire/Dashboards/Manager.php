@@ -10,6 +10,7 @@ use App\Models\PricingMatrix;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Manager extends Component
@@ -19,6 +20,7 @@ class Manager extends Component
     ];
 
     // Active tab
+    #[Url(as: 'tab')]
     public string $activeTab = 'inventory';
 
     // Add stock form properties

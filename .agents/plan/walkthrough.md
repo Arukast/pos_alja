@@ -139,3 +139,20 @@ We have rebuilt the CSS design system in `resources/css/app.css` to support both
   - `.brand-glass`, `.brand-focus-ring`, gradients, and `.hover-lift`.
 - **Dynamic Scrollbars & Selection**: Refactored `::selection` and scrollbars to dynamically adapt to light/dark themes and reference `@theme` properties.
 - **Dynamic Accent Stripes**: Refactored `.brand-stripe-bar` to reference dynamic `@theme` variables so it responds correctly to runtime branding color overrides.
+
+---
+
+## Phase 2 — Layout Shell (Completed)
+
+We have rebuilt the layout shell and navigation header, transitioning the application from a top navigation bar to a modern collapsible sidebar layout for desktop viewports and a slide-in drawer layout for mobile viewports.
+
+### Changes Made
+
+- **Query-Based Tab State**: Bound the `$activeTab` property in [Owner.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Owner.php) and [Manager.php](file:///home/arukast/Projects/localDev/projects/pos_alja/app/Livewire/Dashboards/Manager.php) to the URL query string using Livewire's `#[Url(as: 'tab')]` attribute. This allows seamless tab-switching navigation across pages and persistent tab state during Livewire `wire:navigate` transitions.
+- **Collapsible Layout Shell**: Updated [app.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/layouts/app.blade.php) to establish a full-height flex container on desktop and initialize Alpine.js states for coordinating sidebar expanded/collapsed visibility (`sidebarOpen` persisted in `localStorage`) and mobile drawer visibility (`mobileOpen`).
+- **Sidebar & Mobile Drawer Component**: Rebuilt [navigation.blade.php](file:///home/arukast/Projects/localDev/projects/pos_alja/resources/views/livewire/layout/navigation.blade.php) from scratch to support two responsive layouts:
+  - **Desktop Collapsible Sidebar**: Left column layout with smooth width transitions (`w-60` to `w-16`) containing the brand stripe, logo, collapsible menu groups, initials-based user avatar, dynamic theme toggler, and logout button.
+  - **Mobile Drawer Overlay**: Slide-in panel (width `w-60`) shown below `lg` breakpoint, controlled by a hamburger button in the thin mobile header, with a semi-transparent backdrop overlay.
+- **Role-Based Navigation Menus**: Implemented menu structures for all 5 roles (`owner`, `manager`, `cashier`, `designer`, `production`) exactly as mapped in the master design plan.
+- **Aesthetic and UX Enhancements**: Added dynamic theme switching, smooth transitions, initials-based user avatar, and hover tooltips for all navigation items.
+

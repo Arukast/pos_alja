@@ -10,6 +10,7 @@ use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -26,6 +27,7 @@ class Owner extends Component
     public string $selectedBranchId = 'all';
 
     // Active tab
+    #[Url(as: 'tab')]
     public string $activeTab = 'finance';
 
     public function setTab(string $tab): void

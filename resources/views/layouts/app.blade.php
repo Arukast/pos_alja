@@ -1,5 +1,13 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html
+    lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+    style="
+          --color-brand-primary: {{ config('brand.colors.primary') }};
+          --color-brand-secondary: {{ config('brand.colors.secondary') }};
+          --color-brand-accent: {{ config('brand.colors.accent') }};
+          --color-brand-dark: {{ config('brand.colors.dark') }};
+      "
+>
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,16 +15,12 @@
 
         <title>{{ config('brand.fullname', 'ALJA Digital Printing') }}</title>
 
-        <!-- Theme script to prevent flash of wrong theme -->
+        <!-- Theme script to prevent flash of wrong theme (defaults to light mode) -->
         <script>
-            if (
-                localStorage.getItem('theme') === 'light' ||
-                (!('theme' in localStorage) &&
-                    window.matchMedia('(prefers-color-scheme: light)').matches)
-            ) {
-                document.documentElement.classList.remove('dark');
-            } else {
+            if (localStorage.getItem('theme') === 'dark') {
                 document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
             }
         </script>
 
@@ -32,26 +36,78 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body
-        class="dark:bg-surface-800 bg-gray-50 font-sans text-gray-800 antialiased dark:text-gray-200"
+        class="bg-light-bg dark:bg-surface-800 text-light-text font-sans antialiased dark:text-gray-200"
     >
-        <div class="relative min-h-screen">
+        <div
+            class="bg-light-bg dark:bg-surface-800 flex h-screen w-screen overflow-hidden"
+            x-data="{
+                sidebarOpen: localStorage.getItem('sidebarOpen') !== 'false',
+                toggleSidebar() {
+                    this.sidebarOpen = !this.sidebarOpen;
+                    localStorage.setItem('sidebarOpen', this.sidebarOpen);
+                },
+                mobileOpen: false
+            }"
+        >
             <x-brand-glow-blobs />
 
             <livewire:layout.navigation />
 
-            <!-- Page Heading -->
-            @if (isset($header))
-            <header
-                class="dark:bg-surface-700/80 dark:border-surface-300/50 border-b border-gray-200 bg-white/80 backdrop-blur-md"
-            >
-                <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-                    {{ $header }}
-                </div>
-            </header>
-            @endif
+            <!-- Main Content Area -->
+            <div class="flex flex-1 flex-col overflow-hidden">
+                <!-- Mobile topbar strip (shown only below lg) -->
+                <header
+                    class="border-light-border dark:border-surface-300/40 bg-light-surface dark:bg-surface-700 flex h-16 shrink-0 items-center justify-between border-b px-4 lg:hidden"
+                >
+                    <button
+                        @click="mobileOpen = !mobileOpen"
+                        class="text-light-muted hover:bg-light-surface-2 hover:text-light-text dark:hover:bg-surface-400/50 rounded-lg p-2 dark:text-gray-400 dark:hover:text-white"
+                        aria-label="Toggle menu"
+                        id="mobile-menu-toggle"
+                    >
+                        <svg
+                            class="h-6 w-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
+                        </svg>
+                    </button>
 
-            <!-- Page Content -->
-            <main class="animate-fade-in">{{ $slot }}</main>
+                    <a
+                        href="{{ route('dashboard') }}"
+                        wire:navigate
+                        class="flex items-center gap-2"
+                    >
+                        <x-brand-logo type="short" size="sm" />
+                    </a>
+
+                    <!-- Spacer -->
+                    <div class="w-10"></div>
+                </header>
+
+                <!-- Page Heading -->
+                @if (isset($header))
+                <header
+                    class="border-light-border dark:border-surface-300/40 bg-light-surface dark:bg-surface-700 shrink-0 border-b px-6 py-4 shadow-sm"
+                >
+                    <div class="mx-auto max-w-7xl">{{ $header }}</div>
+                </header>
+                @endif
+
+                <!-- Page Content -->
+                <main
+                    class="animate-slide-in flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8"
+                >
+                    {{ $slot }}
+                </main>
+            </div>
         </div>
     </body>
 </html>
