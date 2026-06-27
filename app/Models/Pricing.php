@@ -25,11 +25,17 @@ class Pricing extends Model
         'profit',
     ];
 
+    /**
+     * @return BelongsTo<Product, $this>
+     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
+    /**
+     * @return BelongsTo<Material, $this>
+     */
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);
@@ -45,6 +51,9 @@ class Pricing extends Model
         return $this->hasMany(MachinePricing::class);
     }
 
+    /**
+     * @return BelongsTo<Branch, $this>
+     */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
