@@ -27,7 +27,7 @@ $inactiveClass; return "<" . "a href=\"{$url}\" wire:navigate
 @click=\"mobileOpen = false\" class=\"{$class} flex items-center gap-3
 rounded-xl px-3 py-2.5 transition-all duration-300\" title=\"{$label}\">" .
 $iconHtml . "<" . "span class=\"truncate text-sm font-semibold\">{$label}<" .
-"/span><" . "/a>"; }; // SVG Icons $icons = [ 'dashboard' => '<svg
+"/span><" . "/a>"; }; /* SVG Icons */ $icons = [ 'dashboard' => '<svg
     class="h-5 w-5 shrink-0"
     fill="none"
     viewBox="0 0 24 24"

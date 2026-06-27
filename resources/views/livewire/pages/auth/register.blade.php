@@ -69,7 +69,7 @@
 
         <div class="flex items-center justify-end pt-2">
             <a
-                class="text-alja-cyan hover:text-alja-cyan-light text-sm transition duration-150"
+                class="text-brand-secondary hover:text-brand-secondary-light text-sm transition duration-150"
                 href="{{ route('login') }}"
                 wire:navigate
             >

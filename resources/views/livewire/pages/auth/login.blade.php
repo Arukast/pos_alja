@@ -7,7 +7,7 @@
         <div>
             <label
                 for="username"
-                class="mb-2 block text-xs font-semibold tracking-wider text-gray-400 uppercase"
+                class="text-light-muted mb-2 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
                 >Username</label
             >
             <div class="relative">
@@ -15,7 +15,7 @@
                     class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5"
                 >
                     <svg
-                        class="h-5 w-5 text-gray-500"
+                        class="text-light-muted h-5 w-5 dark:text-gray-500"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -36,7 +36,7 @@
                     required
                     autofocus
                     autocomplete="username"
-                    class="bg-surface-600/50 border-surface-300/60 focus:ring-brand-primary/40 focus:border-brand-primary block w-full rounded-xl border py-3 pr-4 pl-11 text-white placeholder-gray-500 transition duration-200 focus:ring-2 focus:outline-none"
+                    class="dark:bg-surface-600/50 border-light-border dark:border-surface-300/60 focus:ring-brand-primary/40 focus:border-brand-primary text-light-text placeholder-light-muted block w-full rounded-xl border bg-white py-3 pr-4 pl-11 transition duration-200 focus:ring-2 focus:outline-none dark:text-white dark:placeholder-gray-500"
                     placeholder="Enter your username"
                 />
             </div>
@@ -50,7 +50,7 @@
         <div>
             <label
                 for="password"
-                class="mb-2 block text-xs font-semibold tracking-wider text-gray-400 uppercase"
+                class="text-light-muted mb-2 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
                 >Password</label
             >
             <div class="relative">
@@ -58,7 +58,7 @@
                     class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5"
                 >
                     <svg
-                        class="h-5 w-5 text-gray-500"
+                        class="text-light-muted h-5 w-5 dark:text-gray-500"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -78,7 +78,7 @@
                     name="password"
                     required
                     autocomplete="current-password"
-                    class="bg-surface-600/50 border-surface-300/60 focus:ring-brand-primary/40 focus:border-brand-primary block w-full rounded-xl border py-3 pr-4 pl-11 text-white placeholder-gray-500 transition duration-200 focus:ring-2 focus:outline-none"
+                    class="dark:bg-surface-600/50 border-light-border dark:border-surface-300/60 focus:ring-brand-primary/40 focus:border-brand-primary text-light-text placeholder-light-muted block w-full rounded-xl border bg-white py-3 pr-4 pl-11 transition duration-200 focus:ring-2 focus:outline-none dark:text-white dark:placeholder-gray-500"
                     placeholder="••••••••"
                 />
             </div>
@@ -98,10 +98,10 @@
                     wire:model="form.remember"
                     id="remember"
                     type="checkbox"
-                    class="border-surface-300 bg-surface-600/50 text-brand-primary focus:ring-brand-primary/40 focus:ring-offset-surface-700 h-4 w-4 rounded"
+                    class="border-light-border dark:border-surface-300 dark:bg-surface-600/50 text-brand-primary focus:ring-brand-primary/40 focus:ring-offset-light-bg dark:focus:ring-offset-surface-700 h-4 w-4 cursor-pointer rounded bg-white"
                     name="remember"
                 />
-                <span class="ms-2 text-sm text-gray-400"
+                <span class="text-light-muted ms-2 text-sm dark:text-gray-400"
                     >{{ __('Remember me') }}</span
                 >
             </label>
@@ -121,7 +121,7 @@
         <div>
             <button
                 type="submit"
-                class="bg-brand-primary hover:bg-brand-primary-hover focus:ring-offset-surface-700 focus:ring-brand-primary/50 shadow-glow-primary flex w-full justify-center rounded-xl border border-transparent px-4 py-3.5 text-sm font-bold tracking-wider text-white uppercase transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none active:scale-[0.98]"
+                class="bg-brand-primary hover:bg-brand-primary-hover focus:ring-offset-light-bg dark:focus:ring-offset-surface-700 focus:ring-brand-primary/50 shadow-glow-primary flex w-full cursor-pointer justify-center rounded-xl border border-transparent px-4 py-3.5 text-sm font-bold tracking-wider text-white uppercase transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none active:scale-[0.98]"
             >
                 {{ __('Sign In') }}
             </button>

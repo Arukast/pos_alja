@@ -20,7 +20,7 @@
         <button
             wire:click="logout"
             type="submit"
-            class="text-alja-cyan hover:text-alja-cyan-light text-sm transition duration-150"
+            class="text-brand-secondary hover:text-brand-secondary-light cursor-pointer text-sm transition duration-150"
         >
             {{ __('Log Out') }}
         </button>

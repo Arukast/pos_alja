@@ -207,3 +207,33 @@ We have rebuilt the visual layouts of all 5 role-based dashboards to support the
 - **Production Dashboard (`production.blade.php`)**:
   - Rebuilt active print queue tickets as readable rows with clear statuses (Pending/Printing), operator badges, and action buttons.
   - Restyled print waste forms and the failed runs audit tables.
+
+---
+
+## Phase 5 — Supporting Views (Completed)
+
+We have rebuilt and polished all supporting views, authentication views, and profile forms to ensure they are fully compliant with the light/dark mode design tokens and branding.
+
+### Changes Made
+
+- **User Management (`user-management.blade.php`)**:
+  - Rebuilt the main container using light/dark adaptive classes (`bg-white dark:bg-surface-600 border border-light-border dark:border-surface-300/40 text-light-text dark:text-gray-100`).
+  - Wrapped the user table in a rounded overflow container and styled the header (`bg-light-surface-2 dark:bg-surface-500`) and tbody rows (`even:bg-light-surface-2/30 dark:even:bg-surface-500/20 hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10`).
+  - Re-stylized table cells to avoid hardcoded text colors and ensure high readability (`text-light-text dark:text-white` for names, `text-light-muted dark:text-gray-300` for other columns).
+  - Integrated the dynamic `<x-brand-stripe />` component onto the Add/Edit Staff custom modal, alongside backdrop and panel styling aligned with the modals specification.
+  - Adapted input fields to use the standard `<x-text-input>` component and styled dropdown selectors consistently.
+  - Replaced custom alert classes to use readable light-green colors in light mode (`bg-emerald-50 text-emerald-800 border-emerald-250`).
+- **Profile Layout (`profile.blade.php`)**:
+  - Converted the profile panels to use the standard card styling (`bg-white dark:bg-surface-600 border border-light-border dark:border-surface-300/40 shadow-sm dark:shadow-card rounded-2xl`).
+- **Update Profile Form (`update-profile-information-form.blade.php`)**:
+  - Replaced hardcoded headings and descriptions with dynamic theme variables.
+  - Re-styled disabled inputs for username and email to render cleanly across both themes.
+- **Update Password & Delete User Forms (`update-password-form.blade.php`, `delete-user-form.blade.php`)**:
+  - Updated headings, labels, warnings, and confirm/cancel button options to align with the layout guidelines.
+- **Fallback Dashboard Routing (`dashboard.blade.php`)**:
+  - Refactored the generic welcome fallback box to use standard light/dark adaptive container tokens.
+- **Authentication Pages (`login.blade.php`, `register.blade.php`, `verify-email.blade.php`)**:
+  - Rebuilt the login input styling to be adaptive, preventing unreadable white text on white input background issues in light mode.
+  - Replaced all instances of the legacy `text-alja-cyan` and `hover:text-alja-cyan-light` links with the brand's secondary colors (`text-brand-secondary hover:text-brand-secondary-light`).
+- **Receipt Print View (`receipt.blade.php`)**:
+  - Reviewed print output formatting and verified proper stylesheet compilation. Polished the back link and print action buttons to include standard pointer cursors for improved desktop navigation.

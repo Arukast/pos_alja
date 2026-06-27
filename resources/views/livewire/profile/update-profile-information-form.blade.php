@@ -1,10 +1,10 @@
 <section>
     <header>
-        <h2 class="text-lg font-semibold text-white">
+        <h2 class="text-light-text text-lg font-semibold dark:text-white">
             {{ __('Profile Information') }}
         </h2>
 
-        <p class="mt-1 text-sm text-gray-400">
+        <p class="text-light-muted mt-1 text-sm dark:text-gray-400">
             {{ in_array(auth()->user()->role, ['owner', 'manager']) ? __("Update
             your account's profile information and email address.") : __("View
             your account's profile information.") }}
@@ -18,7 +18,7 @@
                 id="username"
                 name="username"
                 type="text"
-                class="!bg-surface-600/30 !border-surface-300/30 mt-1 block w-full cursor-not-allowed !text-gray-500"
+                class="!bg-light-surface-2 dark:!bg-surface-600/30 !border-light-border dark:!border-surface-300/30 !text-light-muted mt-1 block w-full cursor-not-allowed dark:!text-gray-500"
                 value="{{ auth()->user()->username }}"
                 disabled
             />
@@ -31,7 +31,7 @@
                 id="name"
                 name="name"
                 type="text"
-                class="!disabled:bg-surface-600/30 !disabled:text-gray-500 !disabled:border-surface-300/30 mt-1 block w-full"
+                class="disabled:!bg-light-surface-2 dark:disabled:!bg-surface-600/30 disabled:!text-light-muted disabled:!border-light-border dark:disabled:!border-surface-300/30 mt-1 block w-full dark:disabled:!text-gray-500"
                 required
                 autofocus
                 autocomplete="name"
@@ -47,7 +47,7 @@
                 id="email"
                 name="email"
                 type="email"
-                class="!disabled:bg-surface-600/30 !disabled:text-gray-500 !disabled:border-surface-300/30 mt-1 block w-full"
+                class="disabled:!bg-light-surface-2 dark:disabled:!bg-surface-600/30 disabled:!text-light-muted disabled:!border-light-border dark:disabled:!border-surface-300/30 mt-1 block w-full dark:disabled:!text-gray-500"
                 required
                 autocomplete="username"
                 :disabled="!in_array(auth()->user()->role, ['owner', 'manager'])"
@@ -59,12 +59,12 @@
             auth()->user()->hasVerifiedEmail())
             <div>
                 <!-- prettier-ignore -->
-                <p class="mt-2 text-sm text-gray-300">
+                <p class="mt-2 text-sm text-light-text dark:text-gray-300">
                     {{ __('Your email address is unverified.') }}
                     @if (in_array(auth()->user()->role, ['owner', 'manager']))
                     <button
                         wire:click.prevent="sendVerification"
-                        class="text-brand-secondary hover:text-brand-secondary-light focus:ring-brand-primary/50 focus:ring-offset-surface-700 rounded-md text-sm underline focus:ring-2 focus:ring-offset-2 focus:outline-none"
+                        class="text-brand-secondary hover:text-brand-secondary-light focus:ring-brand-primary/50 focus:ring-offset-light-bg dark:focus:ring-offset-surface-700 rounded-md text-sm underline focus:ring-2 focus:ring-offset-2 focus:outline-none"
                     >
                         {{ __('Click here to re-send the verification email.') }}
                     </button>

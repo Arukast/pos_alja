@@ -49,13 +49,13 @@
         >
             <a
                 href="/dashboard"
-                class="flex items-center text-xs font-bold text-gray-500 hover:text-gray-700"
+                class="flex cursor-pointer items-center text-xs font-bold text-gray-500 hover:text-gray-700"
             >
                 &larr; Back
             </a>
             <button
                 onclick="window.print()"
-                class="rounded bg-emerald-500 px-3 py-1.5 font-bold text-white shadow-sm transition hover:bg-emerald-600"
+                class="cursor-pointer rounded bg-emerald-500 px-3 py-1.5 font-bold text-white shadow-sm transition hover:bg-emerald-600"
             >
                 Print (Ctrl + P)
             </button>

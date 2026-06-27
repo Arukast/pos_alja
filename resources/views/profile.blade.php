@@ -1,30 +1,38 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-bold text-xl text-gray-800 dark:text-white leading-tight">
+        <h2
+            class="text-xl leading-tight font-bold text-gray-800 dark:text-white"
+        >
             {{ __('Profile') }}
         </h2>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="p-4 sm:p-8 bg-surface-500/60 backdrop-blur-sm border border-surface-300/40 shadow-card rounded-2xl">
+        <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
+            <div
+                class="dark:bg-surface-600 border-light-border dark:border-surface-300/40 dark:shadow-card rounded-2xl border bg-white p-4 shadow-sm sm:p-8"
+            >
                 <div class="max-w-xl">
                     <livewire:profile.update-profile-information-form />
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-surface-500/60 backdrop-blur-sm border border-surface-300/40 shadow-card rounded-2xl">
+            <div
+                class="dark:bg-surface-600 border-light-border dark:border-surface-300/40 dark:shadow-card rounded-2xl border bg-white p-4 shadow-sm sm:p-8"
+            >
                 <div class="max-w-xl">
                     <livewire:profile.update-password-form />
                 </div>
             </div>
 
             @if (in_array(auth()->user()->role, ['owner', 'manager']))
-                <div class="p-4 sm:p-8 bg-surface-500/60 backdrop-blur-sm border border-surface-300/40 shadow-card rounded-2xl">
-                    <div class="max-w-xl">
-                        <livewire:profile.delete-user-form />
-                    </div>
+            <div
+                class="dark:bg-surface-600 border-light-border dark:border-surface-300/40 dark:shadow-card rounded-2xl border bg-white p-4 shadow-sm sm:p-8"
+            >
+                <div class="max-w-xl">
+                    <livewire:profile.delete-user-form />
                 </div>
+            </div>
             @endif
         </div>
     </div>
