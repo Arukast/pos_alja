@@ -42,6 +42,13 @@
         :mobile="$mobile"
     />
     <x-navigation.link
+        label="Net Profit Detail"
+        route="dashboard"
+        tab="profit"
+        icon="ledgers"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
         label="Audit Trail"
         route="dashboard"
         tab="audit"

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\WastedMaterial;
@@ -103,6 +104,92 @@ class FinanceService
             'wasted_cost_total' => $wastedCostTotal,
             'invoices' => $invoices,
             'wasted_materials' => $wastedMaterials,
+        ];
+    }
+
+    /**
+     * Get aggregate and itemized net profit breakdown.
+     *
+     * @param  string|null  $branchId  'all' or UUID of the branch
+     * @param  string  $startDate  Y-m-d format
+     * @param  string  $endDate  Y-m-d format
+     * @return array{
+     *     net_profit: int,
+     *     gross_revenue: int,
+     *     total_hpp: int,
+     *     expenses_total: int,
+     *     margin_rate: float,
+     *     invoices: Collection,
+     *     wasted_materials: Collection,
+     *     expenses: Collection
+     * }
+     */
+    public function getNetProfitBreakdown(?string $branchId, string $startDate, string $endDate): array
+    {
+        // 1. Gross Revenue (Payments)
+        $paymentQuery = Payment::query()
+            ->with(['invoice.customer', 'branch'])
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
+
+        if ($branchId && $branchId !== 'all') {
+            $paymentQuery->where('branch_id', $branchId);
+        }
+
+        $grossRevenue = (int) (clone $paymentQuery)->sum('amount');
+
+        // 2. Base Cost (HPP)
+        $invoiceQuery = Invoice::query()
+            ->with(['customer', 'branch'])
+            ->whereBetween('created_date', [$startDate, $endDate]);
+
+        if ($branchId && $branchId !== 'all') {
+            $invoiceQuery->where('branch_id', $branchId);
+        }
+
+        $wastedQuery = WastedMaterial::query()
+            ->join('materials', 'wasted_materials.material_id', '=', 'materials.id')
+            ->with(['material', 'branch', 'operator'])
+            ->select('wasted_materials.*')
+            ->whereDate('wasted_materials.logged_at', '>=', $startDate)
+            ->whereDate('wasted_materials.logged_at', '<=', $endDate);
+
+        if ($branchId && $branchId !== 'all') {
+            $wastedQuery->where('wasted_materials.branch_id', $branchId);
+        }
+
+        $invoices = $invoiceQuery->orderBy('created_date', 'desc')->get();
+        $wastedMaterials = $wastedQuery->orderBy('wasted_materials.logged_at', 'desc')->get();
+
+        $invoiceCostTotal = (int) (clone $invoiceQuery)->sum('total_cost');
+        $wastedCostTotal = (int) (clone $wastedQuery)->sum(DB::raw('wasted_materials.quantity * materials.cost'));
+        $totalHpp = $invoiceCostTotal + $wastedCostTotal;
+
+        // 3. Operational Expenses
+        $expenseQuery = Expense::query()
+            ->with(['branch'])
+            ->whereBetween('incurred_at', [$startDate, $endDate]);
+
+        if ($branchId && $branchId !== 'all') {
+            $expenseQuery->where('branch_id', $branchId);
+        }
+
+        $expenses = $expenseQuery->orderBy('incurred_at', 'desc')->get();
+        $expensesTotal = (int) (clone $expenseQuery)->sum('amount');
+
+        // 4. Calculations
+        $netProfit = $grossRevenue - $totalHpp - $expensesTotal;
+        $marginRate = $grossRevenue > 0 ? ($netProfit / $grossRevenue) * 100 : 0.0;
+
+        return [
+            'net_profit' => $netProfit,
+            'gross_revenue' => $grossRevenue,
+            'total_hpp' => $totalHpp,
+            'expenses_total' => $expensesTotal,
+            'margin_rate' => $marginRate,
+            'invoices' => $invoices,
+            'wasted_materials' => $wastedMaterials,
+            'expenses' => $expenses,
         ];
     }
 }
