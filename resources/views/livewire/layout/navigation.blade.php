@@ -114,9 +114,7 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Insights
                 </div>
-                {!! $navItem('Designer Leaderboard', 'dashboard', 'leaderboard',
-                'leaderboard') !!} {!! $navItem('Audit Trail', 'dashboard',
-                'audit', 'audit') !!}
+                {!! $navItem('Audit Trail', 'dashboard', 'audit', 'audit') !!}
             </div>
 
             <div class="space-y-1">
@@ -142,6 +140,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                     Overview
                 </div>
                 {!! $navItem('Dashboard', 'dashboard', null, 'dashboard') !!}
+                {!! $navItem('Designer Leaderboard', 'dashboard', 'leaderboard',
+                'leaderboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -152,9 +152,9 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Inventory
                 </div>
-                {!! $navItem('Materials & Stock', 'dashboard', 'inventory',
-                'materials', '#materials') !!} {!! $navItem('Stock Ledgers',
-                'dashboard', 'inventory', 'ledgers', '#stock-ledgers') !!}
+                {!! $navItem('Materials & Stock', 'dashboard', 'materials',
+                'materials') !!} {!! $navItem('Stock Ledgers', 'dashboard',
+                'ledgers', 'ledgers') !!}
             </div>
 
             <div class="space-y-1">
@@ -165,10 +165,9 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Configuration
                 </div>
-                {!! $navItem('Display & Finishing', 'dashboard', 'inventory',
-                'finishing', '#display-finishing') !!} {!! $navItem('Pricing
-                Matrices', 'dashboard', 'inventory', 'pricing',
-                '#pricing-matrices') !!}
+                {!! $navItem('Display & Finishing', 'dashboard', 'finishing',
+                'finishing') !!} {!! $navItem('Pricing Matrices', 'dashboard',
+                'pricing', 'pricing') !!}
             </div>
 
             <div class="space-y-1">
@@ -463,9 +462,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Insights
                 </div>
-                {!! $mobileNavItem('Designer Leaderboard', 'dashboard',
-                'leaderboard', 'leaderboard') !!} {!! $mobileNavItem('Audit
-                Trail', 'dashboard', 'audit', 'audit') !!}
+                {!! $mobileNavItem('Audit Trail', 'dashboard', 'audit', 'audit')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -487,7 +485,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                     Overview
                 </div>
                 {!! $mobileNavItem('Dashboard', 'dashboard', null, 'dashboard')
-                !!}
+                !!} {!! $mobileNavItem('Designer Leaderboard', 'dashboard',
+                'leaderboard', 'leaderboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -497,9 +496,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                     Inventory
                 </div>
                 {!! $mobileNavItem('Materials & Stock', 'dashboard',
-                'inventory', 'materials', '#materials') !!} {!!
-                $mobileNavItem('Stock Ledgers', 'dashboard', 'inventory',
-                'ledgers', '#stock-ledgers') !!}
+                'materials', 'materials') !!} {!! $mobileNavItem('Stock
+                Ledgers', 'dashboard', 'ledgers', 'ledgers') !!}
             </div>
 
             <div class="space-y-1">
@@ -509,9 +507,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                     Configuration
                 </div>
                 {!! $mobileNavItem('Display & Finishing', 'dashboard',
-                'inventory', 'finishing', '#display-finishing') !!} {!!
-                $mobileNavItem('Pricing Matrices', 'dashboard', 'inventory',
-                'pricing', '#pricing-matrices') !!}
+                'finishing', 'finishing') !!} {!! $mobileNavItem('Pricing
+                Matrices', 'dashboard', 'pricing', 'pricing') !!}
             </div>
 
             <div class="space-y-1">

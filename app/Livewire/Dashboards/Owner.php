@@ -7,9 +7,7 @@ use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
-use App\Models\WastedMaterial;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -137,64 +135,6 @@ class Owner extends Component
         // Net margin rate
         $marginRate = $revenue > 0 ? ($profit / $revenue) * 100 : 0.0;
 
-        // Leaderboard: group invoices by designer_id (a UUID foreign key) in the range
-        $leaderQuery = Invoice::query()
-            ->join('users', 'invoices.designer_id', '=', 'users.id')
-            ->leftJoin('branches', 'users.branch_id', '=', 'branches.id')
-            ->select(
-                'users.id as designer_id',
-                'users.name',
-                'branches.name as branch_name',
-                DB::raw('count(invoices.id) as orders_count'),
-                DB::raw('sum(invoices.grand_total) as total_value')
-            )
-            ->whereBetween('invoices.created_date', [$startDate, $endDate]);
-        if ($branchId !== 'all') {
-            $leaderQuery->where('invoices.branch_id', $branchId);
-        }
-        $leaders = $leaderQuery->groupBy('users.id', 'users.name', 'branches.name')
-            ->orderBy('total_value', 'desc')
-            ->get();
-
-        // Get wasted material logs count for each designer
-        $wasteQuery = WastedMaterial::query()
-            ->select('designer_id', DB::raw('count(*) as waste_count'))
-            ->whereBetween(DB::raw('DATE(logged_at)'), [$startDate, $endDate]);
-        if ($branchId !== 'all') {
-            $wasteQuery->where('branch_id', $branchId);
-        }
-        $wastes = $wasteQuery->groupBy('designer_id')
-            ->pluck('waste_count', 'designer_id')
-            ->toArray();
-
-        // Map wastes, average order value (AOV) into the leaderboard collection
-        $leaders = $leaders->map(function ($leader) use ($wastes) {
-            $designerId = (string) $leader->getAttribute('designer_id');
-            $ordersCount = (int) $leader->getAttribute('orders_count');
-            $totalValue = (float) $leader->getAttribute('total_value');
-
-            $leaderObj = new \stdClass;
-            $leaderObj->designer_id = $designerId;
-            $leaderObj->name = (string) $leader->getAttribute('name');
-            $leaderObj->branch_name = $leader->getAttribute('branch_name') ? (string) $leader->getAttribute('branch_name') : null;
-            $leaderObj->orders_count = $ordersCount;
-            $leaderObj->total_value = $totalValue;
-            $leaderObj->waste_count = (int) ($wastes[$designerId] ?? 0);
-            $leaderObj->aov = $ordersCount > 0 ? (float) ($totalValue / $ordersCount) : 0.0;
-
-            return $leaderObj;
-        });
-
-        // Compute performance highlight cards
-        $topRevenue = $leaders->first();
-        $orderChampion = $leaders->sortByDesc('orders_count')->first();
-        $topAov = $leaders->sortByDesc('aov')->first();
-        $accuracyLeader = $leaders->filter(fn ($l) => $l->orders_count > 0)
-            ->sortBy([
-                ['waste_count', 'asc'],
-                ['orders_count', 'desc'],
-            ])->first();
-
         // Sparkline coordinates: compute data based on active period filter
         $sparklinePoints = [];
         $sparklineLabels = [];
@@ -298,17 +238,12 @@ class Owner extends Component
             'profit',
             'expensesTotal',
             'marginRate',
-            'leaders',
             'sparklinePoints',
             'allBranches',
             'cashPayments',
             'transferPayments',
             'qrisPayments',
             'activityLogs',
-            'topRevenue',
-            'orderChampion',
-            'topAov',
-            'accuracyLeader',
             'selectedAuditLog',
             'sparklineLabels'
         ));
