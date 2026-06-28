@@ -76,9 +76,9 @@ class InventoryManagementTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(Manager::class)
-            ->set('selectedMaterialId', $material->id)
-            ->set('addStockQuantity', 50)
-            ->set('addStockNotes', 'Restocked 50m')
+            ->set('restockForm.selectedMaterialId', $material->id)
+            ->set('restockForm.addStockQuantity', 50)
+            ->set('restockForm.addStockNotes', 'Restocked 50m')
             ->call('addMaterialStock')
             ->assertHasNoErrors();
 

@@ -2,6 +2,9 @@
 
 namespace App\Livewire\Dashboards;
 
+use App\Livewire\Forms\AttributeForm;
+use App\Livewire\Forms\PricingForm;
+use App\Livewire\Forms\RestockForm;
 use App\Models\Attribute;
 use App\Models\Branch;
 use App\Models\Expense;
@@ -28,34 +31,26 @@ class Manager extends Component
     #[Url(as: 'tab')]
     public string $activeTab = 'dashboard';
 
-    // Add stock form properties
-    public string $selectedMaterialId = '';
+    public RestockForm $restockForm;
 
-    public string $addStockQuantity = '';
+    public AttributeForm $attributeForm;
 
-    public string $addStockNotes = '';
+    public PricingForm $pricingForm;
 
-    // Display & Finishing Attribute CRUD properties
-    public ?string $attributeId = null;
+    // Properties accessed inside @island views
+    public $stockLogs;
 
-    public string $attributeName = '';
+    public $expenses;
 
-    public string $attributeType = 'finishing'; // finishing, cut, display
+    public $leaders;
 
-    // Pricing CRUD properties
-    public ?string $pricingId = null;
+    public $topRevenue;
 
-    public string $productId = '';
+    public $orderChampion;
 
-    public string $materialId = '';
+    public $topAov;
 
-    public string $customerType = 'Reguler'; // Reguler, Mitra
-
-    public int $minQty = 1;
-
-    public string $price = '';
-
-    public string $cost = '';
+    public $accuracyLeader;
 
     // Alert feedback
     public bool $showSuccessAlert = false;
@@ -71,22 +66,22 @@ class Manager extends Component
 
     public function addMaterialStock(): void
     {
-        $this->validate([
-            'selectedMaterialId' => 'required|string|uuid|exists:materials,id',
-            'addStockQuantity' => 'required|numeric|min:0.01',
-            'addStockNotes' => 'nullable|string|max:255',
-        ]);
+        $this->restockForm->validate();
 
-        $material = Material::findOrFail($this->selectedMaterialId);
+        $material = Material::findOrFail($this->restockForm->selectedMaterialId);
 
         if (auth()->user()->branch_id && $material->branch_id !== auth()->user()->branch_id) {
             abort(403, 'Unauthorized branch access.');
         }
 
         $inventoryService = new InventoryService;
-        $inventoryService->addStock($material, (float) $this->addStockQuantity, $this->addStockNotes);
+        $inventoryService->addStock(
+            $material,
+            (float) $this->restockForm->addStockQuantity,
+            $this->restockForm->addStockNotes
+        );
 
-        $this->reset(['selectedMaterialId', 'addStockQuantity', 'addStockNotes']);
+        $this->restockForm->reset();
 
         $this->successMessage = 'Inventory stock restocked successfully!';
         $this->showSuccessAlert = true;
@@ -95,28 +90,25 @@ class Manager extends Component
     // Attribute CRUD Methods
     public function saveAttribute(): void
     {
-        $this->validate([
-            'attributeName' => 'required|string|max:255',
-            'attributeType' => 'required|string|in:finishing,cut,display',
-        ]);
+        $this->attributeForm->validate();
 
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
-        if ($this->attributeId) {
-            $attribute = Attribute::findOrFail($this->attributeId);
+        if ($this->attributeForm->attributeId) {
+            $attribute = Attribute::findOrFail($this->attributeForm->attributeId);
             if ($attribute->branch_id && $attribute->branch_id !== auth()->user()->branch_id) {
                 abort(403, 'Unauthorized branch access.');
             }
             $attribute->update([
-                'name' => $this->attributeName,
-                'type' => $this->attributeType,
+                'name' => $this->attributeForm->attributeName,
+                'type' => $this->attributeForm->attributeType,
             ]);
             $this->successMessage = 'Attribute updated successfully!';
         } else {
             Attribute::create([
                 'branch_id' => $branchId,
-                'name' => $this->attributeName,
-                'type' => $this->attributeType,
+                'name' => $this->attributeForm->attributeName,
+                'type' => $this->attributeForm->attributeType,
             ]);
             $this->successMessage = 'Attribute created successfully!';
         }
@@ -132,9 +124,9 @@ class Manager extends Component
             abort(403, 'Unauthorized branch access.');
         }
 
-        $this->attributeId = $attribute->id;
-        $this->attributeName = $attribute->name;
-        $this->attributeType = $attribute->type;
+        $this->attributeForm->attributeId = $attribute->id;
+        $this->attributeForm->attributeName = $attribute->name;
+        $this->attributeForm->attributeType = $attribute->type;
         $this->showSuccessAlert = false;
     }
 
@@ -152,38 +144,30 @@ class Manager extends Component
 
     public function resetAttributeForm(): void
     {
-        $this->reset(['attributeId', 'attributeName', 'attributeType']);
-        $this->attributeType = 'finishing';
+        $this->attributeForm->reset();
         $this->resetErrorBag();
     }
 
     // Pricing CRUD Methods
     public function savePricing(): void
     {
-        $this->validate([
-            'productId' => 'required|string|uuid|exists:products,id',
-            'materialId' => 'required|string|uuid|exists:materials,id',
-            'customerType' => 'required|string|max:50',
-            'minQty' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-            'cost' => 'required|numeric|min:0',
-        ]);
+        $this->pricingForm->validate();
 
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
-        $priceVal = (float) $this->price;
-        $costVal = (float) $this->cost;
+        $priceVal = (float) $this->pricingForm->price;
+        $costVal = (float) $this->pricingForm->cost;
         $profitVal = max(0.0, $priceVal - $costVal);
 
-        if ($this->pricingId) {
-            $pricing = Pricing::findOrFail($this->pricingId);
+        if ($this->pricingForm->pricingId) {
+            $pricing = Pricing::findOrFail($this->pricingForm->pricingId);
             if ($pricing->branch_id && $pricing->branch_id !== auth()->user()->branch_id) {
                 abort(403, 'Unauthorized branch access.');
             }
             $pricing->update([
-                'product_id' => $this->productId,
-                'material_id' => $this->materialId,
-                'customer_type' => $this->customerType,
-                'min_qty' => $this->minQty,
+                'product_id' => $this->pricingForm->productId,
+                'material_id' => $this->pricingForm->materialId,
+                'customer_type' => $this->pricingForm->customerType,
+                'min_qty' => $this->pricingForm->minQty,
                 'price' => $priceVal,
                 'cost' => $costVal,
                 'profit' => $profitVal,
@@ -192,10 +176,10 @@ class Manager extends Component
         } else {
             Pricing::create([
                 'branch_id' => $branchId,
-                'product_id' => $this->productId,
-                'material_id' => $this->materialId,
-                'customer_type' => $this->customerType,
-                'min_qty' => $this->minQty,
+                'product_id' => $this->pricingForm->productId,
+                'material_id' => $this->pricingForm->materialId,
+                'customer_type' => $this->pricingForm->customerType,
+                'min_qty' => $this->pricingForm->minQty,
                 'price' => $priceVal,
                 'cost' => $costVal,
                 'profit' => $profitVal,
@@ -214,13 +198,13 @@ class Manager extends Component
             abort(403, 'Unauthorized branch access.');
         }
 
-        $this->pricingId = $pricing->id;
-        $this->productId = $pricing->product_id;
-        $this->materialId = $pricing->material_id;
-        $this->customerType = $pricing->customer_type;
-        $this->minQty = $pricing->min_qty;
-        $this->price = (string) $pricing->price;
-        $this->cost = (string) $pricing->cost;
+        $this->pricingForm->pricingId = $pricing->id;
+        $this->pricingForm->productId = $pricing->product_id;
+        $this->pricingForm->materialId = $pricing->material_id;
+        $this->pricingForm->customerType = $pricing->customer_type;
+        $this->pricingForm->minQty = $pricing->min_qty;
+        $this->pricingForm->price = (string) $pricing->price;
+        $this->pricingForm->cost = (string) $pricing->cost;
         $this->showSuccessAlert = false;
     }
 
@@ -238,9 +222,7 @@ class Manager extends Component
 
     public function resetPricingForm(): void
     {
-        $this->reset(['pricingId', 'productId', 'materialId', 'customerType', 'minQty', 'price', 'cost']);
-        $this->customerType = 'Reguler';
-        $this->minQty = 1;
+        $this->pricingForm->reset();
         $this->resetErrorBag();
     }
 
@@ -346,6 +328,14 @@ class Manager extends Component
                 ['waste_count', 'asc'],
                 ['orders_count', 'desc'],
             ])->first();
+
+        $this->stockLogs = $stockLogs;
+        $this->expenses = $expenses;
+        $this->leaders = $leaders;
+        $this->topRevenue = $topRevenue;
+        $this->orderChampion = $orderChampion;
+        $this->topAov = $topAov;
+        $this->accuracyLeader = $accuracyLeader;
 
         return view('livewire.dashboards.manager', compact(
             'materialCount',
