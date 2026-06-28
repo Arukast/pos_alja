@@ -1,5 +1,5 @@
-@if ($activeTab === 'dashboard' || $activeTab === 'print_queue') @island(name:
-'print-queue')
+@if ($activeTab === 'dashboard' || $activeTab === 'print_queue')
+@island('print-queue')
 <div class="grid grid-cols-1 gap-6">
     <!-- Live print queue board -->
     <div
