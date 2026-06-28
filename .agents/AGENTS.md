@@ -14,7 +14,7 @@
 - **Role-Based Access Control:** Strict role segregation applies with English names: `owner`, `manager`, `cashier`, `designer`, and `production`. These role strings are natively stored in the database. Ensure gates and middleware enforce these boundaries.
   - **Profile & Settings Rule:** Only `owner` and `manager` are authorized to update user profiles (name and email). All other roles can only view their profile info and update their passwords.
   - **Role-Specific Dashboard Responsibilities:**
-    - **Owner:** Cross-branch financial analytics (Omset/HPP/Laba, Expenses), period filters (Daily, Weekly, Monthly), branch selection toggle, individual designer performance leaderboard, and dynamic SVG sparkline charts mapping net profits.
+    - **Owner:** Cross-branch financial analytics (Omset/HPP/Laba, Expenses), period filters (Daily, Weekly, Monthly), branch selection toggle, and sparkline charts mapping net profits.
     - **Manager:** Material inventory management, stock ledgers, display/finishing master data, pricing engine matrices, and user profile management.
     - **Cashier:** Checkouts, down payments (DP), balance settlements, cashier drawer expenses, receipt printing, and customer pickup queue (`pickup_status = 0` / Not Picked Up, and invoice `status = 2` / Paid).
     - **Designer:** Customer select/creation wizard, parameter inputs (sizes, dimensions, options), real-time pricing calculator preview, and printable job tickets (Work Order sheets).

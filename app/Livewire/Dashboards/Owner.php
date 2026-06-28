@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Dashboards;
 
 use App\Models\ActivityLog;
@@ -38,6 +40,11 @@ class Owner extends Component
     public bool $showAuditDetailModal = false;
 
     public ?string $selectedAuditLogId = null;
+
+    // Public properties to persist state in Livewire v4 islands
+    public array $sparklinePoints = [];
+
+    public array $sparklineLabels = [];
 
     public function openAuditDetail(string $logId): void
     {
@@ -105,7 +112,7 @@ class Owner extends Component
             ->whereDate('created_at', '<=', $endDate);
 
         // Sum values
-        $revenue = (int) $paymentQuery->sum('amount');
+        $grandTotal = (int) $paymentQuery->sum('amount');
 
         // Cash distribution breakdown
         $cashPayments = (int) (clone $paymentQuery)->where('payment_method', 'Cash')->sum('amount');
@@ -122,7 +129,7 @@ class Owner extends Component
         $cost = (int) $invoiceQuery->sum('total_cost');
 
         // Net profit based on cash collected minus base cost
-        $profit = $revenue - $cost;
+        $profit = $grandTotal - $cost;
 
         // Build expenses query base
         $expenseQuery = Expense::query();
@@ -133,11 +140,11 @@ class Owner extends Component
         $expensesTotal = (int) $expenseQuery->sum('amount');
 
         // Net margin rate
-        $marginRate = $revenue > 0 ? ($profit / $revenue) * 100 : 0.0;
+        $marginRate = $grandTotal > 0 ? ($profit / $grandTotal) * 100 : 0.0;
 
         // Sparkline coordinates: compute data based on active period filter
-        $sparklinePoints = [];
-        $sparklineLabels = [];
+        $points = [];
+        $labels = [];
 
         if ($period === 'Daily') {
             // Daily: 24-hour day split into 6 equal intervals (each 4 hours: 0-4, 4-8, 8-12, 12-16, 16-20, 20-24)
@@ -159,9 +166,9 @@ class Owner extends Component
 
                 $paySum = (int) $pQuery->sum('amount');
                 $costSum = (int) $iQuery->sum('total_cost');
-                $sparklinePoints[] = $paySum - $costSum;
+                $points[] = $paySum - $costSum;
             }
-            $sparklineLabels = ['00:00-04:00', '04:00-08:00', '08:00-12:00', '12:00-16:00', '16:00-20:00', '20:00-24:00'];
+            $labels = ['00:00-04:00', '04:00-08:00', '08:00-12:00', '12:00-16:00', '16:00-20:00', '20:00-24:00'];
         } elseif ($period === 'Weekly') {
             // Weekly: last 7 days leading up to today
             for ($i = 6; $i >= 0; $i--) {
@@ -179,8 +186,8 @@ class Owner extends Component
 
                 $paySum = (int) $pQuery->sum('amount');
                 $costSum = (int) $iQuery->sum('total_cost');
-                $sparklinePoints[] = $paySum - $costSum;
-                $sparklineLabels[] = $date->format('D');
+                $points[] = $paySum - $costSum;
+                $labels[] = $date->format('D');
             }
         } else {
             // Monthly: last 4 weeks leading up to today
@@ -198,15 +205,18 @@ class Owner extends Component
 
                 $paySum = (int) $pQuery->sum('amount');
                 $costSum = (int) $iQuery->sum('total_cost');
-                $sparklinePoints[] = $paySum - $costSum;
+                $points[] = $paySum - $costSum;
 
                 if ($i === 0) {
-                    $sparklineLabels[] = 'This Week';
+                    $labels[] = 'This Week';
                 } else {
-                    $sparklineLabels[] = $i.' wk ago';
+                    $labels[] = $i.' wk ago';
                 }
             }
         }
+
+        $this->sparklinePoints = $points;
+        $this->sparklineLabels = $labels;
 
         $allBranches = Branch::all();
 
@@ -233,19 +243,17 @@ class Owner extends Component
         $selectedAuditLog = $this->selectedAuditLogId ? ActivityLog::find($this->selectedAuditLogId) : null;
 
         return view('livewire.dashboards.owner', compact(
-            'revenue',
+            'grandTotal',
             'cost',
             'profit',
             'expensesTotal',
             'marginRate',
-            'sparklinePoints',
             'allBranches',
             'cashPayments',
             'transferPayments',
             'qrisPayments',
             'activityLogs',
-            'selectedAuditLog',
-            'sparklineLabels'
+            'selectedAuditLog'
         ));
     }
 }
