@@ -11,10 +11,14 @@ use App\Models\User;
 use App\Models\WastedMaterial;
 use App\Services\InventoryService;
 use App\Services\OrderService;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Production extends Component
 {
+    #[Url(as: 'tab')]
+    public string $activeTab = 'dashboard';
+
     protected $listeners = [
         'echo:orders,OrderUpdated' => '$refresh',
     ];
@@ -111,42 +115,57 @@ class Production extends Component
     {
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
-        // 1. Dynamic Quick Stat Counters
-        $queueCount = Order::where('status', 0)
-            ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
-            ->count();
-        $printingCount = Order::where('status', 1)
-            ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
-            ->count();
-        $completedToday = Order::where('status', 2)
-            ->whereDate('updated_at', now()->toDateString())
-            ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
-            ->count();
-        $wasteToday = WastedMaterial::where('branch_id', $branchId)
-            ->whereDate('logged_at', now()->toDateString())
-            ->sum('quantity');
+        // Initialize variables to default empty/null states
+        $queueCount = 0;
+        $printingCount = 0;
+        $completedToday = 0;
+        $wasteToday = 0.0;
+        $activeOrders = collect();
+        $allMaterials = collect();
+        $allMachines = collect();
+        $designersList = collect();
+        $recentWaste = collect();
 
-        // 2. Load active queue (status 0: pending, status 1: printing)
-        $activeOrders = Order::with('invoice.customer')
-            ->whereIn('status', [0, 1])
-            ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('created_at', 'asc')
-            ->limit(10)
-            ->get();
+        // 1. Load metrics & lists conditionally based on activeTab
+        if ($this->activeTab === 'dashboard' || $this->activeTab === 'print_queue') {
+            $queueCount = Order::where('status', 0)
+                ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
+                ->count();
+            $printingCount = Order::where('status', 1)
+                ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
+                ->count();
+            $completedToday = Order::where('status', 2)
+                ->whereDate('updated_at', now()->toDateString())
+                ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
+                ->count();
+            $wasteToday = WastedMaterial::where('branch_id', $branchId)
+                ->whereDate('logged_at', now()->toDateString())
+                ->sum('quantity');
 
-        // 3. Load materials and machines options
-        $allMaterials = Material::where('branch_id', $branchId)->orderBy('name')->get();
-        $allMachines = Machine::where('branch_id', $branchId)->orderBy('name')->get();
+            // Load active queue (status 0: pending, status 1: printing)
+            $activeOrders = Order::with('invoice.customer')
+                ->whereIn('status', [0, 1])
+                ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
+                ->orderBy('created_at', 'asc')
+                ->limit(10)
+                ->get();
+        }
 
-        // Load designers list for dropdown
-        $designersList = User::where('role', 'designer')->where('branch_id', $branchId)->get();
+        if ($this->activeTab === 'waste') {
+            // Load materials and machines options
+            $allMaterials = Material::where('branch_id', $branchId)->orderBy('name')->get();
+            $allMachines = Machine::where('branch_id', $branchId)->orderBy('name')->get();
 
-        // 4. Load recent wasted logs
-        $recentWaste = WastedMaterial::with(['material', 'machine', 'designer', 'operator'])
-            ->where('branch_id', $branchId)
-            ->orderBy('created_at', 'desc')
-            ->limit(8)
-            ->get();
+            // Load designers list for dropdown
+            $designersList = User::where('role', 'designer')->where('branch_id', $branchId)->get();
+
+            // Load recent wasted logs
+            $recentWaste = WastedMaterial::with(['material', 'machine', 'designer', 'operator'])
+                ->where('branch_id', $branchId)
+                ->orderBy('created_at', 'desc')
+                ->limit(8)
+                ->get();
+        }
 
         return view('livewire.dashboards.production', compact(
             'queueCount',

@@ -256,9 +256,9 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Operations
                 </div>
-                {!! $navItem('Print Queue', 'dashboard', null, 'print_queue',
-                '#print-queue') !!} {!! $navItem('Waste Logging', 'dashboard',
-                null, 'waste', '#waste-logging') !!}
+                {!! $navItem('Print Queue', 'dashboard', 'print_queue',
+                'print_queue') !!} {!! $navItem('Waste Logging', 'dashboard',
+                'waste', 'waste') !!}
             </div>
             @endif
         </div>
@@ -587,9 +587,9 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Operations
                 </div>
-                {!! $mobileNavItem('Print Queue', 'dashboard', null,
-                'print_queue', '#print-queue') !!} {!! $mobileNavItem('Waste
-                Logging', 'dashboard', null, 'waste', '#waste-logging') !!}
+                {!! $mobileNavItem('Print Queue', 'dashboard', 'print_queue',
+                'print_queue') !!} {!! $mobileNavItem('Waste Logging',
+                'dashboard', 'waste', 'waste') !!}
             </div>
             @endif
         </div>
