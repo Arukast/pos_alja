@@ -81,6 +81,13 @@
         icon="users"
         :mobile="$mobile"
     />
+    <x-navigation.link
+        label="Branch Management"
+        route="dashboard"
+        tab="branches"
+        icon="branches"
+        :mobile="$mobile"
+    />
 </div>
 
 @elseif ($role === 'manager')

@@ -13,7 +13,15 @@ class Branch extends Model
 
     protected $fillable = [
         'name',
+        'code',
         'address',
         'phone',
+        'is_active',
+        'settings',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'settings' => 'array',
     ];
 }
