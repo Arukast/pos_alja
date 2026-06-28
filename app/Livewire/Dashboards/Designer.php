@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Dashboards;
 
 use App\Events\OrderUpdated;
 use App\Exceptions\PricingNotFoundException;
+use App\Livewire\Forms\CalculatorForm;
+use App\Livewire\Forms\CustomerForm;
 use App\Models\Attribute;
 use App\Models\AttributePricing;
 use App\Models\Branch;
@@ -31,54 +35,19 @@ class Designer extends Component
 
     public string $invoiceSearch = '';
 
-    // Order info
-    public string $customerSearch = '';
+    // Form Objects
+    public CustomerForm $customerForm;
 
+    public CalculatorForm $calculatorForm;
+
+    // Remaining basic properties
     public string $customerId = '';
 
     public string $deadline = '';
 
     public string $source = 'Offline';
 
-    // New customer form
     public bool $showNewCustomerForm = false;
-
-    public string $customerName = '';
-
-    public string $customerPhone = '';
-
-    public string $customerAddress = '';
-
-    public string $customerEmail = '';
-
-    public string $customerType = 'Reguler';
-
-    // Calculator inputs
-    public string $productId = '';
-
-    public string $materialId = '';
-
-    public string $machineId = '';
-
-    public string $finishingId = '';
-
-    public string $cutId = '';
-
-    public string $displayId = '';
-
-    public int $sides = 1;
-
-    public int $finishingSides = 0;
-
-    public int $quantity = 1;
-
-    public float $width = 1.0;
-
-    public float $length = 1.0;
-
-    public string $fileName = '';
-
-    public string $notes = '';
 
     // Manual price overrides
     public bool $isManualPrice = false;
@@ -118,49 +87,43 @@ class Designer extends Component
     public function selectCustomer(string $id): void
     {
         $this->customerId = $id;
-        $this->customerSearch = Customer::find($id)->name ?? '';
-    }
-
-    public function updatedCustomerSearch(): void
-    {
-        $this->customerId = '';
-    }
-
-    public function createCustomer(): void
-    {
-        $this->validate([
-            'customerName' => 'required|string|max:255',
-            'customerPhone' => 'nullable|string|max:20',
-            'customerAddress' => 'nullable|string',
-            'customerEmail' => 'nullable|email|max:255',
-            'customerType' => 'required|string|in:Reguler,Mitra',
-        ]);
-
-        $customerService = new CustomerService;
-        $customer = $customerService->createCustomer([
-            'name' => $this->customerName,
-            'phone' => $this->customerPhone,
-            'address' => $this->customerAddress,
-            'email' => $this->customerEmail,
-            'type' => $this->customerType,
-        ], auth()->user());
-
-        $this->customerId = $customer->id;
-        $this->customerSearch = $customer->name;
-        $this->showNewCustomerForm = false;
-
-        $this->reset(['customerName', 'customerPhone', 'customerAddress', 'customerEmail']);
+        $this->customerForm->search = Customer::find($id)->name ?? '';
     }
 
     public function updated(string $propertyName): void
     {
+        if ($propertyName === 'customerForm.search') {
+            $this->customerId = '';
+        }
+
         if (in_array($propertyName, [
-            'productId', 'materialId', 'machineId', 'finishingId',
-            'cutId', 'displayId', 'sides', 'finishingSides',
-            'quantity', 'width', 'length', 'isManualPrice', 'manualPrice', 'manualCost',
+            'calculatorForm.productId', 'calculatorForm.materialId', 'calculatorForm.machineId',
+            'calculatorForm.finishingId', 'calculatorForm.cutId', 'calculatorForm.displayId',
+            'calculatorForm.sides', 'calculatorForm.finishingSides', 'calculatorForm.quantity',
+            'calculatorForm.width', 'calculatorForm.length', 'isManualPrice', 'manualPrice', 'manualCost',
         ])) {
             $this->calculateQuote();
         }
+    }
+
+    public function createCustomer(): void
+    {
+        $this->customerForm->validate();
+
+        $customerService = new CustomerService;
+        $customer = $customerService->createCustomer([
+            'name' => $this->customerForm->name,
+            'phone' => $this->customerForm->phone,
+            'address' => $this->customerForm->address,
+            'email' => $this->customerForm->email,
+            'type' => $this->customerForm->type,
+        ], auth()->user());
+
+        $this->customerId = $customer->id;
+        $this->customerForm->search = $customer->name;
+        $this->showNewCustomerForm = false;
+
+        $this->customerForm->reset(['name', 'phone', 'address', 'email']);
     }
 
     public function calculateQuote(): void
@@ -168,7 +131,7 @@ class Designer extends Component
         $this->calcError = '';
         $this->isCalculated = false;
 
-        if (! $this->productId || ! $this->materialId) {
+        if (! $this->calculatorForm->productId || ! $this->calculatorForm->materialId) {
             return;
         }
 
@@ -176,13 +139,13 @@ class Designer extends Component
             // Manual pricing override bypasses the matrix lookups
             $this->calcPrice = $this->manualPrice;
             $this->calcCost = $this->manualCost;
-            $product = Product::findOrFail($this->productId);
+            $product = Product::findOrFail($this->calculatorForm->productId);
 
             if ($product->pricing_type === 'area') {
-                $area = ($this->width > 0 && $this->length > 0) ? ($this->width * $this->length) : 1.0;
-                $this->calcSubtotal = (int) round($this->calcPrice * $this->quantity * $area);
+                $area = ($this->calculatorForm->width > 0 && $this->calculatorForm->length > 0) ? ($this->calculatorForm->width * $this->calculatorForm->length) : 1.0;
+                $this->calcSubtotal = (int) round($this->calcPrice * $this->calculatorForm->quantity * $area);
             } else {
-                $this->calcSubtotal = $this->calcPrice * $this->quantity;
+                $this->calcSubtotal = $this->calcPrice * $this->calculatorForm->quantity;
             }
 
             $this->calcPricingId = null;
@@ -200,17 +163,17 @@ class Designer extends Component
 
             $pricingService = new PricingService;
             $quote = $pricingService->calculateQuote([
-                'product_id' => $this->productId,
-                'material_id' => $this->materialId,
-                'machine_id' => $this->machineId ?: null,
-                'finishing_id' => $this->finishingId ?: null,
-                'cut_id' => $this->cutId ?: null,
-                'display_id' => $this->displayId ?: null,
-                'sides' => $this->sides ?: 1,
-                'finishing_sides' => $this->finishingSides ?: 0,
-                'quantity' => $this->quantity ?: 1,
-                'width' => $this->width ?: 0,
-                'length' => $this->length ?: 0,
+                'product_id' => $this->calculatorForm->productId,
+                'material_id' => $this->calculatorForm->materialId,
+                'machine_id' => $this->calculatorForm->machineId ?: null,
+                'finishing_id' => $this->calculatorForm->finishingId ?: null,
+                'cut_id' => $this->calculatorForm->cutId ?: null,
+                'display_id' => $this->calculatorForm->displayId ?: null,
+                'sides' => $this->calculatorForm->sides ?: 1,
+                'finishing_sides' => $this->calculatorForm->finishingSides ?: 0,
+                'quantity' => $this->calculatorForm->quantity ?: 1,
+                'width' => $this->calculatorForm->width ?: 0,
+                'length' => $this->calculatorForm->length ?: 0,
                 'customer_type' => $custType,
             ]);
 
@@ -234,53 +197,53 @@ class Designer extends Component
             return;
         }
 
-        $product = Product::find($this->productId);
+        $product = Product::find($this->calculatorForm->productId);
         $productName = $product->name;
-        $materialName = Material::find($this->materialId)->name;
-        $machineName = $this->machineId ? Machine::find($this->machineId)->name : 'N/A';
-        $finishingName = $this->finishingId ? Attribute::find($this->finishingId)->name : 'N/A';
-        $cutName = $this->cutId ? Attribute::find($this->cutId)->name : 'N/A';
-        $displayName = $this->displayId ? Attribute::find($this->displayId)->name : 'N/A';
+        $materialName = Material::find($this->calculatorForm->materialId)->name;
+        $machineName = $this->calculatorForm->machineId ? Machine::find($this->calculatorForm->machineId)->name : 'N/A';
+        $finishingName = $this->calculatorForm->finishingId ? Attribute::find($this->calculatorForm->finishingId)->name : 'N/A';
+        $cutName = $this->calculatorForm->cutId ? Attribute::find($this->calculatorForm->cutId)->name : 'N/A';
+        $displayName = $this->calculatorForm->displayId ? Attribute::find($this->calculatorForm->displayId)->name : 'N/A';
 
         $specDetails = ["Material: {$materialName}"];
-        if ($this->machineId) {
+        if ($this->calculatorForm->machineId) {
             $specDetails[] = "Machine: {$machineName}";
         }
-        if ($this->finishingId) {
+        if ($this->calculatorForm->finishingId) {
             $specDetails[] = "Finishing: {$finishingName}";
         }
-        if ($this->cutId) {
+        if ($this->calculatorForm->cutId) {
             $specDetails[] = "Cutting: {$cutName}";
         }
-        if ($this->displayId) {
+        if ($this->calculatorForm->displayId) {
             $specDetails[] = "Display: {$displayName}";
         }
         if ($product->pricing_type === 'area') {
-            $specDetails[] = "Size: {$this->length}m x {$this->width}m";
+            $specDetails[] = "Size: {$this->calculatorForm->length}m x {$this->calculatorForm->width}m";
         }
         if ($this->isManualPrice) {
             $specDetails[] = 'Manual Price Override';
         }
 
-        $areaMultiplier = $product->pricing_type === 'area' ? ($this->width * $this->length) : 1;
-        $totalItemCost = (int) round($this->calcCost * $this->quantity * $areaMultiplier);
+        $areaMultiplier = $product->pricing_type === 'area' ? ($this->calculatorForm->width * $this->calculatorForm->length) : 1;
+        $totalItemCost = (int) round($this->calcCost * $this->calculatorForm->quantity * $areaMultiplier);
 
         $this->items[] = [
             'id' => uniqid(),
-            'product_id' => $this->productId,
+            'product_id' => $this->calculatorForm->productId,
             'product_name' => $productName,
-            'material_id' => $this->materialId,
-            'machine_id' => $this->machineId ?: null,
-            'finishing_id' => $this->finishingId ?: null,
-            'cut_id' => $this->cutId ?: null,
-            'display_id' => $this->displayId ?: null,
-            'sides' => $this->sides,
-            'finishing_sides' => $this->finishingSides,
-            'quantity' => $this->quantity,
-            'width' => $this->width,
-            'length' => $this->length,
-            'file_name' => $this->fileName ?: 'Unnamed_File',
-            'notes' => $this->notes ?: '',
+            'material_id' => $this->calculatorForm->materialId,
+            'machine_id' => $this->calculatorForm->machineId ?: null,
+            'finishing_id' => $this->calculatorForm->finishingId ?: null,
+            'cut_id' => $this->calculatorForm->cutId ?: null,
+            'display_id' => $this->calculatorForm->displayId ?: null,
+            'sides' => $this->calculatorForm->sides,
+            'finishing_sides' => $this->calculatorForm->finishingSides,
+            'quantity' => $this->calculatorForm->quantity,
+            'width' => $this->calculatorForm->width,
+            'length' => $this->calculatorForm->length,
+            'file_name' => $this->calculatorForm->fileName ?: 'Unnamed_File',
+            'notes' => $this->calculatorForm->notes ?: '',
             'pricing_id' => $this->calcPricingId,
             'unit_price' => $this->calcPrice,
             'unit_cost' => $this->calcCost,
@@ -291,15 +254,19 @@ class Designer extends Component
             'is_manual_price' => $this->isManualPrice,
         ];
 
-        $this->reset([
+        $this->calculatorForm->reset([
             'productId', 'materialId', 'machineId', 'finishingId', 'cutId', 'displayId',
-            'sides', 'finishingSides', 'fileName', 'notes', 'isManualPrice', 'manualPrice', 'manualCost',
+            'sides', 'finishingSides', 'fileName', 'notes',
+        ]);
+
+        $this->reset([
+            'isManualPrice', 'manualPrice', 'manualCost',
             'calcPrice', 'calcCost', 'calcSubtotal', 'calcPricingId', 'isCalculated', 'calcError',
         ]);
 
-        $this->quantity = 1;
-        $this->width = 1.0;
-        $this->length = 1.0;
+        $this->calculatorForm->quantity = 1;
+        $this->calculatorForm->width = 1.0;
+        $this->calculatorForm->length = 1.0;
     }
 
     public function removeItem(string $id): void
@@ -336,7 +303,8 @@ class Designer extends Component
 
         event(new OrderUpdated);
 
-        $this->reset(['items', 'customerId', 'customerSearch', 'discount']);
+        $this->reset(['items', 'customerId', 'discount']);
+        $this->customerForm->reset();
         $this->deadline = now()->addDay()->format('Y-m-d\TH:i');
 
         $this->successMessage = 'Order placed successfully!';
@@ -346,9 +314,9 @@ class Designer extends Component
     public function render()
     {
         $customers = Customer::query()
-            ->when($this->customerSearch, function ($q) {
-                $q->where('name', 'like', '%'.$this->customerSearch.'%')
-                    ->orWhere('phone', 'like', '%'.$this->customerSearch.'%');
+            ->when($this->customerForm->search, function ($q) {
+                $q->where('name', 'like', '%'.$this->customerForm->search.'%')
+                    ->orWhere('phone', 'like', '%'.$this->customerForm->search.'%');
             })
             ->orderBy('name')
             ->limit(8)
@@ -371,8 +339,8 @@ class Designer extends Component
 
         $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
 
-        if ($this->productId && $branchId) {
-            $pricings = Pricing::where('product_id', $this->productId)->where('branch_id', $branchId)->get();
+        if ($this->calculatorForm->productId && $branchId) {
+            $pricings = Pricing::where('product_id', $this->calculatorForm->productId)->where('branch_id', $branchId)->get();
             $pricingIds = $pricings->pluck('id');
 
             $materialIds = $pricings->pluck('material_id')->unique();
@@ -396,13 +364,13 @@ class Designer extends Component
                 $hasDisplays = $displays->isNotEmpty();
             }
 
-            $hasSides = in_array(Product::find($this->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
+            $hasSides = in_array(Product::find($this->calculatorForm->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
 
             $hasFinishingSides = $hasFinishings;
         }
 
         $placedTodayCount = 0;
-        $revenueTodayAmount = 0;
+        $grandTotalToday = 0;
         $cartItemsCount = count($this->items);
 
         if ($this->activeTab === 'dashboard') {
@@ -411,7 +379,7 @@ class Designer extends Component
                 ->whereDate('created_at', now()->toDateString())
                 ->count();
 
-            $revenueTodayAmount = Invoice::where('branch_id', $branchId)
+            $grandTotalToday = Invoice::where('branch_id', $branchId)
                 ->where('designer_id', auth()->user()->id)
                 ->whereDate('created_at', now()->toDateString())
                 ->sum('grand_total');
@@ -455,7 +423,7 @@ class Designer extends Component
             'hasFinishingSides',
             'activeInvoices',
             'placedTodayCount',
-            'revenueTodayAmount',
+            'grandTotalToday',
             'cartItemsCount'
         ));
     }
