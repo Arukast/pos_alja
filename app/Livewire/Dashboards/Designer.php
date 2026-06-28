@@ -40,6 +40,31 @@ class Designer extends Component
 
     public CalculatorForm $calculatorForm;
 
+    // Properties accessed inside @island views
+    public $products;
+
+    public $materials;
+
+    public $machines;
+
+    public $finishings;
+
+    public $cuts;
+
+    public $displays;
+
+    public bool $hasMachines = false;
+
+    public bool $hasFinishings = false;
+
+    public bool $hasCuts = false;
+
+    public bool $hasDisplays = false;
+
+    public bool $hasSides = false;
+
+    public bool $hasFinishingSides = false;
+
     // Remaining basic properties
     public string $customerId = '';
 
@@ -82,6 +107,12 @@ class Designer extends Component
     public function mount(): void
     {
         $this->deadline = now()->addDay()->format('Y-m-d\TH:i');
+        $this->products = collect();
+        $this->materials = collect();
+        $this->machines = collect();
+        $this->finishings = collect();
+        $this->cuts = collect();
+        $this->displays = collect();
     }
 
     public function selectCustomer(string $id): void
@@ -322,20 +353,20 @@ class Designer extends Component
             ->limit(8)
             ->get();
 
-        $products = Product::all();
+        $this->products = Product::all();
 
-        $materials = collect();
-        $machines = collect();
-        $finishings = collect();
-        $cuts = collect();
-        $displays = collect();
+        $this->materials = collect();
+        $this->machines = collect();
+        $this->finishings = collect();
+        $this->cuts = collect();
+        $this->displays = collect();
 
-        $hasMachines = false;
-        $hasFinishings = false;
-        $hasCuts = false;
-        $hasDisplays = false;
-        $hasSides = false;
-        $hasFinishingSides = false;
+        $this->hasMachines = false;
+        $this->hasFinishings = false;
+        $this->hasCuts = false;
+        $this->hasDisplays = false;
+        $this->hasSides = false;
+        $this->hasFinishingSides = false;
 
         $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
 
@@ -344,29 +375,29 @@ class Designer extends Component
             $pricingIds = $pricings->pluck('id');
 
             $materialIds = $pricings->pluck('material_id')->unique();
-            $materials = Material::whereIn('id', $materialIds)->where('branch_id', $branchId)->get();
+            $this->materials = Material::whereIn('id', $materialIds)->where('branch_id', $branchId)->get();
 
             $machineIds = MachinePricing::whereIn('pricing_id', $pricingIds)->pluck('machine_id')->unique()->filter();
             if ($machineIds->isNotEmpty()) {
-                $machines = Machine::whereIn('id', $machineIds)->where('branch_id', $branchId)->get();
-                $hasMachines = true;
+                $this->machines = Machine::whereIn('id', $machineIds)->where('branch_id', $branchId)->get();
+                $this->hasMachines = true;
             }
 
             $attributeIds = AttributePricing::whereIn('pricing_id', $pricingIds)->pluck('attribute_id')->unique()->filter();
             if ($attributeIds->isNotEmpty()) {
-                $finishings = Attribute::whereIn('id', $attributeIds)->where('type', 'finishing')->get();
-                $hasFinishings = $finishings->isNotEmpty();
+                $this->finishings = Attribute::whereIn('id', $attributeIds)->where('type', 'finishing')->get();
+                $this->hasFinishings = $this->finishings->isNotEmpty();
 
-                $cuts = Attribute::whereIn('id', $attributeIds)->where('type', 'cut')->get();
-                $hasCuts = $cuts->isNotEmpty();
+                $this->cuts = Attribute::whereIn('id', $attributeIds)->where('type', 'cut')->get();
+                $this->hasCuts = $this->cuts->isNotEmpty();
 
-                $displays = Attribute::whereIn('id', $attributeIds)->where('type', 'display')->get();
-                $hasDisplays = $displays->isNotEmpty();
+                $this->displays = Attribute::whereIn('id', $attributeIds)->where('type', 'display')->get();
+                $this->hasDisplays = $this->displays->isNotEmpty();
             }
 
-            $hasSides = in_array(Product::find($this->calculatorForm->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
+            $this->hasSides = in_array(Product::find($this->calculatorForm->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
 
-            $hasFinishingSides = $hasFinishings;
+            $this->hasFinishingSides = $this->hasFinishings;
         }
 
         $placedTodayCount = 0;
@@ -409,18 +440,6 @@ class Designer extends Component
 
         return view('livewire.dashboards.designer', compact(
             'customers',
-            'products',
-            'materials',
-            'machines',
-            'finishings',
-            'cuts',
-            'displays',
-            'hasMachines',
-            'hasFinishings',
-            'hasCuts',
-            'hasDisplays',
-            'hasSides',
-            'hasFinishingSides',
             'activeInvoices',
             'placedTodayCount',
             'grandTotalToday',
