@@ -4,7 +4,14 @@
         @include('livewire.dashboards.partials.owner._header_banner')
         @include('livewire.dashboards.partials.owner._finance_metrics')
         @include('livewire.dashboards.partials.owner._sparkline_chart')
-    @elseif ($activeTab === 'users')
+    @elseif ($activeTab === 'revenue')
+        @include('livewire.dashboards.partials.owner._header_banner')
+        @island(name: 'gross-revenue-detail')
+    <livewire:dashboards.owner.gross-revenue-detail
+        :selectedBranchId="$selectedBranchId"
+        :period="$period"
+    />
+    @endisland @elseif ($activeTab === 'users')
     <livewire:admin.user-management
         mode="owner"
         wire:key="owner-user-management"

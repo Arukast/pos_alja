@@ -30,6 +30,16 @@ class Owner extends Component
     #[Url(as: 'tab')]
     public string $activeTab = 'finance';
 
+    public function updatedSelectedBranchId($value): void
+    {
+        $this->dispatch('branchSelected', branchId: $value);
+    }
+
+    public function updatedPeriod($value): void
+    {
+        $this->dispatch('periodSelected', period: $value);
+    }
+
     // Audit Trail states
     public string $auditSearch = '';
 
@@ -72,6 +82,12 @@ class Owner extends Component
             $this->auditSortDirection = 'asc';
         }
         $this->resetPage();
+    }
+
+    public function setPeriod(string $period): void
+    {
+        $this->period = $period;
+        $this->dispatch('periodSelected', period: $period);
     }
 
     public function setTab(string $tab): void

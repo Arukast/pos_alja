@@ -28,6 +28,13 @@
         Insights
     </div>
     <x-navigation.link
+        label="Gross Revenue Detail"
+        route="dashboard"
+        tab="revenue"
+        icon="payments"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
         label="Audit Trail"
         route="dashboard"
         tab="audit"

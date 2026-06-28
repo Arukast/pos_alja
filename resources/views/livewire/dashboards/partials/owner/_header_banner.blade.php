@@ -55,19 +55,19 @@
             <!-- prettier-ignore -->
             <button
                 id="period-daily"
-                wire:click="$set('period', 'Daily')"
+                wire:click="setPeriod('Daily')"
                 class="px-3 py-1.5 rounded-lg transition-all duration-200 data-loading:opacity-50 {{ $dailyClasses }}"
             >Daily</button>
             <!-- prettier-ignore -->
             <button
                 id="period-weekly"
-                wire:click="$set('period', 'Weekly')"
+                wire:click="setPeriod('Weekly')"
                 class="px-3 py-1.5 rounded-lg transition-all duration-200 data-loading:opacity-50 {{ $weeklyClasses }}"
             >Weekly</button>
             <!-- prettier-ignore -->
             <button
                 id="period-monthly"
-                wire:click="$set('period', 'Monthly')"
+                wire:click="setPeriod('Monthly')"
                 class="px-3 py-1.5 rounded-lg transition-all duration-200 data-loading:opacity-50 {{ $monthlyClasses }}"
             >Monthly</button>
         </div>
