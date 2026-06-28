@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Dashboards;
 
 use App\Events\OrderUpdated;
+use App\Livewire\Forms\ExpenseForm;
 use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -20,14 +23,13 @@ class Cashier extends Component
         'echo:orders,OrderUpdated' => '$refresh',
     ];
 
-    // Expense logging properties
-    public string $amount = '';
+    // Expense logging Form Object
+    public ExpenseForm $expenseForm;
 
-    public string $description = '';
+    // Properties accessed inside @island views
+    public $activeInvoices;
 
-    public string $type = 'laba'; // Default to operations expense
-
-    public string $incurredAt = '';
+    public $expenses;
 
     // Checkout properties
     public ?string $selectedInvoiceId = null;
@@ -47,30 +49,25 @@ class Cashier extends Component
 
     public function mount(): void
     {
-        $this->incurredAt = now()->toDateString();
+        $this->expenseForm->incurred_at = now()->toDateString();
     }
 
     public function logExpense(): void
     {
-        $this->validate([
-            'amount' => 'required|integer|min:100',
-            'type' => 'required|string|in:modal,laba',
-            'incurredAt' => 'required|date',
-            'description' => 'required|string|max:500',
-        ]);
+        $this->expenseForm->validate();
 
         Expense::create([
             'branch_id' => auth()->user()->branch_id ?: Branch::value('id'),
-            'amount' => (int) $this->amount,
-            'type' => $this->type,
-            'incurred_at' => $this->incurredAt,
-            'description' => $this->description,
+            'amount' => (int) $this->expenseForm->amount,
+            'type' => $this->expenseForm->type,
+            'incurred_at' => $this->expenseForm->incurred_at,
+            'description' => $this->expenseForm->description,
             'cashier_name' => auth()->user()->name,
         ]);
 
-        $this->reset(['amount', 'description']);
-        $this->incurredAt = now()->toDateString();
-        $this->type = 'laba';
+        $this->expenseForm->reset();
+        $this->expenseForm->incurred_at = now()->toDateString();
+        $this->expenseForm->type = 'laba';
 
         $this->successMessage = 'Expense logged successfully!';
         $this->showSuccessAlert = true;
@@ -173,9 +170,9 @@ class Cashier extends Component
     {
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
-        $expenses = collect();
+        $this->expenses = collect();
         $todayExpenseTotal = 0;
-        $activeInvoices = collect();
+        $this->activeInvoices = collect();
         $awaitingCount = 0;
         $dpCollectedToday = 0;
         $settlementsToday = 0;
@@ -183,7 +180,7 @@ class Cashier extends Component
 
         if ($this->activeTab === 'dashboard' || $this->activeTab === 'payments') {
             // Query actual active unpaid/DP invoices for this branch
-            $activeInvoices = Invoice::with('customer')
+            $this->activeInvoices = Invoice::with('customer')
                 ->where('branch_id', $branchId)
                 ->whereIn('status', [0, 1]) // 0: Unpaid, 1: DP
                 ->orderBy('created_at', 'desc')
@@ -203,7 +200,7 @@ class Cashier extends Component
 
         if ($this->activeTab === 'dashboard' || $this->activeTab === 'expenses') {
             // Load recent expenses logged by this branch
-            $expenses = Expense::where('branch_id', $branchId)
+            $this->expenses = Expense::where('branch_id', $branchId)
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get();
@@ -230,9 +227,7 @@ class Cashier extends Component
         }
 
         return view('livewire.dashboards.cashier', compact(
-            'expenses',
             'todayExpenseTotal',
-            'activeInvoices',
             'awaitingCount',
             'dpCollectedToday',
             'settlementsToday',

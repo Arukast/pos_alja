@@ -39,12 +39,12 @@ class InventoryManagementTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(Cashier::class)
-            ->set('amount', 50000)
-            ->set('type', 'laba')
-            ->set('description', 'Office cleaning supplies')
+            ->set('expenseForm.amount', 50000)
+            ->set('expenseForm.type', 'laba')
+            ->set('expenseForm.description', 'Office cleaning supplies')
             ->call('logExpense')
-            ->assertSet('amount', '')
-            ->assertSet('description', '')
+            ->assertSet('expenseForm.amount', '')
+            ->assertSet('expenseForm.description', '')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('expenses', [
