@@ -1,20 +1,9 @@
 <div class="text-light-text space-y-6 dark:text-gray-100">
     <!-- Header banner (Only on Dashboard Overview tab) -->
-    <!-- prettier-ignore -->
-    @if ($activeTab === 'dashboard')
-    <x-brand-header-banner
-        badge="Branch Manager Portal"
-        title="Main Branch Overview"
-        description="Manage your shop inventory, adjust pricing engine parameters, oversee printing machinery, and coordinate staff."
-        theme="manager"
-    />
-    @endif
+    @include('livewire.dashboards.partials.manager._header_banner')
 
     <!-- Feedback alert -->
-    <x-manager.feedback-alert
-        :show="$showSuccessAlert"
-        :message="$successMessage"
-    />
+    @include('livewire.dashboards.partials.manager._feedback_alert')
 
     <!-- 1. DASHBOARD TAB -->
     <!-- prettier-ignore -->
