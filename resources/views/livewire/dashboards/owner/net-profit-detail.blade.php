@@ -422,7 +422,8 @@
                             <td
                                 class="px-6 py-4 text-xs whitespace-nowrap text-gray-500 dark:text-gray-400"
                             >
-                                {{ $waste->operator->name }}
+                                {{ optional($waste->operator)->name ?? 'System'
+                                }}
                             </td>
                             <td
                                 class="px-6 py-4 text-right text-xs whitespace-nowrap text-gray-900 dark:text-white"
