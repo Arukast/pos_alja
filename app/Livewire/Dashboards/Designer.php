@@ -18,10 +18,19 @@ use App\Models\Product;
 use App\Services\CustomerService;
 use App\Services\OrderService;
 use App\Services\PricingService;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Designer extends Component
 {
+    use WithPagination;
+
+    #[Url(as: 'tab')]
+    public string $activeTab = 'dashboard';
+
+    public string $invoiceSearch = '';
+
     // Order info
     public string $customerSearch = '';
 
@@ -392,11 +401,43 @@ class Designer extends Component
             $hasFinishingSides = $hasFinishings;
         }
 
-        $activeInvoices = Invoice::with('customer')
-            ->where('branch_id', $branchId)
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        $placedTodayCount = 0;
+        $revenueTodayAmount = 0;
+        $cartItemsCount = count($this->items);
+
+        if ($this->activeTab === 'dashboard') {
+            $placedTodayCount = Invoice::where('branch_id', $branchId)
+                ->where('designer_id', auth()->user()->id)
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+
+            $revenueTodayAmount = Invoice::where('branch_id', $branchId)
+                ->where('designer_id', auth()->user()->id)
+                ->whereDate('created_at', now()->toDateString())
+                ->sum('grand_total');
+
+            $activeInvoices = Invoice::with('customer')
+                ->where('branch_id', $branchId)
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+        } elseif ($this->activeTab === 'order_list') {
+            $activeInvoices = Invoice::with('customer')
+                ->where('branch_id', $branchId)
+                ->when($this->invoiceSearch, function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->where('id', 'like', '%'.$this->invoiceSearch.'%')
+                            ->orWhereHas('customer', function ($cust) {
+                                $cust->where('name', 'like', '%'.$this->invoiceSearch.'%')
+                                    ->orWhere('phone', 'like', '%'.$this->invoiceSearch.'%');
+                            });
+                    });
+                })
+                ->orderBy('created_at', 'desc')
+                ->paginate(10);
+        } else {
+            $activeInvoices = collect();
+        }
 
         return view('livewire.dashboards.designer', compact(
             'customers',
@@ -412,7 +453,20 @@ class Designer extends Component
             'hasDisplays',
             'hasSides',
             'hasFinishingSides',
-            'activeInvoices'
+            'activeInvoices',
+            'placedTodayCount',
+            'revenueTodayAmount',
+            'cartItemsCount'
         ));
+    }
+
+    public function updatingInvoiceSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingActiveTab(): void
+    {
+        $this->resetPage();
     }
 }

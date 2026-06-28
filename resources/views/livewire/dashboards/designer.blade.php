@@ -1,12 +1,4 @@
 <div class="text-light-text space-y-6 dark:text-gray-100">
-    <!-- Header banner -->
-    <x-brand-header-banner
-        badge="Customer Intake Desk"
-        title="Design & Quotes Board"
-        description="Calculate instant print quotes, upload design files, generate Work Orders (WO), and queue jobs directly to the print machines."
-        theme="designer"
-    />
-
     <!-- Alert Panel -->
     @if ($showSuccessAlert)
     <div
@@ -55,8 +47,238 @@
             </button>
         </div>
     </div>
-    @endif
+    @endif @if ($activeTab === 'dashboard')
+    <!-- Header banner -->
+    <x-brand-header-banner
+        badge="Customer Intake Desk"
+        title="Design & Quotes Board"
+        description="Calculate instant print quotes, upload design files, generate Work Orders (WO), and queue jobs directly to the print machines."
+        theme="designer"
+    />
 
+    <div class="grid grid-cols-3 gap-5">
+        <!-- Placed Today -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 flex items-center justify-between rounded-2xl border bg-white p-6 shadow-sm"
+        >
+            <div class="space-y-1">
+                <p
+                    class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400"
+                >
+                    Invoices Placed Today
+                </p>
+                <h3 class="text-light-text text-3xl font-black dark:text-white">
+                    {{ $placedTodayCount }}
+                </h3>
+            </div>
+            <div
+                class="bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20 flex h-12 w-12 items-center justify-center rounded-xl"
+            >
+                <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                </svg>
+            </div>
+        </div>
+
+        <!-- Revenue Today -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 flex items-center justify-between rounded-2xl border bg-white p-6 shadow-sm"
+        >
+            <div class="space-y-1">
+                <p
+                    class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400"
+                >
+                    Revenue Placed Today
+                </p>
+                <h3
+                    class="text-brand-secondary text-3xl font-black dark:text-teal-400"
+                >
+                    Rp. {{ number_format($revenueTodayAmount) }}
+                </h3>
+            </div>
+            <div
+                class="bg-brand-secondary/10 text-brand-secondary dark:bg-brand-secondary/20 flex h-12 w-12 items-center justify-center rounded-xl"
+            >
+                <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 14a2 2 0 110-4h2.5"
+                    />
+                </svg>
+            </div>
+        </div>
+
+        <!-- Items in Cart -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 flex items-center justify-between rounded-2xl border bg-white p-6 shadow-sm"
+        >
+            <div class="space-y-1">
+                <p
+                    class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400"
+                >
+                    Items in Draft Cart
+                </p>
+                <h3 class="text-light-text text-3xl font-black dark:text-white">
+                    {{ $cartItemsCount }}
+                </h3>
+            </div>
+            <div
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"
+            >
+                <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Placed Invoices -->
+    <div
+        class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
+    >
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-light-text text-lg font-bold dark:text-white">
+                Recent Placed Invoices
+            </h2>
+            <button
+                type="button"
+                wire:click="$set('activeTab', 'order_list')"
+                class="text-brand-primary cursor-pointer text-xs font-bold hover:underline dark:text-teal-400"
+            >
+                View All Orders &rarr;
+            </button>
+        </div>
+        <div
+            class="border-light-border dark:border-surface-300/30 overflow-x-auto rounded-2xl border"
+        >
+            <table
+                class="text-light-muted dark:text-gray-450 w-full text-left text-xs"
+            >
+                <thead
+                    class="bg-light-surface-2 dark:bg-surface-500 text-light-muted text-xs font-semibold tracking-wider uppercase dark:text-gray-400"
+                >
+                    <tr>
+                        <th class="rounded-l-xl px-4 py-3">Invoice ID</th>
+                        <th class="px-4 py-3">Customer</th>
+                        <th class="px-4 py-3">Grand Total</th>
+                        <th class="px-4 py-3">Deadline</th>
+                        <th class="px-4 py-3">Checkout Status</th>
+                        <th class="rounded-r-xl px-4 py-3 text-center">
+                            Work Ticket
+                        </th>
+                    </tr>
+                </thead>
+                <tbody
+                    class="divide-light-border dark:divide-surface-300/30 divide-y text-[11px]"
+                >
+                    @forelse ($activeInvoices as $inv)
+                    <tr
+                        class="even:bg-light-bg/50 dark:even:bg-surface-500/20 hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 transition-colors duration-150"
+                    >
+                        <td
+                            class="text-light-text px-4 py-3 font-bold dark:text-white"
+                        >
+                            #{{ str_pad($inv->id, 5, '0', STR_PAD_LEFT) }}
+                        </td>
+                        <td
+                            class="text-light-text px-4 py-3 font-bold dark:text-white"
+                        >
+                            {{ $inv->customer->name }}
+                        </td>
+                        <td
+                            class="text-light-text px-4 py-3 font-extrabold dark:text-white"
+                        >
+                            Rp. {{ number_format($inv->grand_total) }}
+                        </td>
+                        <td
+                            class="text-red-550 px-4 py-3 font-bold dark:text-red-400"
+                        >
+                            {{ $inv->deadline }}
+                        </td>
+                        <td class="px-4 py-3">
+                            @if ($inv->status == 0)
+                            <span
+                                class="text-red-750 inline-block rounded-full bg-red-100 px-2.5 py-0.5 text-[9px] font-black tracking-wider uppercase dark:bg-red-900/30 dark:text-red-400"
+                                >Unpaid</span
+                            >
+                            @elseif ($inv->status == 1)
+                            <span
+                                class="inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-[9px] font-black tracking-wider text-amber-700 uppercase dark:bg-amber-900/30 dark:text-amber-400"
+                                >Down Payment</span
+                            >
+                            @elseif ($inv->status == 2)
+                            <span
+                                class="inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-[9px] font-black tracking-wider text-emerald-700 uppercase dark:bg-emerald-900/30 dark:text-emerald-400"
+                                >Paid Lunas</span
+                            >
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <a
+                                id="link-ticket-{{ $inv->id }}"
+                                href="/orders/{{ $inv->id }}/ticket"
+                                target="_blank"
+                                class="text-brand-secondary hover:text-brand-secondary/85 inline-flex items-center font-bold transition"
+                            >
+                                <svg
+                                    class="text-brand-secondary mr-1 h-4 w-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-3a2 2 0 00-2-2H9a2 2 0 00-2 2v3a2 2 0 002 2zm5-11h.01M12 11h.01"
+                                    ></path>
+                                </svg>
+                                Job Ticket
+                            </a>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td
+                            colspan="6"
+                            class="text-light-muted px-4 py-6 text-center font-semibold dark:text-gray-500"
+                        >
+                            No active invoices placed yet.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif @if ($activeTab === 'new_order')
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- LEFT PANEL: CUSTOMER & METADATA -->
         <div class="space-y-6 lg:col-span-1">
@@ -836,14 +1058,25 @@
             @endif
         </div>
     </div>
-
-    <!-- RECENTLY PLACED INVOICES -->
+    @endif @if ($activeTab === 'order_list')
     <div
-        class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
+        class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 space-y-4 rounded-2xl border bg-white p-6 shadow-sm"
     >
-        <h2 class="text-light-text mb-4 text-lg font-bold dark:text-white">
-            Recent Placed Invoices
-        </h2>
+        <div
+            class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+        >
+            <h2 class="text-light-text text-lg font-bold dark:text-white">
+                All Placed Invoices
+            </h2>
+            <div class="relative w-full md:w-80">
+                <input
+                    type="text"
+                    wire:model.live.debounce.300ms="invoiceSearch"
+                    placeholder="Search invoices by ID, customer..."
+                    class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-xs transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
+                />
+            </div>
+        </div>
         <div
             class="border-light-border dark:border-surface-300/30 overflow-x-auto rounded-2xl border"
         >
@@ -946,5 +1179,7 @@
                 </tbody>
             </table>
         </div>
+        <div class="mt-4">{{ $activeInvoices->links() }}</div>
     </div>
+    @endif
 </div>

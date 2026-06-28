@@ -7,18 +7,6 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Auth/VerifyEmailController.php
 
-		-
-			message: '#^Relation ''customer'' is not found in App\\Models\\Invoice model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Livewire/Dashboards/Cashier.php
-
-		-
-			message: '#^Relation ''customer'' is not found in App\\Models\\Invoice model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Livewire/Dashboards/Designer.php
-
 
 
 		-

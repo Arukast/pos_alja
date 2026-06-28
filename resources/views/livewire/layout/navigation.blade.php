@@ -219,7 +219,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Overview
                 </div>
-                {!! $navItem('Dashboard', 'dashboard', null, 'dashboard') !!}
+                {!! $navItem('Dashboard', 'dashboard', 'dashboard', 'dashboard')
+                !!}
             </div>
 
             <div class="space-y-1">
@@ -230,9 +231,9 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Orders
                 </div>
-                {!! $navItem('New Order', 'dashboard', null, 'new_order',
-                '#new-order') !!} {!! $navItem('Order List', 'dashboard', null,
-                'order_list', '#order-list') !!}
+                {!! $navItem('New Order', 'dashboard', 'new_order', 'new_order')
+                !!} {!! $navItem('Order List', 'dashboard', 'order_list',
+                'order_list') !!}
             </div>
 
             <!-- ================= PRODUCTION NAV ================= -->
@@ -554,8 +555,8 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Overview
                 </div>
-                {!! $mobileNavItem('Dashboard', 'dashboard', null, 'dashboard')
-                !!}
+                {!! $mobileNavItem('Dashboard', 'dashboard', 'dashboard',
+                'dashboard') !!}
             </div>
 
             <div class="space-y-1">
@@ -564,9 +565,9 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Orders
                 </div>
-                {!! $mobileNavItem('New Order', 'dashboard', null, 'new_order',
-                '#new-order') !!} {!! $mobileNavItem('Order List', 'dashboard',
-                null, 'order_list', '#order-list') !!}
+                {!! $mobileNavItem('New Order', 'dashboard', 'new_order',
+                'new_order') !!} {!! $mobileNavItem('Order List', 'dashboard',
+                'order_list', 'order_list') !!}
             </div>
 
             <!-- ================= PRODUCTION NAV (MOBILE) ================= -->
