@@ -8,7 +8,6 @@
         mode="owner"
         wire:key="owner-user-management"
     />
-
     @elseif ($activeTab === 'audit')
     @include('livewire.dashboards.partials.owner._audit_trail') @endif
     @include('livewire.dashboards.partials.owner._audit_detail_modal')
