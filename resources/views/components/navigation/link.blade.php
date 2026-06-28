@@ -11,7 +11,8 @@ dark:hover:bg-brand-primary/10 dark:hover:text-brand-primary'; $activeStr =
 $active ? 'true' : 'false'; $hashCondition = $hash ? "currentHash === '{$hash}'"
 : "(currentHash === '' || currentHash === '#')"; $classCondition =
 "!{$activeStr} ? '{$inactiveClass}' : ({$hashCondition} ? '{$activeClass}' :
-'{$inactiveClass}')"; @endphp
+'{$inactiveClass}')"; $classCondition = preg_replace('/\s+/', ' ',
+$classCondition); @endphp
 
 <a
     href="{{ $url }}"
