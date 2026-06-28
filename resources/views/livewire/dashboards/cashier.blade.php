@@ -1,11 +1,13 @@
 <div class="text-light-text space-y-6 dark:text-gray-100">
     <!-- Header banner -->
+    @if ($activeTab === 'dashboard')
     <x-brand-header-banner
         badge="Cash Register Desk"
         title="Active Cashier Desk"
         description="Process customer payments, register down payments, settle outstanding invoices, and log cash drawer withdrawals."
         theme="cashier"
     />
+    @endif
 
     <!-- Feedback alert -->
     @if ($showSuccessAlert)
@@ -56,6 +58,8 @@
     @endif
 
     <!-- Quick stats grid -->
+    <!-- Quick stats grid -->
+    @if ($activeTab === 'dashboard')
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Stat 1 -->
         <div
@@ -228,12 +232,16 @@
             </div>
         </div>
     </div>
-
+    @endif @if ($activeTab === 'dashboard' || $activeTab === 'payments' ||
+    $activeTab === 'expenses') @if ($activeTab === 'dashboard' || $activeTab ===
+    'payments') @if ($activeTab === 'dashboard')
     <!-- Active bills list & Log Expenses layout -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        @endif
+
         <!-- Billing Queue Panel -->
         <div
-            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm lg:col-span-2"
+            class="{{ $activeTab === 'payments' ? 'w-full' : 'lg:col-span-2' }} border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
         >
             <h3 class="text-light-text text-lg font-bold dark:text-white">
                 Active Billing Queue
@@ -352,7 +360,7 @@
                 </table>
             </div>
         </div>
-
+        @endif @if ($activeTab === 'dashboard')
         <!-- Log Expense Form Panel -->
         <div
             class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
@@ -460,9 +468,206 @@
                 </button>
             </form>
         </div>
+        @endif @if ($activeTab === 'dashboard')
     </div>
+    @endif @if ($activeTab === 'expenses')
+    <!-- Tab Expenses: Log Store Expense & Recent Cash Drawer Expenses Logs side-by-side -->
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Log Expense Form Panel -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm lg:col-span-1"
+        >
+            <h3 class="text-light-text text-lg font-bold dark:text-white">
+                Log Store Expense
+            </h3>
+            <p class="text-light-muted mt-1 mb-4 text-xs dark:text-gray-400">
+                Record operational cash payouts.
+            </p>
+
+            <form wire:submit.prevent="logExpense" class="space-y-4 text-xs">
+                <div>
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                        >Expense Amount (Rp.)</label
+                    >
+                    <input
+                        id="expense-amount"
+                        type="number"
+                        wire:model="amount"
+                        placeholder="e.g. 50000"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-gray-800 transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
+                        required
+                    />
+                    @error('amount')
+                    <span
+                        class="text-red-550 text-[10px] font-semibold dark:text-red-400"
+                        >{{ $message }}</span
+                    >
+                    @enderror
+                </div>
+
+                <div>
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                        >Expense Classification</label
+                    >
+                    <select
+                        id="expense-type"
+                        wire:model="type"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 font-medium transition duration-200 focus:ring-2 focus:outline-none"
+                    >
+                        <option value="laba" class="bg-white text-gray-900">
+                            Operational / Operational cost (Laba)
+                        </option>
+                        <option value="modal" class="bg-white text-gray-900">
+                            Capital / Purchase supplies (Modal)
+                        </option>
+                    </select>
+                    @error('type')
+                    <span
+                        class="text-red-550 text-[10px] font-semibold dark:text-red-400"
+                        >{{ $message }}</span
+                    >
+                    @enderror
+                </div>
+
+                <div>
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                        >Incurred Date</label
+                    >
+                    <input
+                        id="expense-date"
+                        type="date"
+                        wire:model="incurredAt"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 font-medium transition duration-200 focus:ring-2 focus:outline-none"
+                        required
+                    />
+                    @error('incurredAt')
+                    <span
+                        class="text-red-550 text-[10px] font-semibold dark:text-red-400"
+                        >{{ $message }}</span
+                    >
+                    @enderror
+                </div>
+
+                <div>
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                        >Description / Reason</label
+                    >
+                    <textarea
+                        id="expense-description"
+                        wire:model="description"
+                        placeholder="Specify items purchased, utility, or reasons..."
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary h-20 w-full resize-none rounded-xl border bg-white px-3 py-2 transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
+                        required
+                    ></textarea>
+                    @error('description')
+                    <span
+                        class="text-red-550 text-[10px] font-semibold dark:text-red-400"
+                        >{{ $message }}</span
+                    >
+                    @enderror
+                </div>
+
+                <button
+                    id="btn-submit-expense"
+                    type="submit"
+                    class="bg-brand-secondary hover:bg-brand-secondary/95 w-full cursor-pointer rounded-xl py-2.5 font-bold text-white shadow-sm transition"
+                >
+                    Record Store Payout
+                </button>
+            </form>
+        </div>
+
+        <!-- Expenses Ledger List -->
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm lg:col-span-2"
+        >
+            <h3 class="text-light-text mb-4 text-lg font-bold dark:text-white">
+                Recent Cash Drawer Expenses Logs
+            </h3>
+
+            <div
+                class="border-light-border dark:border-surface-300/30 overflow-x-auto rounded-2xl border"
+            >
+                <table
+                    class="text-light-muted dark:text-gray-450 w-full text-left text-xs"
+                >
+                    <thead
+                        class="bg-light-surface-2 dark:bg-surface-500 text-light-muted text-xs font-semibold tracking-wider uppercase dark:text-gray-400"
+                    >
+                        <tr>
+                            <th class="rounded-l-xl px-4 py-3">Date</th>
+                            <th class="px-4 py-3">Cashier / Logged by</th>
+                            <th class="px-4 py-3">Classification</th>
+                            <th class="px-4 py-3">Description</th>
+                            <th class="rounded-r-xl px-4 py-3 text-right">
+                                Amount
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody
+                        class="divide-light-border dark:divide-surface-300/30 divide-y text-[11px]"
+                    >
+                        @forelse ($expenses as $ex)
+                        <tr
+                            class="even:bg-light-bg/50 dark:even:bg-surface-500/20 hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 transition-colors duration-150"
+                        >
+                            <td
+                                class="text-light-text px-4 py-3 font-semibold dark:text-gray-300"
+                            >
+                                {{ $ex->incurred_at }}
+                            </td>
+                            <td
+                                class="text-light-text px-4 py-3 font-bold dark:text-white"
+                            >
+                                {{ $ex->cashier_name }}
+                            </td>
+                            <td class="px-4 py-3 font-bold">
+                                @if ($ex->type === 'laba')
+                                <span
+                                    class="inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-[9px] font-black tracking-wider text-blue-700 uppercase dark:bg-blue-900/30 dark:text-blue-400"
+                                    >Operational (Laba)</span
+                                >
+                                @else
+                                <span
+                                    class="inline-block rounded-full bg-purple-100 px-2.5 py-0.5 text-[9px] font-black tracking-wider text-purple-700 uppercase dark:bg-purple-900/30 dark:text-purple-400"
+                                    >Capital / Goods (Modal)</span
+                                >
+                                @endif
+                            </td>
+                            <td
+                                class="text-light-text px-4 py-3 leading-relaxed font-medium dark:text-gray-300"
+                            >
+                                {{ $ex->description }}
+                            </td>
+                            <td
+                                class="text-red-650 px-4 py-3 text-right font-extrabold dark:text-red-400"
+                            >
+                                Rp. {{ number_format($ex->amount) }}
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td
+                                colspan="5"
+                                class="text-light-muted py-6 text-center dark:text-gray-500"
+                            >
+                                No store expenses recorded.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    @endif @endif
 
     <!-- CUSTOMER PICKUP QUEUE -->
+    @if ($activeTab === 'dashboard' || $activeTab === 'pickup')
     <div
         class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
     >
@@ -550,8 +755,10 @@
             </table>
         </div>
     </div>
+    @endif
 
-    <!-- EXPENSES LEDGER LIST -->
+    <!-- EXPENSES LEDGER LIST (Dashboard only) -->
+    @if ($activeTab === 'dashboard')
     <div
         class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
     >
@@ -633,6 +840,7 @@
             </table>
         </div>
     </div>
+    @endif
 
     <!-- CHECKOUT MODAL -->
     @if ($selectedInvoiceId) @php $selInvoice =

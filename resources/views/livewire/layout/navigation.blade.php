@@ -203,10 +203,10 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Operations
                 </div>
-                {!! $navItem('Payment Queue', 'dashboard', null, 'payments',
-                '#payment-queue') !!} {!! $navItem('Pickup Queue', 'dashboard',
-                null, 'pickup', '#pickup-queue') !!} {!! $navItem('Expenses',
-                'dashboard', null, 'expenses', '#expenses') !!}
+                {!! $navItem('Payment Queue', 'dashboard', 'payments',
+                'payments') !!} {!! $navItem('Pickup Queue', 'dashboard',
+                'pickup', 'pickup') !!} {!! $navItem('Expenses', 'dashboard',
+                'expenses', 'expenses') !!}
             </div>
 
             <!-- ================= DESIGNER NAV ================= -->
@@ -540,11 +540,10 @@ py-2.5 transition-all duration-300\" title=\"{$label}\">" . $iconHtml . "<" .
                 >
                     Operations
                 </div>
-                {!! $mobileNavItem('Payment Queue', 'dashboard', null,
-                'payments', '#payment-queue') !!} {!! $mobileNavItem('Pickup
-                Queue', 'dashboard', null, 'pickup', '#pickup-queue') !!} {!!
-                $mobileNavItem('Expenses', 'dashboard', null, 'expenses',
-                '#expenses') !!}
+                {!! $mobileNavItem('Payment Queue', 'dashboard', 'payments',
+                'payments') !!} {!! $mobileNavItem('Pickup Queue', 'dashboard',
+                'pickup', 'pickup') !!} {!! $mobileNavItem('Expenses',
+                'dashboard', 'expenses', 'expenses') !!}
             </div>
 
             <!-- ================= DESIGNER NAV (MOBILE) ================= -->

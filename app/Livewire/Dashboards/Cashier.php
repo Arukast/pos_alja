@@ -8,10 +8,14 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\PaymentService;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Cashier extends Component
 {
+    #[Url(as: 'tab')]
+    public string $activeTab = 'dashboard';
+
     protected $listeners = [
         'echo:orders,OrderUpdated' => '$refresh',
     ];
@@ -169,45 +173,61 @@ class Cashier extends Component
     {
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
-        // Load recent expenses logged by this branch
-        $expenses = Expense::where('branch_id', $branchId)
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        $expenses = collect();
+        $todayExpenseTotal = 0;
+        $activeInvoices = collect();
+        $awaitingCount = 0;
+        $dpCollectedToday = 0;
+        $settlementsToday = 0;
+        $pickupQueue = collect();
 
-        // Calculate today's total expenses for this branch
-        $todayExpenseTotal = Expense::where('branch_id', $branchId)
-            ->whereDate('incurred_at', now()->toDateString())
-            ->sum('amount');
+        if ($this->activeTab === 'dashboard' || $this->activeTab === 'payments') {
+            // Query actual active unpaid/DP invoices for this branch
+            $activeInvoices = Invoice::with('customer')
+                ->where('branch_id', $branchId)
+                ->whereIn('status', [0, 1]) // 0: Unpaid, 1: DP
+                ->orderBy('created_at', 'desc')
+                ->limit(8)
+                ->get();
+        }
 
-        // Query actual active unpaid/DP invoices for this branch
-        $activeInvoices = Invoice::with('customer')
-            ->where('branch_id', $branchId)
-            ->whereIn('status', [0, 1]) // 0: Unpaid, 1: DP
-            ->orderBy('created_at', 'desc')
-            ->limit(8)
-            ->get();
+        if ($this->activeTab === 'dashboard' || $this->activeTab === 'pickup') {
+            // Fetch paid, not yet picked up invoices for Customer Pickup Queue in this branch
+            $pickupQueue = Invoice::with('customer')
+                ->where('branch_id', $branchId)
+                ->where('status', 2)       // Paid / Lunas
+                ->where('pickup_status', 0) // Not Picked Up
+                ->orderBy('payment_date', 'asc')
+                ->get();
+        }
 
-        // Calculate checkout metrics for this branch
-        $awaitingCount = Invoice::where('branch_id', $branchId)->where('status', 0)->count();
+        if ($this->activeTab === 'dashboard' || $this->activeTab === 'expenses') {
+            // Load recent expenses logged by this branch
+            $expenses = Expense::where('branch_id', $branchId)
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
 
-        $dpCollectedToday = Payment::where('branch_id', $branchId)
-            ->where('type', 'down_payment')
-            ->whereDate('created_at', now()->toDateString())
-            ->sum('amount');
+            // Calculate today's total expenses for this branch
+            $todayExpenseTotal = Expense::where('branch_id', $branchId)
+                ->whereDate('incurred_at', now()->toDateString())
+                ->sum('amount');
+        }
 
-        $settlementsToday = Payment::where('branch_id', $branchId)
-            ->where('type', 'settlement')
-            ->whereDate('created_at', now()->toDateString())
-            ->sum('amount');
+        if ($this->activeTab === 'dashboard') {
+            // Calculate checkout metrics for this branch
+            $awaitingCount = Invoice::where('branch_id', $branchId)->where('status', 0)->count();
 
-        // Fetch paid, not yet picked up invoices for Customer Pickup Queue in this branch
-        $pickupQueue = Invoice::with('customer')
-            ->where('branch_id', $branchId)
-            ->where('status', 2)       // Paid / Lunas
-            ->where('pickup_status', 0) // Not Picked Up
-            ->orderBy('payment_date', 'asc')
-            ->get();
+            $dpCollectedToday = Payment::where('branch_id', $branchId)
+                ->where('type', 'down_payment')
+                ->whereDate('created_at', now()->toDateString())
+                ->sum('amount');
+
+            $settlementsToday = Payment::where('branch_id', $branchId)
+                ->where('type', 'settlement')
+                ->whereDate('created_at', now()->toDateString())
+                ->sum('amount');
+        }
 
         return view('livewire.dashboards.cashier', compact(
             'expenses',
