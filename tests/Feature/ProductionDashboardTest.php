@@ -287,12 +287,12 @@ class ProductionDashboardTest extends TestCase
 
         Livewire::actingAs($this->productionUser)
             ->test(Production::class)
-            ->set('materialId', $this->material->id)
-            ->set('machineId', $machine->id)
-            ->set('quantity', '3.50')
-            ->set('dimensions', '1.5x2')
-            ->set('designerId', $this->designerUser->id)
-            ->set('notes', 'Calibration fail')
+            ->set('form.materialId', $this->material->id)
+            ->set('form.machineId', $machine->id)
+            ->set('form.quantity', '3.50')
+            ->set('form.dimensions', '1.5x2')
+            ->set('form.designerId', $this->designerUser->id)
+            ->set('form.notes', 'Calibration fail')
             ->call('logWaste')
             ->assertHasNoErrors();
 

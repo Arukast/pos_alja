@@ -3,6 +3,7 @@
 namespace App\Livewire\Dashboards;
 
 use App\Events\OrderUpdated;
+use App\Livewire\Forms\WasteLogForm;
 use App\Models\Branch;
 use App\Models\Machine;
 use App\Models\Material;
@@ -23,20 +24,20 @@ class Production extends Component
         'echo:orders,OrderUpdated' => '$refresh',
     ];
 
-    // Waste logging form properties
-    public string $materialId = '';
+    public int $queueCount = 0;
 
-    public string $machineId = '';
+    public int $printingCount = 0;
 
-    public string $quantity = '';
+    public int $completedToday = 0;
 
-    public string $dimensions = '';
+    public float $wasteToday = 0.0;
 
-    public string $designerId = '';
+    public $activeOrders;
+
+    // Waste logging form
+    public WasteLogForm $form;
 
     public string $operatorName = '';
-
-    public string $notes = '';
 
     // Alert feedback
     public bool $showSuccessAlert = false;
@@ -84,27 +85,20 @@ class Production extends Component
 
     public function logWaste(): void
     {
-        $this->validate([
-            'materialId' => 'required|string|exists:materials,id',
-            'machineId' => 'nullable|string|exists:machines,id',
-            'quantity' => 'required|numeric|min:0.01',
-            'dimensions' => 'nullable|string|max:50',
-            'designerId' => 'nullable|string|exists:users,id',
-            'notes' => 'required|string|max:500',
-        ]);
+        $this->form->validate();
 
         $inventoryService = new InventoryService;
         $inventoryService->logWaste([
-            'material_id' => $this->materialId,
-            'machine_id' => $this->machineId ?: null,
-            'quantity' => (float) $this->quantity,
-            'dimensions' => $this->dimensions,
-            'designer_id' => $this->designerId ?: null,
-            'operator_id' => auth()->user()->id,
-            'notes' => $this->notes,
+            'material_id' => $this->form->materialId,
+            'machine_id' => $this->form->machineId ?: null,
+            'quantity' => (float) $this->form->quantity,
+            'dimensions' => $this->form->dimensions,
+            'designer_id' => $this->form->designerId ?: null,
+            'operator_id' => (string) auth()->user()->id,
+            'notes' => $this->form->notes,
         ]);
 
-        $this->reset(['materialId', 'machineId', 'quantity', 'dimensions', 'designerId', 'notes']);
+        $this->form->reset();
         $this->operatorName = auth()->user()->name;
 
         $this->successMessage = 'Failed print/waste logged successfully!';
@@ -116,11 +110,11 @@ class Production extends Component
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
         // Initialize variables to default empty/null states
-        $queueCount = 0;
-        $printingCount = 0;
-        $completedToday = 0;
-        $wasteToday = 0.0;
-        $activeOrders = collect();
+        $this->queueCount = 0;
+        $this->printingCount = 0;
+        $this->completedToday = 0;
+        $this->wasteToday = 0.0;
+        $this->activeOrders = collect();
         $allMaterials = collect();
         $allMachines = collect();
         $designersList = collect();
@@ -128,22 +122,22 @@ class Production extends Component
 
         // 1. Load metrics & lists conditionally based on activeTab
         if ($this->activeTab === 'dashboard' || $this->activeTab === 'print_queue') {
-            $queueCount = Order::where('status', 0)
+            $this->queueCount = Order::where('status', 0)
                 ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
                 ->count();
-            $printingCount = Order::where('status', 1)
+            $this->printingCount = Order::where('status', 1)
                 ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
                 ->count();
-            $completedToday = Order::where('status', 2)
+            $this->completedToday = Order::where('status', 2)
                 ->whereDate('updated_at', now()->toDateString())
                 ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
                 ->count();
-            $wasteToday = WastedMaterial::where('branch_id', $branchId)
+            $this->wasteToday = (float) WastedMaterial::where('branch_id', $branchId)
                 ->whereDate('logged_at', now()->toDateString())
                 ->sum('quantity');
 
             // Load active queue (status 0: pending, status 1: printing)
-            $activeOrders = Order::with('invoice.customer')
+            $this->activeOrders = Order::with('invoice.customer')
                 ->whereIn('status', [0, 1])
                 ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branchId))
                 ->orderBy('created_at', 'asc')
@@ -167,16 +161,11 @@ class Production extends Component
                 ->get();
         }
 
-        return view('livewire.dashboards.production', compact(
-            'queueCount',
-            'printingCount',
-            'completedToday',
-            'wasteToday',
-            'activeOrders',
-            'allMaterials',
-            'allMachines',
-            'designersList',
-            'recentWaste'
-        ));
+        return view('livewire.dashboards.production', [
+            'allMaterials' => $allMaterials,
+            'allMachines' => $allMachines,
+            'designersList' => $designersList,
+            'recentWaste' => $recentWaste,
+        ]);
     }
 }
