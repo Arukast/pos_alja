@@ -35,6 +35,13 @@
         :mobile="$mobile"
     />
     <x-navigation.link
+        label="Base Cost Detail"
+        route="dashboard"
+        tab="cost"
+        icon="ledgers"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
         label="Audit Trail"
         route="dashboard"
         tab="audit"
