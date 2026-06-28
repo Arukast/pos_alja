@@ -21,31 +21,12 @@
     - **Production:** Print queue lists, printer machine assignments, waste logging, and updating job status to completed (decrementing stock ledgers).
 - **Real-Time Reactivity:** When data state changes (e.g., creating an order, updating payment, completing a print job), ensure `OrderUpdated` or equivalent WebSocket broadcast events are dispatched to keep Livewire UI components in sync without manual page reloads.
 - **Aesthetics & UI:** Prioritize visual excellence. Build dynamic, responsive designs with smooth interactions (micro-animations, modern typography). Maintain styling conventions primarily through Tailwind CSS instead of inline styles. Use a sidebar navigation layout instead of a top navigation bar for the frontend dashboard interface. 
-- **Service-Oriented Architecture (API-Ready):** Core business logic must reside in isolated PHP Service classes. Livewire components/controllers should call these services rather than implementing business logic directly.
+- **Service-Oriented Architecture (API-Ready):** Core business logic must reside in isolated PHP Service classes. All service classes must reside in the `app/Services/` directory and utilize constructor dependency injection within Livewire components. Livewire components/controllers should call these services rather than implementing business logic directly.
   - `PricingService`: Handles complex pricing matrix matching by product category parameters (Merchandise, Large Format, Print Kertas, etc.).
   - `InventoryService`: Manages stock ledger adjustments and logging material waste.
 - **Multi-Branch Tenancy:** The application supports multiple physical branches. Tables containing branch-specific data must include a `branch_id` foreign key.
   - Ensure queries and dashboards scope data to the active user's branch (`auth()->user()->branch_id`) to prevent cross-branch data leakage, unless explicitly handled for the owner role (e.g., the owner dashboard can view all branches combined or switch active branches).
   - Restrict access to ticket and receipt routes (`/orders/{invoice}/ticket` and `/orders/{invoice}/receipt`) using middleware/policies to block cross-branch data access for non-owner roles.
-- **Legacy Data & Schema Mapping:** For reference during data migrations and troubleshooting imported database records:
-  - **Migration Command:** Legacy data migration command `php artisan db:migrate-legacy` (implemented in `MigrateLegacyData.php`) is now disabled/superseded in the redesign as the database has fully transitioned to the new UUIDv7-based schema.
-  - **Database Connection:** Reads from `mysql_migration` (legacy MariaDB database) and writes to PostgreSQL.
-  - **Password Security Reset:** MD5 passwords from legacy users are not preserved. They are reset to a default Bcrypt/Argon2 password (`password123`) upon migration.
-  - **Schema Mappings:**
-    - `admin` -> `users` (maps level/role: `owner` -> `owner`, `bm` -> `manager`, `kasir` -> `cashier`, `setting` -> `designer`, `produksi` -> `production`).
-    - `kostumer` -> `customers`
-    - `produk` -> `products`
-    - `bahan` -> `materials`
-    - `mesin` -> `machines`
-    - `jenis_finishing` -> `attributes` (with `type` column set to `'finishing'`)
-    - `jenis_potong` -> `attributes` (with `type` column set to `'cut'`)
-    - `jenis_display` -> `attributes` (with `type` column set to `'display'`)
-    - `harga_jual` -> `pricing_matrices`
-    - `invoice` -> `invoices`
-    - `orderan` -> `orders`
-    - `pengeluaran` -> `expenses`
-    - `bahan_gagal` -> `wasted_materials`
-    - `stok` -> `stock_ledgers`
 - **Theme Support (Light/Dark Mode) & Tailwind CSS v4 Styling:** Ensure UI components support both light and dark modes dynamically using Tailwind's `dark:` variant and `localStorage` state.
   - All interactive elements, dropdowns, inputs, text labels, and modal backgrounds must use responsive Tailwind classes (e.g. `bg-white dark:bg-surface-600 border border-gray-200 dark:border-surface-300/50`) to ensure proper readability and contrast in both themes. Avoid hardcoding absolute dark/light background colors.
   - **Tailwind CSS v4 Configuration Rule:** Do NOT edit or create `tailwind.config.js`. Any custom theme configurations, fonts, brand colors, keyframes, and animations must be defined directly in `resources/css/app.css` using the `@theme` directive.
@@ -63,15 +44,22 @@
     - `0` = Pending / Not Processed (Belum di Proses)
     - `1` = Processing / Printing (Sedang di Proses)
     - `2` = Completed (Telah Beres)
-- **Testing & Database Portability:**
-  - The automated test environment utilizes an SQLite in-memory database (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), while production uses PostgreSQL.
+- **Database Transaction Safety:** Any service method performing multiple database mutations must be wrapped entirely within an atomic `DB::transaction()` block.
+- **Structured Error Logging:** All caught domain exceptions must be logged via `Log::error()` with structured contextual metadata, including the active `user_id` and `branch_id`, before throwing or flashing the error.
+- **Testing & Database Portability (PHPUnit 12):**
+  - The project utilizes PHPUnit 12 for its test suite. The automated test environment utilizes an SQLite in-memory database (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), while production uses PostgreSQL.
   - All migrations, queries, and Eloquent interactions must remain dialect-agnostic and fully compatible with SQLite. Do not use PostgreSQL-specific or MariaDB-specific raw query statements.
-  - **UUIDv7 Assertions:** Since all keys in the new database schema are UUIDs, all unit and feature tests must mock records and assert database states using valid UUID strings (Laravel `Str::uuid()`) rather than auto-incrementing integers.
+  - **UUIDv7 Assertions & Key Generation:** Since all keys in the new database schema are UUIDs, all unit and feature tests must mock records and assert database states using valid UUID strings (Laravel `Str::uuid()`) rather than auto-incrementing integers. All model factories must explicitly generate primary and foreign key attributes using stringified UUIDs `(string) Str::uuid()`.
+  - **Branch Scoping Rule Tests:** All new features must include feature tests asserting active branch isolation scoping rules.
 - **WebSocket Broadcast Structure:**
   - Real-time updates rely on the `App\Events\OrderUpdated` event class broadcasting to a public channel named `orders`. Livewire dashboards should register Echo listeners (e.g., `protected $listeners = ['echo:orders,OrderUpdated' => '$refresh'];`) to automatically update UI states.
 
 ## Development, Coding, & DevOps Best Practices
-- **Code Modularity:** Keep the code modular and aim for smaller modules/files. From the start, split the code into small, focused files rather than putting everything in one place. Smaller files are easier to read, easier to fix, and easier for AI to work with in future sessions without getting confused.
+- **Code Modularity & View Architecture (Anti-Bloat Rule):** Keep the codebase strictly modular by breaking down views into small, focused files. Main dashboard blade templates must act exclusively as structural layout orchestrators and should not exceed 150 lines of code. Massive role-specific templates must be decomposed using specialized Livewire v4 and Tailwind v4 atomic patterns:
+  - **Blade Partials (`@include`):** Extract heavy, single-use layout blocks that share the parent component's state context (such as sidebars, navigation layout shells, and groups of system modals) into dedicated partials nested by role namespace (e.g., `resources/views/livewire/cashier/partials/_checkout_sidebar.blade.php`).
+  - **Anonymous Components (`<x-`):** Convert highly repetitive UI elements (such as the Cashier's item grid cards, the Owner's financial metric tiles, or Production's status badges) into reusable presentation components within `resources/views/components/`.
+  - **Livewire v4 Islands (`@island`):** Isolate computationally heavy or high-frequency rendering features to prevent system-wide DOM-morphing overhead. Wrap high-overhead components—such as the Owner's cross-branch financial analytics graphs, the Designer's real-time pricing calculator preview, and the Production print queue tables—directly in `@island` directives.
+  - **Tailwind v4 Responsive Utilities:** Utilize native Tailwind v4 container queries (`@container` and container variants like `@lg:`) on shared widgets so they adapt structurally to whichever dashboard column grid they occupy. Always leverage native `data-loading:` modifiers for asynchronous transitions and UI skeleton states instead of custom Alpine.js loading toggles.
 - **Environment Variables & Secrets:** Always use environment variables. API keys, passwords, and tokens should never appear directly in your code. Store them in a `.env` file using environment variables, and make sure that file is listed in `.gitignore` so it never gets pushed to GitHub accidentally. Never hardcode or commit `.env` file credentials. When introducing new configurations or environment dependencies, append placeholder entries to `.env.example` immediately.
 - **Database Migrations:**
   - Never edit migrations that have already been merged/deployed. Create a new migration file for schema adjustments.
@@ -80,8 +68,10 @@
   - The application relies on compiling assets for Tailwind CSS and JavaScript. Propose running `npm run build` (or keeping `npm run dev` running) after editing layout files, CSS styles, or configuration parameters to ensure changes reflect properly in the browser.
 - **Coding Standards & Formatting:**
   - Adhere strictly to **PSR-12** standards for PHP classes and code structure.
+  - Require `declare(strict_types=1);` at the top of every PHP class file, along with mandatory explicit argument types and return type-hints for all methods.
   - Indent PHP files, Blade views, and JS templates using **4 spaces** (per `.editorconfig`). For YAML and Markdown files, use **2 spaces**.
-  - **Livewire Separation of Concerns:** Maintain a clean separation between backend and frontend files by using class-based Livewire components. The controller logic must reside in `app/Livewire/` and frontend templates in `resources/views/livewire/` (avoid single-file Volt components to keep code clean and readable).
+  - **Livewire Separation of Concerns & Input Validation:** Maintain a clean separation between backend and frontend files by using class-based Livewire components. The controller logic must reside in `app/Livewire/` and frontend templates in `resources/views/livewire/` (avoid single-file Volt components to keep code clean and readable).
+    - **Form Validation Pattern:** All multi-input forms must utilize Livewire Form Objects to isolate validation rules and properties from the primary component class.
   - **Blade Template Formatting & Formatter Safety:** To prevent auto-formatting tools (e.g. Prettier, Pint, or pre-commit hooks) from introducing syntax compilation errors:
     - Avoid using inline Blade conditional tags (like `@if ... @endif`) on the same line as HTML text content. Instead, use inline PHP ternary expressions inside double curly braces: `{{ $condition ? $value : '' }}`. This ensures the formatter treats the expression as a single statement and doesn't split it.
     - Ensure PHP arrow operators (`->`) in Blade views are never split across multiple lines. Keep the variable, operator, and method call together on a single line.
@@ -93,12 +83,13 @@
   - Avoid installing external PHP or JavaScript packages unless explicitly requested or absolutely necessary. Rely on core Laravel 13, Livewire 4, Alpine, and Tailwind utilities.
   - When dependencies are added or updated, always commit both the package definition files (`composer.json`, `package.json`) and their lock files (`composer.lock`, `package-lock.json`) together to maintain reproducible builds.
   - Verify container and PHP system extension requirements (e.g., the `pcntl` extension needed for Laravel Reverb signal handling) before introducing new packages.
+- **Git Commit Conventions:** All git commit messages generated by the agent must strictly follow the Conventional Commits specification (e.g., `feat:`, `fix:`, `chore:`).
 
 ## Workflow Instructions
 - **Docker Environment:** Assume the project is run and tested inside a Docker Compose container stack. All PHP and Artisan commands must be proposed to run inside the container (e.g. `docker exec -it -w /var/www/html/pos_alja local-php83 php artisan <command>`).
 - **Interactive & Privileged Commands:** Avoid proposing `sudo` or interactive command prompts unless requested.
 - **Documentation style:** When proposing documentation, do NOT use emojis. Ensure technical guides provide complete, end-to-end instructions for both installation and post-installation usage.
-
-
-
-
+- **Automated Deployment Guidelines:**
+  - Enforce production asset compilation via `npm run build`.
+  - Follow a strict optimization caching command order during deployments.
+  - Ensure safe zero-downtime Reverb worker reloads via signals rather than dropping the container infrastructure.
