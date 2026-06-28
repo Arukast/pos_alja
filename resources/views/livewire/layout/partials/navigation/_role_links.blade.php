@@ -49,6 +49,13 @@
         :mobile="$mobile"
     />
     <x-navigation.link
+        label="Expenses Detail"
+        route="dashboard"
+        tab="expenses"
+        icon="expenses"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
         label="Audit Trail"
         route="dashboard"
         tab="audit"

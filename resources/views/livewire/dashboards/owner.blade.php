@@ -25,6 +25,13 @@
         :selectedBranchId="$selectedBranchId"
         :period="$period"
     />
+    @endisland @elseif ($activeTab === 'expenses')
+    @include('livewire.dashboards.partials.owner._header_banner') @island(name:
+    'expenses-detail')
+    <livewire:dashboards.owner.expenses-detail
+        :selectedBranchId="$selectedBranchId"
+        :period="$period"
+    />
     @endisland @elseif ($activeTab === 'users')
     <livewire:admin.user-management
         mode="owner"

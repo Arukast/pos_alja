@@ -192,4 +192,45 @@ class FinanceService
             'expenses' => $expenses,
         ];
     }
+
+    /**
+     * Get aggregate, categorized, and itemized expenses breakdown.
+     *
+     * @param  string|null  $branchId  'all' or UUID of the branch
+     * @param  string  $startDate  Y-m-d format
+     * @param  string  $endDate  Y-m-d format
+     * @return array{
+     *     expenses_total: int,
+     *     by_category: array<string, int>,
+     *     expenses: Collection
+     * }
+     */
+    public function getExpensesBreakdown(?string $branchId, string $startDate, string $endDate): array
+    {
+        $query = Expense::query()
+            ->with(['branch'])
+            ->whereBetween('incurred_at', [$startDate, $endDate]);
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', $branchId);
+        }
+
+        $expenses = $query->orderBy('incurred_at', 'desc')->get();
+        $expensesTotal = (int) (clone $query)->sum('amount');
+
+        // Calculate breakdown by category dialect-agnostically
+        $byCategory = (clone $query)
+            ->reorder()
+            ->select('category', DB::raw('SUM(amount) as total'))
+            ->groupBy('category')
+            ->pluck('total', 'category')
+            ->map(fn ($val) => (int) $val)
+            ->toArray();
+
+        return [
+            'expenses_total' => $expensesTotal,
+            'by_category' => $byCategory,
+            'expenses' => $expenses,
+        ];
+    }
 }
