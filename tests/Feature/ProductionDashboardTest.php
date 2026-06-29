@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Machine;
 use App\Models\Material;
+use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
@@ -61,10 +62,16 @@ class ProductionDashboardTest extends TestCase
         ]);
 
         $this->material = Material::create([
-            'branch_id' => $this->branch->id,
+            'id' => (string) Str::uuid(),
             'name' => 'Flexy 340gr',
             'category' => 'meter',
             'type' => 'outdoor',
+        ]);
+
+        MaterialBranchStock::create([
+            'id' => (string) Str::uuid(),
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branch->id,
             'current_stock' => 100,
         ]);
 
@@ -156,8 +163,9 @@ class ProductionDashboardTest extends TestCase
         ]);
 
         // Stock deduction check: area-based, so quantity * area = 2 * 2 = 4 units deducted
-        $this->assertDatabaseHas('materials', [
-            'id' => $this->material->id,
+        $this->assertDatabaseHas('material_branch_stock', [
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branch->id,
             'current_stock' => 96.00,
         ]);
 
@@ -219,8 +227,9 @@ class ProductionDashboardTest extends TestCase
             ->assertHasNoErrors();
 
         // Stock deduction check: unit-based, so quantity = 2 units deducted
-        $this->assertDatabaseHas('materials', [
-            'id' => $this->material->id,
+        $this->assertDatabaseHas('material_branch_stock', [
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branch->id,
             'current_stock' => 98.00,
         ]);
     }
@@ -306,8 +315,9 @@ class ProductionDashboardTest extends TestCase
             'notes' => 'Calibration fail',
         ]);
 
-        $this->assertDatabaseHas('materials', [
-            'id' => $this->material->id,
+        $this->assertDatabaseHas('material_branch_stock', [
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branch->id,
             'current_stock' => 96.50,
         ]);
     }

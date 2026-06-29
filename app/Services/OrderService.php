@@ -147,8 +147,10 @@ class OrderService
                         ? (float) ($order->area * $order->quantity)
                         : (float) $order->quantity;
 
+                    $branchId = $operator->branch_id ?: ($order->invoice->branch_id ?? null);
+
                     $inventoryService = new InventoryService;
-                    $inventoryService->deductStockOnPrint($pricing->material_id, $qtyToDeduct);
+                    $inventoryService->deductStockOnPrint($pricing->material_id, $qtyToDeduct, $branchId);
                 }
             }
 

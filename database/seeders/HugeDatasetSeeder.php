@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\Machine;
 use App\Models\MachinePricing;
 use App\Models\Material;
+use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Pricing;
@@ -21,6 +22,7 @@ use App\Models\WastedMaterial;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class HugeDatasetSeeder extends Seeder
 {
@@ -146,6 +148,19 @@ class HugeDatasetSeeder extends Seeder
             $productModels[$p['name']] = Product::create($p);
         }
 
+        // Create global materials first
+        $globalMaterials = [
+            ['name' => 'Flexi China 280g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000],
+            ['name' => 'Flexi Korea 440g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000],
+            ['name' => 'Art Paper 260g A3+', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500],
+            ['name' => 'HVS 80g A4', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500],
+        ];
+
+        $materialModels = [];
+        foreach ($globalMaterials as $m) {
+            $materialModels[$m['name']] = Material::create($m);
+        }
+
         // 4. Materials, Machines, Attributes, and Pricing per branch
         $materialsByBranch = [];
         $machinesByBranch = [];
@@ -154,16 +169,25 @@ class HugeDatasetSeeder extends Seeder
 
         foreach ($branches as $branch) {
             // Materials
-            $materials = [
-                ['name' => 'Flexi China 280g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000, 'current_stock' => 5000, 'min_stock' => 50, 'branch_id' => $branch->id],
-                ['name' => 'Flexi Korea 440g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000, 'current_stock' => 3000, 'min_stock' => 30, 'branch_id' => $branch->id],
-                ['name' => 'Art Paper 260g A3+', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500, 'current_stock' => 10000, 'min_stock' => 100, 'branch_id' => $branch->id],
-                ['name' => 'HVS 80g A4', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500, 'current_stock' => 50000, 'min_stock' => 500, 'branch_id' => $branch->id],
+            $materialsStock = [
+                'Flexi China 280g' => ['current_stock' => 5000, 'min_stock' => 50],
+                'Flexi Korea 440g' => ['current_stock' => 3000, 'min_stock' => 30],
+                'Art Paper 260g A3+' => ['current_stock' => 10000, 'min_stock' => 100],
+                'HVS 80g A4' => ['current_stock' => 50000, 'min_stock' => 500],
             ];
 
             $materialsByBranch[$branch->id] = [];
-            foreach ($materials as $m) {
-                $materialsByBranch[$branch->id][$m['name']] = Material::create($m);
+            foreach ($materialsStock as $name => $stockInfo) {
+                $globalMat = $materialModels[$name];
+                $materialsByBranch[$branch->id][$name] = $globalMat;
+
+                MaterialBranchStock::create([
+                    'id' => (string) Str::uuid(),
+                    'material_id' => $globalMat->id,
+                    'branch_id' => $branch->id,
+                    'current_stock' => $stockInfo['current_stock'],
+                    'min_stock' => $stockInfo['min_stock'],
+                ]);
             }
 
             // Machines

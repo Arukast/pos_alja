@@ -1,14 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit;
 
 use App\Models\Branch;
 use App\Models\Machine;
 use App\Models\Material;
+use App\Models\MaterialBranchStock;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class InventoryServiceTest extends TestCase
@@ -22,11 +26,12 @@ class InventoryServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
         $this->inventoryService = new InventoryService;
 
-        // Seed branch
         $branch = Branch::create([
-            'name' => 'Main Branch',
+            'id' => (string) Str::uuid(),
+            'name' => 'HQ Bandung',
         ]);
         $this->branchId = $branch->id;
     }
@@ -38,20 +43,26 @@ class InventoryServiceTest extends TestCase
     {
         // 1. Seed base material
         $material = Material::create([
-            'branch_id' => $this->branchId,
+            'id' => (string) Str::uuid(),
             'name' => 'Chromo Paper',
             'category' => 'lembar',
             'type' => 'kertas',
+        ]);
+
+        MaterialBranchStock::create([
+            'id' => (string) Str::uuid(),
+            'material_id' => $material->id,
+            'branch_id' => $this->branchId,
             'current_stock' => 100,
             'min_stock' => 10,
         ]);
 
         // 2. Add stock
-        $this->inventoryService->addStock($material, 50.0, 'Purchased new sheets');
+        $this->inventoryService->addStock($material, 50.0, 'Purchased new sheets', $this->branchId);
 
-        // 3. Assert material stock counts updated
-        $updatedMaterial = Material::find($material->id);
-        $this->assertEquals(150.0, $updatedMaterial->current_stock); // 100 + 50
+        // 3. Assert material stock counts updated in junction
+        $stock = MaterialBranchStock::where('material_id', $material->id)->where('branch_id', $this->branchId)->first();
+        $this->assertEquals(150.0, $stock->current_stock); // 100 + 50
 
         // 4. Assert ledger log written
         $ledger = DB::table('stock_ledgers')->where('material_id', $material->id)->first();
@@ -68,17 +79,32 @@ class InventoryServiceTest extends TestCase
     public function test_log_waste_adjusts_material_and_writes_ledger(): void
     {
         $material = Material::create([
-            'branch_id' => $this->branchId,
+            'id' => (string) Str::uuid(),
             'name' => 'Vinyl Matte Banner',
             'category' => 'meter',
             'type' => 'outdoor',
+        ]);
+
+        MaterialBranchStock::create([
+            'id' => (string) Str::uuid(),
+            'material_id' => $material->id,
+            'branch_id' => $this->branchId,
             'current_stock' => 200,
             'min_stock' => 10,
         ]);
 
-        $designer = User::factory()->create(['role' => 'designer']);
-        $operator = User::factory()->create(['role' => 'production']);
+        $designer = User::factory()->create([
+            'id' => (string) Str::uuid(),
+            'role' => 'designer',
+            'branch_id' => $this->branchId,
+        ]);
+        $operator = User::factory()->create([
+            'id' => (string) Str::uuid(),
+            'role' => 'production',
+            'branch_id' => $this->branchId,
+        ]);
         $machine = Machine::create([
+            'id' => (string) Str::uuid(),
             'branch_id' => $this->branchId,
             'name' => 'Roland Soljet',
         ]);
@@ -86,6 +112,7 @@ class InventoryServiceTest extends TestCase
         // Log waste
         $this->inventoryService->logWaste([
             'material_id' => $material->id,
+            'branch_id' => $this->branchId,
             'quantity' => 12.5,
             'machine_id' => $machine->id,
             'designer_id' => $designer->id,
@@ -102,9 +129,9 @@ class InventoryServiceTest extends TestCase
         $this->assertEquals($operator->id, $waste->operator_id);
         $this->assertEquals($machine->id, $waste->machine_id);
 
-        // Assert material stock counts updated
-        $updatedMaterial = Material::find($material->id);
-        $this->assertEquals(187.5, $updatedMaterial->current_stock); // 200 - 12.5
+        // Assert material stock counts updated in junction
+        $stock = MaterialBranchStock::where('material_id', $material->id)->where('branch_id', $this->branchId)->first();
+        $this->assertEquals(187.5, $stock->current_stock); // 200 - 12.5
 
         // Assert ledger log written
         $ledger = DB::table('stock_ledgers')->where('material_id', $material->id)->first();

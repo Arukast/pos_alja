@@ -39,6 +39,12 @@
     />
     @elseif ($activeTab === 'branches')
     <livewire:admin.branch-management wire:key="owner-branch-management" />
+    @elseif ($activeTab === 'materials')
+    @include('livewire.dashboards.partials.owner._header_banner')
+    <livewire:admin.material-management
+        :branchId="$selectedBranchId"
+        wire:key="owner-material-management"
+    />
     @elseif ($activeTab === 'audit')
     @include('livewire.dashboards.partials.owner._audit_trail') @endif
     @include('livewire.dashboards.partials.owner._audit_detail_modal')

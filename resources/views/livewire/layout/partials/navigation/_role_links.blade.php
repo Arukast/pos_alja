@@ -88,6 +88,13 @@
         icon="branches"
         :mobile="$mobile"
     />
+    <x-navigation.link
+        label="Materials & Stock"
+        route="dashboard"
+        tab="materials"
+        icon="materials"
+        :mobile="$mobile"
+    />
 </div>
 
 @elseif ($role === 'manager')

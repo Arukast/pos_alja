@@ -47,7 +47,7 @@ class PricingServiceTest extends TestCase
         ]);
 
         $material = Material::create([
-            'branch_id' => $this->branch->id,
+            'id' => (string) Str::uuid(),
             'name' => 'Mug Putih',
             'category' => 'pcs',
             'type' => 'Merchandise',
@@ -124,7 +124,7 @@ class PricingServiceTest extends TestCase
         ]);
 
         $material = Material::create([
-            'branch_id' => $this->branch->id,
+            'id' => (string) Str::uuid(),
             'name' => 'Flexy 340gr',
             'category' => 'meter',
             'type' => 'outdoor',

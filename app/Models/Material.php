@@ -12,19 +12,16 @@ class Material extends Model
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'branch_id',
         'name',
         'category',
         'type',
         'dimensions',
         'cost',
         'price',
-        'current_stock',
-        'min_stock',
     ];
 
-    public function branch()
+    public function stocks()
     {
-        return $this->belongsTo(Branch::class);
+        return $this->hasMany(MaterialBranchStock::class);
     }
 }

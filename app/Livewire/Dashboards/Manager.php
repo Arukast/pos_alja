@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Dashboards;
 
+use App\Events\OrderUpdated;
 use App\Livewire\Forms\AttributeForm;
+use App\Livewire\Forms\MaterialForm;
 use App\Livewire\Forms\PricingForm;
 use App\Livewire\Forms\RestockForm;
 use App\Models\Attribute;
@@ -11,6 +13,7 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Machine;
 use App\Models\Material;
+use App\Models\MaterialBranchStock;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\StockLedger;
@@ -36,6 +39,10 @@ class Manager extends Component
     public AttributeForm $attributeForm;
 
     public PricingForm $pricingForm;
+
+    public MaterialForm $materialForm;
+
+    public bool $isCreatingMaterial = false;
 
     // Properties accessed inside @island views
     public $stockLogs;
@@ -70,7 +77,12 @@ class Manager extends Component
 
         $material = Material::findOrFail($this->restockForm->selectedMaterialId);
 
-        if (auth()->user()->branch_id && $material->branch_id !== auth()->user()->branch_id) {
+        $branchId = auth()->user()->branch_id ?: Branch::value('id');
+        $hasStock = MaterialBranchStock::where('material_id', $material->id)
+            ->where('branch_id', $branchId)
+            ->exists();
+
+        if (auth()->user()->branch_id && ! $hasStock) {
             abort(403, 'Unauthorized branch access.');
         }
 
@@ -78,12 +90,52 @@ class Manager extends Component
         $inventoryService->addStock(
             $material,
             (float) $this->restockForm->addStockQuantity,
-            $this->restockForm->addStockNotes
+            $this->restockForm->addStockNotes,
+            $branchId
         );
 
         $this->restockForm->reset();
 
         $this->successMessage = 'Inventory stock restocked successfully!';
+        $this->showSuccessAlert = true;
+    }
+
+    public function openMaterialModal(): void
+    {
+        $this->materialForm->resetFields();
+        $this->resetErrorBag();
+        $this->isCreatingMaterial = true;
+        $this->showSuccessAlert = false;
+    }
+
+    public function closeMaterialModal(): void
+    {
+        $this->materialForm->resetFields();
+        $this->resetErrorBag();
+        $this->isCreatingMaterial = false;
+    }
+
+    public function saveMaterial(): void
+    {
+        $role = auth()->user()->role;
+        if (! in_array($role, ['manager', 'owner'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $branchId = auth()->user()->branch_id ?: Branch::value('id');
+
+        $payload = $this->materialForm->validateAndGetPayload();
+
+        $inventoryService = new InventoryService;
+        $material = $inventoryService->createGlobalMaterial($payload);
+        $inventoryService->initializeBranchStock($material->id, $branchId, $payload['current_stock'], $payload['min_stock']);
+
+        $this->materialForm->resetFields();
+        $this->isCreatingMaterial = false;
+
+        event(new OrderUpdated);
+
+        $this->successMessage = 'Material registered successfully!';
         $this->showSuccessAlert = true;
     }
 
@@ -231,28 +283,34 @@ class Manager extends Component
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
 
         // 1. Dynamic Quick Stat Counters
-        $materialCount = Material::where('branch_id', $branchId)->count();
+        $materialCount = Material::join('material_branch_stock', 'materials.id', '=', 'material_branch_stock.material_id')
+            ->where('material_branch_stock.branch_id', $branchId)
+            ->count();
         $machineCount = Machine::where('branch_id', $branchId)->count();
         $staffCount = User::where('branch_id', $branchId)->count();
         $pricingRulesCount = Pricing::where('branch_id', $branchId)->count();
 
         // 2. Load stock ledger log history
         $stockLogs = StockLedger::with('material')
-            ->whereHas('material', function ($query) use ($branchId) {
-                $query->where('branch_id', $branchId);
-            })
+            ->where('branch_id', $branchId)
             ->orderBy('created_at', 'desc')
             ->limit(8)
             ->get();
 
         // 3. Load entire material inventory list
-        $materialsList = Material::where('branch_id', $branchId)
-            ->orderBy('current_stock', 'asc') // prioritize low stock
+        $materialsList = Material::join('material_branch_stock', 'materials.id', '=', 'material_branch_stock.material_id')
+            ->where('material_branch_stock.branch_id', $branchId)
+            ->select('materials.*', 'material_branch_stock.current_stock', 'material_branch_stock.min_stock')
+            ->orderBy('material_branch_stock.current_stock', 'asc') // prioritize low stock
             ->limit(20)
             ->get();
 
         // 4. Load all materials for the dropdown selection
-        $allMaterials = Material::where('branch_id', $branchId)->orderBy('name')->get();
+        $allMaterials = Material::join('material_branch_stock', 'materials.id', '=', 'material_branch_stock.material_id')
+            ->where('material_branch_stock.branch_id', $branchId)
+            ->select('materials.*', 'material_branch_stock.current_stock', 'material_branch_stock.min_stock')
+            ->orderBy('materials.name')
+            ->get();
 
         // 5. Recent Expenses
         $expenses = Expense::where('branch_id', $branchId)->orderBy('created_at', 'desc')->limit(8)->get();

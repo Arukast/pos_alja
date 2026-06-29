@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\MaterialManagement;
 use App\Livewire\Dashboards\Cashier;
 use App\Livewire\Dashboards\Manager;
 use App\Models\Branch;
 use App\Models\Material;
+use App\Models\MaterialBranchStock;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -66,24 +69,31 @@ class InventoryManagementTest extends TestCase
         ]);
 
         $material = Material::create([
-            'branch_id' => $this->branch->id,
+            'id' => (string) Str::uuid(),
             'name' => 'Flexy 340gr',
             'category' => 'meter',
             'type' => 'outdoor',
+        ]);
+
+        MaterialBranchStock::create([
+            'id' => (string) Str::uuid(),
+            'material_id' => $material->id,
+            'branch_id' => $this->branch->id,
             'current_stock' => 100,
             'min_stock' => 10,
         ]);
 
         Livewire::actingAs($user)
-            ->test(Manager::class)
+            ->test(MaterialManagement::class)
             ->set('restockForm.selectedMaterialId', $material->id)
             ->set('restockForm.addStockQuantity', 50)
             ->set('restockForm.addStockNotes', 'Restocked 50m')
             ->call('addMaterialStock')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('materials', [
-            'id' => $material->id,
+        $this->assertDatabaseHas('material_branch_stock', [
+            'material_id' => $material->id,
+            'branch_id' => $this->branch->id,
             'current_stock' => 150,
         ]);
 

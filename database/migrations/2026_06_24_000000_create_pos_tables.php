@@ -35,17 +35,26 @@ return new class extends Migration
         // 3. Materials
         Schema::create('materials', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('branch_id')->nullable()->constrained('branches')->cascadeOnDelete();
             $table->string('name');
             $table->string('category', 50); // lembar, meter, pcs, display, finishing, potong, stempel
             $table->string('type')->nullable(); // Tipe bahan (Outdoor, Indoor, Kertas, etc.)
             $table->string('dimensions')->nullable(); // Ukuran bahan
             $table->decimal('cost', 15, 2)->default(0); // HPP Bahan
             $table->decimal('price', 15, 2)->default(0); // Harga Bahan
-            $table->decimal('current_stock', 10, 2)->default(0);
-            $table->decimal('min_stock', 10, 2)->default(0); // Low stock alert threshold
             $table->softDeletes();
             $table->timestamps();
+        });
+
+        // 3a. Material Branch Stock Junction
+        Schema::create('material_branch_stock', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('material_id')->constrained('materials')->cascadeOnDelete();
+            $table->foreignUuid('branch_id')->constrained('branches')->cascadeOnDelete();
+            $table->decimal('current_stock', 10, 2)->default(0);
+            $table->decimal('min_stock', 10, 2)->default(0);
+            $table->timestamps();
+
+            $table->unique(['material_id', 'branch_id']);
         });
 
         // 4. Machines
@@ -256,6 +265,7 @@ return new class extends Migration
         Schema::dropIfExists('pricing');
         Schema::dropIfExists('attributes');
         Schema::dropIfExists('machines');
+        Schema::dropIfExists('material_branch_stock');
         Schema::dropIfExists('materials');
         Schema::dropIfExists('products');
         Schema::dropIfExists('customers');

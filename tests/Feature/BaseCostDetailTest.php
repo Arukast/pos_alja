@@ -9,9 +9,11 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Material;
+use App\Models\MaterialBranchStock;
 use App\Models\User;
 use App\Models\WastedMaterial;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -42,25 +44,37 @@ class BaseCostDetailTest extends TestCase
         ]);
 
         $this->material1 = Material::create([
-            'branch_id' => $this->branch1->id,
+            'id' => (string) Str::uuid(),
             'name' => 'Material 1',
             'category' => 'Large Format',
             'type' => 'Banner',
             'dimensions' => '1x1',
             'cost' => 10000,
             'price' => 15000,
+        ]);
+
+        MaterialBranchStock::create([
+            'id' => (string) Str::uuid(),
+            'material_id' => $this->material1->id,
+            'branch_id' => $this->branch1->id,
             'current_stock' => 100,
             'min_stock' => 10,
         ]);
 
         $this->material2 = Material::create([
-            'branch_id' => $this->branch2->id,
+            'id' => (string) Str::uuid(),
             'name' => 'Material 2',
             'category' => 'Print Kertas',
             'type' => 'A4',
             'dimensions' => 'A4',
             'cost' => 500,
             'price' => 1000,
+        ]);
+
+        MaterialBranchStock::create([
+            'id' => (string) Str::uuid(),
+            'material_id' => $this->material2->id,
+            'branch_id' => $this->branch2->id,
             'current_stock' => 1000,
             'min_stock' => 50,
         ]);
