@@ -1,7 +1,9 @@
 @php $categories = [ 'lembar' => 'Lembar (Sheet)', 'meter' => 'Meter (Roll)',
 'pcs' => 'Pcs (Piece)', 'display' => 'Display', 'finishing' => 'Finishing',
-'potong' => 'Potong (Cut)', 'stempel' => 'Stempel (Stamp)' ]; @endphp @if
-($isCreatingMaterial)
+'potong' => 'Potong (Cut)', 'stempel' => 'Stempel (Stamp)' ]; @endphp
+
+<!-- prettier-ignore -->
+@if ($isCreatingMaterial)
 <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
 >
@@ -47,8 +49,8 @@
             </button>
         </div>
 
-        {{-- Similarity Warning, Activation Wizard, or Modal Form --}} @if
-        ($showSimilarityWarning)
+        <!-- prettier-ignore -->
+        @if ($showSimilarityWarning)
         <div class="space-y-4">
             <div
                 class="rounded-xl bg-amber-500/10 p-4 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
