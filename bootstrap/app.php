@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // This tells Laravel to trust the Tailscale Funnel headers
+        $middleware->trustProxies(at: env('TRUSTED_PROXIES', ''));
+
         $middleware->alias([
             'role' => RoleMiddleware::class,
         ]);
