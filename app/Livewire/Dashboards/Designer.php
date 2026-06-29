@@ -9,7 +9,6 @@ use App\Exceptions\PricingNotFoundException;
 use App\Livewire\Forms\CalculatorForm;
 use App\Livewire\Forms\CustomerForm;
 use App\Models\Attribute;
-use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -19,6 +18,7 @@ use App\Models\Material;
 use App\Models\Order;
 use App\Models\Pricing;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Services\CustomerService;
 use App\Services\OrderService;
 use App\Services\PricingService;
@@ -41,6 +41,8 @@ class Designer extends Component
     public CalculatorForm $calculatorForm;
 
     // Properties accessed inside @island views
+    public $productCategories;
+
     public $products;
 
     public $materials;
@@ -53,6 +55,8 @@ class Designer extends Component
 
     public $displays;
 
+    public $availableAttributes;
+
     public bool $hasMachines = false;
 
     public bool $hasFinishings = false;
@@ -64,6 +68,10 @@ class Designer extends Component
     public bool $hasSides = false;
 
     public bool $hasFinishingSides = false;
+
+    public bool $hasLength = false;
+
+    public bool $hasWidth = false;
 
     // Remaining basic properties
     public string $customerId = '';
@@ -82,11 +90,11 @@ class Designer extends Component
     public int $manualCost = 0;
 
     // Active calculations
-    public int $calcPrice = 0;
+    public float $calcPrice = 0.0;
 
-    public int $calcCost = 0;
+    public float $calcCost = 0.0;
 
-    public int $calcSubtotal = 0;
+    public float $calcSubtotal = 0.0;
 
     public ?string $calcPricingId = null;
 
@@ -107,6 +115,7 @@ class Designer extends Component
     public function mount(): void
     {
         $this->deadline = now()->addDay()->format('Y-m-d\TH:i');
+        $this->productCategories = collect();
         $this->products = collect();
         $this->materials = collect();
         $this->machines = collect();
@@ -123,18 +132,21 @@ class Designer extends Component
 
     public function updated(string $propertyName): void
     {
-        if ($propertyName === 'customerForm.search') {
-            $this->customerId = '';
-        }
-
         if (in_array($propertyName, [
-            'calculatorForm.productId', 'calculatorForm.materialId', 'calculatorForm.machineId',
+            'calculatorForm.productCategoryId', 'calculatorForm.materialId', 'calculatorForm.machineId',
             'calculatorForm.finishingId', 'calculatorForm.cutId', 'calculatorForm.displayId',
             'calculatorForm.sides', 'calculatorForm.finishingSides', 'calculatorForm.quantity',
             'calculatorForm.width', 'calculatorForm.length', 'isManualPrice', 'manualPrice', 'manualCost',
         ])) {
             $this->calculateQuote();
         }
+    }
+
+    public function updatedCalculatorFormProductCategoryId(): void
+    {
+        $this->calculatorForm->materialId = '';
+        $this->reset(['isCalculated', 'calcPrice', 'calcCost', 'calcSubtotal', 'calcPricingId', 'calcError']);
+        $this->calculateQuote();
     }
 
     public function createCustomer(): void
@@ -162,7 +174,14 @@ class Designer extends Component
         $this->calcError = '';
         $this->isCalculated = false;
 
-        if (! $this->calculatorForm->productId || ! $this->calculatorForm->materialId) {
+        if (! $this->calculatorForm->productCategoryId || ! $this->calculatorForm->materialId) {
+            return;
+        }
+
+        $product = Product::where('product_category_id', $this->calculatorForm->productCategoryId)->first();
+        if (! $product) {
+            $this->calcError = 'No product associated with this category.';
+
             return;
         }
 
@@ -170,7 +189,6 @@ class Designer extends Component
             // Manual pricing override bypasses the matrix lookups
             $this->calcPrice = $this->manualPrice;
             $this->calcCost = $this->manualCost;
-            $product = Product::findOrFail($this->calculatorForm->productId);
 
             if ($product->pricing_type === 'area') {
                 $area = ($this->calculatorForm->width > 0 && $this->calculatorForm->length > 0) ? ($this->calculatorForm->width * $this->calculatorForm->length) : 1.0;
@@ -192,20 +210,27 @@ class Designer extends Component
                 $custType = Customer::find($this->customerId)->type ?? 'Reguler';
             }
 
+            $finishingId = $this->calculatorForm->finishingId ?: null;
+            $cutId = $this->calculatorForm->cutId ?: null;
+            $displayId = $this->calculatorForm->displayId ?: null;
+
+            $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
+
             $pricingService = new PricingService;
             $quote = $pricingService->calculateQuote([
-                'product_id' => $this->calculatorForm->productId,
+                'product_id' => $product->id,
                 'material_id' => $this->calculatorForm->materialId,
                 'machine_id' => $this->calculatorForm->machineId ?: null,
-                'finishing_id' => $this->calculatorForm->finishingId ?: null,
-                'cut_id' => $this->calculatorForm->cutId ?: null,
-                'display_id' => $this->calculatorForm->displayId ?: null,
+                'finishing_id' => $finishingId,
+                'cut_id' => $cutId,
+                'display_id' => $displayId,
                 'sides' => $this->calculatorForm->sides ?: 1,
                 'finishing_sides' => $this->calculatorForm->finishingSides ?: 0,
                 'quantity' => $this->calculatorForm->quantity ?: 1,
                 'width' => $this->calculatorForm->width ?: 0,
                 'length' => $this->calculatorForm->length ?: 0,
                 'customer_type' => $custType,
+                'branch_id' => $branchId,
             ]);
 
             $this->calcPrice = $quote['unit_price'];
@@ -214,7 +239,7 @@ class Designer extends Component
             $this->calcPricingId = $quote['pricing_id'];
             $this->isCalculated = true;
         } catch (PricingNotFoundException $e) {
-            $this->calcError = 'Pricing configuration not found for these parameters.';
+            $this->calcError = 'Pricing configuration not found for these parameters: '.json_encode($e->getParams());
         } catch (\Throwable $e) {
             $this->calcError = $e->getMessage();
         }
@@ -228,25 +253,32 @@ class Designer extends Component
             return;
         }
 
-        $product = Product::find($this->calculatorForm->productId);
+        $product = Product::where('product_category_id', $this->calculatorForm->productCategoryId)->first();
+        if (! $product) {
+            return;
+        }
+        $finishingId = $this->calculatorForm->finishingId ?: null;
+        $cutId = $this->calculatorForm->cutId ?: null;
+        $displayId = $this->calculatorForm->displayId ?: null;
+
         $productName = $product->name;
         $materialName = Material::find($this->calculatorForm->materialId)->name;
         $machineName = $this->calculatorForm->machineId ? Machine::find($this->calculatorForm->machineId)->name : 'N/A';
-        $finishingName = $this->calculatorForm->finishingId ? Attribute::find($this->calculatorForm->finishingId)->name : 'N/A';
-        $cutName = $this->calculatorForm->cutId ? Attribute::find($this->calculatorForm->cutId)->name : 'N/A';
-        $displayName = $this->calculatorForm->displayId ? Attribute::find($this->calculatorForm->displayId)->name : 'N/A';
+        $finishingName = $finishingId ? Attribute::find($finishingId)->name : 'N/A';
+        $cutName = $cutId ? Attribute::find($cutId)->name : 'N/A';
+        $displayName = $displayId ? Attribute::find($displayId)->name : 'N/A';
 
         $specDetails = ["Material: {$materialName}"];
         if ($this->calculatorForm->machineId) {
             $specDetails[] = "Machine: {$machineName}";
         }
-        if ($this->calculatorForm->finishingId) {
+        if ($finishingId) {
             $specDetails[] = "Finishing: {$finishingName}";
         }
-        if ($this->calculatorForm->cutId) {
+        if ($cutId) {
             $specDetails[] = "Cutting: {$cutName}";
         }
-        if ($this->calculatorForm->displayId) {
+        if ($displayId) {
             $specDetails[] = "Display: {$displayName}";
         }
         if ($product->pricing_type === 'area') {
@@ -261,13 +293,13 @@ class Designer extends Component
 
         $this->items[] = [
             'id' => uniqid(),
-            'product_id' => $this->calculatorForm->productId,
+            'product_id' => $product->id,
             'product_name' => $productName,
             'material_id' => $this->calculatorForm->materialId,
             'machine_id' => $this->calculatorForm->machineId ?: null,
-            'finishing_id' => $this->calculatorForm->finishingId ?: null,
-            'cut_id' => $this->calculatorForm->cutId ?: null,
-            'display_id' => $this->calculatorForm->displayId ?: null,
+            'finishing_id' => $finishingId,
+            'cut_id' => $cutId,
+            'display_id' => $displayId,
             'sides' => $this->calculatorForm->sides,
             'finishing_sides' => $this->calculatorForm->finishingSides,
             'quantity' => $this->calculatorForm->quantity,
@@ -286,7 +318,7 @@ class Designer extends Component
         ];
 
         $this->calculatorForm->reset([
-            'productId', 'materialId', 'machineId', 'finishingId', 'cutId', 'displayId',
+            'productCategoryId', 'materialId', 'machineId', 'finishingId', 'cutId', 'displayId',
             'sides', 'finishingSides', 'fileName', 'notes',
         ]);
 
@@ -353,6 +385,7 @@ class Designer extends Component
             ->limit(8)
             ->get();
 
+        $this->productCategories = ProductCategory::all();
         $this->products = Product::all();
 
         $this->materials = collect();
@@ -360,6 +393,7 @@ class Designer extends Component
         $this->finishings = collect();
         $this->cuts = collect();
         $this->displays = collect();
+        $this->availableAttributes = collect();
 
         $this->hasMachines = false;
         $this->hasFinishings = false;
@@ -367,15 +401,29 @@ class Designer extends Component
         $this->hasDisplays = false;
         $this->hasSides = false;
         $this->hasFinishingSides = false;
+        $this->hasLength = false;
+        $this->hasWidth = false;
 
         $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
 
-        if ($this->calculatorForm->productId && $branchId) {
-            $pricings = Pricing::where('product_id', $this->calculatorForm->productId)->where('branch_id', $branchId)->get();
+        if ($this->calculatorForm->productCategoryId && $branchId) {
+            $category = ProductCategory::find($this->calculatorForm->productCategoryId);
+            if ($category) {
+                $this->hasLength = in_array($category->calculation_archetype, ['surface_area', 'linear_dimension']);
+                $this->hasWidth = $category->calculation_archetype === 'surface_area';
+                $this->hasSides = in_array($category->name, ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
+            }
+
+            $productIds = Product::where('product_category_id', $this->calculatorForm->productCategoryId)->pluck('id');
+            $pricings = Pricing::whereIn('product_id', $productIds)->where('branch_id', $branchId)->get();
             $pricingIds = $pricings->pluck('id');
 
             $materialIds = $pricings->pluck('material_id')->unique();
-            $this->materials = Material::whereIn('id', $materialIds)->where('branch_id', $branchId)->get();
+
+            // Load only materials registered under the selected product category that have pricing configured for this branch
+            $this->materials = Material::where('product_category_id', $this->calculatorForm->productCategoryId)
+                ->whereIn('id', $materialIds)
+                ->get();
 
             $machineIds = MachinePricing::whereIn('pricing_id', $pricingIds)->pluck('machine_id')->unique()->filter();
             if ($machineIds->isNotEmpty()) {
@@ -383,19 +431,16 @@ class Designer extends Component
                 $this->hasMachines = true;
             }
 
-            $attributeIds = AttributePricing::whereIn('pricing_id', $pricingIds)->pluck('attribute_id')->unique()->filter();
-            if ($attributeIds->isNotEmpty()) {
-                $this->finishings = Attribute::whereIn('id', $attributeIds)->where('type', 'finishing')->get();
-                $this->hasFinishings = $this->finishings->isNotEmpty();
+            // Load all attributes registered to the active branch
+            $this->availableAttributes = Attribute::where('branch_id', $branchId)->get();
+            $this->finishings = $this->availableAttributes->where('type', 'finishing');
+            $this->hasFinishings = $this->finishings->isNotEmpty();
 
-                $this->cuts = Attribute::whereIn('id', $attributeIds)->where('type', 'cut')->get();
-                $this->hasCuts = $this->cuts->isNotEmpty();
+            $this->cuts = $this->availableAttributes->where('type', 'cut');
+            $this->hasCuts = $this->cuts->isNotEmpty();
 
-                $this->displays = Attribute::whereIn('id', $attributeIds)->where('type', 'display')->get();
-                $this->hasDisplays = $this->displays->isNotEmpty();
-            }
-
-            $this->hasSides = in_array(Product::find($this->calculatorForm->productId)->name ?? '', ['Merchandise', 'Print Kertas', 'ID Card', 'Stempel', 'Kartu Nama', 'NOTA']);
+            $this->displays = $this->availableAttributes->where('type', 'display');
+            $this->hasDisplays = $this->displays->isNotEmpty();
 
             $this->hasFinishingSides = $this->hasFinishings;
         }

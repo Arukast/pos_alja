@@ -30,7 +30,7 @@ class InventoryService
                 return Material::create([
                     'id' => $materialId,
                     'name' => $data['name'],
-                    'category' => $data['category'],
+                    'product_category_id' => $data['product_category_id'],
                     'type' => $data['type'] ?? null,
                     'dimensions' => $data['dimensions'] ?? null,
                     'cost' => (float) ($data['cost'] ?? 0.0),

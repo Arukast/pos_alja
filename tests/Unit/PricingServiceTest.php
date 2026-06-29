@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit;
 
 use App\Exceptions\PricingNotFoundException;
@@ -11,9 +13,11 @@ use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\Pricing;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Services\PricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class PricingServiceTest extends TestCase
@@ -40,16 +44,21 @@ class PricingServiceTest extends TestCase
      */
     public function test_merchandise_pricing_calculation(): void
     {
-        // 1. Seed product, material, machine, finishing using models
+        $category = ProductCategory::create([
+            'name' => 'Merchandise',
+            'calculation_archetype' => 'per_piece',
+        ]);
+
         $product = Product::create([
             'name' => 'Merchandise',
             'pricing_type' => 'unit',
+            'product_category_id' => $category->id,
         ]);
 
         $material = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Mug Putih',
-            'category' => 'pcs',
+            'product_category_id' => $category->id,
             'type' => 'Merchandise',
         ]);
 
@@ -64,7 +73,6 @@ class PricingServiceTest extends TestCase
             'type' => 'finishing',
         ]);
 
-        // 2. Seed pricing
         $pricing = Pricing::create([
             'branch_id' => $this->branch->id,
             'product_id' => $product->id,
@@ -94,7 +102,6 @@ class PricingServiceTest extends TestCase
             'profit' => 0,
         ]);
 
-        // 3. Test dynamic calculation
         $result = $this->pricingService->calculateQuote([
             'product_id' => $product->id,
             'material_id' => $material->id,
@@ -118,15 +125,21 @@ class PricingServiceTest extends TestCase
      */
     public function test_large_format_banner_pricing_calculation(): void
     {
+        $category = ProductCategory::create([
+            'name' => 'Large Format',
+            'calculation_archetype' => 'surface_area',
+        ]);
+
         $product = Product::create([
             'name' => 'Large Format',
             'pricing_type' => 'area',
+            'product_category_id' => $category->id,
         ]);
 
         $material = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Flexy 340gr',
-            'category' => 'meter',
+            'product_category_id' => $category->id,
             'type' => 'outdoor',
         ]);
 
@@ -190,13 +203,64 @@ class PricingServiceTest extends TestCase
     }
 
     /**
+     * Test validation exception when geometric parameters are missing for surface_area archetype.
+     */
+    public function test_throws_exception_when_geometric_parameters_missing_for_surface_area(): void
+    {
+        $category = ProductCategory::create([
+            'name' => 'Large Format',
+            'calculation_archetype' => 'surface_area',
+        ]);
+
+        $product = Product::create([
+            'name' => 'Large Format Banner',
+            'pricing_type' => 'area',
+            'product_category_id' => $category->id,
+        ]);
+
+        $material = Material::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Flexy 340gr',
+            'product_category_id' => $category->id,
+            'type' => 'outdoor',
+        ]);
+
+        Pricing::create([
+            'branch_id' => $this->branch->id,
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'price' => 25000,
+            'cost' => 12000,
+            'profit' => 13000,
+            'min_qty' => 1,
+            'customer_type' => 'Reguler',
+        ]);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->pricingService->calculateQuote([
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'quantity' => 1,
+            'width' => 0, // Missing geometric metric
+            'length' => 2.0,
+        ]);
+    }
+
+    /**
      * Test that an exception is thrown when pricing parameters do not match any matrix record.
      */
     public function test_throws_exception_when_pricing_matrix_not_found(): void
     {
+        $category = ProductCategory::create([
+            'name' => 'Merchandise',
+            'calculation_archetype' => 'per_piece',
+        ]);
+
         $product = Product::create([
             'name' => 'Merchandise',
             'pricing_type' => 'unit',
+            'product_category_id' => $category->id,
         ]);
 
         $this->expectException(PricingNotFoundException::class);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\PricingNotFoundException;
@@ -7,6 +9,8 @@ use App\Models\AttributePricing;
 use App\Models\MachinePricing;
 use App\Models\Pricing;
 use App\Models\Product;
+use App\Models\ProductCategory;
+use InvalidArgumentException;
 
 class PricingService
 {
@@ -14,6 +18,7 @@ class PricingService
      * Calculate quote for a given product and its configurations.
      *
      * @throws PricingNotFoundException
+     * @throws InvalidArgumentException
      */
     public function calculateQuote(array $params): array
     {
@@ -32,14 +37,29 @@ class PricingService
 
         // Load product to check pricing type and name
         $product = Product::findOrFail($productId);
+        $category = ProductCategory::findOrFail($product->product_category_id);
+
+        $branchId = $params['branch_id'] ?? null;
 
         // Fetch core pricing record matching product, material, customer tier type, and tiered min_qty
         $pricing = Pricing::where('product_id', $productId)
             ->where('material_id', $materialId)
             ->where('customer_type', $customerType)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->where('min_qty', '<=', $quantity)
             ->orderBy('min_qty', 'desc')
             ->first();
+
+        // Fallback to 'Reguler' pricing tier if custom type pricing is not defined
+        if (! $pricing && $customerType !== 'Reguler') {
+            $pricing = Pricing::where('product_id', $productId)
+                ->where('material_id', $materialId)
+                ->where('customer_type', 'Reguler')
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('min_qty', '<=', $quantity)
+                ->orderBy('min_qty', 'desc')
+                ->first();
+        }
 
         if (! $pricing) {
             throw new PricingNotFoundException(
@@ -83,18 +103,36 @@ class PricingService
         $unitCost = $baseCost + $machineCost + $attributeCostSum;
         $area = 0.0;
 
-        if ($product->pricing_type === 'area') {
-            // Area-based pricing (panjang * lebar)
-            if ($width <= 0 || $length <= 0) {
-                $width = 1.0;
-                $length = 1.0;
-            }
-            $area = $width * $length;
-            $subtotal = $unitPrice * $quantity * $area;
-            $cost = $unitCost * $quantity * $area;
-        } else {
-            $subtotal = $unitPrice * $quantity;
-            $cost = $unitCost * $quantity;
+        switch ($category->calculation_archetype) {
+            case 'surface_area':
+                if ($width <= 0 || $length <= 0) {
+                    throw new InvalidArgumentException('Width and length must be greater than zero for surface area calculation.');
+                }
+                $area = $width * $length;
+                $subtotal = $unitPrice * $quantity * $area;
+                $cost = $unitCost * $quantity * $area;
+                break;
+
+            case 'linear_dimension':
+                if ($length <= 0) {
+                    throw new InvalidArgumentException('Length must be greater than zero for linear dimension calculation.');
+                }
+                $subtotal = $unitPrice * $quantity * $length;
+                $cost = $unitCost * $quantity * $length;
+                break;
+
+            case 'tiered_volume':
+                // The query above selects the correct tiered pricing row by min_qty lookup.
+                // We evaluate the unit price dynamically matching the quantity tier.
+                $subtotal = $unitPrice * $quantity;
+                $cost = $unitCost * $quantity;
+                break;
+
+            case 'per_piece':
+            default:
+                $subtotal = $unitPrice * $quantity;
+                $cost = $unitCost * $quantity;
+                break;
         }
 
         // Keep precision using float numbers for decimal currency support

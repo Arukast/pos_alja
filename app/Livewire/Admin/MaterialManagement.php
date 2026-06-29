@@ -10,6 +10,7 @@ use App\Livewire\Forms\RestockForm;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
+use App\Models\ProductCategory;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -125,7 +126,7 @@ class MaterialManagement extends Component
         $this->forceSaveSimilar = false;
 
         $this->materialForm->name = $material->name;
-        $this->materialForm->category = $material->category;
+        $this->materialForm->productCategoryId = $material->product_category_id;
         $this->materialForm->type = $material->type ?? '';
         $this->materialForm->dimensions = $material->dimensions ?? '';
         $this->materialForm->cost = (float) $material->cost;
@@ -288,7 +289,7 @@ class MaterialManagement extends Component
             $material = Material::findOrFail($this->editingMaterialId);
             $material->update([
                 'name' => $payload['name'],
-                'category' => $payload['category'],
+                'product_category_id' => $payload['product_category_id'],
                 'type' => $payload['type'],
                 'dimensions' => $payload['dimensions'],
                 'cost' => $payload['cost'],
@@ -447,6 +448,8 @@ class MaterialManagement extends Component
             ->orderBy('name')
             ->get();
 
-        return view('livewire.admin.material-management', compact('materialsList', 'allMaterials', 'inactiveMaterials'));
+        $productCategories = ProductCategory::all();
+
+        return view('livewire.admin.material-management', compact('materialsList', 'allMaterials', 'inactiveMaterials', 'productCategories'));
     }
 }

@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Pricing;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -81,19 +82,34 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // 3a. Product Categories
+        $categoriesMap = [
+            'Merchandise' => ProductCategory::create(['name' => 'Merchandise', 'calculation_archetype' => 'per_piece']),
+            'Jasa Desain' => ProductCategory::create(['name' => 'Jasa Desain', 'calculation_archetype' => 'per_piece']),
+            'Display' => ProductCategory::create(['name' => 'Display', 'calculation_archetype' => 'per_piece']),
+            'Print Kertas' => ProductCategory::create(['name' => 'Print Kertas', 'calculation_archetype' => 'per_piece']),
+            'Large Format' => ProductCategory::create(['name' => 'Large Format', 'calculation_archetype' => 'surface_area']),
+            'ID Card' => ProductCategory::create(['name' => 'ID Card', 'calculation_archetype' => 'per_piece']),
+            'Stempel' => ProductCategory::create(['name' => 'Stempel', 'calculation_archetype' => 'per_piece']),
+            'Kartu Nama' => ProductCategory::create(['name' => 'Kartu Nama', 'calculation_archetype' => 'per_piece']),
+            'Produk Jadi' => ProductCategory::create(['name' => 'Produk Jadi', 'calculation_archetype' => 'per_piece']),
+            'NOTA' => ProductCategory::create(['name' => 'NOTA', 'calculation_archetype' => 'per_piece']),
+            'DTF Large Format' => ProductCategory::create(['name' => 'DTF Large Format', 'calculation_archetype' => 'surface_area']),
+        ];
+
         // 3. Products
         $products = [
-            ['name' => 'Merchandise', 'pricing_type' => 'unit'],
-            ['name' => 'Jasa Desain', 'pricing_type' => 'unit'],
-            ['name' => 'Display', 'pricing_type' => 'unit'],
-            ['name' => 'Print Kertas', 'pricing_type' => 'unit'],
-            ['name' => 'Large Format', 'pricing_type' => 'area'],
-            ['name' => 'ID Card', 'pricing_type' => 'unit'],
-            ['name' => 'Stempel', 'pricing_type' => 'unit'],
-            ['name' => 'Kartu Nama', 'pricing_type' => 'unit'],
-            ['name' => 'Produk Jadi', 'pricing_type' => 'unit'],
-            ['name' => 'NOTA', 'pricing_type' => 'unit'],
-            ['name' => 'DTF Large Format', 'pricing_type' => 'unit'],
+            ['name' => 'Merchandise', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Merchandise']->id],
+            ['name' => 'Jasa Desain', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Jasa Desain']->id],
+            ['name' => 'Display', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Display']->id],
+            ['name' => 'Print Kertas', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Print Kertas']->id],
+            ['name' => 'Large Format', 'pricing_type' => 'area', 'product_category_id' => $categoriesMap['Large Format']->id],
+            ['name' => 'ID Card', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['ID Card']->id],
+            ['name' => 'Stempel', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Stempel']->id],
+            ['name' => 'Kartu Nama', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Kartu Nama']->id],
+            ['name' => 'Produk Jadi', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Produk Jadi']->id],
+            ['name' => 'NOTA', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['NOTA']->id],
+            ['name' => 'DTF Large Format', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
         ];
 
         $productModels = [];
@@ -103,10 +119,10 @@ class DatabaseSeeder extends Seeder
 
         // 4. Materials
         $materials = [
-            ['name' => 'Flexi China 280g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000],
-            ['name' => 'Flexi Korea 440g', 'category' => 'meter', 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000],
-            ['name' => 'Art Paper 260g A3+', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500],
-            ['name' => 'HVS 80g A4', 'category' => 'lembar', 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500],
+            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000],
+            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000],
+            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500],
+            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500],
         ];
 
         $stocksMap = [

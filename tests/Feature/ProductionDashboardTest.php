@@ -12,6 +12,7 @@ use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -61,10 +62,15 @@ class ProductionDashboardTest extends TestCase
             'type' => 'Reguler',
         ]);
 
+        $category = ProductCategory::create([
+            'name' => 'General',
+            'calculation_archetype' => 'surface_area',
+        ]);
+
         $this->material = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Flexy 340gr',
-            'category' => 'meter',
+            'product_category_id' => $category->id,
             'type' => 'outdoor',
         ]);
 
@@ -78,11 +84,13 @@ class ProductionDashboardTest extends TestCase
         $this->areaProduct = Product::create([
             'name' => 'Banner Outdoor',
             'pricing_type' => 'area',
+            'product_category_id' => $category->id,
         ]);
 
         $this->unitProduct = Product::create([
             'name' => 'Sticker Pack',
             'pricing_type' => 'unit',
+            'product_category_id' => $category->id,
         ]);
     }
 

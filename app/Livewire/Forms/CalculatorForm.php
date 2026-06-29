@@ -8,7 +8,7 @@ use Livewire\Form;
 
 class CalculatorForm extends Form
 {
-    public string $productId = '';
+    public string $productCategoryId = '';
 
     public string $materialId = '';
 
@@ -33,4 +33,6 @@ class CalculatorForm extends Form
     public string $fileName = '';
 
     public string $notes = '';
+
+    public array $selectedAttributes = [];
 }

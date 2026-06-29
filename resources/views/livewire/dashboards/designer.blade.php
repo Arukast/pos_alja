@@ -20,15 +20,8 @@
 
         <!-- RIGHT PANEL: INTERACTIVE CALCULATOR & CART -->
         <div class="space-y-6 lg:col-span-2">
-            <!-- prettier-ignore -->
-            @island(name: 'designer-calculator')
-                    @include('livewire.dashboards.partials.designer._quote_calculator')
-                @endisland
-
-            <!-- prettier-ignore -->
-            @island(name: 'designer-cart')
-                    @include('livewire.dashboards.partials.designer._order_cart')
-                @endisland
+            @include('livewire.dashboards.partials.designer._quote_calculator')
+            @include('livewire.dashboards.partials.designer._order_cart')
         </div>
     </div>
 

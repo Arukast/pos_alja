@@ -10,7 +10,7 @@ class MaterialForm extends Form
 {
     public string $name = '';
 
-    public string $category = '';
+    public string $productCategoryId = '';
 
     public string $type = '';
 
@@ -35,7 +35,7 @@ class MaterialForm extends Form
                 'string',
                 'max:255',
             ],
-            'category' => 'required|string|in:lembar,meter,pcs,display,finishing,potong,stempel',
+            'productCategoryId' => 'required|string|uuid',
             'type' => 'nullable|string|max:100',
             'dimensions' => 'nullable|string|max:100',
             'cost' => 'required|numeric|min:0',
@@ -51,7 +51,7 @@ class MaterialForm extends Form
     public function resetFields(): void
     {
         $this->name = '';
-        $this->category = '';
+        $this->productCategoryId = '';
         $this->type = '';
         $this->dimensions = '';
         $this->cost = 0.0;
@@ -69,7 +69,7 @@ class MaterialForm extends Form
 
         return [
             'name' => $this->name,
-            'category' => $this->category,
+            'product_category_id' => $this->productCategoryId,
             'type' => $this->type ?: null,
             'dimensions' => $this->dimensions ?: null,
             'cost' => (float) $this->cost,

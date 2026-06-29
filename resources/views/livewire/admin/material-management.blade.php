@@ -45,8 +45,8 @@
                             class="text-light-text dark:text-gray-200"
                         >
                             {{ $mat->name }} {{ $mat->dimensions ?
-                            "({$mat->dimensions})" : '' }} [{{ $mat->category
-                            }}]
+                            "({$mat->dimensions})" : '' }} [{{
+                            $mat->category?->name }}]
                         </option>
                         @endforeach
                     </select>
@@ -137,7 +137,8 @@
                         </option>
                         @foreach ($inactiveMaterials as $imat)
                         <option value="{{ $imat->id }}">
-                            {{ $imat->name }} (Category: {{ $imat->category }})
+                            {{ $imat->name }} (Category: {{
+                            $imat->category?->name }})
                         </option>
                         @endforeach
                     </select>

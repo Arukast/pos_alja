@@ -1,3 +1,15 @@
+@php $selectedCategoryId = $calculatorForm->productCategoryId;
+$hasSelectedCategory = !empty($selectedCategoryId); $activeCategory =
+$hasSelectedCategory ? $productCategories->firstWhere('id', $selectedCategoryId)
+: null; $categoryName = $activeCategory ? $activeCategory->name : ''; $archetype
+= $activeCategory ? $activeCategory->calculation_archetype : ''; $showLength =
+$hasSelectedCategory && in_array($archetype, ['surface_area',
+'linear_dimension']); $showWidth = $hasSelectedCategory && ($archetype ===
+'surface_area'); $unitPriceSuffix = ($hasSelectedCategory && $archetype ===
+'surface_area') ? ' / m²' : (($hasSelectedCategory && $archetype ===
+'linear_dimension') ? ' / m' : ''); $hasAttributes = $hasSelectedCategory &&
+!empty($availableAttributes) && $availableAttributes->isNotEmpty(); @endphp
+
 <div
     class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm"
 >
@@ -14,25 +26,24 @@
             >
             <select
                 id="calc-product-id"
-                wire:model.live="calculatorForm.productId"
+                wire:model.live="calculatorForm.productCategoryId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted dark:placeholder-gray-555 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Product Category --
                 </option>
-                @foreach ($products as $p)
+                @foreach ($productCategories as $c)
                 <option
-                    value="{{ $p->id }}"
+                    value="{{ $c->id }}"
                     class="text-light-text dark:text-gray-200"
                 >
-                    {{ $p->name }}
+                    {{ $c->name }}
                 </option>
                 @endforeach
             </select>
         </div>
 
         <!-- Material Selector -->
-        @if ($calculatorForm->productId)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -43,6 +54,11 @@
                 wire:model.live="calculatorForm.materialId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
             >
+                @if (!$hasSelectedCategory)
+                <option value="" class="text-light-muted dark:text-gray-400">
+                    -- Select a category first... --
+                </option>
+                @else
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Material --
                 </option>
@@ -54,13 +70,18 @@
                     {{ $m->name }} {{ $m->dimensions ? "({$m->dimensions})" : ''
                     }}
                 </option>
-                @endforeach
+                @endforeach @endif
             </select>
+            @error('calculatorForm.materialId')
+            <span
+                class="text-red-550 mt-1 block text-[10px] font-bold dark:text-red-400"
+                >{{ $message }}</span
+            >
+            @enderror
         </div>
-        @endif
 
         <!-- Machine Selector -->
-        @if ($calculatorForm->productId && $hasMachines)
+        @if ($hasSelectedCategory && $hasMachines)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -70,6 +91,7 @@
                 id="calc-machine-id"
                 wire:model.live="calculatorForm.machineId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
+                data-loading:attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Machine --
@@ -87,7 +109,7 @@
         @endif
 
         <!-- Finishing Selector -->
-        @if ($calculatorForm->productId && $hasFinishings)
+        @if ($hasSelectedCategory && $hasFinishings)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -97,6 +119,7 @@
                 id="calc-finishing-id"
                 wire:model.live="calculatorForm.finishingId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
+                data-loading:attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Finishing --
@@ -114,7 +137,7 @@
         @endif
 
         <!-- Cutting Selector -->
-        @if ($calculatorForm->productId && $hasCuts)
+        @if ($hasSelectedCategory && $hasCuts)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -124,6 +147,7 @@
                 id="calc-cut-id"
                 wire:model.live="calculatorForm.cutId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
+                data-loading:attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Cutting --
@@ -141,7 +165,7 @@
         @endif
 
         <!-- Display Selector -->
-        @if ($calculatorForm->productId && $hasDisplays)
+        @if ($hasSelectedCategory && $hasDisplays)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -151,6 +175,7 @@
                 id="calc-display-id"
                 wire:model.live="calculatorForm.displayId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
+                data-loading:attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Display --
@@ -168,20 +193,22 @@
         @endif
 
         <!-- Sides / Colors Selector -->
-        @if ($calculatorForm->productId && $hasSides)
+        @if ($hasSelectedCategory && $hasSides)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
             >
-                <!-- prettier-ignore -->
-                {{ $calculatorForm->productId == 7 ? 'Color Options (Stempel)' : ($calculatorForm->productId == 10 ? 'Note Copies (Nota)' : 'Print Sides (Sisi)') }}
+                {{ $categoryName === 'Stempel' ? 'Color Options (Stempel)' :
+                ($categoryName === 'NOTA' ? 'Note Copies (Nota)' : 'Print Sides
+                (Sisi)') }}
             </label>
             <select
                 id="calc-sides"
                 wire:model.live="calculatorForm.sides"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
+                data-loading:attr="disabled"
             >
-                @if ($calculatorForm->productId == 7)
+                @if ($categoryName === 'Stempel')
                 <option value="1" class="bg-white text-gray-900">
                     1 Warna
                 </option>
@@ -194,7 +221,7 @@
                 <option value="4" class="bg-white text-gray-900">
                     4 Warna
                 </option>
-                @elseif ($calculatorForm->productId == 10)
+                @elseif ($categoryName === 'NOTA')
                 <option value="1" class="bg-white text-gray-900">
                     1 Rangkap
                 </option>
@@ -216,7 +243,7 @@
         @endif
 
         <!-- Finishing Sides -->
-        @if ($calculatorForm->productId && $hasFinishingSides)
+        @if ($hasSelectedCategory && $hasFinishingSides)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -226,6 +253,7 @@
                 id="calc-finishing-sides"
                 wire:model.live="calculatorForm.finishingSides"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
+                data-loading:attr="disabled"
             >
                 <option value="0" class="bg-white text-gray-900">0 Sisi</option>
                 <option value="1" class="bg-white text-gray-900">1 Sisi</option>
@@ -234,8 +262,8 @@
         </div>
         @endif
 
-        <!-- Large Format Dimensions -->
-        @if ($calculatorForm->productId == 5)
+        <!-- Dynamic geometric parameters -->
+        @if ($showLength)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -248,8 +276,10 @@
                 min="0.1"
                 wire:model.live.debounce.300ms="calculatorForm.length"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
+                data-loading:attr="disabled"
             />
         </div>
+        @endif @if ($showWidth)
         <div>
             <label
                 class="text-light-muted mb-1.5 block text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -262,6 +292,7 @@
                 min="0.1"
                 wire:model.live.debounce.300ms="calculatorForm.width"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
+                data-loading:attr="disabled"
             />
         </div>
         @endif
@@ -279,6 +310,7 @@
                 step="any"
                 wire:model.live.debounce.300ms="calculatorForm.quantity"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
+                data-loading:attr="disabled"
             />
         </div>
 
@@ -310,62 +342,95 @@
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary h-16 w-full resize-none rounded-xl border bg-white px-3 py-2 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
             ></textarea>
         </div>
-    </div>
 
-    <!-- Dynamic Pricing Display Section -->
-    <!-- prettier-ignore -->
-    <div
-        class="border-light-border dark:border-surface-300/30 bg-light-surface-2/40 dark:bg-surface-650/40 mt-6 flex flex-col gap-4 rounded-xl border p-4 md:flex-row md:items-center md:justify-between"
-        data-loading:class="opacity-75 pointer-events-none"
-    >
-        <div class="relative flex-1">
-            <!-- Loading indicator for calculation updates -->
-            <div data-loading class="absolute inset-0 bg-white/50 dark:bg-surface-600/50 flex items-center justify-start gap-2 z-10">
-                <span class="animate-spin rounded-full h-4 w-4 border-2 border-brand-primary border-t-transparent"></span>
-                <span class="text-xs font-bold text-light-muted dark:text-gray-400">Calculating...</span>
-            </div>
+        <!-- Dynamic Pricing Display Section -->
+        <div
+            class="border-light-border dark:border-surface-300/30 bg-light-surface-2/40 dark:bg-surface-650/40 mt-6 flex flex-col gap-4 rounded-xl border p-4 md:flex-row md:items-center md:justify-between"
+            data-loading:class="opacity-75 pointer-events-none"
+        >
+            <div class="relative flex-1">
+                <!-- Loading indicator for calculation updates -->
+                <div
+                    data-loading
+                    class="dark:bg-surface-600/50 absolute inset-0 z-10 flex items-center justify-start gap-2 bg-white/50"
+                >
+                    <span
+                        class="border-brand-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent"
+                    ></span>
+                    <span
+                        class="text-light-muted text-xs font-bold dark:text-gray-400"
+                        >Calculating...</span
+                    >
+                </div>
 
-            <div data-loading:class="opacity-0">
-                @if ($isCalculated)
-                    <div class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400">
+                <div data-loading:class="opacity-0">
+                    @if ($isCalculated)
+                    <div
+                        class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400"
+                    >
                         Estimated Subtotal
                     </div>
-                    <!-- prettier-ignore -->
-                    <div class="text-brand-secondary mt-1 text-2xl font-black dark:text-teal-400">
+                    <div
+                        class="text-brand-secondary mt-1 text-2xl font-black dark:text-teal-400"
+                    >
                         Rp. {{ number_format($calcSubtotal) }}
                     </div>
-                    <!-- prettier-ignore -->
-                    <div class="text-light-muted mt-0.5 text-[10px] font-bold dark:text-gray-400">
-                        Unit Price: Rp. {{ number_format($calcPrice) }}{{ $calculatorForm->productId == 5 ? ' / m²' : '' }}
+                    <div
+                        class="text-light-muted mt-0.5 text-[10px] font-bold dark:text-gray-400"
+                    >
+                        Unit Price: Rp. {{ number_format($calcPrice) }}{{
+                        $unitPriceSuffix }}
                     </div>
-                @elseif ($calcError)
-                    <span class="text-red-550 dark:text-red-405 flex items-center text-xs font-bold">
-                        <svg class="mr-1.5 h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    @elseif ($calcError)
+                    <span
+                        class="text-red-550 dark:text-red-405 flex items-center text-xs font-bold"
+                    >
+                        <svg
+                            class="mr-1.5 h-4 w-4 shrink-0 text-red-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            ></path>
                         </svg>
                         {{ $calcError }}
                     </span>
-                @else
-                    <div class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400">
+                    @else
+                    <div
+                        class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400"
+                    >
                         Estimated Subtotal
                     </div>
-                    <div class="text-light-muted mt-1 text-2xl font-bold dark:text-gray-600">
+                    <div
+                        class="text-light-muted mt-1 text-2xl font-bold dark:text-gray-600"
+                    >
                         Rp. --
                     </div>
-                @endif
+                    @endif
+                </div>
             </div>
-        </div>
 
-        <button
-            id="btn-add-calc-item"
-            type="button"
-            wire:click="addItem"
-            @if(!$isCalculated) disabled @endif
-            class="bg-brand-secondary hover:bg-brand-secondary/95 cursor-pointer rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40 flex items-center justify-center gap-2"
-            data-loading:class="opacity-50 pointer-events-none"
-        >
-            <span data-loading:inline-block class="hidden animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></span>
-            + Add Item to Order
-        </button>
+            <button
+                id="btn-add-calc-item"
+                type="button"
+                wire:click="addItem"
+                @if(!$isCalculated)
+                disabled
+                @endif
+                class="bg-brand-secondary hover:bg-brand-secondary/95 flex cursor-pointer items-center justify-center gap-2 rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40"
+                data-loading:class="opacity-50 pointer-events-none"
+            >
+                <span
+                    data-loading:inline-block
+                    class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"
+                ></span>
+                + Add Item to Order
+            </button>
+        </div>
     </div>
 </div>

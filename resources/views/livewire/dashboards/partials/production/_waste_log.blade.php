@@ -50,7 +50,7 @@
                     </td>
                     <td class="px-4 py-3 font-extrabold">
                         <!-- prettier-ignore -->
-                        {{ $wItem->quantity }} {{ $wItem->material->category }}
+                        {{ $wItem->quantity }} {{ $wItem->material->category?->name }}
                     </td>
                     <td
                         class="text-light-muted px-4 py-3 font-semibold dark:text-gray-400"

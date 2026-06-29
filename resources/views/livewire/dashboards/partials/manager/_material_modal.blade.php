@@ -151,16 +151,16 @@
                         <span class="font-bold text-red-500">*</span>
                     </label>
                     <select
-                        wire:model="materialForm.category"
+                        wire:model="materialForm.productCategoryId"
                         class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-xs font-semibold transition-colors duration-200 focus:ring-2 focus:outline-none"
                         required
                     >
                         <option value="">-- Choose Category --</option>
-                        @foreach ($categories as $value => $label)
-                        <option value="{{ $value }}">{{ $label }}</option>
+                        @foreach ($productCategories as $c)
+                        <option value="{{ $c->id }}">{{ $c->name }}</option>
                         @endforeach
                     </select>
-                    @error('materialForm.category')
+                    @error('materialForm.productCategoryId')
                     <span class="text-[10px] text-red-500">{{ $message }}</span>
                     @enderror
                 </div>

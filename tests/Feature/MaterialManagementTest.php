@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Livewire\Admin\MaterialManagement;
 use App\Models\Branch;
 use App\Models\Material;
+use App\Models\ProductCategory;
 use App\Models\StockLedger;
 use App\Models\User;
 use App\Services\InventoryService;
@@ -30,6 +31,12 @@ class MaterialManagementTest extends TestCase
     private User $managerB;
 
     private User $cashier;
+
+    private ProductCategory $meterCategory;
+
+    private ProductCategory $lembarCategory;
+
+    private ProductCategory $pcsCategory;
 
     protected function setUp(): void
     {
@@ -86,6 +93,21 @@ class MaterialManagementTest extends TestCase
             'role' => 'cashier',
             'branch_id' => $this->branchA->id,
         ]);
+
+        $this->meterCategory = ProductCategory::create([
+            'name' => 'meter',
+            'calculation_archetype' => 'linear_dimension',
+        ]);
+
+        $this->lembarCategory = ProductCategory::create([
+            'name' => 'lembar',
+            'calculation_archetype' => 'per_piece',
+        ]);
+
+        $this->pcsCategory = ProductCategory::create([
+            'name' => 'pcs',
+            'calculation_archetype' => 'per_piece',
+        ]);
     }
 
     /**
@@ -98,7 +120,7 @@ class MaterialManagementTest extends TestCase
         Livewire::test(MaterialManagement::class)
             ->call('openMaterialModal')
             ->set('materialForm.name', 'Vinyl Banner')
-            ->set('materialForm.category', 'meter')
+            ->set('materialForm.productCategoryId', $this->meterCategory->id)
             ->set('materialForm.type', 'Outdoor')
             ->set('materialForm.dimensions', '3.2m')
             ->set('materialForm.cost', 15000)
@@ -119,7 +141,7 @@ class MaterialManagementTest extends TestCase
         Livewire::test(MaterialManagement::class)
             ->call('openMaterialModal')
             ->set('materialForm.name', 'Vinyl Banner')
-            ->set('materialForm.category', 'meter')
+            ->set('materialForm.productCategoryId', $this->meterCategory->id)
             ->set('materialForm.type', 'Outdoor')
             ->set('materialForm.dimensions', '3.2m')
             ->set('materialForm.cost', 15000)
@@ -132,7 +154,7 @@ class MaterialManagementTest extends TestCase
 
         $this->assertDatabaseHas('materials', [
             'name' => 'Vinyl Banner',
-            'category' => 'meter',
+            'product_category_id' => $this->meterCategory->id,
             'type' => 'Outdoor',
             'dimensions' => '3.2m',
             'cost' => 15000.00,
@@ -167,7 +189,7 @@ class MaterialManagementTest extends TestCase
         $material = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Albatros',
-            'category' => 'lembar',
+            'product_category_id' => $this->lembarCategory->id,
             'cost' => 5000,
             'price' => 10000,
         ]);
@@ -177,7 +199,7 @@ class MaterialManagementTest extends TestCase
         Livewire::test(MaterialManagement::class)
             ->call('openMaterialModal')
             ->set('materialForm.name', 'albatros')
-            ->set('materialForm.category', 'lembar')
+            ->set('materialForm.productCategoryId', $this->lembarCategory->id)
             ->set('materialForm.min_stock', 5)
             ->call('saveMaterial')
             ->assertHasNoErrors()
@@ -199,7 +221,7 @@ class MaterialManagementTest extends TestCase
         Livewire::test(MaterialManagement::class)
             ->call('openMaterialModal')
             ->set('materialForm.name', 'albatros')
-            ->set('materialForm.category', 'lembar')
+            ->set('materialForm.productCategoryId', $this->lembarCategory->id)
             ->call('saveMaterial')
             ->assertHasErrors(['materialForm.name']);
     }
@@ -211,7 +233,7 @@ class MaterialManagementTest extends TestCase
         Livewire::test(MaterialManagement::class)
             ->call('openMaterialModal')
             ->set('materialForm.name', 'Global Roll Out')
-            ->set('materialForm.category', 'meter')
+            ->set('materialForm.productCategoryId', $this->meterCategory->id)
             ->set('materialForm.type', 'Premium')
             ->set('materialForm.cost', 8000)
             ->set('materialForm.price', 12000)
@@ -247,7 +269,7 @@ class MaterialManagementTest extends TestCase
         Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Albatros',
-            'category' => 'lembar',
+            'product_category_id' => $this->lembarCategory->id,
             'cost' => 5000,
             'price' => 10000,
         ]);
@@ -256,7 +278,7 @@ class MaterialManagementTest extends TestCase
         Livewire::test(MaterialManagement::class)
             ->call('openMaterialModal')
             ->set('materialForm.name', 'Albatross')
-            ->set('materialForm.category', 'lembar')
+            ->set('materialForm.productCategoryId', $this->lembarCategory->id)
             ->set('materialForm.min_stock', 5)
             ->call('saveMaterial')
             ->assertHasNoErrors()
@@ -291,7 +313,7 @@ class MaterialManagementTest extends TestCase
         $inventoryService = new InventoryService;
         $material = $inventoryService->createGlobalMaterial([
             'name' => 'Failing Material',
-            'category' => 'pcs',
+            'product_category_id' => $this->pcsCategory->id,
             'cost' => 1000.0,
             'price' => 2000.0,
         ]);

@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Machine;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
+use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,6 +24,8 @@ class InventoryServiceTest extends TestCase
 
     private string $branchId;
 
+    private ProductCategory $category;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -34,6 +37,11 @@ class InventoryServiceTest extends TestCase
             'name' => 'HQ Bandung',
         ]);
         $this->branchId = $branch->id;
+
+        $this->category = ProductCategory::create([
+            'name' => 'Print Kertas',
+            'calculation_archetype' => 'per_piece',
+        ]);
     }
 
     /**
@@ -45,7 +53,7 @@ class InventoryServiceTest extends TestCase
         $material = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Chromo Paper',
-            'category' => 'lembar',
+            'product_category_id' => $this->category->id,
             'type' => 'kertas',
         ]);
 
@@ -81,7 +89,7 @@ class InventoryServiceTest extends TestCase
         $material = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Vinyl Matte Banner',
-            'category' => 'meter',
+            'product_category_id' => $this->category->id,
             'type' => 'outdoor',
         ]);
 

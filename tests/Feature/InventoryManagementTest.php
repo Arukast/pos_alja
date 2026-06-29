@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Livewire\Admin\MaterialManagement;
@@ -8,6 +10,7 @@ use App\Livewire\Dashboards\Manager;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -20,6 +23,8 @@ class InventoryManagementTest extends TestCase
 
     protected Branch $branch;
 
+    protected ProductCategory $category;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,6 +32,11 @@ class InventoryManagementTest extends TestCase
         // Seed branch
         $this->branch = Branch::create([
             'name' => 'Main Branch',
+        ]);
+
+        $this->category = ProductCategory::create([
+            'name' => 'Flexi',
+            'calculation_archetype' => 'linear_dimension',
         ]);
     }
 
@@ -71,7 +81,7 @@ class InventoryManagementTest extends TestCase
         $material = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Flexy 340gr',
-            'category' => 'meter',
+            'product_category_id' => $this->category->id,
             'type' => 'outdoor',
         ]);
 

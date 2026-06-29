@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
+use App\Models\ProductCategory;
 use App\Models\User;
 use App\Models\WastedMaterial;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,6 +32,8 @@ class BaseCostDetailTest extends TestCase
 
     protected Material $material2;
 
+    protected ProductCategory $category;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -43,10 +46,15 @@ class BaseCostDetailTest extends TestCase
             'type' => 'Retail',
         ]);
 
+        $this->category = ProductCategory::create([
+            'name' => 'General',
+            'calculation_archetype' => 'per_piece',
+        ]);
+
         $this->material1 = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Material 1',
-            'category' => 'Large Format',
+            'product_category_id' => $this->category->id,
             'type' => 'Banner',
             'dimensions' => '1x1',
             'cost' => 10000,
@@ -64,7 +72,7 @@ class BaseCostDetailTest extends TestCase
         $this->material2 = Material::create([
             'id' => (string) Str::uuid(),
             'name' => 'Material 2',
-            'category' => 'Print Kertas',
+            'product_category_id' => $this->category->id,
             'type' => 'A4',
             'dimensions' => 'A4',
             'cost' => 500,

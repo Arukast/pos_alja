@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Material extends Model
@@ -13,15 +17,25 @@ class Material extends Model
 
     protected $fillable = [
         'name',
-        'category',
+        'product_category_id',
         'type',
         'dimensions',
         'cost',
         'price',
     ];
 
-    public function stocks()
+    public function stocks(): HasMany
     {
         return $this->hasMany(MaterialBranchStock::class);
+    }
+
+    public function branchStocks(): HasMany
+    {
+        return $this->hasMany(MaterialBranchStock::class, 'material_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'product_category_id');
     }
 }

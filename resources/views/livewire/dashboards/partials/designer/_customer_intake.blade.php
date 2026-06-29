@@ -1,5 +1,6 @@
 <div
     class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-5 shadow-sm"
+    x-data="{ selectedName: @entangle('customerForm.search'), customerId: @entangle('customerId') }"
 >
     <h2 class="text-light-text mb-4 text-lg font-bold dark:text-white">
         1. Customer Intake
@@ -16,14 +17,17 @@
             <input
                 id="customer-search"
                 type="text"
+                x-model="selectedName"
                 wire:model.live.debounce.300ms="customerForm.search"
+                wire:input="$set('customerId', '')"
                 placeholder="Type name or phone..."
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white py-2.5 pr-10 pl-3 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
                 data-loading:class="opacity-50"
             />
-            @if ($customerId)
             <div
                 class="absolute top-3 right-3 text-emerald-500 dark:text-emerald-400"
+                x-show="customerId"
+                x-cloak
             >
                 <svg
                     class="h-5 w-5"
@@ -39,35 +43,35 @@
                     ></path>
                 </svg>
             </div>
-            @endif
         </div>
 
         <!-- Dropdown Results -->
-        @if ($customerForm->search && !$customerId)
-        <div
-            class="border-light-border dark:bg-surface-600 divide-light-border dark:divide-surface-300/30 max-h-40 divide-y overflow-y-auto rounded-lg border bg-white shadow-lg dark:border-gray-700/50"
-        >
-            @forelse ($customers as $c)
-            <!-- prettier-ignore -->
-            <button
-                            id="customer-option-{{ $c->id }}"
-                            type="button"
-                            wire:click="selectCustomer('{{ $c->id }}')"
-                            class="text-light-text hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 w-full cursor-pointer px-3 py-2 text-left text-xs font-bold transition dark:text-gray-200"
-                            data-loading:attr="disabled"
-                        >
-                            {{ $c->name }} ({{ $c->phone ?: 'No Phone' }}) -
-                            <span class="text-brand-secondary font-bold">{{ $c->type }}</span>
-                        </button>
-            @empty
+        <template x-if="selectedName && !customerId">
             <div
-                class="text-light-muted px-3 py-2.5 text-center text-xs font-medium dark:text-gray-500"
+                class="border-light-border dark:bg-surface-600 divide-light-border dark:divide-surface-300/30 max-h-40 divide-y overflow-y-auto rounded-lg border bg-white shadow-lg dark:border-gray-700/50"
             >
-                No customer found.
+                @forelse ($customers as $c)
+                <!-- prettier-ignore -->
+                <button
+                                id="customer-option-{{ $c->id }}"
+                                type="button"
+                                wire:click.prevent="selectCustomer('{{ $c->id }}')"
+                                @click="selectedName = '{{ addslashes($c->name) }}'; customerId = '{{ $c->id }}'"
+                                class="text-light-text hover:bg-brand-primary/5 dark:hover:bg-brand-primary/10 w-full cursor-pointer px-3 py-2 text-left text-xs font-bold transition dark:text-gray-200"
+                                data-loading:attr="disabled"
+                            >
+                                {{ $c->name }} ({{ $c->phone ?: 'No Phone' }}) -
+                                <span class="text-brand-secondary font-bold">{{ $c->type }}</span>
+                            </button>
+                @empty
+                <div
+                    class="text-light-muted px-3 py-2.5 text-center text-xs font-medium dark:text-gray-500"
+                >
+                    No customer found.
+                </div>
+                @endforelse
             </div>
-            @endforelse
-        </div>
-        @endif
+        </template>
 
         <button
             id="btn-create-customer-mode"

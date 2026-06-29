@@ -23,9 +23,18 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        // 1a. Product Categories
+        Schema::create('product_categories', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('name');
+            $table->string('calculation_archetype'); // per_piece, surface_area, linear_dimension, tiered_volume
+            $table->timestamps();
+        });
+
         // 2. Products
         Schema::create('products', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('product_category_id')->nullable()->constrained('product_categories')->cascadeOnDelete();
             $table->string('name');
             $table->string('pricing_type', 20)->default('unit'); // unit, area
             $table->softDeletes();
@@ -35,8 +44,8 @@ return new class extends Migration
         // 3. Materials
         Schema::create('materials', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('product_category_id')->constrained('product_categories')->cascadeOnDelete();
             $table->string('name');
-            $table->string('category', 50); // lembar, meter, pcs, display, finishing, potong, stempel
             $table->string('type')->nullable(); // Tipe bahan (Outdoor, Indoor, Kertas, etc.)
             $table->string('dimensions')->nullable(); // Ukuran bahan
             $table->decimal('cost', 15, 2)->default(0); // HPP Bahan
@@ -268,6 +277,7 @@ return new class extends Migration
         Schema::dropIfExists('material_branch_stock');
         Schema::dropIfExists('materials');
         Schema::dropIfExists('products');
+        Schema::dropIfExists('product_categories');
         Schema::dropIfExists('customers');
     }
 };
