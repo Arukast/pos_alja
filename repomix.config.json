@@ -1,0 +1,51 @@
+{
+    "$schema": "https://repomix.com/schemas/latest/schema.json",
+    "output": {
+        "filePath": "repomix-output.xml",
+        "style": "xml",
+        "includeFullDirectoryStructure": true
+    },
+    "include": [],
+    "ignore": {
+        "useGitignore": true,
+        "useDefaultPatterns": true,
+        "customPatterns": [
+            "**/.git/**",
+            "**/.github/**",
+            "**/.husky/**",
+            "**/bootstrap/cache/**",
+            "**/storage/**",
+            "**/public/images/**",
+            "**/public/favicon.ico",
+            "database/migrations/0001_*.php",
+            "database/factories/**",
+            "database/seeders/**",
+            "tests/**",
+            "vendor/**",
+            "public/build/**",
+            "config/**/*.php",
+            ".agents/plan/walkthrough.md",
+            ".env",
+            ".env.example",
+            "resources/css/**",
+            "resources/js/**",
+            "resources/views/components/**",
+            "resources/views/layouts/**",
+            "package.json",
+            "composer.json",
+            "artisan",
+            ".editorconfig",
+            ".gitattributes",
+            ".gitignore",
+            ".npmrc",
+            ".prettierrc",
+            "postcss.config.js",
+            "tailwind.config.js",
+            "vite.config.js",
+            "phpstan*.neon",
+            "phpunit.xml",
+            "package-lock.json",
+            "composer.lock"
+        ]
+    }
+}
