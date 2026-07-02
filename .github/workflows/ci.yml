@@ -49,7 +49,7 @@ jobs:
       run: ./vendor/bin/pint
 
     - name: Commit Auto-Formatted Style Changes
-      uses: stefanzweifel/git-auto-commit-action@v5
+      uses: stefanzweifel/git-auto-commit-action@v7
       with:
         commit_message: "style: auto-fix code formatting with Pint"
 
