@@ -15,7 +15,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         # Fetch all history so git checkout works properly for auto-commits
         fetch-depth: 0
