@@ -49,4 +49,12 @@
         wire:key="manager-user-management"
     />
     @endif
+
+    <!-- 7. PRODUCT CATEGORY MANAGEMENT SUB-COMPONENT -->
+    <!-- prettier-ignore -->
+    @if ($activeTab === 'categories')
+    <livewire:admin.category-management
+        wire:key="manager-category-management"
+    />
+    @endif
 </div>

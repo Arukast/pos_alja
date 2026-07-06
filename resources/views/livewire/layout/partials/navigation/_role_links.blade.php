@@ -89,6 +89,13 @@
         :mobile="$mobile"
     />
     <x-navigation.link
+        label="Product Categories"
+        route="dashboard"
+        tab="categories"
+        icon="materials"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
         label="Materials & Stock"
         route="dashboard"
         tab="materials"
@@ -164,6 +171,13 @@
         route="dashboard"
         tab="finishing"
         icon="finishing"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
+        label="Product Categories"
+        route="dashboard"
+        tab="categories"
+        icon="materials"
         :mobile="$mobile"
     />
     <x-navigation.link

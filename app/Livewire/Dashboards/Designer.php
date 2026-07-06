@@ -433,6 +433,14 @@ class Designer extends Component
 
             // Load all attributes registered to the active branch
             $this->availableAttributes = Attribute::where('branch_id', $branchId)->get();
+
+            // Filter attributes based on category constraint if restrictions exist
+            if ($category && ! empty($category->allowed_attribute_types)) {
+                $this->availableAttributes = $this->availableAttributes->filter(function ($attribute) use ($category) {
+                    return $category->isAttributeAllowed($attribute);
+                });
+            }
+
             $this->finishings = $this->availableAttributes->where('type', 'finishing');
             $this->hasFinishings = $this->finishings->isNotEmpty();
 

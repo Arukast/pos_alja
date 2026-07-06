@@ -45,6 +45,8 @@
         :branchId="$selectedBranchId"
         wire:key="owner-material-management"
     />
+    @elseif ($activeTab === 'categories')
+    <livewire:admin.category-management wire:key="owner-category-management" />
     @elseif ($activeTab === 'audit')
     @include('livewire.dashboards.partials.owner._audit_trail') @endif
     @include('livewire.dashboards.partials.owner._audit_detail_modal')
