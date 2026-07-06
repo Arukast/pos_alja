@@ -75,8 +75,8 @@
                             </span>
                             @else
                             <div class="flex flex-wrap gap-1">
-                                @foreach ($category->allowed_attribute_types as
-                                $type)
+                                <!-- prettier-ignore -->
+                                @foreach ($category->allowed_attribute_types as $type)
                                 <span
                                     class="text-brand-primary dark:text-brand-primary/90 bg-brand-primary/10 rounded-md px-2 py-1 text-[9px] font-bold"
                                 >
@@ -438,6 +438,7 @@
                         Allowed Attribute Constraints
                     </label>
                     <div class="mt-2 space-y-2">
+                        <!-- prettier-ignore -->
                         @foreach ($attributeTypesList as $attrType)
                         <label class="flex cursor-pointer items-center gap-2">
                             <input
