@@ -8,6 +8,7 @@ use App\Livewire\Forms\MaterialForm;
 use App\Livewire\Forms\PricingForm;
 use App\Livewire\Forms\RestockForm;
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -395,6 +396,8 @@ class Manager extends Component
         $this->topAov = $topAov;
         $this->accuracyLeader = $accuracyLeader;
 
+        $attributeTypesList = AttributeType::orderBy('name')->get();
+
         return view('livewire.dashboards.manager', compact(
             'materialCount',
             'machineCount',
@@ -411,7 +414,8 @@ class Manager extends Component
             'topRevenue',
             'orderChampion',
             'topAov',
-            'accuracyLeader'
+            'accuracyLeader',
+            'attributeTypesList'
         ));
     }
 }

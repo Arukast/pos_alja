@@ -216,6 +216,11 @@ class Designer extends Component
 
             $branchId = auth()->user()->branch_id ?: (Branch::first()->id ?? null);
 
+            $selectedAttributes = array_filter([$finishingId, $cutId, $displayId]);
+            if (! empty($this->calculatorForm->selectedAttributes)) {
+                $selectedAttributes = array_unique(array_merge($selectedAttributes, $this->calculatorForm->selectedAttributes));
+            }
+
             $pricingService = new PricingService;
             $quote = $pricingService->calculateQuote([
                 'product_id' => $product->id,
@@ -224,6 +229,7 @@ class Designer extends Component
                 'finishing_id' => $finishingId,
                 'cut_id' => $cutId,
                 'display_id' => $displayId,
+                'selected_attributes' => $selectedAttributes,
                 'sides' => $this->calculatorForm->sides ?: 1,
                 'finishing_sides' => $this->calculatorForm->finishingSides ?: 0,
                 'quantity' => $this->calculatorForm->quantity ?: 1,

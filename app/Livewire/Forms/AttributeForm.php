@@ -14,6 +14,6 @@ class AttributeForm extends Form
     #[Validate('required|string|max:255')]
     public string $attributeName = '';
 
-    #[Validate('required|string|in:finishing,cut,display')]
+    #[Validate('required|string|exists:attribute_types,name')]
     public string $attributeType = 'finishing';
 }

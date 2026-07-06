@@ -12,12 +12,13 @@
 ---
 
 ## Session Record
-### Session: 2026-07-06 - Category CRUD & Conditional Attribute Constraints
-- **Goal:** Implement Product Category CRUD and support conditional attribute constraints.
-- **Completed:** Created database migration for JSON column, updated ProductCategory model with constraint check helper, created isolated ProductCategoryService, built Admin CategoryManagement Livewire component and Blade view supporting dark mode, integrated categories tab in sidebar navigation under managers and owners dashboards, updated Designer dashboard list queries to filter constraints, and wrote CategoryManagementTest.php test suite.
-- **Verification run:** Added Feature tests in `tests/Feature/CategoryManagementTest.php`.
-- **Evidence recorded:** Recorded task checklist in `task.md` and created walk-through in `walkthrough.md`.
+### Session: 2026-07-06 - Manager-Driven Custom Attribute Type Engine
+- **Goal:** Refactor the codebase to support dynamic custom attribute types defined in the database and update validation/pricing logic.
+- **Completed:** Created the migration `2026_07_06_140000_create_attribute_types_table.php` with default seeded types, created the `AttributeType` model, refactored validation in `AttributeForm.php` and `CategoryForm.php` to query dynamic types, refactored `PricingService.php` to dynamically match custom attributes, and added the feature test `AttributeTypeEngineTest.php`.
+- **Verification run:** Added Feature tests in `tests/Feature/AttributeTypeEngineTest.php`.
+- **Evidence recorded:** Checked off task checklist in `task.md` and updated `walkthrough.md`.
 - **Commits:** None.
 - **Known risks:** Docker container execution is currently encountering peer-reset errors locally.
-- **Next best action:** Run database migrations on deployment and verify UI navigation.
+- **Next best action:** Deploy database migrations and test in staging.
+
 

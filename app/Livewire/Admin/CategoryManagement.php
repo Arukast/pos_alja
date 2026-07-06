@@ -6,6 +6,7 @@ namespace App\Livewire\Admin;
 
 use App\Events\OrderUpdated;
 use App\Livewire\Forms\CategoryForm;
+use App\Models\AttributeType;
 use App\Models\ProductCategory;
 use App\Services\ProductCategoryService;
 use Livewire\Component;
@@ -21,6 +22,12 @@ class CategoryManagement extends Component
     public bool $isCreatingCategory = false;
 
     public ?string $editingCategoryId = null;
+
+    public bool $isCreatingType = false;
+
+    public string $typeName = '';
+
+    public string $typeCalculationArchetype = 'per_piece';
 
     public bool $showSuccessAlert = false;
 
@@ -106,10 +113,71 @@ class CategoryManagement extends Component
         $this->isCreatingCategory = false;
     }
 
+    public function openTypeModal(): void
+    {
+        $this->typeName = '';
+        $this->typeCalculationArchetype = 'per_piece';
+        $this->resetErrorBag();
+        $this->isCreatingType = true;
+        $this->showSuccessAlert = false;
+    }
+
+    public function closeTypeModal(): void
+    {
+        $this->typeName = '';
+        $this->typeCalculationArchetype = 'per_piece';
+        $this->resetErrorBag();
+        $this->isCreatingType = false;
+    }
+
+    public function saveType(): void
+    {
+        $role = auth()->user()->role ?? '';
+        if (! in_array($role, ['manager', 'owner'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $this->validate([
+            'typeName' => 'required|string|max:255|unique:attribute_types,name',
+            'typeCalculationArchetype' => 'required|string|in:per_piece,surface_area,linear_dimension,tiered_volume',
+        ]);
+
+        AttributeType::create([
+            'name' => strtolower(trim($this->typeName)),
+            'calculation_archetype' => $this->typeCalculationArchetype,
+        ]);
+
+        $this->isCreatingType = false;
+        $this->typeName = '';
+        $this->typeCalculationArchetype = 'per_piece';
+
+        event(new OrderUpdated);
+
+        $this->successMessage = 'Attribute type created successfully!';
+        $this->showSuccessAlert = true;
+    }
+
+    public function deleteType(string $id): void
+    {
+        $role = auth()->user()->role ?? '';
+        if (! in_array($role, ['manager', 'owner'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $type = AttributeType::findOrFail($id);
+        $type->delete();
+
+        event(new OrderUpdated);
+
+        $this->successMessage = 'Attribute type deleted successfully!';
+        $this->showSuccessAlert = true;
+    }
+
     public function render()
     {
         $categoriesList = ProductCategory::orderBy('name')->get();
+        $attributeTypesList = AttributeType::orderBy('name')->get();
 
-        return view('livewire.admin.category-management', compact('categoriesList'));
+        return view('livewire.admin.category-management', compact('categoriesList', 'attributeTypesList'));
     }
 }

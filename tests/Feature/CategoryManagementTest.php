@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Admin\CategoryManagement;
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -181,5 +182,36 @@ class CategoryManagementTest extends TestCase
             ->call('deleteCategory', $category->id);
 
         $this->assertDatabaseMissing('product_categories', ['id' => $category->id]);
+    }
+
+    /**
+     * Test managing attribute types dynamically via Livewire component.
+     */
+    public function test_manager_can_manage_attribute_types_via_livewire(): void
+    {
+        $this->actingAs($this->managerUser);
+
+        // 1. Create a custom attribute type
+        Livewire::test(CategoryManagement::class)
+            ->call('openTypeModal')
+            ->set('typeName', 'emboss')
+            ->set('typeCalculationArchetype', 'per_piece')
+            ->call('saveType');
+
+        $this->assertDatabaseHas('attribute_types', [
+            'name' => 'emboss',
+            'calculation_archetype' => 'per_piece',
+        ]);
+
+        $type = AttributeType::where('name', 'emboss')->first();
+        $this->assertNotNull($type);
+
+        // 2. Delete custom attribute type
+        Livewire::test(CategoryManagement::class)
+            ->call('deleteType', $type->id);
+
+        $this->assertDatabaseMissing('attribute_types', [
+            'id' => $type->id,
+        ]);
     }
 }

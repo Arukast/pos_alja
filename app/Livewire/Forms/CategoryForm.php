@@ -36,7 +36,7 @@ class CategoryForm extends Form
             ],
             'allowed_attribute_types.*' => [
                 'string',
-                'in:finishing,cut,display',
+                'exists:attribute_types,name',
             ],
         ];
     }

@@ -45,15 +45,11 @@
                     class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 font-semibold transition-colors duration-200 focus:ring-2 focus:outline-none"
                     required
                 >
-                    <option value="finishing">
-                        Finishing (Laminating, Lipat, etc.)
+                    @foreach ($attributeTypesList as $type)
+                    <option value="{{ $type->name }}">
+                        {{ ucfirst($type->name) }}
                     </option>
-                    <option value="cut">
-                        Cut (Die Cut, Half Cut, Potong Pas, etc.)
-                    </option>
-                    <option value="display">
-                        Display (X-Banner, Roll Up, Bingkai, etc.)
-                    </option>
+                    @endforeach
                 </select>
                 @error('attributeForm.attributeType')
                 <span
@@ -132,9 +128,13 @@
                             <span class="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 uppercase dark:text-amber-400">
                                 Cut
                             </span>
-                            @else
+                            @elseif ($attr->type === 'display')
                             <span class="rounded bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-600 uppercase dark:text-purple-400">
                                 Display
+                            </span>
+                            @else
+                            <span class="rounded bg-teal-500/10 px-2 py-0.5 text-[10px] font-bold text-teal-600 uppercase dark:text-teal-400">
+                                {{ $attr->type }}
                             </span>
                             @endif
                         </td>

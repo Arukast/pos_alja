@@ -81,13 +81,19 @@ class PricingService
             }
         }
 
-        // Fetch additive attribute modifier pricings (finishing, cut, display)
+        // Fetch additive attribute modifier pricings dynamically using selected_attributes list
         $attributePriceSum = 0.0;
         $attributeCostSum = 0.0;
-        $attributeIds = array_filter([$finishingId, $cutId, $displayId]);
-        if (! empty($attributeIds)) {
+
+        $selectedAttributes = $params['selected_attributes'] ?? [];
+        if (empty($selectedAttributes)) {
+            // Support backward compatibility or direct ID pass in params
+            $selectedAttributes = array_filter([$finishingId, $cutId, $displayId]);
+        }
+
+        if (! empty($selectedAttributes)) {
             $attrPricings = AttributePricing::where('pricing_id', $pricing->id)
-                ->whereIn('attribute_id', $attributeIds)
+                ->whereIn('attribute_id', $selectedAttributes)
                 ->get();
             foreach ($attrPricings as $ap) {
                 $attributePriceSum += (float) $ap->price;
