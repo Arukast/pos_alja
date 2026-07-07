@@ -91,7 +91,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 id="calc-machine-id"
                 wire:model.live="calculatorForm.machineId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Machine --
@@ -119,7 +119,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 id="calc-finishing-id"
                 wire:model.live="calculatorForm.finishingId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Finishing --
@@ -147,7 +147,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 id="calc-cut-id"
                 wire:model.live="calculatorForm.cutId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Cutting --
@@ -175,7 +175,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 id="calc-display-id"
                 wire:model.live="calculatorForm.displayId"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             >
                 <option value="" class="text-light-muted dark:text-gray-400">
                     -- Select Display --
@@ -206,7 +206,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 id="calc-sides"
                 wire:model.live="calculatorForm.sides"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             >
                 @if ($categoryName === 'Stempel')
                 <option value="1" class="bg-white text-gray-900">
@@ -253,7 +253,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 id="calc-finishing-sides"
                 wire:model.live="calculatorForm.finishingSides"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 text-sm transition duration-200 focus:ring-2 focus:outline-none"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             >
                 <option value="0" class="bg-white text-gray-900">0 Sisi</option>
                 <option value="1" class="bg-white text-gray-900">1 Sisi</option>
@@ -276,7 +276,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 min="0.1"
                 wire:model.live.debounce.300ms="calculatorForm.length"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             />
         </div>
         @endif @if ($showWidth)
@@ -292,7 +292,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 min="0.1"
                 wire:model.live.debounce.300ms="calculatorForm.width"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             />
         </div>
         @endif
@@ -310,7 +310,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 step="any"
                 wire:model.live.debounce.300ms="calculatorForm.quantity"
                 class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 placeholder-light-muted focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2 text-sm transition duration-200 focus:ring-2 focus:outline-none dark:placeholder-gray-500"
-                data-loading:attr="disabled"
+                wire:loading.attr="disabled"
             />
         </div>
 
@@ -346,12 +346,12 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
         <!-- Dynamic Pricing Display Section -->
         <div
             class="border-light-border dark:border-surface-300/30 bg-light-surface-2/40 dark:bg-surface-650/40 mt-6 flex flex-col gap-4 rounded-xl border p-4 md:flex-row md:items-center md:justify-between"
-            data-loading:class="opacity-75 pointer-events-none"
+            wire:loading.class="opacity-75 pointer-events-none"
         >
             <div class="relative flex-1">
                 <!-- Loading indicator for calculation updates -->
                 <div
-                    data-loading
+                    wire:loading
                     class="dark:bg-surface-600/50 absolute inset-0 z-10 flex items-center justify-start gap-2 bg-white/50"
                 >
                     <span
@@ -363,7 +363,7 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                     >
                 </div>
 
-                <div data-loading:class="opacity-0">
+                <div wire:loading.class="opacity-0">
                     @if ($isCalculated)
                     <div
                         class="text-light-muted text-xs font-bold tracking-wider uppercase dark:text-gray-400"
@@ -423,10 +423,10 @@ $hasSelectedCategory && in_array($archetype, ['surface_area',
                 disabled
                 @endif
                 class="bg-brand-secondary hover:bg-brand-secondary/95 flex cursor-pointer items-center justify-center gap-2 rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40"
-                data-loading:class="opacity-50 pointer-events-none"
+                wire:loading.class="opacity-50 pointer-events-none"
             >
                 <span
-                    data-loading:inline-block
+                    wire:loading
                     class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"
                 ></span>
                 + Add Item to Order
