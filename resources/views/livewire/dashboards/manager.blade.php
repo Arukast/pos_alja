@@ -57,4 +57,10 @@
         wire:key="manager-category-management"
     />
     @endif
+
+    <!-- 8. PRINTER MACHINE MANAGEMENT SUB-COMPONENT -->
+    <!-- prettier-ignore -->
+    @if ($activeTab === 'machines')
+    <livewire:admin.machine-management wire:key="manager-machine-management" />
+    @endif
 </div>

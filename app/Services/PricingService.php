@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Exceptions\PricingNotFoundException;
 use App\Models\AttributePricing;
+use App\Models\Machine;
 use App\Models\MachinePricing;
 use App\Models\Pricing;
 use App\Models\Product;
@@ -72,12 +73,19 @@ class PricingService
         $machinePrice = 0.0;
         $machineCost = 0.0;
         if (! empty($machineId)) {
+            $machine = Machine::find($machineId);
+            if ($machine) {
+                $machineCost = (float) $machine->cost;
+            }
+
             $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
                 ->where('machine_id', $machineId)
                 ->first();
             if ($machinePricing) {
                 $machinePrice = (float) $machinePricing->price;
-                $machineCost = (float) $machinePricing->cost;
+                if ((float) $machinePricing->cost > 0.0) {
+                    $machineCost = (float) $machinePricing->cost;
+                }
             }
         }
 

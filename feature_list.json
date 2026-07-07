@@ -199,5 +199,16 @@
         "evidence": "Authorization checks throughout dashboards and components via auth()->user()->role checks and auth()->user()->can() gate checks. BranchManagement requires owner role (line 50-52 of BranchManagement.php). Production dashboard checks branch_id for scoping. Policies and gates defined in AuthServiceProvider. Tests verify authorization boundaries.",
         "evidence_logs": "UserAuthorizationTest.php verifies each role cannot access unauthorized features. BranchAuthorizationAndScopingTest verifies branch isolation. Tests confirm 403 abort on unauthorized access.",
         "notes": "Role strings: 'owner', 'manager', 'cashier', 'designer', 'production'. Profile update restricted to owner/manager per AGENTS.md. Branch scoping applied per role. Gates and policies enforce authorization boundaries."
+    },
+    {
+        "id": "machine_management_system",
+        "priority": 19,
+        "area": "administration",
+        "title": "Machine Management and Configuration",
+        "user_visible_behavior": "Owner and Manager users can add, edit, configure base cost (HPP), or soft delete/restore printer/press machines. Managers are scoped to their own branch, while Owners can manage machines globally and across all branches.",
+        "status": "passing",
+        "verification": "1. Log in as owner. 2. Verify 'Printer Machines' link exists under Administration and opens MachineManagement component. 3. Register global machine and branch machine. 4. Verify cost (HPP) input is saved. 5. Log in as manager, verify 'Printer Machines' exists under Configuration and only displays branch machines. 6. Verify cashier/designer/production role access is denied with 403. 7. Run test: Tests\\Feature\\MachineManagementTest",
+        "evidence": "MachineManagement component (app/Livewire/Admin/MachineManagement.php) and MachineService (app/Services/MachineService.php) manage machine lifecycle. MachineForm handles input validation. Navigation links added in _role_links.blade.php. Tab layout integrations in manager.blade.php and owner.blade.php. Supported by Feature test MachineManagementTest.php.",
+        "notes": "Cost stored directly in machines table. Role checks ensure only managers/owners can configure machines. Soft delete/restore features supported. Real-time updates via OrderUpdated broadcast event."
     }
 ]

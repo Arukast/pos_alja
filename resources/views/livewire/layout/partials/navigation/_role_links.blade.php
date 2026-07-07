@@ -96,6 +96,13 @@
         :mobile="$mobile"
     />
     <x-navigation.link
+        label="Printer Machines"
+        route="dashboard"
+        tab="machines"
+        icon="print_queue"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
         label="Materials & Stock"
         route="dashboard"
         tab="materials"
@@ -178,6 +185,13 @@
         route="dashboard"
         tab="categories"
         icon="materials"
+        :mobile="$mobile"
+    />
+    <x-navigation.link
+        label="Printer Machines"
+        route="dashboard"
+        tab="machines"
+        icon="print_queue"
         :mobile="$mobile"
     />
     <x-navigation.link
