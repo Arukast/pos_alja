@@ -79,7 +79,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label
                         class="text-light-muted mb-1.5 block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400"
@@ -108,6 +108,23 @@
                         required
                     />
                     @error('form.tax_rate')
+                    <span class="text-[10px] text-red-500">{{ $message }}</span>
+                    @enderror
+                </div>
+                <div>
+                    <!-- prettier-ignore -->
+                    <label class="text-light-muted mb-1.5 block text-[10px] font-bold tracking-wider uppercase dark:text-gray-400">
+                        Reseller Disc (%)
+                        <span class="font-bold text-red-500">*</span>
+                    </label>
+                    <x-text-input
+                        type="number"
+                        step="0.01"
+                        wire:model="form.reseller_discount_percent"
+                        class="w-full !py-2 !text-xs"
+                        required
+                    />
+                    @error('form.reseller_discount_percent')
                     <span class="text-[10px] text-red-500">{{ $message }}</span>
                     @enderror
                 </div>

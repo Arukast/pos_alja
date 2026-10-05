@@ -26,6 +26,6 @@ class PricingForm extends Form
     #[Validate('required|numeric|min:0')]
     public string $price = '';
 
-    #[Validate('required|numeric|min:0')]
-    public string $cost = '';
+    #[Validate('nullable|numeric|min:0')]
+    public ?string $cost = null;
 }

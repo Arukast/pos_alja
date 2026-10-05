@@ -113,29 +113,6 @@
                 <label
                     class="text-light-muted mb-1 block font-bold dark:text-gray-400"
                 >
-                    Cost (HPP)
-                </label>
-                <input
-                    type="number"
-                    step="any"
-                    wire:model="pricingForm.cost"
-                    placeholder="e.g. 15000"
-                    class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 transition-colors focus:ring-2 focus:outline-none"
-                    required
-                />
-                @error('pricingForm.cost')
-                <span
-                    class="text-red-550 text-[10px] font-bold dark:text-red-400"
-                >
-                    {{ $message }}
-                </span>
-                @enderror
-            </div>
-
-            <div>
-                <label
-                    class="text-light-muted mb-1 block font-bold dark:text-gray-400"
-                >
                     Selling Price
                 </label>
                 <input
@@ -181,12 +158,25 @@
     <div
         class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 rounded-2xl border bg-white p-6 shadow-sm lg:col-span-2"
     >
-        <h3 class="text-light-text text-lg font-bold dark:text-white">
-            Active Pricing Engine Matrices
-        </h3>
-        <p class="text-light-muted mt-1 mb-4 text-xs dark:text-gray-400">
-            Base prices matched by client tiers and dimensions.
-        </p>
+        <div class="mb-4 flex items-center justify-between">
+            <div>
+                <h3 class="text-light-text text-lg font-bold dark:text-white">
+                    Active Pricing Engine Matrices
+                </h3>
+                <p class="text-light-muted mt-1 text-xs dark:text-gray-400">
+                    Base prices matched by client tiers and dimensions.
+                </p>
+            </div>
+            <div>
+                <button
+                    type="button"
+                    wire:click="$set('showCloneModal', true)"
+                    class="bg-brand-primary hover:bg-brand-primary/95 shadow-glow-primary cursor-pointer rounded-xl px-4 py-2 text-[10px] font-bold tracking-wider text-white uppercase shadow-sm transition-all duration-200 active:scale-[0.98]"
+                >
+                    Clone Tiers
+                </button>
+            </div>
+        </div>
 
         <div
             class="border-light-border dark:border-surface-300/30 overflow-x-auto rounded-2xl border"
@@ -202,7 +192,7 @@
                         <th class="px-4 py-3">Material</th>
                         <th class="px-4 py-3">Type</th>
                         <th class="px-4 py-3 text-center">Min Qty</th>
-                        <th class="px-4 py-3 text-right">Cost (HPP)</th>
+                        <th class="px-4 py-3 text-right">HPP (Cost)</th>
                         <th class="px-4 py-3 text-right">Price</th>
                         <th
                             class="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400"
@@ -235,13 +225,13 @@
                             {{ $pRule->min_qty }}
                         </td>
                         <td class="px-4 py-3 text-right font-medium">
-                            Rp. {{ number_format($pRule->cost) }}
+                            Rp. {{ number_format($pRule->cost > 0 ? $pRule->cost : ($pRule->material->cost ?? 0)) }}
                         </td>
                         <td class="px-4 py-3 text-right font-bold">
                             Rp. {{ number_format($pRule->price) }}
                         </td>
                         <td class="px-4 py-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400">
-                            Rp. {{ number_format($pRule->profit) }}
+                            Rp. {{ number_format(max(0, $pRule->price - ($pRule->cost > 0 ? $pRule->cost : ($pRule->material->cost ?? 0)))) }}
                         </td>
                         <td class="space-x-2 px-4 py-3 text-right font-bold">
                             <button
@@ -273,4 +263,178 @@
             </table>
         </div>
     </div>
+
+    <!-- Clone Tiers Modal -->
+    @if ($showCloneModal)
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs"
+    >
+        <div
+            class="border-light-border dark:border-surface-300/40 dark:bg-surface-600 w-full max-w-md space-y-4 rounded-2xl border bg-white p-6 shadow-xl"
+        >
+            <div
+                class="dark:border-surface-300/10 flex items-center justify-between border-b border-gray-100 pb-3"
+            >
+                <h3 class="text-light-text text-base font-bold dark:text-white">
+                    Clone Pricing Tiers Bulk Tool
+                </h3>
+                <button
+                    type="button"
+                    wire:click="$set('showCloneModal', false)"
+                    class="text-light-muted hover:text-light-text dark:text-gray-455 text-lg font-bold dark:hover:text-white"
+                >
+                    &times;
+                </button>
+            </div>
+
+            <form
+                wire:submit.prevent="clonePricingTiers"
+                class="space-y-4 text-left text-xs"
+            >
+                <!-- Source configuration -->
+                <div
+                    class="dark:bg-surface-500/10 dark:border-surface-300/5 space-y-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3"
+                >
+                    <div
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase"
+                    >
+                        Source Settings
+                    </div>
+                    <div>
+                        <label
+                            class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                            >Source Material</label
+                        >
+                        <select
+                            wire:model="cloneSourceMaterialId"
+                            class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 font-semibold"
+                            required
+                        >
+                            <option value="">-- Choose Material --</option>
+                            @foreach ($allMaterials as $m)
+                            <option value="{{ $m->id }}">{{ $m->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('cloneSourceMaterialId')
+                        <span
+                            class="text-red-550 text-[10px] font-bold dark:text-red-400"
+                            >{{ $message }}</span
+                        >
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label
+                            class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                            >Source Customer Type</label
+                        >
+                        <select
+                            wire:model="cloneSourceCustomerType"
+                            class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 font-semibold"
+                            required
+                        >
+                            <option value="Reguler">Reguler</option>
+                            <option value="Mitra">Mitra</option>
+                            <option value="Reseller">Reseller</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Target configuration -->
+                <div
+                    class="dark:bg-surface-500/10 dark:border-surface-300/5 space-y-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3"
+                >
+                    <div
+                        class="text-light-muted text-[10px] font-bold tracking-wider uppercase"
+                    >
+                        Target Settings
+                    </div>
+                    <div>
+                        <label
+                            class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                            >Target Material</label
+                        >
+                        <select
+                            wire:model="cloneTargetMaterialId"
+                            class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 font-semibold"
+                            required
+                        >
+                            <option value="">-- Choose Material --</option>
+                            @foreach ($allMaterials as $m)
+                            <option value="{{ $m->id }}">{{ $m->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('cloneTargetMaterialId')
+                        <span
+                            class="text-red-550 text-[10px] font-bold dark:text-red-400"
+                            >{{ $message }}</span
+                        >
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label
+                            class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                            >Target Customer Type</label
+                        >
+                        <select
+                            wire:model="cloneTargetCustomerType"
+                            class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 font-semibold"
+                            required
+                        >
+                            <option value="Reguler">Reguler</option>
+                            <option value="Mitra">Mitra</option>
+                            <option value="Reseller">Reseller</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Adjustments -->
+                <div>
+                    <label
+                        class="text-light-muted mb-1 block font-bold dark:text-gray-400"
+                        >Price Adjustment Percent (%)</label
+                    >
+                    <input
+                        type="number"
+                        step="0.01"
+                        wire:model="cloneAdjustmentPercent"
+                        placeholder="e.g. -10 for 10% discount, +5 for markup"
+                        class="border-light-border dark:border-surface-300/50 dark:bg-surface-500 text-light-text dark:text-gray-150 focus:ring-brand-primary/30 focus:border-brand-primary w-full rounded-xl border bg-white px-3 py-2.5 transition-colors focus:ring-2 focus:outline-none"
+                        required
+                    />
+                    <span class="text-light-muted text-[10px]"
+                        >Adjusts the selling price of duplicated rules. Cost
+                        (HPP) will remain identical to the source tier
+                        cost.</span
+                    >
+                    @error('cloneAdjustmentPercent')
+                    <span
+                        class="text-red-550 text-[10px] font-bold dark:text-red-400"
+                        >{{ $message }}</span
+                    >
+                    @enderror
+                </div>
+
+                <div
+                    class="dark:border-surface-300/10 flex items-center justify-end gap-3 border-t border-gray-100 pt-3"
+                >
+                    <button
+                        type="button"
+                        wire:click="$set('showCloneModal', false)"
+                        class="border-light-border dark:border-surface-300/30 text-light-text dark:hover:bg-surface-500 rounded-xl border px-4 py-2 text-[10px] font-bold tracking-wider uppercase transition-colors hover:bg-gray-50 dark:text-white"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        class="bg-brand-primary hover:bg-brand-primary/95 rounded-xl px-4 py-2 text-[10px] font-bold tracking-wider text-white uppercase shadow-sm transition-all"
+                    >
+                        Clone Now
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
 </div>

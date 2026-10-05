@@ -24,6 +24,8 @@ class BranchForm extends Form
 
     public string $receipt_header = '';
 
+    public float $reseller_discount_percent = 0.0;
+
     /**
      * Get the validation rules.
      */
@@ -44,6 +46,7 @@ class BranchForm extends Form
             'is_active' => 'boolean',
             'tax_rate' => 'required|numeric|min:0|max:100',
             'receipt_header' => 'nullable|string|max:500',
+            'reseller_discount_percent' => 'required|numeric|min:0|max:100',
         ];
     }
 
@@ -59,6 +62,7 @@ class BranchForm extends Form
         $this->is_active = (bool) $branch->is_active;
         $this->tax_rate = (float) ($branch->settings['tax_rate'] ?? 0.0);
         $this->receipt_header = (string) ($branch->settings['receipt_header'] ?? '');
+        $this->reseller_discount_percent = (float) ($branch->settings['reseller_discount_percent'] ?? 0.0);
     }
 
     /**
@@ -73,6 +77,7 @@ class BranchForm extends Form
         $this->is_active = true;
         $this->tax_rate = 0.0;
         $this->receipt_header = '';
+        $this->reseller_discount_percent = 0.0;
     }
 
     /**
@@ -91,6 +96,7 @@ class BranchForm extends Form
             'settings' => [
                 'tax_rate' => (float) $this->tax_rate,
                 'receipt_header' => $this->receipt_header,
+                'reseller_discount_percent' => (float) $this->reseller_discount_percent,
             ],
         ];
     }

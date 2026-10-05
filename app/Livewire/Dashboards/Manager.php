@@ -45,6 +45,19 @@ class Manager extends Component
 
     public bool $isCreatingMaterial = false;
 
+    // Cloning properties for Pricing Tiers
+    public bool $showCloneModal = false;
+
+    public string $cloneSourceMaterialId = '';
+
+    public string $cloneSourceCustomerType = 'Reguler';
+
+    public string $cloneTargetMaterialId = '';
+
+    public string $cloneTargetCustomerType = 'Reseller';
+
+    public float $cloneAdjustmentPercent = 0.0;
+
     // Properties accessed inside @island views
     public $stockLogs;
 
@@ -207,8 +220,9 @@ class Manager extends Component
         $this->pricingForm->validate();
 
         $branchId = auth()->user()->branch_id ?: Branch::value('id');
+        $material = Material::findOrFail($this->pricingForm->materialId);
         $priceVal = (float) $this->pricingForm->price;
-        $costVal = (float) $this->pricingForm->cost;
+        $costVal = (float) $material->cost;
         $profitVal = max(0.0, $priceVal - $costVal);
 
         if ($this->pricingForm->pricingId) {
@@ -257,7 +271,7 @@ class Manager extends Component
         $this->pricingForm->customerType = $pricing->customer_type;
         $this->pricingForm->minQty = $pricing->min_qty;
         $this->pricingForm->price = (string) $pricing->price;
-        $this->pricingForm->cost = (string) $pricing->cost;
+        $this->pricingForm->cost = (string) ($pricing->material->cost ?? $pricing->cost ?? 0.0);
         $this->showSuccessAlert = false;
     }
 
@@ -277,6 +291,69 @@ class Manager extends Component
     {
         $this->pricingForm->reset();
         $this->resetErrorBag();
+    }
+
+    public function clonePricingTiers(): void
+    {
+        $role = auth()->user()->role;
+        if (! in_array($role, ['manager', 'owner'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $this->validate([
+            'cloneSourceMaterialId' => 'required|exists:materials,id',
+            'cloneSourceCustomerType' => 'required|string',
+            'cloneTargetMaterialId' => 'required|exists:materials,id',
+            'cloneTargetCustomerType' => 'required|string',
+            'cloneAdjustmentPercent' => 'required|numeric|min:-100|max:1000',
+        ]);
+
+        $branchId = auth()->user()->branch_id ?: Branch::value('id');
+
+        $sourcePricings = Pricing::where('material_id', $this->cloneSourceMaterialId)
+            ->where('customer_type', $this->cloneSourceCustomerType)
+            ->where('branch_id', $branchId)
+            ->get();
+
+        if ($sourcePricings->isEmpty()) {
+            $this->addError('cloneSourceMaterialId', 'No source pricing records found to clone.');
+
+            return;
+        }
+
+        $targetMaterial = Material::findOrFail($this->cloneTargetMaterialId);
+        $targetCost = (float) $targetMaterial->cost;
+
+        DB::transaction(function () use ($sourcePricings, $branchId, $targetCost) {
+            foreach ($sourcePricings as $source) {
+                $multiplier = 1.0 + ($this->cloneAdjustmentPercent / 100.0);
+                $newPrice = max(0.0, (float) $source->price * $multiplier);
+                $newCost = $targetCost;
+                $newProfit = max(0.0, $newPrice - $newCost);
+
+                Pricing::updateOrCreate([
+                    'branch_id' => $branchId,
+                    'product_id' => $source->product_id,
+                    'material_id' => $this->cloneTargetMaterialId,
+                    'customer_type' => $this->cloneTargetCustomerType,
+                    'min_qty' => $source->min_qty,
+                ], [
+                    'price' => $newPrice,
+                    'cost' => $newCost,
+                    'profit' => $newProfit,
+                ]);
+            }
+        });
+
+        $this->showCloneModal = false;
+        $this->successMessage = 'Pricing tiers cloned successfully!';
+        $this->showSuccessAlert = true;
+
+        try {
+            event(new OrderUpdated);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function render()

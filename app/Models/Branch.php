@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -24,4 +26,12 @@ class Branch extends Model
         'is_active' => 'boolean',
         'settings' => 'array',
     ];
+
+    /**
+     * Get the reseller discount percentage for this branch.
+     */
+    public function getResellerDiscountPercent(): float
+    {
+        return (float) ($this->settings['reseller_discount_percent'] ?? 0.0);
+    }
 }

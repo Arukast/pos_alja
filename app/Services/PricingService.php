@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Exceptions\PricingNotFoundException;
 use App\Models\AttributePricing;
+use App\Models\Branch;
 use App\Models\Machine;
 use App\Models\MachinePricing;
 use App\Models\Pricing;
@@ -42,6 +43,8 @@ class PricingService
 
         $branchId = $params['branch_id'] ?? null;
 
+        $isFellBackToReguler = false;
+
         // Fetch core pricing record matching product, material, customer tier type, and tiered min_qty
         $pricing = Pricing::where('product_id', $productId)
             ->where('material_id', $materialId)
@@ -60,6 +63,9 @@ class PricingService
                 ->where('min_qty', '<=', $quantity)
                 ->orderBy('min_qty', 'desc')
                 ->first();
+            if ($pricing) {
+                $isFellBackToReguler = true;
+            }
         }
 
         if (! $pricing) {
@@ -111,7 +117,20 @@ class PricingService
 
         // Sum base pricing + modifier pricing
         $basePrice = (float) $pricing->price;
-        $baseCost = (float) $pricing->cost;
+        $baseCost = ((float) $pricing->cost > 0)
+            ? (float) $pricing->cost
+            : ($pricing->material ? (float) $pricing->material->cost : 0.0);
+
+        if ($isFellBackToReguler && $customerType === 'Reseller') {
+            $targetBranchId = $branchId ?: (auth()->check() ? auth()->user()->branch_id : null) ?: Branch::value('id');
+            if ($targetBranchId) {
+                $branchObj = Branch::find($targetBranchId);
+                if ($branchObj) {
+                    $discountPercent = $branchObj->getResellerDiscountPercent();
+                    $basePrice = $basePrice * (1.0 - ($discountPercent / 100.0));
+                }
+            }
+        }
 
         $unitPrice = $basePrice + $machinePrice + $attributePriceSum;
         $unitCost = $baseCost + $machineCost + $attributeCostSum;

@@ -12,13 +12,15 @@
 ---
 
 ## Session Record
-### Session: 2026-07-07 - Machine Management and Configuration
-- **Goal:** Implement printer/press machine configuration including base cost (HPP) setup, authorization rules, and tenant scoping.
-- **Completed:** Created the migration `2026_07_07_000000_add_cost_to_machines_table.php`, updated `Machine` model with fillable `cost` and strict types, built `MachineService.php` to handle business transactions, created `MachineForm` for validations, created `MachineManagement` Livewire component and blade view with elegant modern theme support, integrated the tab into Owner & Manager dashboards, added navigation links in `_role_links.blade.php`, and added feature tests in `MachineManagementTest.php`.
-- **Verification run:** Added Feature tests in `tests/Feature/MachineManagementTest.php`.
+### Session: 2026-07-07 - Material-Driven HPP & Simplified Matrix UI
+- **Goal:** Drive base print cost (HPP) directly from individual Material profiles and clean up matrices views.
+- **Completed:** Added HPP (Cost) and Base Price columns to the Material Inventory list table, removed the redundant Cost field input and table column from Pricing Matrices dashboard views, made PricingForm cost optional, updated component logic to automatically resolve and populate material costs, and configured PricingService to fetch base cost directly from Material profiles.
+- **Verification run:** Updated Feature tests in `tests/Feature/SimplifiedPricingTest.php`.
 - **Evidence recorded:** Checked off task checklist in `task.md` and updated `walkthrough.md`.
 - **Commits:** None.
 - **Known risks:** Docker container execution is currently encountering peer-reset errors locally.
-- **Next best action:** Run feature tests inside the container environment.
+- **Next best action:** Run automated test suites to ensure everything operates cleanly.
+
+
 
 

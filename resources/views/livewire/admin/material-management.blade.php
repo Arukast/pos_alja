@@ -211,7 +211,9 @@
                             @if ($branchId === 'all')
                             <th class="px-4 py-3">Branch</th>
                             @endif
-                            <th class="px-4 py-3">Min Stock</th>
+                            <th class="px-4 py-3 text-right">HPP (Cost)</th>
+                            <th class="px-4 py-3 text-right">Base Price</th>
+                            <th class="px-4 py-3 text-center">Min Stock</th>
                             <th class="px-4 py-3 text-right">Current Stock</th>
                             <th class="rounded-r-xl px-4 py-3 text-center">
                                 Actions
@@ -246,7 +248,13 @@
                                 {{ $mItem->branch_name ?? 'Global' }}
                             </td>
                             @endif
-                            <td class="px-4 py-3">{{ $mItem->min_stock ?? '-' }}</td>
+                            <td class="px-4 py-3 text-right font-medium">
+                                Rp {{ number_format($mItem->cost, 2, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 text-right font-bold">
+                                Rp {{ number_format($mItem->price, 2, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 text-center">{{ $mItem->min_stock ?? '-' }}</td>
                             <!-- prettier-ignore -->
                             <td class="text-light-text px-4 py-3 text-right font-extrabold dark:text-white">
                                 {{ $mItem->current_stock ?? '0' }}
