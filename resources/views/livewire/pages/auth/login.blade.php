@@ -2,8 +2,7 @@
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form wire:submit="login" method="POST" class="space-y-6">
-        @csrf
+    <form wire:submit="login" class="space-y-6">
         <!-- Username -->
         <div>
             <label
