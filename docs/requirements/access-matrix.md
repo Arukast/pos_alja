@@ -106,6 +106,7 @@ Authorization boundaries:
 | Calculate quotes | No | No | No | Yes | No |
 | Build a cart and submit an invoice | No | No | No | Yes | No |
 | View order list | No | No | No | Own branch | No |
+| Update a submitted order to add items | No | No | No | Planned | No |
 | Start production | No | No | No | No | Own branch |
 | Complete production | No | No | No | No | Own branch |
 | Log material waste | No | No | No | No | Own branch |
@@ -120,6 +121,8 @@ Authorization boundaries:
 | Print receipt | Yes | Yes | Yes | Yes | Yes |
 
 Ticket and receipt routes are available to any authenticated user. A non-owner whose `branch_id` is set is rejected with HTTP 403 when the invoice belongs to another branch. An owner bypasses that check.
+
+Planned capstone scope: Designer `CRU` on Data Transaksi includes updating a submitted order to add items (FR-ORD-08). The current code supports create and read only.
 
 ---
 

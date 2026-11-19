@@ -338,6 +338,12 @@ Roles are stored as the literal strings above in `users.role`. There is no self-
 - Evidence: `Designer` (`invoiceSearch`, `order_list` tab).
 - Status: Implemented.
 
+### FR-ORD-08 Update an order (planned)
+- A designer SHALL be able to update a submitted order to add items when the customer requests changes.
+- Open decision: whether updates are allowed after production starts. Recommended limit: only while every order on the invoice has `status = 0`.
+- Status: Planned; not implemented. The current code supports create and read only.
+- Evidence: none.
+
 ---
 
 ## 9. Production
