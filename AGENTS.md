@@ -5,11 +5,9 @@
 ### 1.1 Startup Workflow
 Before writing any code, the agent must complete these steps:
 1. Confirm the working directory using `pwd`.
-2. Read `claude-progress.md` for the latest verified state and the next required step.
-3. Read `feature_list.json` and select the highest-priority unfinished feature.
-4. Review recent repository history by checking the last 5 commits using `git log --oneline -5`.
-5. Run the initialization script via `./init.sh`.
-6. Run the required smoke or end-to-end verification before starting new work. If baseline verification fails, fix that issue first before stacking new feature work on top of a broken starting state.
+2. Review recent repository history by checking the last 5 commits using `git log --oneline -5`.
+3. Run the initialization script via `./init.sh`.
+4. Run the required smoke or end-to-end verification before starting new work. If baseline verification fails, fix that issue first before stacking new feature work on top of a broken starting state.
 
 ### 1.2 Working Rules
 1. Focus entirely on one feature at a time.
@@ -19,25 +17,40 @@ Before writing any code, the agent must complete these steps:
 5. Prefer durable repository artifacts over transient chat summaries.
 
 ### 1.3 Required Artifacts
-1. `feature_list.json`: The absolute source of truth for tracking feature states.
-2. `claude-progress.md`: The continuous session log and current verified status.
-3. `init.sh`: The standardized repository startup and verification path.
-4. `session-handoff.md`: An optional, compact handoff document reserved for larger development sessions.
+1. `docs/`: The maintained requirements and architecture set defined in §1.6.
+2. `init.sh`: The standardized repository startup and verification path.
+3. `session-handoff.md`: An optional, compact handoff document reserved for larger development sessions.
 
 ### 1.4 Definition Of Done
 A feature achieves the status of completed only when all of the following conditions are met:
 1. The target behavior is fully implemented.
 2. The required verification scripts actually executed successfully.
-3. Direct evidence of verification is explicitly recorded in `feature_list.json` or `claude-progress.md`.
-4. The repository remains completely restartable from the standard startup path using `./init.sh`.
+3. Direct evidence of verification is recorded in the change description or the relevant `docs/` entry.
+4. The documentation required by §1.6 is updated in the same change.
+5. The repository remains completely restartable from the standard startup path using `./init.sh`.
 
 ### 1.5 End Of Session Workflow
 Before ending a session, the agent must perform these tasks:
-1. Update the contents of `claude-progress.md`.
-2. Update the tracking states within `feature_list.json`.
-3. Explicitly record any unresolved risk, technical debt, or workflow blocker.
-4. Commit the changes with a descriptive message adhering to the Conventional Commits specification once the work is in a safe state.
-5. Leave the repository clean enough for the next session to execute `./init.sh` immediately.
+1. Confirm that the documentation required by §1.6 matches the code.
+2. Explicitly record any unresolved risk, technical debt, or workflow blocker in the relevant `docs/` entry or in `session-handoff.md`.
+3. Commit the changes with a descriptive message adhering to the Conventional Commits specification once the work is in a safe state.
+4. Leave the repository clean enough for the next session to execute `./init.sh` immediately.
+
+### 1.6 Development Documentation (`docs/`)
+`docs/` is the maintained source of truth for system behavior and contracts. It is not optional background reading.
+
+1. Keep the docs synchronized with the code in the same change. A feature, behavior change, schema change, role or permission change, route/service/event change, or new workflow is incomplete until the matching docs are updated.
+2. When the user asks to add or change a feature, add or amend the relevant entries before or alongside the implementation:
+   - Functional behavior and acceptance criteria -> `docs/requirements/fr.md`.
+   - Quality attributes, security, performance, reliability, portability, and operations -> `docs/requirements/nfr.md`.
+   - Roles, permissions, branch scope, and profile rights -> `docs/requirements/access-matrix.md`.
+   - Tables, columns, keys, and relationships -> `docs/architecture/erd.md`.
+   - Cross-component or multi-actor workflows -> `docs/architecture/sequence-diagrams.md`.
+   - Service signatures, HTTP routes, broadcast events, Livewire actions, and error contracts -> `docs/architecture/api-contracts.md`.
+3. Do not create parallel requirement sources. Do not leave a feature described only in chat, a commit message, or a code comment.
+4. Keep Mermaid diagrams valid. After editing, re-check block balance and rendering-relevant syntax.
+5. If code and docs disagree, treat it as a defect: fix the code, or document the actual behavior and the gap. Do not silently rewrite the docs to match a bug.
+6. When deleting or renaming a documented feature, remove or update its FR, NFR, access-matrix, ERD, sequence-diagram, and contract entries in the same change.
 
 ## Section 2: General Project Rules
 
