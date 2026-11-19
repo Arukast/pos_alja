@@ -6,7 +6,7 @@
   2. The small set of HTTP routes that return HTML.
   3. The WebSocket broadcast contract.
   4. The Livewire action surface that the browser calls.
-  5. Proposed target contracts for the redevelopment (§13), clearly marked as not implemented.
+  5. Target contracts for the redevelopment (§13).
 - **What it does not cover:** Public JSON API endpoints. None exist in the repository.
 
 The service layer is described as "API-ready" in `AGENTS.md` §2.7 because business logic is isolated there. That is an architectural property, not an exposed API.
@@ -502,9 +502,9 @@ Broadcast calls are synchronous. A Reverb outage can surface as an exception fro
 
 ---
 
-## 13. Target Contracts (Proposed)
+## 13. Target Contracts
 
-These contracts are required by the redevelopment but do not exist yet. They are proposals, not current behavior. Keep them aligned with `docs/requirements/fr.md` and `docs/architecture/erd.md`.
+These contracts define the target scope. Keep them aligned with `docs/requirements/fr.md` and `docs/architecture/erd.md`.
 
 ### 13.1 ProductService
 
@@ -519,14 +519,14 @@ These contracts are required by the redevelopment but do not exist yet. They are
 
 | Method | Input | Output | Notes |
 | :--- | :--- | :--- | :--- |
-| `updateOrder(Invoice $invoice, array $data, User $actor): Invoice` | `items`, `discount`, `deadline` | Updated `Invoice` | FR9; reject if any order `status > 0`; recalculate totals and receivable; audit before/after |
+| `updateOrder(Invoice $invoice, array $data, User $actor): Invoice` | `items`, `discount`, `deadline` | Updated `Invoice` | FR9; Designer only; reject if any order `status > 0`; recalculate totals and receivable; audit before/after |
 | `updateDesignStatus(Order $order, string $status, User $actor): void` | `pending`, `in_design`, `approved` | void | FR10; forward-only transition; store approver and timestamp |
 
 ### 13.3 PurchaseService
 
 | Method | Input | Output | Notes |
 | :--- | :--- | :--- | :--- |
-| `recordPurchase(array $data, User $cashier): Purchase` | `purchased_at`, `supplier`, `notes`, `items[]` | `Purchase` | FR15; items require `material_id`, `quantity`, `unit_cost`; one transaction; increment stock; write `stock_ledgers` type `purchase` |
+| `recordPurchase(array $data, User $actor): Purchase` | `purchased_at`, `supplier`, `notes`, `items[]` | `Purchase` | FR15; Owner/Branch Manager; items require `material_id`, `quantity`, `unit_cost`; one transaction; increment stock; write `stock_ledgers` type `purchase` |
 
 ### 13.4 StockService
 
@@ -549,7 +549,7 @@ These contracts are required by the redevelopment but do not exist yet. They are
 | `run(string $mode, ?User $actor = null): BackupResult` | `manual` or `scheduled` | path, size, status | FR26; manual is owner-only; store outside the database |
 | `prune(int $days): int` | retention days | Deleted count | FR26; retention policy |
 
-### 13.7 Proposed HTTP Routes
+### 13.7 Target HTTP Routes
 
 | Method | Path | Access | Response | Notes |
 | :--- | :--- | :--- | :--- | :--- |
@@ -557,16 +557,16 @@ These contracts are required by the redevelopment but do not exist yet. They are
 | POST | `/backups` | Owner | Redirect or 202 | Trigger manual backup; 403 for other roles |
 | GET | `/backups` | Owner | HTML list | Backup history and status |
 
-### 13.8 Proposed Broadcast Events
+### 13.8 Target Broadcast Events
 
 | Event | Channel | Payload | Notes |
 | :--- | :--- | :--- | :--- |
 | `StockUpdated` | `private-branch.{branchId}` | Empty | FR15, FR16, FR18; branch authorization callback |
-| `OrderUpdated` | `private-branch.{branchId}` | Empty | Target change from the current public `orders` channel; authorize owner or matching branch |
+| `OrderUpdated` | `private-branch.{branchId}` | Empty | Authorize owner or matching branch |
 
-The current `OrderUpdated` event is public and has an empty payload. Moving it to a private branch channel is a security improvement for the redevelopment.
+`OrderUpdated` uses a private branch channel with an empty payload. Authorization allows the owner or a user in the matching branch.
 
-### 13.9 Proposed Error Additions
+### 13.9 Target Error Additions
 
 | Error | Condition | Response |
 | :--- | :--- | :--- |

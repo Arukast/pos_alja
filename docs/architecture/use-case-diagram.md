@@ -1,6 +1,6 @@
 # Use Case Diagram (Target Specification)
 
-- **Status:** Target scope. Green = implemented; amber = partial; dashed blue = target, required but not implemented.
+- **Scope:** Target scope. All use cases shown are required. Implementation progress is tracked in `docs/requirements/implementation-gaps.md`.
 - **Source:** `docs/requirements/fr.md` FR1–FR26, `docs/requirements/access-matrix.md`, and the capstone proposal.
 - **Role mapping:** Pemilik = `owner`, Branch Manager = `manager`, Kasir = `cashier`, Designer = `designer`, Produksi = `production`.
 
@@ -106,11 +106,10 @@ flowchart LR
     Manager --- UC25
     Manager --- UC26
     Manager --- UC27
+    Owner --- UC09
+    Manager --- UC09
 
     Cashier --- UC07
-    Cashier --- UC09
-    Cashier --- UC11
-    Cashier --- UC14
     Cashier --- UC16
     Cashier --- UC17
     Cashier --- UC18
@@ -143,13 +142,7 @@ flowchart LR
     UC14 -.->|extend| UC13
     UC27 -.->|extend| UC26
 
-    classDef implemented fill:#dcfce7,stroke:#16a34a,color:#14532d
-    classDef partial fill:#fef9c3,stroke:#ca8a04,color:#713f12
-    classDef target fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-dasharray: 5 5
 
-    class UC02,UC05,UC08,UC13,UC17,UC19,UC21,UC23 implemented
-    class UC01,UC03,UC06,UC10,UC11,UC16,UC18,UC20,UC22,UC24,UC25,UC26 partial
-    class UC04,UC07,UC09,UC12,UC14,UC15,UC27,UC28 target
 ```
 
 ## Target Role Summary
@@ -158,56 +151,22 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Pemilik | CRUD | R | CRUD | R | R |
 | Branch Manager | CRUD (branch staff) | R | CRUD (branch) | R | R (limited) |
-| Kasir | - | CRU | CR | R | - |
+| Kasir | - | CRU | - | R | - |
 | Designer | - | CRU | - | R | - |
 | Produksi | - | R | RU | RU | - |
 
 Notes:
 
-- **Kasir `U`** covers order changes before production (FR9) and pickup status (FR21).
+- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only.
 - **Designer `U`** covers order changes before production (FR9) and design-status updates (FR10).
 - **Manager `Data Stok`** is branch-scoped CRUD; global material deletion remains owner-only.
 - **Owner `Data Stok`** is CRUD through material management; the reason-required adjustment workflow (FR18) is manager-scoped unless extended to the owner.
-- **Kasir `Data Stok`** is create and read for purchases and stock visibility; adjustment is manager-only.
+- **Kasir `Data Stok`:** no stock access. Purchases are Owner/Branch Manager; stock visibility is Owner/Branch Manager/Production.
 - **Production `Data Stok`** is read plus usage/waste updates.
-
-## Use Case Status
-
-| ID | Use case | Status | Current behavior or target gap |
-| :--- | :--- | :--- | :--- |
-| UC01 | Kelola Pengguna | Partial | Owner and manager branch staff; `UserManagement::$mode` is client-writable. |
-| UC02 | Kelola Cabang | Implemented | Owner-only branch CRUD and status toggle. |
-| UC03 | Audit Log | Partial | Owner views activity logs; payments, order updates, and stock adjustments are not logged. |
-| UC04 | Kelola Produk | Target | No product CRUD screen; products are data-setup records. |
-| UC05 | Kelola Kategori Produk | Implemented | Categories, archetypes, and allowed attribute types. |
-| UC06 | Kelola Harga | Partial | Manager pricing matrices work; owner has no pricing tab. |
-| UC07 | Cari & Filter Produk | Target | No product list, search, filter, or pagination; calculator uses dropdowns. Designer and cashier are the primary users; owner and manager use it inside product management. |
-| UC08 | Kelola Mesin | Implemented | Owner global, manager branch-scoped, machine cost. |
-| UC09 | Catat Pembelian Bahan Baku | Target | Current restock has no purchase header, supplier, or unit-cost record. |
-| UC10 | Catat Pemakaian Bahan Baku | Partial | Stock is deducted on production start; no explicit order-linked usage record; waste tab fails to render. |
-| UC11 | Lihat Stok & Peringatan Minimum | Partial | Owner/manager stock views; low stock is sorted, not alerted; cashier/production access is missing. |
-| UC12 | Penyesuaian Stok | Target | No adjustment flow with mandatory reason. |
-| UC13 | Catat Pesanan | Implemented | Designer creates invoice and orders with pricing. |
-| UC14 | Perbarui Pesanan | Target | No update flow; order changes before production are not implemented. |
-| UC15 | Perbarui Status Desain | Target | No design-status column or action. |
-| UC16 | Lihat Daftar Transaksi | Partial | Owner financial/audit lists, cashier queues, designer order list; manager general list is missing. |
-| UC17 | Kelola Pelanggan | Implemented | Designer searches and creates customers; cashier can search for order updates. |
-| UC18 | Proses Pembayaran (DP/Pelunasan) | Partial | Cashier DP/settlement; invoice status recalculates. DP validation caps at `grand_total`, not remaining receivable, so overpayment is possible. |
-| UC19 | Catat Pengeluaran Operasional | Implemented | Cashier logs branch expenses. |
-| UC20 | Antrean Pickup | Partial | Invoice pickup is updated; related orders are not. |
-| UC21 | Cetak Nota & Tiket | Implemented | Work-order ticket and 80 mm receipt. |
-| UC22 | Lihat Antrean Produksi | Partial | Production-only queue, sorted by `created_at`; no priority or all-role view. |
-| UC23 | Perbarui Status Produksi | Implemented | Production start/complete with status logs and stock deduction. |
-| UC24 | Catat Waste | Partial | Service works; production waste tab fails to render. |
-| UC25 | Dashboard Ringkasan | Partial | Owner financial cards; manager dashboard lacks order count and production summary. |
-| UC26 | Laporan Keuangan Periodik | Partial | Owner full reports; manager limited to revenue leaderboard and expenses. |
-| UC27 | Ekspor Laporan Excel/PDF | Target | No export implementation. |
-| UC28 | Backup Manual & Terjadwal | Target | No backup command, schedule, storage, or restore flow. |
 
 ## Notes
 
 1. `Scheduler` is a secondary actor for the scheduled backup (FR26), not a human role.
-2. `Perbarui Pesanan` and `Perbarui Status Desain` are target because the current code supports create and read only.
-3. `Catat Pembelian Bahan Baku` replaces the proposal's "catat pembelian bahan baku"; the target uses a purchase header and line items.
-4. `Ekspor Laporan` extends `Laporan Keuangan Periodik`; it is not a separate report source.
-5. The access matrix remains the authority for role and branch scope; this diagram only shows who uses each use case.
+2. `Catat Pembelian Bahan Baku` uses a purchase header and line items.
+3. `Ekspor Laporan` extends `Laporan Keuangan Periodik`; it is not a separate report source.
+4. The access matrix remains the authority for role and branch scope; this diagram only shows who uses each use case.

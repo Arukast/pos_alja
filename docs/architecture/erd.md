@@ -4,7 +4,7 @@
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
 - **Table naming:** Eloquent default pluralization, except `pricing`, `material_branch_stock`, `attribute_pricing`, and `machine_pricing`, which use singular table names.
 - **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `machines`, and `attributes`. `pricing` has a `deleted_at` column in the migration, but the model does not use `SoftDeletes`; the column is unused.
-- **Target schema:** This diagram shows the target schema for the redevelopment. Proposed additions are marked in the notes below; the current migrations do not contain them yet.
+- **Target schema:** This diagram shows the target schema. Target additions are listed in the notes below.
 
 ```mermaid
 erDiagram
@@ -55,7 +55,7 @@ erDiagram
     USERS |o--o{ PAYMENTS : "cashier"
     USERS |o--o{ ORDER_STATUS_LOGS : "actor"
     USERS |o--o{ STOCK_LEDGERS : "records"
-    USERS |o--o{ PURCHASES : "cashier"
+    USERS |o--o{ PURCHASES : "actor"
     USERS |o--o{ WASTED_MATERIALS : "designer"
     USERS |o--o{ WASTED_MATERIALS : "operator"
     USERS |o--o{ ACTIVITY_LOGS : "actor"
@@ -344,14 +344,14 @@ erDiagram
 10. **`branch_id` is nullable on** `users`, `machines`, `attributes`, `pricing`, `attribute_pricing`, `machine_pricing`, `invoices`, `expenses`, `wasted_materials`, `stock_ledgers`, and `activity_logs`. A null value means "global" or "unassigned", depending on the table; owner accounts are the main case for a null user branch.
 11. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table. The migration defines `pricing.deleted_at`, but the model does not use `SoftDeletes`, so pricing rows are hard deleted and the column stays null.
 12. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and pricing rows when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
-13. **Target additions are not in the current migrations.** The following columns and tables are proposed for the redevelopment:
+13. **Target additions.** The following columns and tables are part of the target schema:
     - `products.is_active` for catalog filtering.
     - `orders.design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`.
-    - `purchases` and `purchase_items` for raw-material purchases.
+    - `purchases` and `purchase_items` for raw-material purchases. `purchases.user_id` is the actor (Owner or Branch Manager).
 14. **Order priority semantics.** Higher `priority` sorts first; the queue sorts by `deadline ASC (nulls last)`, then `priority DESC`, then `created_at ASC`. Default priority is 0.
-15. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The proposed transition is forward-only unless a manager or owner override is added.
-16. **Stock ledger type semantics.** Proposed types: `initial`, `purchase`, `usage`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase or order that caused the movement.
+15. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The transition is forward-only unless a manager or owner override is added.
+16. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase or order that caused the movement.
 
 ---
 
@@ -367,20 +367,20 @@ erDiagram
 | `orders.status` | 0 | Queued / not processed (Antre Produksi) |
 | `orders.status` | 1 | Processing / printing (Diproses) |
 | `orders.status` | 2 | Completed (Selesai) |
-| `orders.design_status` | 0 | Pending (proposed) |
-| `orders.design_status` | 1 | In design (Proses Desain, proposed) |
-| `orders.design_status` | 2 | Design approved (Disetujui, proposed) |
+| `orders.design_status` | 0 | Pending |
+| `orders.design_status` | 1 | In design (Proses Desain) |
+| `orders.design_status` | 2 | Design approved (Disetujui) |
 | `payments.type` | `down_payment` | Down payment |
 | `payments.type` | `settlement` | Balance settlement |
 | `payments.type` | `partial` | Reserved by schema; not written by `PaymentService` |
 | `expenses.type` | `modal` | Capital / drawer float label |
 | `expenses.type` | `laba` | Operating expense label |
-| `stock_ledgers.type` | `initial` | Initial stock registration (proposed) |
-| `stock_ledgers.type` | `purchase` | Raw-material purchase (proposed) |
-| `stock_ledgers.type` | `usage` | Material used by an order (proposed) |
-| `stock_ledgers.type` | `waste` | Failed print / waste (proposed) |
-| `stock_ledgers.type` | `adjustment` | Manager stock correction with reason (proposed) |
-| `stock_ledgers.type` | `restock` | Manual stock addition (proposed) |
+| `stock_ledgers.type` | `initial` | Initial stock registration |
+| `stock_ledgers.type` | `purchase` | Raw-material purchase |
+| `stock_ledgers.type` | `usage` | Material used by an order |
+| `stock_ledgers.type` | `waste` | Failed print / waste |
+| `stock_ledgers.type` | `adjustment` | Manager stock correction with reason |
+| `stock_ledgers.type` | `restock` | Manual stock addition |
 
 Both expense types are summed into `expenses_total` and subtracted from `net_profit`; `type` is a label, not a filter.
 
@@ -396,7 +396,7 @@ Both expense types are summed into `expenses_total` and subtracted from `net_pro
 | `invoices` | `invoice_number` unique |
 | `attribute_types` | `name` unique |
 | `pricing` | No unique constraint on `(branch_id, product_id, material_id, customer_type, min_qty)`; duplicates are possible |
-| `purchases` / `purchase_items` | Proposed; no unique constraint yet. Add a purchase number or idempotency key before implementation |
+| `purchases` / `purchase_items` | Target; no unique constraint yet. Add a purchase number or idempotency key before implementation |
 | Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.pricing_id`, `users.branch_id`, `wasted_materials.machine_id`, and `wasted_materials.order_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, and `stock_ledgers.material_id` |
 
 ---

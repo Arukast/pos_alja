@@ -371,28 +371,28 @@ sequenceDiagram
 
 ---
 
-## 9. Target Workflows (Not Implemented)
+## 9. Additional Target Workflows
 
-These flows define the redevelopment contract for FR9, FR10, FR15, FR16, FR18, FR19, FR24, and FR26. They are not in the current code.
+These flows define the target contract for FR9, FR10, FR15, FR16, FR18, FR19, FR24, and FR26.
 
 ### 9.1 Update an Order Before Production (FR9)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor A as Designer or Cashier
+    actor D as Designer
     participant UI as Order Screen
     participant OS as OrderService
     participant DB as Database
     participant R as Reverb
 
-    A->>UI: Open invoice
+    D->>UI: Open invoice
     UI->>DB: Load invoice and orders
     UI->>UI: Check every order status = 0
     alt Any order already in production
-        UI-->>A: HTTP 409, order cannot be changed
+        UI-->>D: HTTP 409, order cannot be changed
     else Editable
-        A->>UI: Add, remove, or change items, quantities, specs, deadline
+        D->>UI: Add, remove, or change items, quantities, specs, deadline
         UI->>OS: updateOrder(invoice, data, actor)
         OS->>DB: BEGIN
         OS->>DB: Lock invoice and orders
@@ -401,7 +401,7 @@ sequenceDiagram
         OS->>DB: Insert activity_log with before and after
         OS->>DB: COMMIT
         UI->>R: OrderUpdated
-        UI-->>A: Success
+        UI-->>D: Success
     end
 ```
 
@@ -437,15 +437,15 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Cashier
+    actor M as Branch Manager or Owner
     participant UI as Purchase Screen
     participant PS as PurchaseService
     participant DB as Database
     participant R as Reverb
 
-    C->>UI: Submit purchase header and line items
+    M->>UI: Submit purchase header and line items
     UI->>UI: Validate material, quantity, unit cost
-    UI->>PS: recordPurchase(data, cashier)
+    UI->>PS: recordPurchase(data, actor)
     PS->>DB: BEGIN
     PS->>DB: Insert purchases
     PS->>DB: Insert purchase_items
@@ -456,8 +456,8 @@ sequenceDiagram
     end
     PS->>DB: Insert activity_log
     PS->>DB: COMMIT
-    UI->>R: StockUpdated (proposed)
-    UI-->>C: Success
+    UI->>R: StockUpdated
+    UI-->>M: Success
 ```
 
 ### 9.4 Adjust Stock with a Reason (FR18)
@@ -484,7 +484,7 @@ sequenceDiagram
         SS->>DB: Insert stock_ledger type adjustment with reason
         SS->>DB: Insert activity_log
         SS->>DB: COMMIT
-        UI->>R: StockUpdated (proposed)
+        UI->>R: StockUpdated
         UI-->>M: Success
     end
 ```
