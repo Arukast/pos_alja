@@ -371,6 +371,211 @@ sequenceDiagram
 
 ---
 
+## 9. Target Workflows (Not Implemented)
+
+These flows define the redevelopment contract for FR9, FR10, FR15, FR16, FR18, FR19, FR24, and FR26. They are not in the current code.
+
+### 9.1 Update an Order Before Production (FR9)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Designer or Cashier
+    participant UI as Order Screen
+    participant OS as OrderService
+    participant DB as Database
+    participant R as Reverb
+
+    A->>UI: Open invoice
+    UI->>DB: Load invoice and orders
+    UI->>UI: Check every order status = 0
+    alt Any order already in production
+        UI-->>A: HTTP 409, order cannot be changed
+    else Editable
+        A->>UI: Add, remove, or change items, quantities, specs, deadline
+        UI->>OS: updateOrder(invoice, data, actor)
+        OS->>DB: BEGIN
+        OS->>DB: Lock invoice and orders
+        OS->>DB: Apply item changes
+        OS->>DB: Recalculate grand_total, total_cost, total_profit, accounts_receivable
+        OS->>DB: Insert activity_log with before and after
+        OS->>DB: COMMIT
+        UI->>R: OrderUpdated
+        UI-->>A: Success
+    end
+```
+
+### 9.2 Update Design Status (FR10)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor D as Designer
+    participant UI as Order Screen
+    participant OS as OrderService
+    participant DB as Database
+    participant R as Reverb
+
+    D->>UI: Set design status
+    UI->>OS: updateDesignStatus(order, status, actor)
+    OS->>DB: Validate transition (pending -> in_design -> approved)
+    alt Invalid transition
+        OS-->>UI: Validation error
+    else Valid
+        OS->>DB: BEGIN
+        OS->>DB: Update design_status
+        OS->>DB: Set design_approved_at and design_approved_by when approved
+        OS->>DB: Insert audit and status log
+        OS->>DB: COMMIT
+        UI->>R: OrderUpdated
+        UI-->>D: Success
+    end
+```
+
+### 9.3 Record a Raw-Material Purchase (FR15)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Cashier
+    participant UI as Purchase Screen
+    participant PS as PurchaseService
+    participant DB as Database
+    participant R as Reverb
+
+    C->>UI: Submit purchase header and line items
+    UI->>UI: Validate material, quantity, unit cost
+    UI->>PS: recordPurchase(data, cashier)
+    PS->>DB: BEGIN
+    PS->>DB: Insert purchases
+    PS->>DB: Insert purchase_items
+    loop Each line item
+        PS->>DB: Lock branch stock row
+        PS->>DB: Increment current_stock
+        PS->>DB: Insert stock_ledger type purchase
+    end
+    PS->>DB: Insert activity_log
+    PS->>DB: COMMIT
+    UI->>R: StockUpdated (proposed)
+    UI-->>C: Success
+```
+
+### 9.4 Adjust Stock with a Reason (FR18)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Branch Manager
+    participant UI as Stock Screen
+    participant SS as StockService
+    participant DB as Database
+    participant R as Reverb
+
+    M->>UI: Submit new quantity or delta and reason
+    UI->>UI: Require reason 3-255 characters
+    UI->>SS: adjustStock(material, mode, quantity, reason, manager)
+    SS->>DB: Validate result is not negative
+    alt Negative result
+        SS-->>UI: Validation error
+    else Valid
+        SS->>DB: BEGIN
+        SS->>DB: Lock branch stock row
+        SS->>DB: Update current_stock
+        SS->>DB: Insert stock_ledger type adjustment with reason
+        SS->>DB: Insert activity_log
+        SS->>DB: COMMIT
+        UI->>R: StockUpdated (proposed)
+        UI-->>M: Success
+    end
+```
+
+### 9.5 Record Production Usage (FR16)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Production
+    participant UI as Production Screen
+    participant OS as OrderService
+    participant IS as InventoryService
+    participant DB as Database
+    participant R as Reverb
+
+    P->>UI: Start production or record usage
+    UI->>OS: startProduction(order, operator)
+    OS->>DB: BEGIN
+    OS->>DB: Set order status = 1 and operator
+    OS->>IS: recordUsage(order, material, quantity, operator)
+    IS->>DB: Lock branch stock row
+    IS->>DB: Decrement current_stock
+    IS->>DB: Insert stock_ledger type usage with order reference
+    OS->>DB: Insert order_status_log
+    OS->>DB: COMMIT
+    UI->>R: OrderUpdated
+    UI-->>P: Success
+```
+
+### 9.6 Export a Report (FR24)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Owner or Branch Manager
+    participant UI as Report Screen
+    participant ES as ReportExportService
+    participant DB as Database
+    participant FS as Storage
+
+    A->>UI: Choose report, period, branch, format
+    UI->>ES: export(filters, format)
+    ES->>DB: Query summary and detail rows
+    ES->>ES: Build XLSX or PDF
+    ES->>FS: Store generated file
+    ES-->>UI: Download path
+    UI-->>A: Download file
+```
+
+### 9.7 Manual and Scheduled Backup (FR26)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Owner
+    participant SCH as Scheduler
+    participant UI as Backup Screen
+    participant BS as BackupService
+    participant DB as Database
+    participant FS as External Storage
+
+    alt Manual
+        O->>UI: Run backup
+        UI->>BS: run(manual, actor)
+    else Scheduled
+        SCH->>BS: run(scheduled)
+    end
+    BS->>DB: Dump schema and data
+    BS->>FS: Store encrypted backup
+    BS->>DB: Insert backup audit log
+    BS-->>UI: Success or failure
+```
+
+### 9.8 Read the Production Queue (FR19)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Any Role
+    participant UI as Production Queue
+    participant DB as Database
+
+    A->>UI: Open production queue
+    UI->>DB: Query orders by branch and status
+    DB-->>UI: Rows sorted by deadline, priority, created_at
+    UI-->>A: Queue with customer, deadline, priority, status, designer, operator
+```
+
+---
+
 ## Diagram Maintenance
 
 Add a sequence diagram when a new cross-component workflow is introduced or when a service contract changes enough that the existing diagram would mislead. Keep each diagram at the level of service calls and database effects, not private helper methods.

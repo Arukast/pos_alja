@@ -6,7 +6,8 @@
   2. The small set of HTTP routes that return HTML.
   3. The WebSocket broadcast contract.
   4. The Livewire action surface that the browser calls.
-- **What it does not cover:** Proposed or future REST endpoints. None exist in the repository.
+  5. Proposed target contracts for the redevelopment (§13), clearly marked as not implemented.
+- **What it does not cover:** Public JSON API endpoints. None exist in the repository.
 
 The service layer is described as "API-ready" in `AGENTS.md` §2.7 because business logic is isolated there. That is an architectural property, not an exposed API.
 
@@ -501,7 +502,83 @@ Broadcast calls are synchronous. A Reverb outage can surface as an exception fro
 
 ---
 
-## 13. Compatibility Rules
+## 13. Target Contracts (Proposed)
+
+These contracts are required by the redevelopment but do not exist yet. They are proposals, not current behavior. Keep them aligned with `docs/requirements/fr.md` and `docs/architecture/erd.md`.
+
+### 13.1 ProductService
+
+| Method | Input | Output | Notes |
+| :--- | :--- | :--- | :--- |
+| `paginate(array $filters): LengthAwarePaginator` | `search`, `category_id`, `is_active`, `per_page` | Paginated products | FR7; default 20 rows |
+| `create(array $data, User $actor): Product` | `name`, `product_category_id`, `pricing_type`, `is_active` | `Product` | FR6; audit log |
+| `update(Product $product, array $data, User $actor): Product` | same fields | `Product` | FR6; audit log |
+| `delete(Product $product, User $actor): void` | none | void | FR6; soft delete |
+
+### 13.2 OrderService extensions
+
+| Method | Input | Output | Notes |
+| :--- | :--- | :--- | :--- |
+| `updateOrder(Invoice $invoice, array $data, User $actor): Invoice` | `items`, `discount`, `deadline` | Updated `Invoice` | FR9; reject if any order `status > 0`; recalculate totals and receivable; audit before/after |
+| `updateDesignStatus(Order $order, string $status, User $actor): void` | `pending`, `in_design`, `approved` | void | FR10; forward-only transition; store approver and timestamp |
+
+### 13.3 PurchaseService
+
+| Method | Input | Output | Notes |
+| :--- | :--- | :--- | :--- |
+| `recordPurchase(array $data, User $cashier): Purchase` | `purchased_at`, `supplier`, `notes`, `items[]` | `Purchase` | FR15; items require `material_id`, `quantity`, `unit_cost`; one transaction; increment stock; write `stock_ledgers` type `purchase` |
+
+### 13.4 StockService
+
+| Method | Input | Output | Notes |
+| :--- | :--- | :--- | :--- |
+| `adjustStock(Material $material, string $mode, float $quantity, string $reason, User $manager): StockLedger` | `mode` (`set` or `delta`), `quantity`, `reason` | `StockLedger` | FR18; reason required; new stock cannot be negative; type `adjustment` |
+| `lowStock(?string $branchId = null): Collection` | branch or null | Materials below minimum | FR17; owner null means all branches |
+| `recordUsage(Order $order, Material $material, float $quantity, User $operator): StockLedger` | order, material, quantity | `StockLedger` | FR16; type `usage` with order reference |
+
+### 13.5 ReportExportService
+
+| Method | Input | Output | Notes |
+| :--- | :--- | :--- | :--- |
+| `export(string $report, string $format, ?string $branchId, string $startDate, string $endDate): string` | report name, `xlsx` or `pdf`, branch, dates | Storage path | FR24; owner all branches, manager own branch; write audit log |
+
+### 13.6 BackupService
+
+| Method | Input | Output | Notes |
+| :--- | :--- | :--- | :--- |
+| `run(string $mode, ?User $actor = null): BackupResult` | `manual` or `scheduled` | path, size, status | FR26; manual is owner-only; store outside the database |
+| `prune(int $days): int` | retention days | Deleted count | FR26; retention policy |
+
+### 13.7 Proposed HTTP Routes
+
+| Method | Path | Access | Response | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| GET | `/reports/export` | Owner, manager | File download | Query: `report`, `format`, `branch_id`, `start_date`, `end_date`; 403 for invalid branch |
+| POST | `/backups` | Owner | Redirect or 202 | Trigger manual backup; 403 for other roles |
+| GET | `/backups` | Owner | HTML list | Backup history and status |
+
+### 13.8 Proposed Broadcast Events
+
+| Event | Channel | Payload | Notes |
+| :--- | :--- | :--- | :--- |
+| `StockUpdated` | `private-branch.{branchId}` | Empty | FR15, FR16, FR18; branch authorization callback |
+| `OrderUpdated` | `private-branch.{branchId}` | Empty | Target change from the current public `orders` channel; authorize owner or matching branch |
+
+The current `OrderUpdated` event is public and has an empty payload. Moving it to a private branch channel is a security improvement for the redevelopment.
+
+### 13.9 Proposed Error Additions
+
+| Error | Condition | Response |
+| :--- | :--- | :--- |
+| `409 Conflict` | Order update after production started | Reject with a clear message |
+| `422 Unprocessable Entity` | Invalid design-status transition, negative stock, missing adjustment reason | Validation error |
+| `403 Forbidden` | Role or branch mismatch | Standard error page |
+| `507 Insufficient Storage` | Backup target unavailable | Backup failure, logged and visible to the owner |
+| `409 Conflict` | Duplicate purchase submission when an idempotency key is configured (optional) | Reject duplicate |
+
+---
+
+## 14. Compatibility Rules
 
 1. These contracts are internal. Changing a service signature requires updating every caller and its tests in the same change.
 2. Do not add a public JSON API by exposing services directly. Add routes, request validation, API authentication, and a versioning strategy first.
