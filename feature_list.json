@@ -210,5 +210,16 @@
         "verification": "1. Log in as owner. 2. Verify 'Printer Machines' link exists under Administration and opens MachineManagement component. 3. Register global machine and branch machine. 4. Verify cost (HPP) input is saved. 5. Log in as manager, verify 'Printer Machines' exists under Configuration and only displays branch machines. 6. Verify cashier/designer/production role access is denied with 403. 7. Run test: Tests\\Feature\\MachineManagementTest",
         "evidence": "MachineManagement component (app/Livewire/Admin/MachineManagement.php) and MachineService (app/Services/MachineService.php) manage machine lifecycle. MachineForm handles input validation. Navigation links added in _role_links.blade.php. Tab layout integrations in manager.blade.php and owner.blade.php. Supported by Feature test MachineManagementTest.php.",
         "notes": "Cost stored directly in machines table. Role checks ensure only managers/owners can configure machines. Soft delete/restore features supported. Real-time updates via OrderUpdated broadcast event."
+    },
+    {
+        "id": "development_documentation",
+        "priority": 20,
+        "area": "documentation",
+        "title": "Development Documentation Set",
+        "user_visible_behavior": "Developers and integrators have a current requirements set, access matrix, ERD, sequence diagrams, and internal API contracts that match the implemented system.",
+        "status": "passing",
+        "verification": "1. Confirm docs/requirements/fr.md, docs/requirements/nfr.md, docs/requirements/access-matrix.md, docs/architecture/erd.md, docs/architecture/sequence-diagrams.md, and docs/architecture/api-contracts.md exist. 2. Confirm all Mermaid blocks are structurally balanced. 3. Independent read-only accuracy reviews against app/, routes/, database/migrations/, and tests/ found no remaining high-severity issues. 4. Re-run the review when the code changes.",
+        "evidence": "Six documents under docs/ produced on branch docs/development-docs. Requirements and access matrix reviewed against Livewire components and services; architecture docs reviewed against migrations, models, services, and routes. Known code gaps are recorded in the documents instead of being omitted.",
+        "notes": "Documentation unit, not a runtime feature. The PHP test suite was not executed because the Docker CLI is unavailable in this environment. Observed gaps recorded in the docs: manager user-management mode bypass, material branch switching, waste tab render bug, category cascade, and split material transactions."
     }
 ]
