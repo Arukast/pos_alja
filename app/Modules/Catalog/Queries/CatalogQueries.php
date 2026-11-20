@@ -1,0 +1,153 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Catalog\Queries;
+
+use App\Models\Attribute;
+use App\Models\AttributeType;
+use App\Models\Machine;
+use App\Models\Pricing;
+use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\StockLedger;
+use App\Models\User;
+use App\Support\BranchScope;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
+
+final class CatalogQueries
+{
+    /**
+     * @return Collection<int, ProductCategory>
+     */
+    public function categories(): Collection
+    {
+        return ProductCategory::query()->orderBy('name')->get();
+    }
+
+    /**
+     * @return Collection<int, AttributeType>
+     */
+    public function attributeTypes(): Collection
+    {
+        return AttributeType::query()->orderBy('name')->get();
+    }
+
+    /**
+     * @return Collection<int, Attribute>
+     */
+    public function attributes(User $actor, ?string $branchId): Collection
+    {
+        $query = Attribute::query()->with('branch');
+
+        if ($actor->role === 'owner') {
+            if ($branchId !== null && $branchId !== '' && $branchId !== 'all') {
+                $query->where('branch_id', $branchId);
+            }
+        } else {
+            $query->where(function (Builder $query) use ($actor): void {
+                $query->where('branch_id', $actor->branch_id)
+                    ->orWhereNull('branch_id');
+            });
+        }
+
+        return $query->orderBy('name')->get();
+    }
+
+    /**
+     * @param  array{search?: string|null, category_id?: string|null}  $filters
+     */
+    public function products(array $filters): LengthAwarePaginator
+    {
+        return Product::query()
+            ->with('category')
+            ->when(
+                $filters['category_id'] ?? null,
+                fn (Builder $query, string $categoryId) => $query->where(
+                    'product_category_id',
+                    $categoryId
+                )
+            )
+            ->when(
+                $filters['search'] ?? null,
+                fn (Builder $query, string $search) => $query->where(
+                    'name',
+                    'like',
+                    "%{$search}%"
+                )
+            )
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
+    }
+
+    /**
+     * @param  array{branch_id?: string|null, search?: string|null, include_deleted?: bool}  $filters
+     */
+    public function machines(User $actor, array $filters): LengthAwarePaginator
+    {
+        $query = Machine::query()->with('branch');
+
+        if ($actor->role === 'owner') {
+            $branchId = $filters['branch_id'] ?? null;
+
+            if (is_string($branchId) && $branchId !== '' && $branchId !== 'all') {
+                $query->where('branch_id', $branchId);
+            }
+        } else {
+            BranchScope::apply($query, $actor);
+        }
+
+        if ($filters['include_deleted'] ?? false) {
+            $query->withTrashed();
+        }
+
+        if ($filters['search'] ?? null) {
+            $query->where('name', 'like', '%'.$filters['search'].'%');
+        }
+
+        return $query->orderBy('name')->paginate(15)->withQueryString();
+    }
+
+    /**
+     * @param  array{branch_id?: string|null}  $filters
+     */
+    public function pricing(User $actor, array $filters): LengthAwarePaginator
+    {
+        $query = Pricing::query()->with(['product', 'material', 'branch']);
+
+        if ($actor->role === 'owner') {
+            $branchId = $filters['branch_id'] ?? null;
+
+            if (is_string($branchId) && $branchId !== '' && $branchId !== 'all') {
+                $query->where('branch_id', $branchId);
+            }
+        } else {
+            BranchScope::apply($query, $actor);
+        }
+
+        return $query->orderBy('min_qty')->paginate(20)->withQueryString();
+    }
+
+    /**
+     * @param  array{branch_id?: string|null}  $filters
+     */
+    public function stockLedgers(User $actor, array $filters): LengthAwarePaginator
+    {
+        $query = StockLedger::query()->with(['material', 'branch']);
+
+        if ($actor->role === 'owner') {
+            $branchId = $filters['branch_id'] ?? null;
+
+            if (is_string($branchId) && $branchId !== '' && $branchId !== 'all') {
+                $query->where('branch_id', $branchId);
+            }
+        } else {
+            BranchScope::apply($query, $actor);
+        }
+
+        return $query->orderByDesc('logged_at')->paginate(15)->withQueryString();
+    }
+}

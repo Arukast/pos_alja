@@ -2,6 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Modules\Catalog\Http\Controllers\AttributeController;
+use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
+use App\Modules\Catalog\Http\Controllers\CategoryController;
+use App\Modules\Catalog\Http\Controllers\MachineController;
+use App\Modules\Catalog\Http\Controllers\MaterialController;
+use App\Modules\Catalog\Http\Controllers\PricingController;
+use App\Modules\Catalog\Http\Controllers\ProductController;
+use App\Modules\Catalog\Http\Controllers\StockLedgerController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\BranchController;
 use App\Modules\Identity\Http\Controllers\UserController;
@@ -23,5 +31,14 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/{user}', [UserController::class, 'show']);
+
+        Route::get('/categories', [CategoryController::class, 'index']);
+        Route::get('/attribute-types', [AttributeTypeController::class, 'index']);
+        Route::get('/attributes', [AttributeController::class, 'index']);
+        Route::get('/products', [ProductController::class, 'index']);
+        Route::get('/materials', [MaterialController::class, 'index']);
+        Route::get('/machines', [MachineController::class, 'index']);
+        Route::get('/pricing', [PricingController::class, 'index']);
+        Route::get('/stock-ledgers', [StockLedgerController::class, 'index']);
     });
 });
