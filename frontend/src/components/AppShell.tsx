@@ -6,8 +6,11 @@ import { MobileDrawer } from './MobileDrawer';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { UserPopover } from './UserPopover';
+import { useOrderUpdates } from '../hooks/useOrderUpdates';
 
 export function AppShell() {
+    useOrderUpdates();
+
     const [collapsed, setCollapsed] = useState(
         () => localStorage.getItem('sidebarCollapsed') === 'true'
     );
