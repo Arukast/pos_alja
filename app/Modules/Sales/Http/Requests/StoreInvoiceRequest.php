@@ -40,8 +40,8 @@ final class StoreInvoiceRequest extends FormRequest
             'items.*.selected_attributes' => ['nullable', 'array'],
             'items.*.selected_attributes.*' => ['uuid', 'exists:attributes,id'],
             'items.*.is_manual_price' => ['sometimes', 'boolean'],
-            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
-            'items.*.cost' => ['nullable', 'numeric', 'min:0'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'items.*.cost' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
         ];
     }
 }

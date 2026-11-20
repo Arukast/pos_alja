@@ -6,6 +6,7 @@ namespace App\Modules\Inventory\Actions;
 
 use App\Models\Machine;
 use App\Models\MaterialBranchStock;
+use App\Models\Order;
 use App\Models\User;
 use App\Models\WastedMaterial;
 use App\Services\InventoryService;
@@ -63,6 +64,22 @@ final class LogWaste
             if (! $designerInBranch) {
                 throw ValidationException::withMessages([
                     'designer_id' => 'This designer belongs to another branch.',
+                ]);
+            }
+        }
+
+        if (isset($data['order_id'])) {
+            $orderInBranch = Order::query()
+                ->whereKey($data['order_id'])
+                ->whereHas(
+                    'invoice',
+                    fn ($query) => $query->where('branch_id', $branchId)
+                )
+                ->exists();
+
+            if (! $orderInBranch) {
+                throw ValidationException::withMessages([
+                    'order_id' => 'This order belongs to another branch.',
                 ]);
             }
         }

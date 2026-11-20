@@ -85,6 +85,8 @@ class PricingService
                 : null;
 
             if ($machine) {
+                $machineCost = (float) $machine->cost;
+
                 $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
                     ->where('machine_id', $machineId)
                     ->first();
@@ -94,8 +96,6 @@ class PricingService
 
                     if ((float) $machinePricing->cost > 0.0) {
                         $machineCost = (float) $machinePricing->cost;
-                    } else {
-                        $machineCost = (float) $machine->cost;
                     }
                 }
             }

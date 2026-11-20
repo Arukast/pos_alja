@@ -20,7 +20,7 @@ final class StartProduction
     {
         $updated = DB::transaction(function () use ($order, $operator): Order {
             $locked = Order::query()
-                ->with(['invoice', 'pricing.product'])
+                ->with(['invoice', 'pricing.product.category'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -38,8 +38,9 @@ final class StartProduction
             $pricing = $locked->pricing;
 
             if ($pricing !== null) {
-                $isArea = $pricing->product?->pricing_type === 'area';
-                $quantity = $isArea
+                $archetype = $pricing->product?->category?->calculation_archetype;
+                // shortcut: orders store area but not length, so linear jobs fall back to quantity.
+                $quantity = $archetype === 'surface_area'
                     ? (float) $locked->area * (float) $locked->quantity
                     : (float) $locked->quantity;
 
