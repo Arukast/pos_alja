@@ -13,6 +13,9 @@ use App\Modules\Catalog\Http\Controllers\StockLedgerController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\BranchController;
 use App\Modules\Identity\Http\Controllers\UserController;
+use App\Modules\Sales\Http\Controllers\CustomerController;
+use App\Modules\Sales\Http\Controllers\ExpenseController;
+use App\Modules\Sales\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -40,5 +43,12 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/machines', [MachineController::class, 'index']);
         Route::get('/pricing', [PricingController::class, 'index']);
         Route::get('/stock-ledgers', [StockLedgerController::class, 'index']);
+
+        Route::get('/customers', [CustomerController::class, 'index']);
+        Route::get('/invoices', [InvoiceController::class, 'index']);
+        Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+        Route::get('/invoices/{invoice}/ticket', [InvoiceController::class, 'ticket']);
+        Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);
+        Route::get('/expenses', [ExpenseController::class, 'index']);
     });
 });
