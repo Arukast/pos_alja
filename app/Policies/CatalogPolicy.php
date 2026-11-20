@@ -37,4 +37,24 @@ final class CatalogPolicy
     {
         return in_array($user->role, ['owner', 'manager'], true);
     }
+
+    public function manageCategories(User $user): bool
+    {
+        return in_array($user->role, ['owner', 'manager'], true);
+    }
+
+    public function manageAttributeTypes(User $user): bool
+    {
+        return in_array($user->role, ['owner', 'manager'], true);
+    }
+
+    public function manageAttributes(User $user): bool
+    {
+        return in_array($user->role, ['owner', 'manager'], true);
+    }
+
+    public function managePricing(User $user): bool
+    {
+        return in_array($user->role, ['owner', 'manager'], true);
+    }
 }

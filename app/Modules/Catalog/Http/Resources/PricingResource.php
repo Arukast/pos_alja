@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Http\Resources;
 
 use App\Models\Pricing;
+use App\Support\Decimal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,9 +30,9 @@ final class PricingResource extends JsonResource
             ] : null,
             'customer_type' => $this->customer_type,
             'min_qty' => $this->min_qty,
-            'price' => $this->price,
-            'cost' => $this->cost,
-            'profit' => $this->profit,
+            'price' => Decimal::money($this->price),
+            'cost' => Decimal::money($this->cost),
+            'profit' => Decimal::money($this->profit),
         ];
     }
 }

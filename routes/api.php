@@ -62,6 +62,35 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/pricing', [PricingController::class, 'index']);
         Route::get('/stock-ledgers', [StockLedgerController::class, 'index']);
 
+        Route::get('/materials/similar', [MaterialController::class, 'similar']);
+        Route::post('/materials', [MaterialController::class, 'store']);
+        Route::put('/materials/{material}', [MaterialController::class, 'update']);
+        Route::delete('/materials/{material}', [MaterialController::class, 'destroy']);
+        Route::post('/materials/{material}/restore', [MaterialController::class, 'restore']);
+        Route::post('/materials/{material}/stock', [MaterialController::class, 'stock']);
+        Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
+
+        Route::post('/machines', [MachineController::class, 'store']);
+        Route::put('/machines/{machine}', [MachineController::class, 'update']);
+        Route::delete('/machines/{machine}', [MachineController::class, 'destroy']);
+        Route::post('/machines/{machine}/restore', [MachineController::class, 'restore']);
+
+        Route::post('/categories', [CategoryController::class, 'store']);
+        Route::put('/categories/{category}', [CategoryController::class, 'update']);
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
+
+        Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
+        Route::delete('/attribute-types/{attributeType}', [AttributeTypeController::class, 'destroy']);
+
+        Route::post('/attributes', [AttributeController::class, 'store']);
+        Route::put('/attributes/{attribute}', [AttributeController::class, 'update']);
+        Route::delete('/attributes/{attribute}', [AttributeController::class, 'destroy']);
+
+        Route::post('/pricing/clone-tiers', [PricingController::class, 'cloneTiers']);
+        Route::post('/pricing', [PricingController::class, 'store']);
+        Route::put('/pricing/{pricing}', [PricingController::class, 'update']);
+        Route::delete('/pricing/{pricing}', [PricingController::class, 'destroy']);
+
         Route::get('/customers', [CustomerController::class, 'index']);
         Route::post('/customers', [CustomerController::class, 'store']);
         Route::get('/quotes/options', [QuoteOptionsController::class, 'index']);

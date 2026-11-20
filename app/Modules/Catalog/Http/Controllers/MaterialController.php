@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Material;
 use App\Models\User;
+use App\Modules\Catalog\Http\Requests\StoreMaterialRequest;
 use App\Modules\Catalog\Http\Resources\MaterialResource;
 use App\Modules\Catalog\Http\Resources\ProductionMaterialResource;
 use App\Modules\Catalog\Queries\MaterialQueries;
+use App\Services\InventoryService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 final class MaterialController extends Controller
@@ -38,6 +44,181 @@ final class MaterialController extends Controller
         if ($actor->role === 'production') {
             return ProductionMaterialResource::collection($materials);
         }
+
+        return MaterialResource::collection($materials);
+    }
+
+    public function store(
+        StoreMaterialRequest $request,
+        InventoryService $inventory
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $data = $request->validated();
+        $initialStock = (float) ($data['initial_stock'] ?? 0);
+        $minStock = (float) ($data['min_stock'] ?? 0);
+
+        $material = DB::transaction(function () use ($actor, $data, $inventory, $initialStock, $minStock): Material {
+            $material = $inventory->createGlobalMaterial($data);
+
+            $branches = $actor->role === 'owner'
+                ? Branch::query()->get()
+                : Branch::query()->whereKey($actor->branch_id)->get();
+
+            foreach ($branches as $branch) {
+                $inventory->initializeBranchStock(
+                    $material->id,
+                    $branch->id,
+                    $initialStock,
+                    $minStock
+                );
+            }
+
+            return $material;
+        });
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->load(['category', 'branchStocks.branch'])
+            ),
+        ], 201);
+    }
+
+    public function update(Request $request, Material $material): JsonResponse
+    {
+        Gate::authorize('update', $material);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'product_category_id' => ['required', 'uuid', 'exists:product_categories,id'],
+            'type' => ['nullable', 'string', 'max:50'],
+            'dimensions' => ['nullable', 'string', 'max:100'],
+            'cost' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
+            'price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
+        ]);
+
+        $material->update($data);
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function destroy(Material $material, InventoryService $inventory): Response
+    {
+        Gate::authorize('delete', $material);
+        $inventory->deleteGlobalMaterial($material->id);
+
+        return response()->noContent();
+    }
+
+    public function restore(string $material): JsonResponse
+    {
+        $model = Material::query()->withTrashed()->findOrFail($material);
+        Gate::authorize('restore', $model);
+        $model->restore();
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $model->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function stock(
+        Request $request,
+        Material $material,
+        InventoryService $inventory
+    ): JsonResponse {
+        Gate::authorize('update', $material);
+
+        $data = $request->validate([
+            'quantity' => ['required', 'numeric', 'gt:0', 'max:999999.99'],
+            'notes' => ['nullable', 'string', 'max:255'],
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+        ]);
+
+        $actor = $request->user();
+        $branchId = $actor instanceof User && $actor->role !== 'owner'
+            ? $actor->branch_id
+            : ($data['branch_id'] ?? null);
+
+        if ($branchId === null) {
+            abort(422, 'A branch is required.');
+        }
+
+        $inventory->addStock(
+            $material,
+            (float) $data['quantity'],
+            $data['notes'] ?? null,
+            $branchId
+        );
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function activate(
+        Request $request,
+        Material $material,
+        InventoryService $inventory
+    ): JsonResponse {
+        Gate::authorize('update', $material);
+
+        $data = $request->validate([
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'initial_stock' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'min_stock' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+        ]);
+
+        $actor = $request->user();
+        $branchId = $actor instanceof User && $actor->role !== 'owner'
+            ? $actor->branch_id
+            : ($data['branch_id'] ?? null);
+
+        if ($branchId === null) {
+            abort(422, 'A branch is required.');
+        }
+
+        $exists = $material->branchStocks()->where('branch_id', $branchId)->exists();
+
+        if (! $exists) {
+            $inventory->initializeBranchStock(
+                $material->id,
+                $branchId,
+                (float) ($data['initial_stock'] ?? 0),
+                (float) ($data['min_stock'] ?? 0)
+            );
+        }
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function similar(Request $request): AnonymousResourceCollection
+    {
+        Gate::authorize('create', Material::class);
+
+        $name = trim($request->string('name')->toString());
+
+        $materials = Material::query()
+            ->with(['category', 'branchStocks.branch'])
+            ->when($name !== '', fn ($query) => $query->where('name', 'like', "%{$name}%"))
+            ->orderBy('name')
+            ->limit(5)
+            ->get();
 
         return MaterialResource::collection($materials);
     }
