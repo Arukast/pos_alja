@@ -7,6 +7,8 @@ namespace App\Modules\Sales\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Modules\Sales\Actions\CreateInvoice;
+use App\Modules\Sales\Http\Requests\StoreInvoiceRequest;
 use App\Modules\Sales\Http\Resources\InvoiceResource;
 use App\Modules\Sales\Http\Resources\ProductionInvoiceResource;
 use App\Modules\Sales\Queries\InvoiceList;
@@ -46,6 +48,23 @@ final class InvoiceController extends Controller
         }
 
         return InvoiceResource::collection($paginator);
+    }
+
+    public function store(StoreInvoiceRequest $request, CreateInvoice $action): JsonResponse
+    {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        Gate::authorize('create', Invoice::class);
+
+        $invoice = $action->execute($request->validated(), $actor);
+
+        return response()->json([
+            'invoice' => new InvoiceResource($invoice),
+        ], 201);
     }
 
     public function show(Request $request, Invoice $invoice): JsonResponse

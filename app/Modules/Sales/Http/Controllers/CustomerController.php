@@ -6,8 +6,11 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Modules\Sales\Actions\CreateCustomer;
+use App\Modules\Sales\Http\Requests\StoreCustomerRequest;
 use App\Modules\Sales\Http\Resources\CustomerResource;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
@@ -32,5 +35,16 @@ final class CustomerController extends Controller
             ->get();
 
         return CustomerResource::collection($customers);
+    }
+
+    public function store(
+        StoreCustomerRequest $request,
+        CreateCustomer $action
+    ): JsonResponse {
+        $customer = $action->execute($request->validated());
+
+        return response()->json([
+            'customer' => new CustomerResource($customer),
+        ], 201);
     }
 }

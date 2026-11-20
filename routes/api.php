@@ -21,6 +21,8 @@ use App\Modules\Reporting\Http\Controllers\ReportController;
 use App\Modules\Sales\Http\Controllers\CustomerController;
 use App\Modules\Sales\Http\Controllers\ExpenseController;
 use App\Modules\Sales\Http\Controllers\InvoiceController;
+use App\Modules\Sales\Http\Controllers\QuoteController;
+use App\Modules\Sales\Http\Controllers\QuoteOptionsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
@@ -52,7 +54,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/stock-ledgers', [StockLedgerController::class, 'index']);
 
         Route::get('/customers', [CustomerController::class, 'index']);
+        Route::post('/customers', [CustomerController::class, 'store']);
+        Route::get('/quotes/options', [QuoteOptionsController::class, 'index']);
+        Route::post('/quotes', [QuoteController::class, 'store']);
         Route::get('/invoices', [InvoiceController::class, 'index']);
+        Route::post('/invoices', [InvoiceController::class, 'store']);
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
         Route::get('/invoices/{invoice}/ticket', [InvoiceController::class, 'ticket']);
         Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);

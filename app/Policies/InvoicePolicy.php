@@ -16,6 +16,21 @@ final class InvoicePolicy
         return in_array($user->role, self::ROLES, true);
     }
 
+    public function create(User $user): bool
+    {
+        return $user->role === 'designer' && $user->branch_id !== null;
+    }
+
+    public function createQuote(User $user): bool
+    {
+        return $this->create($user);
+    }
+
+    public function viewQuoteOptions(User $user): bool
+    {
+        return $this->create($user);
+    }
+
     public function view(User $user, Invoice $invoice): bool
     {
         return $this->sameBranch($user, $invoice);

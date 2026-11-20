@@ -12,4 +12,9 @@ final class CustomerPolicy
     {
         return in_array($user->role, ['owner', 'manager', 'cashier', 'designer'], true);
     }
+
+    public function create(User $user): bool
+    {
+        return $user->role === 'designer';
+    }
 }

@@ -35,7 +35,7 @@ final class OrderResource extends JsonResource
             'ordered_at' => $this->ordered_at,
             'status' => $this->status,
             'pickup_status' => $this->pickup_status,
-            'is_manual_price' => $this->is_manual_price,
+            'is_manual_price' => (bool) $this->is_manual_price,
         ];
     }
 }
