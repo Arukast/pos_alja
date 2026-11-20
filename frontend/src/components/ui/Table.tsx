@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn';
 export function Table({ className, children }: { className?: string; children: ReactNode }) {
     return (
         <div className="overflow-x-auto">
-            <table className={cn('w-full min-w-[720px] text-left text-sm', className)}>{children}</table>
+            <table className={cn('w-full min-w-[560px] text-left text-sm sm:min-w-[720px]', className)}>{children}</table>
         </div>
     );
 }
@@ -51,7 +51,7 @@ export function TableEmpty({ colSpan, children }: { colSpan: number; children: R
         <tr>
             <td
                 colSpan={colSpan}
-                className="text-light-muted px-3 py-8 text-center text-sm dark:text-gray-400"
+                className="text-light-muted px-3 py-8 text-left text-sm sm:text-center dark:text-gray-400"
             >
                 {children}
             </td>

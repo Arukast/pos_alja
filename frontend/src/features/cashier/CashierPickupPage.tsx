@@ -57,7 +57,7 @@ export function CashierPickupPage() {
                                         <TableHeaderCell>Invoice</TableHeaderCell>
                                         <TableHeaderCell>Customer</TableHeaderCell>
                                         <TableHeaderCell>Paid</TableHeaderCell>
-                                        <TableHeaderCell className="bg-light-surface sticky right-0 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Action
                                         </TableHeaderCell>
                                     </TableRow>
@@ -71,7 +71,7 @@ export function CashierPickupPage() {
                                                 <TableCell>{invoice.invoice_number}</TableCell>
                                                 <TableCell>{invoice.customer?.name ?? '-'}</TableCell>
                                                 <TableCell>{formatMoney(invoice.grand_total)}</TableCell>
-                                                <TableCell className="bg-white sticky right-0 dark:bg-surface-700">
+                                                <TableCell className="bg-white border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <Button
                                                         size="sm"
                                                         loading={pickup.isPending}

@@ -47,7 +47,7 @@ export function CashierPaymentsPage() {
                                         <TableHeaderCell>Status</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Total</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Receivable</TableHeaderCell>
-                                        <TableHeaderCell className="bg-light-surface sticky right-0 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Action
                                         </TableHeaderCell>
                                     </TableRow>
@@ -69,7 +69,7 @@ export function CashierPaymentsPage() {
                                                 <TableCell className="text-right">
                                                     {formatMoney(invoice.accounts_receivable)}
                                                 </TableCell>
-                                                <TableCell className="bg-white sticky right-0 dark:bg-surface-700">
+                                                <TableCell className="bg-white border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <Button size="sm" onClick={() => setSelected(invoice)}>
                                                         Checkout
                                                     </Button>

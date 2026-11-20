@@ -172,7 +172,7 @@ export function CrudPage<T extends { id: string }>({
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
-                                        <TableHeaderCell className="bg-light-surface sticky right-0 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Actions
                                         </TableHeaderCell>
                                     </TableRow>
@@ -190,7 +190,7 @@ export function CrudPage<T extends { id: string }>({
                                                         {column.cell(row)}
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="bg-white sticky right-0 dark:bg-surface-700">
+                                                <TableCell className="bg-white border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <div className="flex flex-wrap gap-2">
                                                         {rowActions?.(row)}
                                                         {update ? (
