@@ -16,6 +16,14 @@ if [[ ! -f .env ]]; then
     php artisan key:generate
 fi
 
+if grep -q '^DB_CONNECTION=sqlite' .env && [[ ! -f database/database.sqlite ]]; then
+    echo "[init] Creating local SQLite database file..."
+    touch database/database.sqlite
+fi
+
+echo "[init] Running migrations..."
+php artisan migrate --force
+
 echo "[init] Running backend tests..."
 php artisan test
 
