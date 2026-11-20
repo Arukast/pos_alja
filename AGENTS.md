@@ -68,6 +68,7 @@ app/Modules/{Identity,Catalog,Sales,Inventory,Production,Reporting,Audit}
 app/Models              shared Eloquent persistence
 app/Policies            record-level authorization
 app/Support             BranchScope, Decimal, SafeBroadcast
+app/Services            shared domain services used by module Actions
 routes/api.php          /api/v1
 routes/channels.php     private branch and owner channels
 frontend/               React SPA

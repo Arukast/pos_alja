@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/queries';
 import type { Branch, Category, Machine, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { useBranches } from '../../hooks/useBranches';
 import { collectionAsPage } from '../../lib/pagination';
+import { formatMoney } from '../../lib/money';
 
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
     branches.map((branch) => ({ value: branch.id, label: branch.name }));
@@ -139,13 +141,14 @@ export function OwnerMaterialsPage() {
                                   .map((stock) => `${stock.branch_name ?? '-'}: ${stock.current_stock}`)
                                   .join(', '),
                 },
-                { header: 'Cost', cell: (material) => material.cost },
-                { header: 'Price', cell: (material) => material.price },
+                { header: 'Cost', cell: (material) => formatMoney(material.cost) },
+                { header: 'Price', cell: (material) => formatMoney(material.price) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
             remove={(id) => api.admin.deleteMaterial(id)}
+            rowActions={(material) => <RestockMaterialButton material={material} />}
             createLabel="New material"
         />
     );
@@ -236,7 +239,7 @@ export function OwnerMachinesPage() {
             columns={[
                 { header: 'Machine', cell: (machine) => <span className="font-medium">{machine.name}</span> },
                 { header: 'Branch', cell: (machine) => machine.branch?.name ?? 'Global' },
-                { header: 'Base cost', cell: (machine) => machine.cost },
+                { header: 'Base cost', cell: (machine) => formatMoney(machine.cost) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMachine(values)}

@@ -6,6 +6,8 @@ namespace App\Modules\Catalog\Http\Resources;
 
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
+use App\Models\User;
+use App\Support\Decimal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,6 +20,14 @@ final class MaterialResource extends JsonResource
     public function toArray(Request $request): array
     {
         $stocks = $this->branchStocks;
+        $actor = $request->user();
+
+        if ($actor instanceof User && $actor->role !== 'owner') {
+            $stocks = $stocks
+                ->filter(fn (MaterialBranchStock $stock): bool => $stock->branch_id === $actor->branch_id)
+                ->values();
+        }
+
         $single = $stocks->count() === 1 ? $stocks->first() : null;
 
         return [
@@ -25,8 +35,8 @@ final class MaterialResource extends JsonResource
             'name' => $this->name,
             'type' => $this->type,
             'dimensions' => $this->dimensions,
-            'cost' => $this->cost,
-            'price' => $this->price,
+            'cost' => Decimal::money($this->cost),
+            'price' => Decimal::money($this->price),
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,

@@ -3,9 +3,11 @@ import { useState } from 'react';
 
 import { api } from '../../api/queries';
 import type { Attribute, AttributeType, Category, Machine, Material, Pricing, UserRecord } from '../../api/types';
+import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageHeader } from '../../components/PageHeader';
 import { ResourceTable } from '../../components/ResourceTable';
+import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
@@ -15,6 +17,7 @@ import { collectionAsPage } from '../../lib/pagination';
 import { formatMoney } from '../../lib/money';
 
 export function ManagerUsersPage() {
+    const { user } = useAuth();
     const fields: Array<CrudField<UserRecord>> = [
         { key: 'name', label: 'Name', required: true },
         { key: 'username', label: 'Username', required: true },
@@ -47,8 +50,12 @@ export function ManagerUsersPage() {
                 { header: 'Role', cell: (user) => <Badge tone="brand">{user.role}</Badge> },
             ]}
             fields={fields}
-            create={(values) => api.admin.createUser(values)}
-            update={(id, values) => api.admin.updateUser(id, values)}
+            create={(values) =>
+                api.admin.createUser({ ...values, branch_id: user?.branch?.id })
+            }
+            update={(id, values) =>
+                api.admin.updateUser(id, { ...values, branch_id: user?.branch?.id })
+            }
             remove={(id) => api.admin.deleteUser(id)}
             createLabel="New staff account"
         />
@@ -85,12 +92,11 @@ export function ManagerMaterialsPage() {
                 { header: 'Category', cell: (material) => material.category?.name ?? '-' },
                 { header: 'Stock', cell: (material) => material.current_stock ?? '-' },
                 { header: 'Minimum', cell: (material) => material.min_stock ?? '-' },
-                { header: 'Cost', cell: (material) => material.cost },
+                { header: 'Cost', cell: (material) => formatMoney(material.cost) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
-            update={(id, values) => api.admin.updateMaterial(id, values)}
-            remove={(id) => api.admin.deleteMaterial(id)}
+            rowActions={(material) => <RestockMaterialButton material={material} />}
             createLabel="New material"
         />
     );
@@ -131,7 +137,7 @@ export function ManagerMachinesPage() {
             queryFn={(page) => api.machines({ page, include_deleted: 1 })}
             columns={[
                 { header: 'Machine', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Base cost', cell: (machine) => machine.cost },
+                { header: 'Base cost', cell: (machine) => formatMoney(machine.cost) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMachine(values)}

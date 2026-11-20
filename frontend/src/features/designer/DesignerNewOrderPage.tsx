@@ -107,6 +107,7 @@ export function DesignerNewOrderPage() {
         },
         onSuccess: (response) => {
             void queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            void queryClient.invalidateQueries({ queryKey: ['designer', 'invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setNotice(`Invoice ${response.invoice.invoice_number} created.`);
             setCart([]);

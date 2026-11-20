@@ -48,3 +48,9 @@
 - Livewire and Blade application UI removed.
 - API-first modules, Sanctum, React SPA, private Reverb channels, Docker Compose, CI, `init.sh`, and docs are in place.
 - Remaining work is the FR sprints above, not the architecture.
+
+## Convention Debt
+
+- Some Catalog controllers still use inline `$request->validate()` and direct model writes (materials update, attributes, attribute types, pricing). Sales and Identity use FormRequests plus Actions. Extract Catalog FormRequests/Actions in the next cleanup.
+- Catalog price/cost mutations are not fully written to `activity_logs`; FR25 remains partial.
+- `ProductionController::summary` builds its aggregate query in the controller; extract a `ProductionSummaryQuery` when FR19/FR21 work starts.

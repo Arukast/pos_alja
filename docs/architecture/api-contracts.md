@@ -73,9 +73,9 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | GET | `/products` | owner, manager, cashier, designer |
 | GET | `/materials` | owner all; manager/production own branch |
 | POST | `/materials` | owner; manager (own branch stock only) |
-| PUT | `/materials/{material}` | owner, manager |
+| PUT | `/materials/{material}` | owner |
 | DELETE | `/materials/{material}` | owner |
-| POST | `/materials/{material}/restore` | owner, manager |
+| POST | `/materials/{material}/restore` | owner |
 | POST | `/materials/{material}/stock` | owner, manager (manager branch forced) |
 | POST | `/materials/{material}/activate` | owner, manager |
 | GET | `/materials/similar?name=` | owner, manager |

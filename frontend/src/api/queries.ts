@@ -116,6 +116,10 @@ export const api = {
 
     invoice: (id: string) => apiFetch<{ invoice: Invoice }>(`/invoices/${id}`),
 
+    ticket: (id: string) => apiFetch<{ invoice: Invoice }>(`/invoices/${id}/ticket`),
+
+    receipt: (id: string) => apiFetch<{ invoice: Invoice }>(`/invoices/${id}/receipt`),
+
     expenses: (params: QueryParams = {}) =>
         apiFetch<Paginated<Expense>>(`/expenses${queryString(params)}`),
 

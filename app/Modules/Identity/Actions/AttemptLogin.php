@@ -37,6 +37,10 @@ final class AttemptLogin
             $this->fail($credentials['username']);
         }
 
+        if ($user->branch !== null && ! $user->branch->is_active) {
+            $this->fail($credentials['username']);
+        }
+
         RateLimiter::clear($this->throttleKey($credentials['username']));
 
         Auth::login($user, (bool) ($credentials['remember'] ?? false));

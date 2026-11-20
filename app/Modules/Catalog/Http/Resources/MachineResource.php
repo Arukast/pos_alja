@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Http\Resources;
 
 use App\Models\Machine;
+use App\Support\Decimal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,7 +20,7 @@ final class MachineResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'cost' => $this->cost,
+            'cost' => Decimal::money($this->cost),
             'branch_id' => $this->branch_id,
             'branch' => $this->branch ? [
                 'id' => $this->branch->id,

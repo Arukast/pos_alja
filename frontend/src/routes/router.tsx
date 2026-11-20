@@ -49,7 +49,11 @@ export const router = createBrowserRouter([
         element: <RequireAuth />,
         children: [
             { path: 'orders/:id/ticket', element: <TicketPage /> },
-            { path: 'orders/:id/receipt', element: <ReceiptPage /> },
+            {
+                path: 'orders/:id/receipt',
+                element: <RequireRole roles={['owner', 'manager', 'cashier', 'designer']} />,
+                children: [{ index: true, element: <ReceiptPage /> }],
+            },
             {
                 element: <AppShell />,
                 children: [

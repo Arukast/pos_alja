@@ -10,7 +10,7 @@ import { formatMoney } from '../../lib/money';
 export function ReceiptPage() {
     const { id = '' } = useParams();
     const navigate = useNavigate();
-    const query = useQuery({ queryKey: ['invoice', id], queryFn: () => api.invoice(id) });
+    const query = useQuery({ queryKey: ['invoice', 'receipt', id], queryFn: () => api.receipt(id) });
     const invoice = query.data?.invoice;
 
     if (query.isLoading) {

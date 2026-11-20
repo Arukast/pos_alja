@@ -218,6 +218,29 @@ class ProductionWriteApiTest extends TestCase
             ->assertJsonValidationErrors('quantity');
     }
 
+    public function test_waste_rejects_cross_branch_associations(): void
+    {
+        $otherMachine = Machine::create([
+            'branch_id' => $this->branchTwo->id,
+            'name' => 'Other Printer',
+            'cost' => 1000,
+        ]);
+        $otherDesigner = $this->user('designer', $this->branchTwo);
+
+        foreach ([
+            ['machine_id' => $otherMachine->id],
+            ['designer_id' => $otherDesigner->id],
+            ['order_id' => $this->otherOrder->id],
+        ] as $extra) {
+            $this->actingAs($this->production)
+                ->postJson('/api/v1/waste', array_merge([
+                    'material_id' => $this->material->id,
+                    'quantity' => 1,
+                ], $extra))
+                ->assertStatus(422);
+        }
+    }
+
     private function branch(string $name): Branch
     {
         return Branch::create([

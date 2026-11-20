@@ -136,7 +136,7 @@ final class MaterialController extends Controller
         Material $material,
         InventoryService $inventory
     ): JsonResponse {
-        Gate::authorize('update', $material);
+        Gate::authorize('restock', $material);
 
         $data = $request->validate([
             'quantity' => ['required', 'numeric', 'gt:0', 'max:999999.99'],
@@ -172,7 +172,7 @@ final class MaterialController extends Controller
         Material $material,
         InventoryService $inventory
     ): JsonResponse {
-        Gate::authorize('update', $material);
+        Gate::authorize('activate', $material);
 
         $data = $request->validate([
             'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],

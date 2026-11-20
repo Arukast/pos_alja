@@ -195,6 +195,73 @@ class CatalogWriteApiTest extends TestCase
         $this->assertSoftDeleted('materials', ['id' => $this->material->id]);
     }
 
+    public function test_manager_cannot_update_global_material_master(): void
+    {
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/materials/{$this->material->id}", [
+                'name' => 'Manager Rename',
+                'product_category_id' => $this->category->id,
+                'cost' => 1,
+                'price' => 2,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/materials/{$this->material->id}", [
+                'name' => 'Owner Rename',
+                'product_category_id' => $this->category->id,
+                'cost' => 1200,
+                'price' => 2400,
+            ])
+            ->assertOk()
+            ->assertJsonPath('material.cost', '1200.00')
+            ->assertJsonPath('material.price', '2400.00');
+    }
+
+    public function test_material_restore_keeps_branch_stock(): void
+    {
+        $this->actingAs($this->owner)
+            ->deleteJson("/api/v1/materials/{$this->material->id}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('materials', ['id' => $this->material->id]);
+        $this->assertDatabaseHas('material_branch_stock', [
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 5,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->postJson("/api/v1/materials/{$this->material->id}/restore")
+            ->assertOk();
+
+        $this->assertDatabaseHas('material_branch_stock', [
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 5,
+        ]);
+    }
+
+    public function test_manager_material_list_hides_other_branch_stock(): void
+    {
+        $managerResponse = $this->actingAs($this->manager)
+            ->getJson('/api/v1/materials')
+            ->assertOk();
+
+        $managerRow = collect($managerResponse->json('data'))->firstWhere('id', $this->material->id);
+
+        $this->assertCount(1, $managerRow['stocks']);
+        $this->assertSame($this->branchOne->id, $managerRow['stocks'][0]['branch_id']);
+
+        $ownerResponse = $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials?branch_id=all')
+            ->assertOk();
+
+        $ownerRow = collect($ownerResponse->json('data'))->firstWhere('id', $this->material->id);
+
+        $this->assertCount(2, $ownerRow['stocks']);
+    }
+
     public function test_machine_crud_is_branch_scoped_for_managers(): void
     {
         $ownerMachine = $this->actingAs($this->owner)
@@ -318,6 +385,53 @@ class CatalogWriteApiTest extends TestCase
             'material_id' => $this->otherMaterial->id,
             'customer_type' => 'Reguler',
         ]);
+    }
+
+    public function test_catalog_write_endpoints_require_authentication(): void
+    {
+        foreach (['/materials', '/machines', '/categories', '/attribute-types', '/attributes', '/pricing'] as $path) {
+            $this->postJson('/api/v1'.$path, [])->assertUnauthorized();
+        }
+    }
+
+    public function test_catalog_write_validation_errors_are_422(): void
+    {
+        $actor = $this->manager;
+
+        $this->actingAs($actor)
+            ->postJson('/api/v1/categories', [
+                'name' => 'Invalid',
+                'calculation_archetype' => 'not-real',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('calculation_archetype');
+
+        $this->actingAs($actor)
+            ->postJson('/api/v1/attribute-types', [
+                'name' => 'Invalid',
+                'calculation_archetype' => 'not-real',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('calculation_archetype');
+
+        $this->actingAs($actor)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Invalid',
+                'type' => 'not-real',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('type');
+
+        $this->actingAs($actor)
+            ->postJson('/api/v1/pricing', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'customer_type' => 'Reguler',
+                'min_qty' => 1,
+                'cost' => 1000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('price');
     }
 
     private function branch(string $name): Branch

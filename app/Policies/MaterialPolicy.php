@@ -21,6 +21,16 @@ final class MaterialPolicy
 
     public function update(User $user, Material $material): bool
     {
+        return $user->role === 'owner';
+    }
+
+    public function restock(User $user, Material $material): bool
+    {
+        return in_array($user->role, ['owner', 'manager'], true);
+    }
+
+    public function activate(User $user, Material $material): bool
+    {
         return in_array($user->role, ['owner', 'manager'], true);
     }
 
@@ -31,6 +41,6 @@ final class MaterialPolicy
 
     public function restore(User $user, Material $material): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner';
     }
 }

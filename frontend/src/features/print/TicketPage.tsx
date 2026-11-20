@@ -9,7 +9,7 @@ import { formatDate } from '../../lib/dates';
 export function TicketPage() {
     const { id = '' } = useParams();
     const navigate = useNavigate();
-    const query = useQuery({ queryKey: ['invoice', id], queryFn: () => api.invoice(id) });
+    const query = useQuery({ queryKey: ['invoice', 'ticket', id], queryFn: () => api.ticket(id) });
     const invoice = query.data?.invoice;
 
     if (query.isLoading) {

@@ -18,14 +18,15 @@ export function CashierPickupPage() {
     const [notice, setNotice] = useState<string | null>(null);
 
     const query = useQuery({
-        queryKey: ['pickup', page],
-        queryFn: () => api.invoices({ page, status: 2 }),
+        queryKey: ['cashier', 'pickup', page],
+        queryFn: () => api.invoices({ page, status: 2, pickup_status: 0 }),
     });
 
     const pickup = useMutation({
         mutationFn: (invoiceId: string) => api.pickup(invoiceId),
         onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ['pickup'] });
+            void queryClient.invalidateQueries({ queryKey: ['cashier', 'pickup'] });
+            void queryClient.invalidateQueries({ queryKey: ['cashier', 'invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setNotice('Order marked as picked up.');
@@ -33,7 +34,7 @@ export function CashierPickupPage() {
         onError: (error) => setNotice(errorMessage(error)),
     });
 
-    const invoices = (query.data?.data ?? []).filter((invoice) => invoice.pickup_status === 0);
+    const invoices = query.data?.data ?? [];
 
     return (
         <div className="space-y-6">

@@ -31,6 +31,9 @@ export function CheckoutDialog({
 
     const refresh = () => {
         void queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        void queryClient.invalidateQueries({ queryKey: ['cashier', 'invoices'] });
+        void queryClient.invalidateQueries({ queryKey: ['designer', 'invoices'] });
+        void queryClient.invalidateQueries({ queryKey: ['cashier', 'pickup'] });
         void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         void queryClient.invalidateQueries({ queryKey: ['pickup'] });
     };
