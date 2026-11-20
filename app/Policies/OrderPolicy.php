@@ -12,4 +12,14 @@ final class OrderPolicy
     {
         return true;
     }
+
+    public function viewQueue(User $user): bool
+    {
+        return true;
+    }
+
+    public function viewSummary(User $user): bool
+    {
+        return $user->role === 'production';
+    }
 }

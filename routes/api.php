@@ -13,6 +13,8 @@ use App\Modules\Catalog\Http\Controllers\StockLedgerController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\BranchController;
 use App\Modules\Identity\Http\Controllers\UserController;
+use App\Modules\Production\Http\Controllers\ProductionController;
+use App\Modules\Production\Http\Controllers\WasteController;
 use App\Modules\Sales\Http\Controllers\CustomerController;
 use App\Modules\Sales\Http\Controllers\ExpenseController;
 use App\Modules\Sales\Http\Controllers\InvoiceController;
@@ -50,5 +52,10 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/invoices/{invoice}/ticket', [InvoiceController::class, 'ticket']);
         Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);
         Route::get('/expenses', [ExpenseController::class, 'index']);
+
+        Route::get('/production/queue', [ProductionController::class, 'queue']);
+        Route::get('/production/summary', [ProductionController::class, 'summary']);
+        Route::get('/waste/options', [WasteController::class, 'options']);
+        Route::get('/waste', [WasteController::class, 'index']);
     });
 });
