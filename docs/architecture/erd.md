@@ -5,6 +5,7 @@
 - **Table naming:** Eloquent default pluralization, except `pricing`, `material_branch_stock`, `attribute_pricing`, and `machine_pricing`, which use singular table names.
 - **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `machines`, and `attributes`. `pricing` has a `deleted_at` column in the migration, but the model does not use `SoftDeletes`; the column is unused.
 - **Target schema:** This diagram shows the target schema. Target additions are listed in the notes below.
+- **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; all business tables remain as documented. The API and SPA read/write the same schema.
 
 ```mermaid
 erDiagram
