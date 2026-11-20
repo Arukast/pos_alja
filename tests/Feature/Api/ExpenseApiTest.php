@@ -97,6 +97,52 @@ class ExpenseApiTest extends TestCase
             ->assertJsonMissing(['description' => 'Yesterday']);
     }
 
+    public function test_cashier_can_record_an_expense(): void
+    {
+        $this->actingAs($this->cashier)
+            ->postJson('/api/v1/expenses', [
+                'amount' => 12500,
+                'type' => 'laba',
+                'incurred_at' => now()->toDateString(),
+                'description' => 'Cleaning supplies',
+                'category' => 'Supplies',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('expense.amount', '12500.00')
+            ->assertJsonPath('expense.cashier_name', $this->cashier->name);
+
+        $this->assertDatabaseHas('expenses', [
+            'branch_id' => $this->branchOne->id,
+            'amount' => 12500,
+            'description' => 'Cleaning supplies',
+        ]);
+    }
+
+    public function test_non_cashier_cannot_record_an_expense(): void
+    {
+        foreach ([$this->owner, $this->manager, $this->production] as $user) {
+            $this->actingAs($user)
+                ->postJson('/api/v1/expenses', [
+                    'amount' => 10000,
+                    'type' => 'laba',
+                    'incurred_at' => now()->toDateString(),
+                ])
+                ->assertForbidden();
+        }
+    }
+
+    public function test_expense_amount_must_be_positive(): void
+    {
+        $this->actingAs($this->cashier)
+            ->postJson('/api/v1/expenses', [
+                'amount' => 0,
+                'type' => 'laba',
+                'incurred_at' => now()->toDateString(),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('amount');
+    }
+
     private function branch(string $name): Branch
     {
         return Branch::create([

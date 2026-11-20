@@ -12,4 +12,9 @@ final class ExpensePolicy
     {
         return in_array($user->role, ['owner', 'manager', 'cashier'], true);
     }
+
+    public function create(User $user): bool
+    {
+        return $user->role === 'cashier' && $user->branch_id !== null;
+    }
 }

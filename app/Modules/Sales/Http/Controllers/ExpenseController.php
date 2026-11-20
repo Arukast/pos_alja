@@ -7,8 +7,11 @@ namespace App\Modules\Sales\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\User;
+use App\Modules\Sales\Actions\RecordExpense;
+use App\Modules\Sales\Http\Requests\StoreExpenseRequest;
 use App\Modules\Sales\Http\Resources\ExpenseResource;
 use App\Modules\Sales\Queries\ExpenseList;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
@@ -34,5 +37,22 @@ final class ExpenseController extends Controller
             'from' => is_string($from) ? $from : null,
             'to' => is_string($to) ? $to : null,
         ]));
+    }
+
+    public function store(
+        StoreExpenseRequest $request,
+        RecordExpense $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $expense = $action->execute($request->validated(), $actor);
+
+        return response()->json([
+            'expense' => new ExpenseResource($expense),
+        ], 201);
     }
 }

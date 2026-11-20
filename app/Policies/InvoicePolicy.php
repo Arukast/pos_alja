@@ -21,6 +21,16 @@ final class InvoicePolicy
         return $user->role === 'designer' && $user->branch_id !== null;
     }
 
+    public function pay(User $user, Invoice $invoice): bool
+    {
+        return $user->role === 'cashier' && $this->sameBranch($user, $invoice);
+    }
+
+    public function pickup(User $user, Invoice $invoice): bool
+    {
+        return $user->role === 'cashier' && $this->sameBranch($user, $invoice);
+    }
+
     public function createQuote(User $user): bool
     {
         return $this->create($user);

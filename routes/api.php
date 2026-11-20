@@ -21,6 +21,7 @@ use App\Modules\Reporting\Http\Controllers\ReportController;
 use App\Modules\Sales\Http\Controllers\CustomerController;
 use App\Modules\Sales\Http\Controllers\ExpenseController;
 use App\Modules\Sales\Http\Controllers\InvoiceController;
+use App\Modules\Sales\Http\Controllers\PaymentController;
 use App\Modules\Sales\Http\Controllers\QuoteController;
 use App\Modules\Sales\Http\Controllers\QuoteOptionsController;
 use Illuminate\Support\Facades\Route;
@@ -62,7 +63,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
         Route::get('/invoices/{invoice}/ticket', [InvoiceController::class, 'ticket']);
         Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);
+        Route::post('/invoices/{invoice}/down-payments', [PaymentController::class, 'downPayment']);
+        Route::post('/invoices/{invoice}/settlements', [PaymentController::class, 'settle']);
+        Route::post('/invoices/{invoice}/pickup', [PaymentController::class, 'pickup']);
         Route::get('/expenses', [ExpenseController::class, 'index']);
+        Route::post('/expenses', [ExpenseController::class, 'store']);
 
         Route::get('/production/queue', [ProductionController::class, 'queue']);
         Route::get('/production/summary', [ProductionController::class, 'summary']);
