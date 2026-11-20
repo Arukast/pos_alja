@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\WastedMaterial;
+use App\Modules\Production\Actions\CompleteProduction;
+use App\Modules\Production\Actions\StartProduction;
 use App\Modules\Production\Http\Resources\ProductionQueueResource;
 use App\Modules\Production\Queries\ProductionQueue;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,6 +37,42 @@ final class ProductionController extends Controller
         return ProductionQueueResource::collection($queue->paginate($actor, [
             'branch_id' => is_string($branchId) ? $branchId : null,
         ]));
+    }
+
+    public function start(
+        Request $request,
+        Order $order,
+        StartProduction $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        Gate::authorize('start', $order);
+
+        return response()->json([
+            'order' => new ProductionQueueResource($action->execute($order, $actor)),
+        ]);
+    }
+
+    public function complete(
+        Request $request,
+        Order $order,
+        CompleteProduction $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        Gate::authorize('complete', $order);
+
+        return response()->json([
+            'order' => new ProductionQueueResource($action->execute($order, $actor)),
+        ]);
     }
 
     public function summary(Request $request): JsonResponse

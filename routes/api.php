@@ -71,8 +71,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::get('/production/queue', [ProductionController::class, 'queue']);
         Route::get('/production/summary', [ProductionController::class, 'summary']);
+        Route::post('/orders/{order}/start', [ProductionController::class, 'start']);
+        Route::post('/orders/{order}/complete', [ProductionController::class, 'complete']);
         Route::get('/waste/options', [WasteController::class, 'options']);
         Route::get('/waste', [WasteController::class, 'index']);
+        Route::post('/waste', [WasteController::class, 'store']);
 
         Route::get('/dashboard', [DashboardController::class, 'index']);
         Route::get('/reports/gross-revenue', [ReportController::class, 'grossRevenue']);

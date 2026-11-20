@@ -15,6 +15,6 @@ final class WastePolicy
 
     public function create(User $user): bool
     {
-        return $user->role === 'production';
+        return $user->role === 'production' && $user->branch_id !== null;
     }
 }
