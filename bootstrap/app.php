@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\BroadcastApiChange;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // This tells Laravel to trust the Tailscale Funnel headers
         $middleware->trustProxies(at: env('TRUSTED_PROXIES', ''));
         $middleware->statefulApi();
+        $middleware->api(append: BroadcastApiChange::class);
         $middleware->alias([
             'role' => RoleMiddleware::class,
         ]);
