@@ -36,6 +36,8 @@ import {
 import { ManagerDashboardPage } from '../features/manager/ManagerDashboardPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ProductionDashboardPage } from '../features/production/ProductionDashboardPage';
+import { ProductionQueuePage } from '../features/production/ProductionQueuePage';
+import { ProductionWastePage } from '../features/production/ProductionWastePage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { LegacyDashboardRedirect } from './legacy';
 
@@ -106,8 +108,8 @@ export const router = createBrowserRouter([
                         element: <RequireRole roles={['production']} />,
                         children: [
                             { index: true, element: <ProductionDashboardPage /> },
-                            { path: 'queue', element: <ProductionDashboardPage /> },
-                            { path: 'waste', element: <ProductionDashboardPage /> },
+                            { path: 'queue', element: <ProductionQueuePage /> },
+                            { path: 'waste', element: <ProductionWastePage /> },
                         ],
                     },
                 ],

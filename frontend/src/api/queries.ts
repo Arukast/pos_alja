@@ -188,6 +188,13 @@ export const api = {
     completeOrder: (orderId: string) =>
         mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/complete`, 'POST'),
 
+    wasteOptions: () =>
+        apiFetch<{
+            materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null }>;
+            machines: Array<{ id: string; name: string }>;
+            designers: Array<{ id: string; name: string }>;
+        }>('/waste/options'),
+
     createWaste: (data: MutationBody) =>
         mutate<{ waste: Waste }>('/waste', 'POST', data),
 
