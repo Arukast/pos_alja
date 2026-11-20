@@ -60,3 +60,7 @@ export function formatDate(value: string | Date): string {
         year: 'numeric',
     }).format(date);
 }
+
+export function todayIso(): string {
+    return toIsoDate(new Date());
+}

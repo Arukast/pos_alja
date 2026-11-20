@@ -2,10 +2,37 @@ import { createBrowserRouter } from 'react-router';
 
 import { RequireAuth, RequireRole, RoleRedirect } from '../auth/RequireAuth';
 import { AppShell } from '../components/AppShell';
-import { LoginPage } from '../features/auth/LoginPage';
+import { CashierDashboardPage } from '../features/cashier/CashierDashboardPage';
+import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
 import { PlaceholderPage } from '../features/dashboard/PlaceholderPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
+import {
+    BranchesPage,
+    OwnerCategoriesPage,
+    OwnerMachinesPage,
+    OwnerMaterialsPage,
+    OwnerUsersPage,
+} from '../features/owner/AdminPages';
+import { AuditPage } from '../features/owner/AuditPage';
+import { BaseCostPage } from '../features/owner/BaseCostPage';
+import { ExpensesPage } from '../features/owner/ExpensesPage';
+import { GrossRevenuePage } from '../features/owner/GrossRevenuePage';
+import { NetProfitPage } from '../features/owner/NetProfitPage';
+import { OwnerDashboardPage } from '../features/owner/OwnerDashboardPage';
+import {
+    ManagerCategoriesPage,
+    ManagerFinishingPage,
+    ManagerLeaderboardPage,
+    ManagerLedgersPage,
+    ManagerMachinesPage,
+    ManagerMaterialsPage,
+    ManagerPricingPage,
+    ManagerUsersPage,
+} from '../features/manager/AdminPages';
+import { ManagerDashboardPage } from '../features/manager/ManagerDashboardPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
+import { ProductionDashboardPage } from '../features/production/ProductionDashboardPage';
+import { LoginPage } from '../features/auth/LoginPage';
 import { LegacyDashboardRedirect } from './legacy';
 
 function page(title: string, description: string) {
@@ -27,211 +54,61 @@ export const router = createBrowserRouter([
                         path: 'owner',
                         element: <RequireRole roles={['owner']} />,
                         children: [
-                            {
-                                index: true,
-                                element: page(
-                                    'Owner Dashboard',
-                                    'Cross-branch finance, production status, and branch comparison.'
-                                ),
-                            },
-                            {
-                                path: 'revenue',
-                                element: page(
-                                    'Gross Revenue Detail',
-                                    'Collected payments by method, branch, and period.'
-                                ),
-                            },
-                            {
-                                path: 'base-cost',
-                                element: page(
-                                    'Base Cost Detail',
-                                    'Invoice HPP and material waste cost breakdowns.'
-                                ),
-                            },
-                            {
-                                path: 'net-profit',
-                                element: page(
-                                    'Net Profit Detail',
-                                    'Revenue minus HPP and operating expenses.'
-                                ),
-                            },
-                            {
-                                path: 'expenses',
-                                element: page(
-                                    'Expenses Detail',
-                                    'Branch operating expenses by category and period.'
-                                ),
-                            },
-                            {
-                                path: 'audit',
-                                element: page(
-                                    'Audit Trail',
-                                    'Searchable record of important system changes.'
-                                ),
-                            },
-                            {
-                                path: 'users',
-                                element: page(
-                                    'User Management',
-                                    'Owner-wide staff accounts, roles, and deactivation.'
-                                ),
-                            },
-                            {
-                                path: 'branches',
-                                element: page(
-                                    'Branch Management',
-                                    'Branch records, settings, and active status.'
-                                ),
-                            },
-                            {
-                                path: 'categories',
-                                element: page(
-                                    'Product Categories',
-                                    'Category archetypes and allowed attribute types.'
-                                ),
-                            },
-                            {
-                                path: 'machines',
-                                element: page(
-                                    'Printer Machines',
-                                    'Machine records and base cost per branch.'
-                                ),
-                            },
-                            {
-                                path: 'materials',
-                                element: page(
-                                    'Materials & Stock',
-                                    'Global materials, branch stock, and restocking.'
-                                ),
-                            },
+                            { index: true, element: <OwnerDashboardPage /> },
+                            { path: 'revenue', element: <GrossRevenuePage /> },
+                            { path: 'base-cost', element: <BaseCostPage /> },
+                            { path: 'net-profit', element: <NetProfitPage /> },
+                            { path: 'expenses', element: <ExpensesPage /> },
+                            { path: 'audit', element: <AuditPage /> },
+                            { path: 'users', element: <OwnerUsersPage /> },
+                            { path: 'branches', element: <BranchesPage /> },
+                            { path: 'categories', element: <OwnerCategoriesPage /> },
+                            { path: 'machines', element: <OwnerMachinesPage /> },
+                            { path: 'materials', element: <OwnerMaterialsPage /> },
                         ],
                     },
                     {
                         path: 'manager',
                         element: <RequireRole roles={['manager']} />,
                         children: [
-                            {
-                                index: true,
-                                element: page(
-                                    'Branch Manager Dashboard',
-                                    'Inventory, pricing, staff, and monthly performance for your branch.'
-                                ),
-                            },
-                            {
-                                path: 'materials',
-                                element: page(
-                                    'Materials & Stock',
-                                    'Branch inventory levels, restocking, and activation.'
-                                ),
-                            },
-                            {
-                                path: 'ledgers',
-                                element: page(
-                                    'Stock Ledgers',
-                                    'Stock movement history and recent branch expenses.'
-                                ),
-                            },
-                            {
-                                path: 'finishing',
-                                element: page(
-                                    'Display & Finishing',
-                                    'Manage finishing, cut, and display attributes.'
-                                ),
-                            },
-                            {
-                                path: 'pricing',
-                                element: page(
-                                    'Pricing Matrices',
-                                    'Tiered pricing rows and modifier rules.'
-                                ),
-                            },
-                            {
-                                path: 'leaderboard',
-                                element: page(
-                                    'Designer Leaderboard',
-                                    'Designer revenue, order count, AOV, and waste accuracy.'
-                                ),
-                            },
-                            {
-                                path: 'users',
-                                element: page(
-                                    'User Management',
-                                    'Branch staff accounts and role assignments.'
-                                ),
-                            },
-                            {
-                                path: 'categories',
-                                element: page(
-                                    'Product Categories',
-                                    'Category archetypes and allowed attribute types.'
-                                ),
-                            },
-                            {
-                                path: 'machines',
-                                element: page(
-                                    'Printer Machines',
-                                    'Machine records and base cost for your branch.'
-                                ),
-                            },
+                            { index: true, element: <ManagerDashboardPage /> },
+                            { path: 'materials', element: <ManagerMaterialsPage /> },
+                            { path: 'ledgers', element: <ManagerLedgersPage /> },
+                            { path: 'finishing', element: <ManagerFinishingPage /> },
+                            { path: 'pricing', element: <ManagerPricingPage /> },
+                            { path: 'leaderboard', element: <ManagerLeaderboardPage /> },
+                            { path: 'users', element: <ManagerUsersPage /> },
+                            { path: 'categories', element: <ManagerCategoriesPage /> },
+                            { path: 'machines', element: <ManagerMachinesPage /> },
                         ],
                     },
                     {
                         path: 'cashier',
                         element: <RequireRole roles={['cashier']} />,
                         children: [
-                            {
-                                index: true,
-                                element: page(
-                                    'Cashier Dashboard',
-                                    'Checkout queue, down payments, settlements, and pickup.'
-                                ),
-                            },
-                            {
-                                path: 'payments',
-                                element: page(
-                                    'Payment Queue',
-                                    'Unpaid and down-payment invoices awaiting checkout.'
-                                ),
-                            },
-                            {
-                                path: 'pickup',
-                                element: page(
-                                    'Pickup Queue',
-                                    'Paid orders waiting for customer pickup.'
-                                ),
-                            },
-                            {
-                                path: 'expenses',
-                                element: page(
-                                    'Expenses',
-                                    'Daily branch expenses and drawer float records.'
-                                ),
-                            },
+                            { index: true, element: <CashierDashboardPage /> },
+                            { path: 'payments', element: <CashierDashboardPage /> },
+                            { path: 'pickup', element: <CashierDashboardPage /> },
+                            { path: 'expenses', element: <CashierDashboardPage /> },
                         ],
                     },
                     {
                         path: 'designer',
                         element: <RequireRole roles={['designer']} />,
                         children: [
-                            {
-                                index: true,
-                                element: page(
-                                    'Designer Dashboard',
-                                    'Today’s intake, draft cart, and recent invoices.'
-                                ),
-                            },
+                            { index: true, element: <DesignerDashboardPage /> },
                             {
                                 path: 'new-order',
                                 element: page(
                                     'New Order',
-                                    'Customer intake, specifications, live quote, and cart.'
+                                    'Customer intake, live quote, and cart are wired in the write phase.'
                                 ),
                             },
                             {
                                 path: 'orders',
                                 element: page(
                                     'Order List',
-                                    'Search and paginate invoices from your branch.'
+                                    'Searchable invoice list is wired in the write phase.'
                                 ),
                             },
                         ],
@@ -240,27 +117,9 @@ export const router = createBrowserRouter([
                         path: 'production',
                         element: <RequireRole roles={['production']} />,
                         children: [
-                            {
-                                index: true,
-                                element: page(
-                                    'Production Dashboard',
-                                    'Queue, active prints, completed jobs, and waste.'
-                                ),
-                            },
-                            {
-                                path: 'queue',
-                                element: page(
-                                    'Print Queue',
-                                    'Orders waiting to start or currently printing.'
-                                ),
-                            },
-                            {
-                                path: 'waste',
-                                element: page(
-                                    'Waste Logging',
-                                    'Failed prints and material usage deductions.'
-                                ),
-                            },
+                            { index: true, element: <ProductionDashboardPage /> },
+                            { path: 'queue', element: <ProductionDashboardPage /> },
+                            { path: 'waste', element: <ProductionDashboardPage /> },
                         ],
                     },
                 ],
