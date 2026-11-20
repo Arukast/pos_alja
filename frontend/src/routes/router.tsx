@@ -3,6 +3,9 @@ import { createBrowserRouter } from 'react-router';
 import { RequireAuth, RequireRole, RoleRedirect } from '../auth/RequireAuth';
 import { AppShell } from '../components/AppShell';
 import { CashierDashboardPage } from '../features/cashier/CashierDashboardPage';
+import { CashierExpensesPage } from '../features/cashier/CashierExpensesPage';
+import { CashierPaymentsPage } from '../features/cashier/CashierPaymentsPage';
+import { CashierPickupPage } from '../features/cashier/CashierPickupPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
 import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
 import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
@@ -84,9 +87,9 @@ export const router = createBrowserRouter([
                         element: <RequireRole roles={['cashier']} />,
                         children: [
                             { index: true, element: <CashierDashboardPage /> },
-                            { path: 'payments', element: <CashierDashboardPage /> },
-                            { path: 'pickup', element: <CashierDashboardPage /> },
-                            { path: 'expenses', element: <CashierDashboardPage /> },
+                            { path: 'payments', element: <CashierPaymentsPage /> },
+                            { path: 'pickup', element: <CashierPickupPage /> },
+                            { path: 'expenses', element: <CashierExpensesPage /> },
                         ],
                     },
                     {
