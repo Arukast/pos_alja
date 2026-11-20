@@ -4,7 +4,8 @@ import { RequireAuth, RequireRole, RoleRedirect } from '../auth/RequireAuth';
 import { AppShell } from '../components/AppShell';
 import { CashierDashboardPage } from '../features/cashier/CashierDashboardPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
-import { PlaceholderPage } from '../features/dashboard/PlaceholderPage';
+import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
+import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import {
     BranchesPage,
@@ -34,10 +35,6 @@ import { ProfilePage } from '../features/profile/ProfilePage';
 import { ProductionDashboardPage } from '../features/production/ProductionDashboardPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { LegacyDashboardRedirect } from './legacy';
-
-function page(title: string, description: string) {
-    return <PlaceholderPage title={title} description={description} />;
-}
 
 export const router = createBrowserRouter([
     { path: '/login', element: <LoginPage /> },
@@ -97,20 +94,8 @@ export const router = createBrowserRouter([
                         element: <RequireRole roles={['designer']} />,
                         children: [
                             { index: true, element: <DesignerDashboardPage /> },
-                            {
-                                path: 'new-order',
-                                element: page(
-                                    'New Order',
-                                    'Customer intake, live quote, and cart are wired in the write phase.'
-                                ),
-                            },
-                            {
-                                path: 'orders',
-                                element: page(
-                                    'Order List',
-                                    'Searchable invoice list is wired in the write phase.'
-                                ),
-                            },
+                            { path: 'new-order', element: <DesignerNewOrderPage /> },
+                            { path: 'orders', element: <DesignerOrdersPage /> },
                         ],
                     },
                     {
