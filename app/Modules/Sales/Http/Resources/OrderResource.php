@@ -17,6 +17,10 @@ final class OrderResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $role = $request->user()?->role;
+        $showSell = in_array($role, ['owner', 'manager', 'designer'], true);
+        $showCost = in_array($role, ['owner', 'manager'], true);
+
         return [
             'id' => $this->id,
             'pricing_id' => $this->pricing_id,
@@ -24,10 +28,10 @@ final class OrderResource extends JsonResource
             'notes' => $this->notes,
             'area' => $this->area,
             'quantity' => $this->quantity,
-            'unit_price' => Decimal::money($this->unit_price),
-            'subtotal' => Decimal::money($this->subtotal),
-            'cost' => Decimal::money($this->cost),
-            'profit' => Decimal::money($this->profit),
+            'unit_price' => $this->when($showSell, fn (): string => Decimal::money($this->unit_price)),
+            'subtotal' => $this->when($showSell, fn (): string => Decimal::money($this->subtotal)),
+            'cost' => $this->when($showCost, fn (): string => Decimal::money($this->cost)),
+            'profit' => $this->when($showCost, fn (): string => Decimal::money($this->profit)),
             'ordered_at' => $this->ordered_at,
             'status' => $this->status,
             'pickup_status' => $this->pickup_status,

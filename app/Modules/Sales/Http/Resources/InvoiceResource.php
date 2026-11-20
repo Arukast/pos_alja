@@ -17,6 +17,9 @@ final class InvoiceResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $role = $request->user()?->role;
+        $showCost = in_array($role, ['owner', 'manager'], true);
+
         return [
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
@@ -48,8 +51,8 @@ final class InvoiceResource extends JsonResource
             'dp_amount' => Decimal::money($this->dp_amount),
             'accounts_receivable' => Decimal::money($this->accounts_receivable),
             'grand_total' => Decimal::money($this->grand_total),
-            'total_cost' => Decimal::money($this->total_cost),
-            'total_profit' => Decimal::money($this->total_profit),
+            'total_cost' => $this->when($showCost, fn (): string => Decimal::money($this->total_cost)),
+            'total_profit' => $this->when($showCost, fn (): string => Decimal::money($this->total_profit)),
             'orders' => OrderResource::collection($this->whenLoaded('orders')),
             'payments' => PaymentResource::collection($this->whenLoaded('payments')),
         ];

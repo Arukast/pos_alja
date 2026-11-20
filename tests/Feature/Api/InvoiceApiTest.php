@@ -140,7 +140,66 @@ class InvoiceApiTest extends TestCase
             ->assertJsonPath('invoice.customer.id', $this->customer->id)
             ->assertJsonPath('invoice.orders.0.file_name', 'banner.pdf')
             ->assertJsonPath('invoice.payments.0.amount', '50000.00')
-            ->assertJsonPath('invoice.grand_total', '100000.00');
+            ->assertJsonPath('invoice.grand_total', '100000.00')
+            ->assertJsonMissingPath('invoice.total_cost')
+            ->assertJsonMissingPath('invoice.total_profit')
+            ->assertJsonMissingPath('invoice.orders.0.unit_price')
+            ->assertJsonMissingPath('invoice.orders.0.subtotal')
+            ->assertJsonMissingPath('invoice.orders.0.cost')
+            ->assertJsonMissingPath('invoice.orders.0.profit');
+    }
+
+    public function test_designer_sees_sell_price_but_not_cost_or_profit(): void
+    {
+        $this->actingAs($this->designer)
+            ->getJson("/api/v1/invoices/{$this->invoiceOne->id}")
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.unit_price', '50000.00')
+            ->assertJsonPath('invoice.orders.0.subtotal', '100000.00')
+            ->assertJsonMissingPath('invoice.orders.0.cost')
+            ->assertJsonMissingPath('invoice.orders.0.profit')
+            ->assertJsonMissingPath('invoice.total_cost')
+            ->assertJsonMissingPath('invoice.total_profit');
+    }
+
+    public function test_owner_and_manager_see_cost_and_profit(): void
+    {
+        foreach ([$this->owner, $this->manager] as $user) {
+            $this->actingAs($user)
+                ->getJson("/api/v1/invoices/{$this->invoiceOne->id}")
+                ->assertOk()
+                ->assertJsonPath('invoice.total_cost', '60000.00')
+                ->assertJsonPath('invoice.total_profit', '40000.00')
+                ->assertJsonPath('invoice.orders.0.cost', '60000.00')
+                ->assertJsonPath('invoice.orders.0.profit', '40000.00');
+        }
+    }
+
+    public function test_unknown_role_cannot_read_invoices(): void
+    {
+        $unknown = User::factory()->create([
+            'role' => 'legacy_setting',
+            'branch_id' => $this->branchOne->id,
+        ]);
+
+        $this->actingAs($unknown)->getJson('/api/v1/invoices')->assertForbidden();
+        $this->actingAs($unknown)
+            ->getJson("/api/v1/invoices/{$this->invoiceOne->id}")
+            ->assertForbidden();
+    }
+
+    public function test_cross_branch_invoice_detail_is_forbidden(): void
+    {
+        $this->actingAs($this->cashier)
+            ->getJson("/api/v1/invoices/{$this->invoiceTwo->id}")
+            ->assertForbidden();
+    }
+
+    public function test_production_cross_branch_ticket_is_forbidden(): void
+    {
+        $this->actingAs($this->production)
+            ->getJson("/api/v1/invoices/{$this->invoiceTwo->id}/ticket")
+            ->assertForbidden();
     }
 
     public function test_production_invoice_detail_redacts_every_money_field(): void

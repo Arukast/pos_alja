@@ -9,9 +9,11 @@ use App\Models\User;
 
 final class InvoicePolicy
 {
+    private const ROLES = ['owner', 'manager', 'cashier', 'designer', 'production'];
+
     public function viewAny(User $user): bool
     {
-        return true;
+        return in_array($user->role, self::ROLES, true);
     }
 
     public function view(User $user, Invoice $invoice): bool
@@ -26,12 +28,14 @@ final class InvoicePolicy
 
     public function receipt(User $user, Invoice $invoice): bool
     {
-        return $user->role !== 'production' && $this->sameBranch($user, $invoice);
+        return in_array($user->role, ['owner', 'manager', 'cashier', 'designer'], true)
+            && $this->sameBranch($user, $invoice);
     }
 
     private function sameBranch(User $user, Invoice $invoice): bool
     {
-        return $user->role === 'owner'
-            || ($user->branch_id !== null && $invoice->branch_id === $user->branch_id);
+        return in_array($user->role, self::ROLES, true)
+            && ($user->role === 'owner'
+                || ($user->branch_id !== null && $invoice->branch_id === $user->branch_id));
     }
 }
