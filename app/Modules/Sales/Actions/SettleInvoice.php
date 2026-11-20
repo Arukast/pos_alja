@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
-use App\Events\OrderUpdated;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -76,7 +76,7 @@ final class SettleInvoice
             return $payment;
         });
 
-        event(new OrderUpdated($invoice->branch_id));
+        SafeBroadcast::orderUpdated($invoice->branch_id, $cashier);
 
         return $payment;
     }

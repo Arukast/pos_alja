@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
-use App\Events\OrderUpdated;
+use App\Exceptions\PricingNotFoundException;
 use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -14,8 +14,10 @@ use App\Models\OrderStatusLog;
 use App\Models\Pricing;
 use App\Models\User;
 use App\Support\Decimal;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 final class CreateInvoice
 {
@@ -56,12 +58,24 @@ final class CreateInvoice
                     ]);
                 }
 
-                $quote = $this->quote->forPricing(
-                    $pricing,
-                    $item,
-                    $branchId,
-                    $customerType
-                );
+                try {
+                    $quote = $this->quote->forPricing(
+                        $pricing,
+                        $item,
+                        $branchId,
+                        $customerType
+                    );
+                } catch (PricingNotFoundException|InvalidArgumentException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                    ]);
+                }
+
+                if ((float) $quote['area'] > 999999.99) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.width" => 'The calculated area exceeds the invoice limit.',
+                    ]);
+                }
 
                 $isManual = (bool) ($item['is_manual_price'] ?? false);
 
@@ -81,6 +95,12 @@ final class CreateInvoice
 
                     $unitPrice = round((float) $item['unit_price'], 2);
                     $unitCost = round((float) $item['cost'], 2);
+
+                    if ($unitPrice <= 0 || $unitCost < 0 || $unitCost > $unitPrice) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.unit_price" => 'Manual pricing requires a positive price and a cost no greater than the price.',
+                        ]);
+                    }
                     $lineSubtotal = round($unitPrice * (float) $quote['quantity'] * $factor, 2);
                     $lineCost = round($unitCost * (float) $quote['quantity'] * $factor, 2);
 
@@ -121,7 +141,9 @@ final class CreateInvoice
             $grandTotal = round(max(0, $subtotal - $discount), 2);
             $totalProfit = round($grandTotal - $totalCost, 2);
             $branch = Branch::find($branchId);
-            $prefix = $this->branchPrefix($branch?->name);
+            $prefix = $branch?->code !== null && $branch->code !== ''
+                ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $branch->code) ?? 'BR')
+                : $this->branchPrefix($branch?->name);
             $count = Invoice::query()
                 ->where('created_date', now()->toDateString())
                 ->where('branch_id', $branchId)
@@ -212,7 +234,7 @@ final class CreateInvoice
             return $invoice->load(['customer', 'branch', 'designer', 'orders', 'payments']);
         });
 
-        event(new OrderUpdated($branchId));
+        SafeBroadcast::orderUpdated($branchId, $designer);
 
         return $invoice;
     }

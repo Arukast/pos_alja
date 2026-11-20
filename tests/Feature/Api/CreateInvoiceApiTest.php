@@ -123,7 +123,10 @@ class CreateInvoiceApiTest extends TestCase
             ->assertJsonMissingPath('invoice.orders.0.cost')
             ->assertJsonMissingPath('invoice.orders.0.profit');
 
-        $this->assertStringStartsWith('INV-BO-', $response->json('invoice.invoice_number'));
+        $this->assertStringStartsWith(
+            'INV-'.strtoupper((string) $this->branchOne->code).'-',
+            $response->json('invoice.invoice_number')
+        );
 
         $this->assertDatabaseHas('orders', [
             'invoice_id' => $response->json('invoice.id'),
@@ -160,6 +163,65 @@ class CreateInvoiceApiTest extends TestCase
 
         $this->actingAs($this->designer)
             ->postJson('/api/v1/invoices', $this->payload(['items' => [$invalid]]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.unit_price');
+    }
+
+    public function test_cross_branch_machine_is_rejected(): void
+    {
+        $otherMachine = Machine::create([
+            'branch_id' => $this->branchTwo->id,
+            'name' => 'Printer B',
+            'cost' => 0,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['machine_id' => $otherMachine->id])],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.machine_id');
+    }
+
+    public function test_pricing_failure_maps_to_422_instead_of_500(): void
+    {
+        $otherMaterial = Material::create([
+            'name' => 'Tiered Only',
+            'product_category_id' => $this->material->product_category_id,
+            'type' => 'roll',
+            'cost' => 20000,
+            'price' => 25000,
+        ]);
+
+        $pricing = Pricing::create([
+            'branch_id' => $this->branchOne->id,
+            'product_id' => $this->product->id,
+            'material_id' => $otherMaterial->id,
+            'customer_type' => 'Reguler',
+            'min_qty' => 100,
+            'price' => 50000,
+            'cost' => 20000,
+            'profit' => 30000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['pricing_id' => $pricing->id, 'quantity' => 2])],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
+    public function test_manual_cost_cannot_exceed_price(): void
+    {
+        $item = $this->item([
+            'is_manual_price' => true,
+            'unit_price' => 100,
+            'cost' => 200,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
             ->assertStatus(422)
             ->assertJsonValidationErrors('items.0.unit_price');
     }

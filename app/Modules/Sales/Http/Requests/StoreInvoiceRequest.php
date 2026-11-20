@@ -6,6 +6,7 @@ namespace App\Modules\Sales\Http\Requests;
 
 use App\Models\Invoice;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class StoreInvoiceRequest extends FormRequest
 {
@@ -21,17 +22,21 @@ final class StoreInvoiceRequest extends FormRequest
     {
         return [
             'customer_id' => ['required', 'uuid', 'exists:customers,id'],
-            'discount' => ['nullable', 'numeric', 'min:0'],
+            'discount' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'deadline' => ['nullable', 'date'],
             'source' => ['nullable', 'string', 'in:Offline,Online'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.pricing_id' => ['required', 'uuid', 'exists:pricing,id'],
             'items.*.file_name' => ['nullable', 'string', 'max:255'],
             'items.*.notes' => ['nullable', 'string', 'max:1000'],
-            'items.*.width' => ['nullable', 'numeric', 'gt:0'],
-            'items.*.length' => ['nullable', 'numeric', 'gt:0'],
-            'items.*.quantity' => ['required', 'numeric', 'gt:0'],
-            'items.*.machine_id' => ['nullable', 'uuid', 'exists:machines,id'],
+            'items.*.width' => ['nullable', 'numeric', 'gt:0', 'max:999'],
+            'items.*.length' => ['nullable', 'numeric', 'gt:0', 'max:999'],
+            'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:100000'],
+            'items.*.machine_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('machines', 'id')->where('branch_id', $this->user()?->branch_id),
+            ],
             'items.*.selected_attributes' => ['nullable', 'array'],
             'items.*.selected_attributes.*' => ['uuid', 'exists:attributes,id'],
             'items.*.is_manual_price' => ['sometimes', 'boolean'],

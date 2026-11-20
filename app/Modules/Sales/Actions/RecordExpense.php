@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
-use App\Events\OrderUpdated;
 use App\Models\Expense;
 use App\Models\User;
+use App\Support\SafeBroadcast;
 
 final class RecordExpense
 {
@@ -25,7 +25,7 @@ final class RecordExpense
             'category' => $data['category'] ?? 'Operational',
         ]);
 
-        event(new OrderUpdated($cashier->branch_id));
+        SafeBroadcast::orderUpdated($cashier->branch_id, $cashier);
 
         return $expense;
     }

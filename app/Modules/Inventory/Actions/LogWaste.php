@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Actions;
 
-use App\Events\OrderUpdated;
 use App\Models\Machine;
 use App\Models\MaterialBranchStock;
 use App\Models\User;
 use App\Models\WastedMaterial;
 use App\Services\InventoryService;
+use App\Support\SafeBroadcast;
 use Illuminate\Validation\ValidationException;
 
 final class LogWaste
@@ -79,7 +79,7 @@ final class LogWaste
             'notes' => $data['notes'] ?? 'Print failure',
         ]);
 
-        event(new OrderUpdated($branchId));
+        SafeBroadcast::orderUpdated($branchId, $operator);
 
         return $waste->load(['material', 'machine', 'designer', 'operator', 'branch']);
     }

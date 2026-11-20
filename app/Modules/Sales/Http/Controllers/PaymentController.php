@@ -69,8 +69,14 @@ final class PaymentController extends Controller
     ): JsonResponse {
         Gate::authorize('pickup', $invoice);
 
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
         return response()->json([
-            'invoice' => new InvoiceResource($action->execute($invoice)),
+            'invoice' => new InvoiceResource($action->execute($invoice, $actor)),
         ]);
     }
 }

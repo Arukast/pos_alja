@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
-use App\Events\OrderUpdated;
 use App\Models\Invoice;
+use App\Models\User;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class MarkInvoicePickedUp
 {
-    public function execute(Invoice $invoice): Invoice
+    public function execute(Invoice $invoice, User $actor): Invoice
     {
         $updated = DB::transaction(function () use ($invoice): Invoice {
             $locked = Invoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
@@ -29,7 +30,7 @@ final class MarkInvoicePickedUp
             return $locked;
         });
 
-        event(new OrderUpdated($invoice->branch_id));
+        SafeBroadcast::orderUpdated($invoice->branch_id, $actor);
 
         return $updated->load(['customer', 'branch', 'designer', 'orders', 'payments']);
     }

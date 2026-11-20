@@ -6,6 +6,7 @@ namespace App\Modules\Sales\Http\Requests;
 
 use App\Models\Invoice;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class QuoteRequest extends FormRequest
 {
@@ -22,12 +23,16 @@ final class QuoteRequest extends FormRequest
         return [
             'product_id' => ['required', 'uuid', 'exists:products,id'],
             'material_id' => ['required', 'uuid', 'exists:materials,id'],
-            'machine_id' => ['nullable', 'uuid', 'exists:machines,id'],
+            'machine_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('machines', 'id')->where('branch_id', $this->user()?->branch_id),
+            ],
             'selected_attributes' => ['nullable', 'array'],
             'selected_attributes.*' => ['uuid', 'exists:attributes,id'],
-            'quantity' => ['required', 'numeric', 'gt:0'],
-            'width' => ['nullable', 'numeric', 'gt:0'],
-            'length' => ['nullable', 'numeric', 'gt:0'],
+            'quantity' => ['required', 'numeric', 'gt:0', 'max:100000'],
+            'width' => ['nullable', 'numeric', 'gt:0', 'max:999'],
+            'length' => ['nullable', 'numeric', 'gt:0', 'max:999'],
             'customer_type' => ['nullable', 'string', 'max:50'],
         ];
     }

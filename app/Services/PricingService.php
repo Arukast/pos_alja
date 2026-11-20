@@ -79,18 +79,24 @@ class PricingService
         $machinePrice = 0.0;
         $machineCost = 0.0;
         if (! empty($machineId)) {
-            $machine = Machine::find($machineId);
-            if ($machine) {
-                $machineCost = (float) $machine->cost;
-            }
+            $machineBranchId = $branchId ?: (auth()->check() ? auth()->user()->branch_id : null);
+            $machine = $machineBranchId
+                ? Machine::query()->where('branch_id', $machineBranchId)->find($machineId)
+                : null;
 
-            $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
-                ->where('machine_id', $machineId)
-                ->first();
-            if ($machinePricing) {
-                $machinePrice = (float) $machinePricing->price;
-                if ((float) $machinePricing->cost > 0.0) {
-                    $machineCost = (float) $machinePricing->cost;
+            if ($machine) {
+                $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
+                    ->where('machine_id', $machineId)
+                    ->first();
+
+                if ($machinePricing) {
+                    $machinePrice = (float) $machinePricing->price;
+
+                    if ((float) $machinePricing->cost > 0.0) {
+                        $machineCost = (float) $machinePricing->cost;
+                    } else {
+                        $machineCost = (float) $machine->cost;
+                    }
                 }
             }
         }
