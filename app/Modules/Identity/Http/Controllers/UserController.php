@@ -6,11 +6,15 @@ namespace App\Modules\Identity\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\Identity\Http\Requests\StoreUserRequest;
+use App\Modules\Identity\Http\Requests\UpdateUserRequest;
 use App\Modules\Identity\Http\Resources\UserResource;
+use App\Services\UserService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 final class UserController extends Controller
@@ -62,6 +66,73 @@ final class UserController extends Controller
 
         return response()->json([
             'user' => new UserResource($user),
+        ]);
+    }
+
+    public function store(StoreUserRequest $request, UserService $service): JsonResponse
+    {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $created = $service->createUser($request->validated(), $actor);
+
+        return response()->json([
+            'user' => new UserResource($created->loadMissing('branch')),
+        ], 201);
+    }
+
+    public function update(
+        UpdateUserRequest $request,
+        User $user,
+        UserService $service
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $updated = $service->updateUser($user, $request->validated(), $actor);
+
+        return response()->json([
+            'user' => new UserResource($updated->loadMissing('branch')),
+        ]);
+    }
+
+    public function destroy(User $user, UserService $service): Response
+    {
+        Gate::authorize('delete', $user);
+
+        $actor = request()->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $service->deleteUser($user, $actor);
+
+        return response()->noContent();
+    }
+
+    public function restore(string $user, UserService $service): JsonResponse
+    {
+        $target = User::query()->withTrashed()->findOrFail($user);
+
+        Gate::authorize('restore', $target);
+
+        $actor = request()->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $service->restoreUser($target, $actor);
+
+        return response()->json([
+            'user' => new UserResource($target->refresh()->loadMissing('branch')),
         ]);
     }
 }

@@ -18,4 +18,19 @@ final class BranchPolicy
     {
         return $user->role === 'owner';
     }
+
+    public function create(User $user): bool
+    {
+        return $user->role === 'owner';
+    }
+
+    public function update(User $user, Branch $branch): bool
+    {
+        return $user->role === 'owner';
+    }
+
+    public function delete(User $user, Branch $branch): bool
+    {
+        return $user->role === 'owner';
+    }
 }

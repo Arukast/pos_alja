@@ -27,6 +27,26 @@ final class UserPolicy
             && in_array($target->role, ['cashier', 'designer', 'production'], true);
     }
 
+    public function create(User $user): bool
+    {
+        return in_array($user->role, ['owner', 'manager'], true);
+    }
+
+    public function update(User $user, User $target): bool
+    {
+        return $this->view($user, $target);
+    }
+
+    public function delete(User $user, User $target): bool
+    {
+        return $this->view($user, $target);
+    }
+
+    public function restore(User $user, User $target): bool
+    {
+        return $this->view($user, $target);
+    }
+
     public function updateOwnProfile(User $user): bool
     {
         return in_array($user->role, ['owner', 'manager'], true);

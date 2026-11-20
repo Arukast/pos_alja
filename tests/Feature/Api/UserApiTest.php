@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,6 +160,133 @@ class UserApiTest extends TestCase
             ->assertJsonPath('meta.per_page', 15)
             ->assertJsonPath('meta.total', 17)
             ->assertJsonCount(15, 'data');
+    }
+
+    public function test_owner_can_create_update_and_delete_users(): void
+    {
+        $owner = $this->user('owner', null);
+
+        $created = $this->actingAs($owner)
+            ->postJson('/api/v1/users', [
+                'name' => 'New Cashier',
+                'username' => 'new.cashier',
+                'email' => 'new.cashier@example.com',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'cashier',
+                'branch_id' => $this->branchOne->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('user.username', 'new.cashier');
+
+        $userId = $created->json('user.id');
+
+        $this->actingAs($owner)
+            ->putJson("/api/v1/users/{$userId}", [
+                'name' => 'Updated Cashier',
+                'username' => 'new.cashier',
+                'email' => 'new.cashier@example.com',
+                'role' => 'cashier',
+                'branch_id' => $this->branchOne->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('user.name', 'Updated Cashier');
+
+        $this->actingAs($owner)
+            ->deleteJson("/api/v1/users/{$userId}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('users', ['id' => $userId]);
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/users/{$userId}/restore")
+            ->assertOk()
+            ->assertJsonPath('user.deleted_at', null);
+    }
+
+    public function test_manager_can_create_branch_staff_but_not_privileged_or_cross_branch_users(): void
+    {
+        $manager = $this->user('manager', $this->branchOne);
+
+        $this->actingAs($manager)
+            ->postJson('/api/v1/users', [
+                'name' => 'Branch Cashier',
+                'username' => 'branch.cashier',
+                'email' => 'branch.cashier@example.com',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'cashier',
+                'branch_id' => $this->branchOne->id,
+            ])
+            ->assertCreated();
+
+        $this->actingAs($manager)
+            ->postJson('/api/v1/users', [
+                'name' => 'Sneaky Owner',
+                'username' => 'sneaky.owner',
+                'email' => 'sneaky.owner@example.com',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'owner',
+                'branch_id' => null,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('role');
+
+        $this->actingAs($manager)
+            ->postJson('/api/v1/users', [
+                'name' => 'Other Branch',
+                'username' => 'other.branch',
+                'email' => 'other.branch@example.com',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'cashier',
+                'branch_id' => $this->branchTwo->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('branch_id');
+    }
+
+    public function test_manager_cannot_update_or_delete_other_branch_users(): void
+    {
+        $manager = $this->user('manager', $this->branchOne);
+        $otherCashier = $this->user('cashier', $this->branchTwo);
+
+        $this->actingAs($manager)
+            ->putJson("/api/v1/users/{$otherCashier->id}", [
+                'name' => 'Nope',
+                'username' => $otherCashier->username,
+                'email' => $otherCashier->email,
+                'role' => 'cashier',
+                'branch_id' => $this->branchTwo->id,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($manager)
+            ->deleteJson("/api/v1/users/{$otherCashier->id}")
+            ->assertForbidden();
+    }
+
+    public function test_audit_payload_does_not_include_passwords(): void
+    {
+        $owner = $this->user('owner', null);
+
+        $this->actingAs($owner)->postJson('/api/v1/users', [
+            'name' => 'Audited User',
+            'username' => 'audited.user',
+            'email' => 'audited.user@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'cashier',
+            'branch_id' => $this->branchOne->id,
+        ])->assertCreated();
+
+        $log = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->latest()
+            ->firstOrFail();
+
+        $this->assertArrayNotHasKey('password', $log->payload ?? []);
     }
 
     private function branch(string $name): Branch

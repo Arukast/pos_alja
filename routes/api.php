@@ -40,10 +40,18 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             ->middleware('throttle:sensitive');
 
         Route::get('/branches', [BranchController::class, 'index']);
+        Route::post('/branches', [BranchController::class, 'store']);
         Route::get('/branches/{branch}', [BranchController::class, 'show']);
+        Route::put('/branches/{branch}', [BranchController::class, 'update']);
+        Route::patch('/branches/{branch}/status', [BranchController::class, 'status']);
+        Route::delete('/branches/{branch}', [BranchController::class, 'destroy']);
 
         Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users', [UserController::class, 'store']);
         Route::get('/users/{user}', [UserController::class, 'show']);
+        Route::put('/users/{user}', [UserController::class, 'update']);
+        Route::delete('/users/{user}', [UserController::class, 'destroy']);
+        Route::post('/users/{user}/restore', [UserController::class, 'restore']);
 
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::get('/attribute-types', [AttributeTypeController::class, 'index']);
