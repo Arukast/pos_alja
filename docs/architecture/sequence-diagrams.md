@@ -1,8 +1,42 @@
 # Sequence Diagrams
 
-- **Scope:** The principal end-to-end workflows implemented in the application.
+- **Scope:** The principal end-to-end workflows in the current application (§1–17) and the workflows required by the target specification (§18).
 - **Notation:** Mermaid `sequenceDiagram`. Participants are application roles, Livewire components, service classes, the database, and Reverb.
-- **Source of truth:** `app/Livewire`, `app/Services`, `app/Models`, `app/Events`, `routes/web.php`.
+- **Source of truth:** Current flows come from `app/Livewire`, `app/Services`, `app/Models`, `app/Events`, and `routes/web.php`. Target flows come from `docs/requirements/fr.md` and `docs/architecture/api-contracts.md` §13.
+- **Status:** Sections §1–17 describe shipped behavior, including known gaps. Section §18 describes required target behavior, not shipped code.
+
+## Requirement Coverage
+
+Every FR in `docs/requirements/fr.md` maps to at least one diagram.
+
+| FR | Diagram(s) | Notes |
+| :--- | :--- | :--- |
+| FR1 | 8 | Login and role dispatch |
+| FR2 | 12 | User creation and branch/role restrictions |
+| FR3 | 13 | Profile update, password change, and logout |
+| FR4 | 12 | Update, deactivate, and restore |
+| FR5 | 8, 18.11 | Target access contract; branch checks also appear in 2, 5, 9, 10, 12, and 14 |
+| FR6 | 17, 18.9 | Pricing is current; product and category CRUD are target |
+| FR7 | 18.10 | Target paginated search |
+| FR8 | 1, 10 | Intake and work-order ticket |
+| FR9 | 18.1 | Target |
+| FR10 | 18.2 | Target |
+| FR11 | 4 | Down payment and settlement |
+| FR12 | 4 | Repeated down payments use the same path |
+| FR13 | 10 | 80 mm receipt |
+| FR14 | 11 | Branch expense logging |
+| FR15 | 18.3 | Target |
+| FR16 | 2, 3, 18.5 | Start deduction, waste logging, and target usage ledger |
+| FR17 | 14 | Current stock view; the separate low-stock alert is target |
+| FR18 | 18.4 | Target |
+| FR19 | 18.8 | Target queue contract |
+| FR20 | 2, 9 | Start and completion |
+| FR21 | 5, 10 | Pickup and receipt |
+| FR22 | 6, 15 | Owner and manager summaries |
+| FR23 | 6 | Periodic finance breakdowns |
+| FR24 | 18.6 | Target |
+| FR25 | 16, 18.1–18.4, 18.9 | View is current; target writes appear in those flows. Payment, usage, and waste audit writes remain gaps. |
+| FR26 | 18.7 | Target |
 
 ---
 
@@ -222,7 +256,7 @@ Status transitions:
 | 1 Down payment | Remaining balance settled | 2 Paid |
 | 0 Unpaid | Full settlement in one payment | 2 Paid |
 
-Implementation note: `selectInvoice()` and `processCheckout()` load the invoice by primary key without an explicit branch assertion. The queue is branch-scoped.
+Implementation note: `selectInvoice()` and `processCheckout()` load the invoice by primary key without an explicit branch assertion. The queue is branch-scoped. Down-payment validation caps the amount at `grand_total`, not at the remaining receivable; FR11 and FR12 require the receivable cap.
 
 ---
 
@@ -254,6 +288,10 @@ sequenceDiagram
         UI-->>C: Success alert
     end
 ```
+
+Notes:
+
+- The current flow updates the invoice only. FR21 also requires every related order to store `pickup_status` and `pickup_date`.
 
 ---
 
@@ -371,11 +409,369 @@ sequenceDiagram
 
 ---
 
-## 9. Additional Target Workflows
+## 9. Production Completion
 
-These flows define the target contract for FR9, FR10, FR15, FR16, FR18, FR19, FR24, and FR26.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Production Operator
+    participant UI as Production Dashboard
+    participant OS as OrderService
+    participant DB as Database
+    participant R as Reverb
+    participant Peers as Other Dashboards
 
-### 9.1 Update an Order Before Production (FR9)
+    P->>UI: Mark order as completed (orderId)
+    UI->>DB: Load order with invoice
+    alt Invoice belongs to another branch
+        UI-->>P: HTTP 403 Unauthorized branch access
+    else Same branch or unbound user
+        UI->>OS: completeProduction(order, operator)
+        OS->>DB: BEGIN
+        OS->>DB: UPDATE orders SET status = 2, operator_id = operator
+        OS->>DB: INSERT order_status_logs (status 2)
+        OS->>DB: COMMIT
+        UI->>R: event(OrderUpdated)
+        R-->>Peers: orders / OrderUpdated
+        Peers->>Peers: $refresh
+        UI-->>P: Success alert
+    end
+```
+
+Notes:
+
+- Completion does not change stock. The deduction already happened in §2 when production started.
+- Completion does not change the invoice payment or pickup status.
+
+---
+
+## 10. Receipt and Work-Order Ticket
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Authorized User
+    participant B as Browser
+    participant RT as Route
+    participant DB as Database
+    participant IV as Invoice Model
+    participant V as Blade View
+    participant PR as Print Dialog
+
+    A->>B: Open /orders/{invoice}/receipt or /ticket
+    B->>RT: GET request
+    RT->>RT: Apply auth middleware
+    RT->>DB: Resolve invoice by UUID
+    alt Unknown invoice
+        DB-->>RT: No row
+        RT-->>B: HTTP 404
+    else Invoice found
+        alt Cross-branch non-owner
+            RT-->>B: HTTP 403 Unauthorized branch access
+        else Owner, same branch, or unbound user
+            RT->>IV: Load customer and orders
+            IV->>DB: Lazy-load branch, designer, and payments while rendering
+            RT->>V: Render 80 mm receipt or work-order ticket
+            V-->>B: HTML with print styles
+            B->>PR: window.print()
+        end
+    end
+```
+
+Notes:
+
+- Receipt and ticket routes are read-only: no audit row and no `OrderUpdated`.
+- The 80 mm receipt includes DP history, settlement, total paid, and the remaining receivable. The ticket is the printable work order for production.
+- Branch blocking is skipped for owners and for users with no branch assignment.
+
+---
+
+## 11. Cashier Expense Logging
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Cashier
+    participant UI as Cashier Dashboard
+    participant F as ExpenseForm
+    participant DB as Database
+
+    C->>UI: Submit operational expense
+    UI->>F: validate()
+    alt Invalid input
+        F-->>UI: ValidationException
+        UI-->>C: Field errors
+    else Valid input
+        UI->>DB: INSERT expenses with actor branch and cached cashier name
+        DB-->>UI: Expense
+        UI->>F: reset() and restore default type
+        UI-->>C: Success alert
+    end
+```
+
+Notes:
+
+- `ExpenseForm` validates an integer amount of at least 100, type `modal` or `laba`, an incurred date, and a description of at most 500 characters.
+- The branch falls back to the first branch when the cashier has no branch assignment.
+- This flow does not call a service, write `activity_logs`, or dispatch `OrderUpdated`. The expense is visible to `FinanceService::getExpensesBreakdown()` on the next report request.
+
+---
+
+## 12. User Account Management
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Owner or Branch Manager
+    participant UI as UserManagement
+    participant US as UserService
+    participant DB as Database
+    participant R as Reverb
+
+    A->>UI: Open create or edit modal
+    UI->>UI: Apply mode from the component property
+    alt Create
+        A->>UI: Submit name, username, email, phone, address, role, branch, password
+        UI->>UI: Validate unique username and email, role, branch, and password
+        alt Role or branch outside the actor scope
+            UI-->>A: HTTP 403 or validation error
+        else Allowed
+            UI->>US: createUser(data, actor)
+            US->>DB: BEGIN
+            US->>DB: INSERT users with hashed password
+            US->>DB: INSERT activity_logs with password removed
+            US->>DB: COMMIT
+            US-->>UI: User
+        end
+    else Update
+        A->>UI: Submit changed user data
+        UI->>UI: Validate fields, password is optional
+        alt Target user is outside the actor scope
+            UI-->>A: HTTP 403 or validation error
+        else Allowed
+            UI->>US: updateUser(user, data, actor)
+            US->>DB: BEGIN
+            US->>DB: UPDATE users and hash password when supplied
+            US->>DB: INSERT activity_logs with before and after
+            US->>DB: COMMIT
+            US-->>UI: User
+        end
+    else Deactivate or restore
+        A->>UI: Delete or restore a user
+        UI->>UI: Apply the same role and branch guards
+        UI->>US: deleteUser or restoreUser
+        US->>DB: BEGIN
+        US->>DB: Soft delete or restore users
+        US->>DB: INSERT activity_logs
+        US->>DB: COMMIT
+    end
+    UI->>R: event(OrderUpdated) in try/catch
+    UI-->>A: Success alert
+```
+
+Notes:
+
+- `mode` is a public Livewire property set by the owner or manager view. The target requires the role and branch to be derived server-side, so this property must not be client-writable.
+- A secondary owner cannot edit or create owner accounts unless `isPrimaryOwner()` recognizes the actor.
+- Managers only see their own branch and cannot manage owners or other managers.
+- Password is removed from every audit payload.
+
+---
+
+## 13. Own Profile, Password, and Logout
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Authenticated User
+    participant PP as Profile Page
+    participant PF as UpdateProfileInformationForm
+    participant PW as UpdatePasswordForm
+    participant NAV as Navigation
+    participant LO as Logout Action
+    participant DB as Database
+    participant S as Session Store
+
+    U->>PP: Open /profile
+    alt Update name and email
+        U->>PF: Submit profile form
+        alt Role is not owner or manager
+            PF-->>U: Validation error
+        else Owner or manager
+            PF->>PF: Validate name and unique lowercase email
+            PF->>DB: UPDATE users
+            opt Email changed
+                PF->>DB: Clear email_verified_at
+            end
+            PF-->>PP: profile-updated event
+        end
+    else Change password
+        U->>PW: Submit current password and confirmed new password
+        PW->>PW: Validate current_password and Password::defaults()
+        alt Invalid
+            PW-->>U: Validation error and reset fields
+        else Valid
+            PW->>DB: UPDATE users with hashed password
+            PW-->>PP: password-updated event
+        end
+    else Logout
+        U->>NAV: Click logout
+        NAV->>LO: __invoke()
+        LO->>S: Log out web guard, invalidate session, regenerate CSRF token
+        LO-->>U: Redirect to login
+    end
+```
+
+Notes:
+
+- Cashier, designer, and production can change their own password but cannot update their name or email.
+- The profile update is not written to the audit log.
+- Account deletion is owner/manager-only and is handled by a separate profile form that logs the user out after deletion.
+
+---
+
+## 14. Branch Stock Visibility and Low-Stock Warnings
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Branch Manager
+    actor O as Owner
+    participant MD as Manager Dashboard
+    participant MM as MaterialManagement
+    participant DB as Database
+
+    alt Manager branch
+        M->>MD: Open materials or stock ledger tab
+        MD->>MM: Render MaterialManagement for the manager branch
+        MM->>DB: SELECT materials JOIN material_branch_stock WHERE branch = manager branch
+        DB-->>MM: current_stock, min_stock, and material rows
+        MM->>MM: Order by current_stock ascending
+        MM->>MM: Flag each row where current_stock is at or below min_stock
+        MM-->>M: Stock table with low-stock highlight and ledger history
+    else Owner all or selected branch
+        O->>MM: Select all branches or one branch
+        MM->>DB: SELECT materials JOIN material_branch_stock with optional branch filter
+        DB-->>MM: Rows including branch name when all branches are selected
+        MM->>MM: Flag each row where current_stock is at or below min_stock
+        MM-->>O: Stock table with branch and low-stock highlight
+    end
+```
+
+Notes:
+
+- The low-stock state is a row highlight in the existing table. There is no separate alert list or dashboard warning yet.
+- Production stock read and the FR17 warning surface are target behavior.
+- Managers are fixed to their own branch. Owners may switch between `all` and a single branch.
+
+---
+
+## 15. Manager Branch Summary
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Branch Manager
+    participant UI as Manager Dashboard
+    participant DB as Database
+
+    M->>UI: Open manager dashboard
+    UI->>DB: Count materials, machines, staff, and pricing rules for the branch
+    UI->>DB: Load stock ledger, materials, expenses, attributes, and pricing
+    UI->>DB: Aggregate designer invoices and waste for the current month
+    DB-->>UI: Leaderboard rows and totals
+    UI->>UI: Compute top revenue, order champion, top AOV, and accuracy leader
+    UI-->>M: Branch cards, leaderboard, stock, and expense panels
+```
+
+Notes:
+
+- Every branch-owned query is fixed to the manager's branch. Products and attribute types are global reference data.
+- The current summary does not show gross revenue, receivables, order counts, or queued/processing/completed counts. Those are target FR22 additions.
+- The owner summary is covered in §6.
+
+---
+
+## 16. Audit Trail View
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Owner
+    participant UI as Owner Dashboard
+    participant DB as Database
+
+    O->>UI: Open audit tab
+    UI->>DB: SELECT activity_logs with optional branch filter, search, and sort
+    DB-->>UI: Paginated rows
+    UI-->>O: Audit table with actor, role, action, and timestamp
+
+    O->>UI: Open audit detail (logId)
+    UI->>DB: SELECT activity_logs WHERE id = logId
+    DB-->>UI: Model type, model id, and payload
+    UI-->>O: Detail modal with before/after values when present
+```
+
+Notes:
+
+- Search covers username, role, action, and description. Sorting is available on the displayed columns.
+- Audit rows are append-only from the application code, but coverage is partial. Invoice creation, customer creation, user, branch, and machine changes write rows. Payments, order status changes, stock movements, pricing, categories, and expenses do not yet write `activity_logs`.
+- Owner is the only role with an audit screen.
+
+---
+
+## 17. Pricing Matrix Management
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Branch Manager
+    participant UI as Manager Dashboard
+    participant DB as Database
+    participant R as Reverb
+
+    M->>UI: Open pricing tab
+    UI->>DB: Load pricing rows for the manager branch with product and material
+    DB-->>UI: Pricing matrix
+
+    M->>UI: Create or edit a pricing row
+    UI->>UI: Validate product, material, customer type, minimum quantity, and price
+    UI->>DB: Load material cost
+    alt Edit or delete a row from another branch
+        UI-->>M: HTTP 403 Unauthorized branch access
+    else Allowed
+        UI->>DB: INSERT, UPDATE, or DELETE pricing row
+        UI->>DB: Derive cost from the material and profit from price minus cost
+        UI-->>M: Success alert
+    end
+
+    opt Clone pricing tiers
+        M->>UI: Choose source material, target material, customer types, and adjustment percent
+        UI->>DB: BEGIN
+        UI->>DB: SELECT source pricing rows for the manager branch
+        loop Each source tier
+            UI->>DB: Upsert target pricing row with adjusted price
+        end
+        UI->>DB: COMMIT
+        UI->>R: event(OrderUpdated)
+        UI-->>M: Success alert
+    end
+```
+
+Notes:
+
+- Pricing writes are branch-scoped to `auth()->user()->branch_id`, falling back to the first branch.
+- `savePricing()` and `deletePricing()` do not write `activity_logs` and do not dispatch `OrderUpdated`. `clonePricingTiers()` dispatches the event but does not write an audit row.
+- The owner has no pricing tab yet; target FR6 requires owner and manager price management.
+- Machine and attribute master data use separate branch-scoped CRUD screens and are not part of this diagram.
+
+---
+
+## 18. Additional Target Workflows
+
+These flows define the target contract for FR5–FR7, FR9–FR10, FR15–FR16, FR18–FR19, FR24, and FR26.
+
+### 18.1 Update an Order Before Production (FR9)
 
 ```mermaid
 sequenceDiagram
@@ -405,7 +801,7 @@ sequenceDiagram
     end
 ```
 
-### 9.2 Update Design Status (FR10)
+### 18.2 Update Design Status (FR10)
 
 ```mermaid
 sequenceDiagram
@@ -432,7 +828,7 @@ sequenceDiagram
     end
 ```
 
-### 9.3 Record a Raw-Material Purchase (FR15)
+### 18.3 Record a Raw-Material Purchase (FR15)
 
 ```mermaid
 sequenceDiagram
@@ -460,7 +856,7 @@ sequenceDiagram
     UI-->>M: Success
 ```
 
-### 9.4 Adjust Stock with a Reason (FR18)
+### 18.4 Adjust Stock with a Reason (FR18)
 
 ```mermaid
 sequenceDiagram
@@ -489,7 +885,7 @@ sequenceDiagram
     end
 ```
 
-### 9.5 Record Production Usage (FR16)
+### 18.5 Record Production Usage (FR16)
 
 ```mermaid
 sequenceDiagram
@@ -515,7 +911,7 @@ sequenceDiagram
     UI-->>P: Success
 ```
 
-### 9.6 Export a Report (FR24)
+### 18.6 Export a Report (FR24)
 
 ```mermaid
 sequenceDiagram
@@ -535,7 +931,7 @@ sequenceDiagram
     UI-->>A: Download file
 ```
 
-### 9.7 Manual and Scheduled Backup (FR26)
+### 18.7 Manual and Scheduled Backup (FR26)
 
 ```mermaid
 sequenceDiagram
@@ -550,16 +946,20 @@ sequenceDiagram
     alt Manual
         O->>UI: Run backup
         UI->>BS: run(manual, actor)
+        BS->>DB: Dump schema and data
+        BS->>FS: Store encrypted backup
+        BS->>DB: Insert backup audit log
+        BS-->>UI: Success or failure
     else Scheduled
         SCH->>BS: run(scheduled)
+        BS->>DB: Dump schema and data
+        BS->>FS: Store encrypted backup
+        BS->>DB: Insert backup audit log
+        BS-->>SCH: Success or failure
     end
-    BS->>DB: Dump schema and data
-    BS->>FS: Store encrypted backup
-    BS->>DB: Insert backup audit log
-    BS-->>UI: Success or failure
 ```
 
-### 9.8 Read the Production Queue (FR19)
+### 18.8 Read the Production Queue (FR19)
 
 ```mermaid
 sequenceDiagram
@@ -574,8 +974,127 @@ sequenceDiagram
     UI-->>A: Queue with customer, deadline, priority, status, designer, operator
 ```
 
+### 18.9 Manage the Product Catalog (FR6)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Owner or Branch Manager
+    participant UI as Catalog Screen
+    participant PS as ProductService
+    participant CS as ProductCategoryService
+    participant DB as Database
+    participant R as Reverb
+
+    A->>UI: Submit a product or category form
+    UI->>UI: Derive role and branch from the authenticated user
+    alt Product
+        A->>UI: Create, update, or delete a product
+        UI->>UI: Validate name, category, pricing type, and active status
+        alt Create or update
+            UI->>PS: create or update(data, actor)
+            PS->>DB: BEGIN
+            PS->>DB: INSERT or UPDATE products
+            PS->>DB: INSERT activity_logs
+            PS->>DB: COMMIT
+        else Delete
+            UI->>PS: delete(product, actor)
+            PS->>DB: BEGIN
+            PS->>DB: Soft delete products
+            PS->>DB: INSERT activity_logs
+            PS->>DB: COMMIT
+        end
+    else Category
+        A->>UI: Create, update, or delete a category
+        UI->>UI: Validate name, calculation archetype, and allowed attribute types
+        UI->>CS: createCategory, updateCategory, or deleteCategory
+        CS->>DB: BEGIN
+        CS->>DB: INSERT, UPDATE, or delete product_categories
+        CS->>DB: INSERT activity_logs
+        CS->>DB: COMMIT
+    end
+    UI->>R: event(OrderUpdated)
+    UI-->>A: Success alert
+```
+
+Notes:
+
+- `ProductService` is target behavior. Products and categories are global master data; the pricing matrix that uses them is branch-scoped (§17).
+- `ProductCategoryService` exists, wraps its writes in a transaction, and logs failures, but it does not write `activity_logs` yet. FR6 requires the audit row.
+- A category delete cascades to products, materials, and pricing rows unless a restrictive reference blocks it.
+
+### 18.10 Search and Paginate Products (FR7)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Designer or Cashier
+    participant UI as Product Browser
+    participant PS as ProductService
+    participant DB as Database
+
+    A->>UI: Enter search text and choose category and active filters
+    UI->>PS: paginate(search, category_id, is_active, per_page)
+    PS->>DB: SELECT products JOIN product_categories with filters ORDER BY name
+    DB-->>PS: Current page and total count
+    PS-->>UI: LengthAwarePaginator with 20 rows by default
+    UI-->>A: Product grid with previous and next navigation
+
+    A->>UI: Select a product
+    UI-->>A: Feed the product into the order calculator or checkout
+```
+
+Notes:
+
+- The target is 20 products per page and a p95 response under the NFR1 target.
+- Products are global; branch-specific availability comes from the pricing matrix, not from the product row.
+- The current designer screen loads categories and products without pagination, so FR7 remains target.
+
+### 18.11 Enforce Role and Branch Scope (FR5)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Authenticated User
+    participant E as Route or Livewire Action
+    participant G as Access Guard
+    participant S as Service
+    participant DB as Database
+    participant B as Broadcast Auth
+
+    A->>E: Submit a request or action
+    E->>G: auth, verified, role, and policy checks
+    alt Unauthenticated
+        G-->>A: Redirect to login
+    else Wrong role
+        G-->>A: HTTP 403
+    else Allowed role
+        G->>G: Derive actor, role, and branch from the session
+        E->>S: Call the service with the explicit actor
+        S->>DB: Query or mutate with a branch predicate
+        alt Record belongs to another branch
+            S-->>E: Branch access denied
+            E-->>A: HTTP 403
+        else In scope
+            S->>DB: COMMIT when the flow mutates
+            E-->>A: Response or success alert
+            opt Mutation broadcasts state
+                E->>B: Broadcast on private-branch.{branchId}
+                B->>G: Authorize owner or matching branch
+            end
+        end
+    end
+```
+
+Notes:
+
+- The target derives role and branch server-side. Client-writable fields such as `UserManagement::$mode` and request branch parameters are ignored or rejected.
+- The same check applies to ticket and receipt routes, report exports, stock actions, and private broadcast channels.
+- Private branch channels replace the current public `orders` channel described in §7.
+- Production responses and exports omit price, cost, and profit fields.
+
 ---
 
 ## Diagram Maintenance
 
-Add a sequence diagram when a new cross-component workflow is introduced or when a service contract changes enough that the existing diagram would mislead. Keep each diagram at the level of service calls and database effects, not private helper methods.
+Add a sequence diagram when a new cross-component workflow is introduced or when a service contract changes enough that the existing diagram would mislead. Keep each diagram at the level of service calls and database effects, not private helper methods. Keep the requirement coverage table current when an FR is added, removed, or re-scoped. Do not move target behavior into the current sections until it ships.
