@@ -38,6 +38,8 @@ import { ProfilePage } from '../features/profile/ProfilePage';
 import { ProductionDashboardPage } from '../features/production/ProductionDashboardPage';
 import { ProductionQueuePage } from '../features/production/ProductionQueuePage';
 import { ProductionWastePage } from '../features/production/ProductionWastePage';
+import { ReceiptPage } from '../features/print/ReceiptPage';
+import { TicketPage } from '../features/print/TicketPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { LegacyDashboardRedirect } from './legacy';
 
@@ -46,6 +48,8 @@ export const router = createBrowserRouter([
     {
         element: <RequireAuth />,
         children: [
+            { path: 'orders/:id/ticket', element: <TicketPage /> },
+            { path: 'orders/:id/receipt', element: <ReceiptPage /> },
             {
                 element: <AppShell />,
                 children: [
