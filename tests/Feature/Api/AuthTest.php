@@ -27,6 +27,22 @@ class AuthTest extends TestCase
         $this->branch = Branch::create(['name' => 'Branch One']);
     }
 
+    public function test_protected_auth_routes_return_401_for_guests(): void
+    {
+        $routes = [
+            ['post', '/api/v1/auth/logout'],
+            ['get', '/api/v1/auth/me'],
+            ['put', '/api/v1/auth/profile'],
+            ['delete', '/api/v1/auth/profile'],
+            ['put', '/api/v1/auth/password'],
+            ['post', '/api/v1/auth/confirm-password'],
+        ];
+
+        foreach ($routes as [$method, $uri]) {
+            $this->json($method, $uri)->assertUnauthorized();
+        }
+    }
+
     public function test_login_uses_username_and_returns_user(): void
     {
         $user = $this->user('owner', ['username' => 'owner']);
@@ -54,6 +70,21 @@ class AuthTest extends TestCase
 
         $response = $this->postJson('/api/v1/auth/login', [
             'username' => 'cashier',
+            'password' => 'wrong-password',
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('username')
+            ->assertJsonPath('errors.username.0', trans('auth.failed'));
+
+        $this->assertGuest();
+    }
+
+    public function test_login_rejects_unknown_username_with_generic_message(): void
+    {
+        $response = $this->postJson('/api/v1/auth/login', [
+            'username' => 'missing-user',
             'password' => 'wrong-password',
         ]);
 
@@ -192,6 +223,29 @@ class AuthTest extends TestCase
             ->assertNoContent();
 
         $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+    }
+
+    public function test_password_routes_are_throttled(): void
+    {
+        $user = $this->user('cashier');
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->actingAs($user)
+                ->putJson('/api/v1/auth/password', [
+                    'current_password' => 'wrong-password',
+                    'password' => 'new-password',
+                    'password_confirmation' => 'new-password',
+                ])
+                ->assertStatus(422);
+        }
+
+        $this->actingAs($user)
+            ->putJson('/api/v1/auth/password', [
+                'current_password' => 'wrong-password',
+                'password' => 'new-password',
+                'password_confirmation' => 'new-password',
+            ])
+            ->assertStatus(429);
     }
 
     public function test_confirm_password_validates_current_user_password(): void

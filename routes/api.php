@@ -23,7 +23,7 @@ use App\Modules\Sales\Http\Controllers\ExpenseController;
 use App\Modules\Sales\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->group(function (): void {
+Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
@@ -31,8 +31,10 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
         Route::delete('/auth/profile', [AuthController::class, 'destroy']);
-        Route::put('/auth/password', [AuthController::class, 'updatePassword']);
-        Route::post('/auth/confirm-password', [AuthController::class, 'confirmPassword']);
+        Route::put('/auth/password', [AuthController::class, 'updatePassword'])
+            ->middleware('throttle:sensitive');
+        Route::post('/auth/confirm-password', [AuthController::class, 'confirmPassword'])
+            ->middleware('throttle:sensitive');
 
         Route::get('/branches', [BranchController::class, 'index']);
         Route::get('/branches/{branch}', [BranchController::class, 'show']);

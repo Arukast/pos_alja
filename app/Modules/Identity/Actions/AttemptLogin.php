@@ -7,12 +7,15 @@ namespace App\Modules\Identity\Actions;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final class AttemptLogin
 {
+    private const DUMMY_HASH = '$2y$12$ne./1kPCkI1WLo44tzQ4u.rvJ9DI4ALuVDHFF3Fd3zlicMT0jBvdi';
+
     /**
      * @param  array{username: string, password: string, remember?: bool}  $credentials
      */
@@ -20,28 +23,34 @@ final class AttemptLogin
     {
         $this->ensureIsNotRateLimited($credentials['username']);
 
-        if (! Auth::attempt([
-            'username' => $credentials['username'],
-            'password' => $credentials['password'],
-        ], (bool) ($credentials['remember'] ?? false))) {
-            RateLimiter::hit($this->throttleKey($credentials['username']));
+        $user = User::query()
+            ->where('username', $credentials['username'])
+            ->first();
 
-            throw ValidationException::withMessages([
-                'username' => trans('auth.failed'),
-            ]);
+        if ($user === null) {
+            // Equalize bcrypt work so a missing username does not answer faster.
+            Hash::check($credentials['password'], self::DUMMY_HASH);
+            $this->fail($credentials['username']);
+        }
+
+        if (! Hash::check($credentials['password'], $user->password)) {
+            $this->fail($credentials['username']);
         }
 
         RateLimiter::clear($this->throttleKey($credentials['username']));
 
-        $user = Auth::user();
-
-        if (! $user instanceof User) {
-            throw ValidationException::withMessages([
-                'username' => trans('auth.failed'),
-            ]);
-        }
+        Auth::login($user, (bool) ($credentials['remember'] ?? false));
 
         return $user;
+    }
+
+    private function fail(string $username): never
+    {
+        RateLimiter::hit($this->throttleKey($username));
+
+        throw ValidationException::withMessages([
+            'username' => trans('auth.failed'),
+        ]);
     }
 
     private function ensureIsNotRateLimited(string $username): void

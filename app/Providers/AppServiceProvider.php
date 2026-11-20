@@ -18,7 +18,10 @@ use App\Policies\MachinePolicy;
 use App\Policies\MaterialPolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\WastePolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider; // Explicitly imported here
 
@@ -37,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by(
+            (string) ($request->user()?->getAuthIdentifier() ?? $request->ip())
+        ));
+
+        RateLimiter::for('sensitive', fn (Request $request) => Limit::perMinute(5)->by(
+            (string) ($request->user()?->getAuthIdentifier() ?? $request->ip())
+        ));
+
         Gate::policy(ProductCategory::class, CatalogPolicy::class);
         Gate::policy(AttributeType::class, CatalogPolicy::class);
         Gate::policy(Attribute::class, CatalogPolicy::class);
