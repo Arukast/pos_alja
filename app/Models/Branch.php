@@ -9,6 +9,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property string $id
+ * @property string $name
+ * @property string|null $code
+ * @property string|null $address
+ * @property string|null $phone
+ * @property bool $is_active
+ * @property array<string, mixed>|null $settings
+ */
 class Branch extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
