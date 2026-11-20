@@ -15,6 +15,9 @@ use App\Modules\Identity\Http\Controllers\BranchController;
 use App\Modules\Identity\Http\Controllers\UserController;
 use App\Modules\Production\Http\Controllers\ProductionController;
 use App\Modules\Production\Http\Controllers\WasteController;
+use App\Modules\Reporting\Http\Controllers\AuditController;
+use App\Modules\Reporting\Http\Controllers\DashboardController;
+use App\Modules\Reporting\Http\Controllers\ReportController;
 use App\Modules\Sales\Http\Controllers\CustomerController;
 use App\Modules\Sales\Http\Controllers\ExpenseController;
 use App\Modules\Sales\Http\Controllers\InvoiceController;
@@ -57,5 +60,15 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/production/summary', [ProductionController::class, 'summary']);
         Route::get('/waste/options', [WasteController::class, 'options']);
         Route::get('/waste', [WasteController::class, 'index']);
+
+        Route::get('/dashboard', [DashboardController::class, 'index']);
+        Route::get('/reports/gross-revenue', [ReportController::class, 'grossRevenue']);
+        Route::get('/reports/base-cost', [ReportController::class, 'baseCost']);
+        Route::get('/reports/net-profit', [ReportController::class, 'netProfit']);
+        Route::get('/reports/expenses', [ReportController::class, 'expenses']);
+        Route::get('/reports/sparkline', [ReportController::class, 'sparkline']);
+        Route::get('/reports/designer-leaderboard', [ReportController::class, 'leaderboard']);
+        Route::get('/audit-logs', [AuditController::class, 'index']);
+        Route::get('/audit-logs/{activityLog}', [AuditController::class, 'show']);
     });
 });
