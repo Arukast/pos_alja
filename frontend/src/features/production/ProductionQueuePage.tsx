@@ -71,7 +71,9 @@ export function ProductionQueuePage() {
                                         <TableHeaderCell>Qty</TableHeaderCell>
                                         <TableHeaderCell>Deadline</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
-                                        <TableHeaderCell>Action</TableHeaderCell>
+                                        <TableHeaderCell className="bg-light-surface sticky right-0 dark:bg-surface-700">
+                                            Action
+                                        </TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -94,7 +96,7 @@ export function ProductionQueuePage() {
                                                 <TableCell>
                                                     <OrderStatusBadge status={order.status} />
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="bg-white sticky right-0 dark:bg-surface-700">
                                                     {order.status === 0 ? (
                                                         <Button
                                                             size="sm"

@@ -43,7 +43,7 @@ Services:
 - `db`: PostgreSQL with a named volume.
 - `reverb`: Reverb WebSocket server.
 
-The Compose file reads `.env` through `env_file`. The database credentials default to `pos_alja` / `secret` only for local demonstration; override them in production.
+The Compose file reads `.env` through `env_file`. `DB_PASSWORD` is required; there is no default. Run `docker compose config` with your production `.env` before starting.
 
 ## 4. Native Development
 
