@@ -89,6 +89,19 @@ class PaymentApiTest extends TestCase
             ->assertJsonPath('invoice.accounts_receivable', '50000.00');
     }
 
+    public function test_down_payment_that_rounds_to_zero_is_rejected(): void
+    {
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$this->invoice->id}/down-payments", [
+                'amount' => 0.001,
+                'payment_method' => 'Cash',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.amount.0', 'Jumlah pembayaran harus lebih besar dari nol.');
+
+        $this->assertDatabaseCount('payments', 0);
+    }
+
     public function test_down_payment_cannot_exceed_receivable(): void
     {
         $this->actingAs($this->cashier)

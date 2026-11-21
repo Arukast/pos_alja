@@ -19,7 +19,7 @@ final class MarkInvoicePickedUp
 
             if ($locked->status !== 2) {
                 throw ValidationException::withMessages([
-                    'invoice' => 'Only fully paid invoices can be picked up.',
+                    'invoice' => 'Hanya invoice yang sudah lunas yang dapat diambil.',
                 ]);
             }
 

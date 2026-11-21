@@ -213,6 +213,24 @@ class ReportApiTest extends TestCase
             ->assertJsonCount(4, 'points');
     }
 
+    public function test_sparkline_labels_are_in_indonesian(): void
+    {
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/sparkline?period=monthly')
+            ->assertOk()
+            ->assertJsonPath('labels.0', '3 mgg lalu')
+            ->assertJsonPath('labels.1', '2 mgg lalu')
+            ->assertJsonPath('labels.2', '1 mgg lalu')
+            ->assertJsonPath('labels.3', 'Minggu Ini');
+
+        $labels = $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/sparkline?period=weekly')
+            ->assertOk()
+            ->json('labels');
+
+        $this->assertContains($labels[6], ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']);
+    }
+
     public function test_manager_leaderboard_is_branch_scoped(): void
     {
         $response = $this->actingAs($this->manager)

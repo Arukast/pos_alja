@@ -29,7 +29,7 @@ export function CashierPickupPage() {
             void queryClient.invalidateQueries({ queryKey: ['cashier', 'invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setNotice('Order marked as picked up.');
+            setNotice('Pesanan ditandai sudah diambil.');
         },
         onError: (error) => setNotice(errorMessage(error)),
     });
@@ -39,9 +39,9 @@ export function CashierPickupPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Cashier"
-                title="Pickup Queue"
-                description="Paid orders waiting for customer pickup."
+                eyebrow="Kasir"
+                title="Antrean Pengambilan"
+                description="Pesanan lunas yang menunggu pengambilan pelanggan."
             />
             <Card>
                 <CardBody>
@@ -55,16 +55,16 @@ export function CashierPickupPage() {
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
-                                        <TableHeaderCell>Paid</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
+                                        <TableHeaderCell>Dibayar</TableHeaderCell>
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                            Action
+                                            Aksi
                                         </TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {invoices.length === 0 ? (
-                                        <TableEmpty colSpan={4}>No orders waiting for pickup.</TableEmpty>
+                                        <TableEmpty colSpan={4}>Belum ada pesanan menunggu pengambilan.</TableEmpty>
                                     ) : (
                                         invoices.map((invoice) => (
                                             <TableRow key={invoice.id}>
@@ -77,7 +77,7 @@ export function CashierPickupPage() {
                                                         loading={pickup.isPending}
                                                         onClick={() => pickup.mutate(invoice.id)}
                                                     >
-                                                        Mark picked up
+                                                        Tandai diambil
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>

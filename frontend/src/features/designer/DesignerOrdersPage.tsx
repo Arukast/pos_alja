@@ -9,9 +9,9 @@ import { formatMoney } from '../../lib/money';
 export function DesignerOrdersPage() {
     return (
         <ResourceTable
-            eyebrow="Designer"
-            title="Order List"
-            description="Invoices created by your branch."
+            eyebrow="Desainer"
+            title="Daftar Pesanan"
+            description="Invoice yang dibuat oleh cabang Anda."
             queryKey={['designer', 'invoices']}
             queryFn={(page) => api.invoices({ page })}
             columns={[
@@ -21,8 +21,8 @@ export function DesignerOrdersPage() {
                         <span className="font-medium">{invoice.invoice_number}</span>
                     ),
                 },
-                { header: 'Customer', cell: (invoice) => invoice.customer?.name ?? '-' },
-                { header: 'Deadline', cell: (invoice) => formatDate(invoice.deadline ?? '-') },
+                { header: 'Pelanggan', cell: (invoice) => invoice.customer?.name ?? '-' },
+                { header: 'Tenggat', cell: (invoice) => formatDate(invoice.deadline ?? '-') },
                 {
                     header: 'Status',
                     cell: (invoice) => <InvoiceStatusBadge status={invoice.status} />,
@@ -32,13 +32,13 @@ export function DesignerOrdersPage() {
                     cell: (invoice) => formatMoney(invoice.grand_total),
                 },
                 {
-                    header: 'Print',
+                    header: 'Cetak',
                     cell: (invoice) => (
                         <Link
                             className="text-brand-primary font-medium hover:underline"
                             to={`/orders/${invoice.id}/ticket`}
                         >
-                            Ticket
+                            Tiket
                         </Link>
                     ),
                 },

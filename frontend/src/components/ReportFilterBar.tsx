@@ -26,7 +26,7 @@ export function ReportFilterBar({
         <div className="flex flex-wrap items-end gap-3">
             <div className="w-40">
                 <Input
-                    label="Start date"
+                    label="Tanggal mulai"
                     type="date"
                     value={draft.start}
                     onChange={(event) => onChange({ ...draft, start: event.target.value })}
@@ -34,7 +34,7 @@ export function ReportFilterBar({
             </div>
             <div className="w-40">
                 <Input
-                    label="End date"
+                    label="Tanggal akhir"
                     type="date"
                     value={draft.end}
                     onChange={(event) => onChange({ ...draft, end: event.target.value })}
@@ -42,11 +42,11 @@ export function ReportFilterBar({
             </div>
             <div className="w-52">
                 <Select
-                    label="Branch"
+                    label="Cabang"
                     value={draft.branch}
                     onChange={(event) => onChange({ ...draft, branch: event.target.value })}
                 >
-                    <option value="all">All branches</option>
+                    <option value="all">Semua cabang</option>
                     {branches.map((branch) => (
                         <option key={branch.id} value={branch.id}>
                             {branch.name}
@@ -55,7 +55,7 @@ export function ReportFilterBar({
                 </Select>
             </div>
             <Button loading={loading} onClick={onApply}>
-                Apply
+                Terapkan
             </Button>
         </div>
     );

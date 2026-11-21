@@ -5,6 +5,7 @@ import { api } from '../../api/queries';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { formatDate } from '../../lib/dates';
+import { paymentMethodLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 
 export function ReceiptPage() {
@@ -24,9 +25,9 @@ export function ReceiptPage() {
     if (!invoice) {
         return (
             <div className="p-8">
-                <p>Unable to load the receipt.</p>
+                <p>Tidak dapat memuat nota.</p>
                 <Button className="mt-4" onClick={() => navigate(-1)}>
-                    Back
+                    Kembali
                 </Button>
             </div>
         );
@@ -34,11 +35,12 @@ export function ReceiptPage() {
 
     return (
         <main className="min-h-screen bg-gray-100 p-6">
+            <h1 className="sr-only">Nota</h1>
             <div className="no-print mx-auto mb-4 flex max-w-[80mm] justify-end gap-2">
                 <Button variant="secondary" onClick={() => navigate(-1)}>
-                    Back
+                    Kembali
                 </Button>
-                <Button onClick={() => window.print()}>Print receipt</Button>
+                <Button onClick={() => window.print()}>Cetak nota</Button>
             </div>
 
             <article className="mx-auto w-[80mm] bg-white p-4 text-[11px] text-black shadow print:shadow-none">
@@ -51,15 +53,15 @@ export function ReceiptPage() {
 
                 <div className="my-2 border-y border-dashed border-black py-1">
                     <p>Invoice: {invoice.invoice_number}</p>
-                    <p>Date: {formatDate(invoice.created_date)}</p>
-                    <p>Customer: {invoice.customer?.name ?? '-'}</p>
+                    <p>Tanggal: {formatDate(invoice.created_date)}</p>
+                    <p>Pelanggan: {invoice.customer?.name ?? '-'}</p>
                 </div>
 
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="border-b border-black text-left">
                             <th>Item</th>
-                            <th className="text-right">Qty</th>
+                            <th className="text-right">Jml</th>
                             <th className="text-right">Total</th>
                         </tr>
                     </thead>
@@ -76,15 +78,15 @@ export function ReceiptPage() {
 
                 <div className="mt-2 space-y-1 border-t border-dashed border-black pt-2">
                     <p className="flex justify-between">
-                        <span>Grand total</span>
+                        <span>Total</span>
                         <span>{formatMoney(invoice.grand_total)}</span>
                     </p>
                     <p className="flex justify-between">
-                        <span>Discount</span>
+                        <span>Diskon</span>
                         <span>{formatMoney(invoice.discount)}</span>
                     </p>
                     <p className="flex justify-between">
-                        <span>Paid</span>
+                        <span>Dibayar</span>
                         <span>
                             {formatMoney(
                                 (invoice.payments ?? []).reduce(
@@ -95,21 +97,21 @@ export function ReceiptPage() {
                         </span>
                     </p>
                     <p className="flex justify-between font-bold">
-                        <span>Receivable</span>
+                        <span>Sisa Tagihan</span>
                         <span>{formatMoney(invoice.accounts_receivable)}</span>
                     </p>
                 </div>
 
                 <div className="mt-2 border-t border-dashed border-black pt-2">
-                    <p className="font-semibold">Payments</p>
+                    <p className="font-semibold">Pembayaran</p>
                     {(invoice.payments ?? []).length === 0 ? (
-                        <p>No payments yet.</p>
+                        <p>Belum ada pembayaran.</p>
                     ) : (
                         (invoice.payments ?? []).map((payment) => (
                             <p key={payment.id} className="flex justify-between">
                                 <span>
-                                    {payment.type === 'down_payment' ? 'DP' : 'Settlement'} (
-                                    {payment.payment_method})
+                                    {payment.type === 'down_payment' ? 'DP' : 'Pelunasan'} (
+                                    {paymentMethodLabel(payment.payment_method)})
                                 </span>
                                 <span>{formatMoney(payment.amount)}</span>
                             </p>
@@ -118,8 +120,11 @@ export function ReceiptPage() {
                 </div>
 
                 <footer className="mt-4 border-t border-dashed border-black pt-2 text-center">
-                    <p>Status: {invoice.status === 2 ? 'PAID' : invoice.status === 1 ? 'DP' : 'UNPAID'}</p>
-                    <p className="mt-1">Thank you for your order.</p>
+                    <p>
+                        Status:{' '}
+                        {invoice.status === 2 ? 'LUNAS' : invoice.status === 1 ? 'DP' : 'BELUM DIBAYAR'}
+                    </p>
+                    <p className="mt-1">Terima kasih atas pesanan Anda.</p>
                 </footer>
             </article>
         </main>

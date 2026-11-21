@@ -40,16 +40,16 @@ final class StoreUserRequest extends FormRequest
 
             if ($actor?->role === 'manager') {
                 if (! in_array($this->input('role'), ['cashier', 'designer', 'production'], true)) {
-                    $validator->errors()->add('role', 'Managers can only create branch staff.');
+                    $validator->errors()->add('role', 'Manajer hanya dapat membuat staf cabang.');
                 }
 
                 if ($this->input('branch_id') !== $actor->branch_id) {
-                    $validator->errors()->add('branch_id', 'Managers can only assign their own branch.');
+                    $validator->errors()->add('branch_id', 'Manajer hanya dapat menetapkan cabangnya sendiri.');
                 }
             }
 
             if ($this->input('role') !== 'owner' && ! $this->input('branch_id')) {
-                $validator->errors()->add('branch_id', 'A branch is required for non-owner roles.');
+                $validator->errors()->add('branch_id', 'Cabang wajib diisi untuk peran selain pemilik.');
             }
         });
     }

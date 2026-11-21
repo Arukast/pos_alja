@@ -10,6 +10,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
+import { roleLabel } from '../../lib/labels';
 
 export function AuditPage() {
     const [search, setSearch] = useState('');
@@ -31,15 +32,15 @@ export function AuditPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Owner insights"
-                title="Audit Trail"
-                description="Searchable record of important system changes."
+                eyebrow="Analitik Pemilik"
+                title="Jejak Audit"
+                description="Catatan perubahan penting pada sistem yang dapat dicari."
                 actions={
                     <>
                         <div className="w-56">
                             <Input
-                                aria-label="Search audit logs"
-                                placeholder="Search user, action, description"
+                                aria-label="Cari jejak audit"
+                                placeholder="Cari pengguna, aksi, deskripsi"
                                 value={search}
                                 onChange={(event) => {
                                     setSearch(event.target.value);
@@ -48,22 +49,22 @@ export function AuditPage() {
                             />
                         </div>
                         <Select
-                            aria-label="Sort field"
+                            aria-label="Urutkan berdasarkan"
                             value={sort}
                             onChange={(event) => setSort(event.target.value)}
                         >
-                            <option value="created_at">Newest</option>
-                            <option value="username">Username</option>
-                            <option value="role">Role</option>
-                            <option value="action">Action</option>
+                            <option value="created_at">Terbaru</option>
+                            <option value="username">Nama Pengguna</option>
+                            <option value="role">Peran</option>
+                            <option value="action">Aksi</option>
                         </Select>
                         <Select
-                            aria-label="Sort direction"
+                            aria-label="Arah urutan"
                             value={direction}
                             onChange={(event) => setDirection(event.target.value)}
                         >
-                            <option value="desc">Descending</option>
-                            <option value="asc">Ascending</option>
+                            <option value="desc">Menurun</option>
+                            <option value="asc">Menaik</option>
                         </Select>
                     </>
                 }
@@ -82,22 +83,22 @@ export function AuditPage() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableHeaderCell>Time</TableHeaderCell>
-                                        <TableHeaderCell>User</TableHeaderCell>
-                                        <TableHeaderCell>Role</TableHeaderCell>
-                                        <TableHeaderCell>Action</TableHeaderCell>
-                                        <TableHeaderCell>Description</TableHeaderCell>
+                                        <TableHeaderCell>Waktu</TableHeaderCell>
+                                        <TableHeaderCell>Pengguna</TableHeaderCell>
+                                        <TableHeaderCell>Peran</TableHeaderCell>
+                                        <TableHeaderCell>Aksi</TableHeaderCell>
+                                        <TableHeaderCell>Deskripsi</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {query.data.data.length === 0 ? (
-                                        <TableEmpty colSpan={5}>No audit entries match.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Tidak ada entri jejak audit yang cocok.</TableEmpty>
                                     ) : (
                                         query.data.data.map((log) => (
                                             <TableRow key={log.id}>
                                                 <TableCell>{formatDate(log.created_at)}</TableCell>
                                                 <TableCell>{log.username}</TableCell>
-                                                <TableCell className="capitalize">{log.role}</TableCell>
+                                                <TableCell>{roleLabel(log.role)}</TableCell>
                                                 <TableCell>{log.action}</TableCell>
                                                 <TableCell>{log.description}</TableCell>
                                             </TableRow>

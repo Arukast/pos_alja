@@ -20,9 +20,9 @@ export function CashierDashboardPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Cashier"
-                title="Cashier Dashboard"
-                description="Checkout queue, payments, pickup, and daily expenses."
+                eyebrow="Kasir"
+                title="Dasbor Kasir"
+                description="Antrean pembayaran, pengambilan, dan pengeluaran harian."
             />
 
             {query.isLoading ? (
@@ -34,39 +34,39 @@ export function CashierDashboardPage() {
             {data ? (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <StatCard label="Awaiting Checkout" value={String(data.stats.awaiting_checkout)} />
+                        <StatCard label="Menunggu Pembayaran" value={String(data.stats.awaiting_checkout)} />
                         <StatCard
-                            label="DP Collected Today"
+                            label="DP Diterima Hari Ini"
                             value={formatMoney(data.stats.dp_collected_today)}
                         />
                         <StatCard
-                            label="Settlements Today"
+                            label="Pelunasan Hari Ini"
                             value={formatMoney(data.stats.settlements_today)}
                         />
                         <StatCard
-                            label="Expenses Today"
+                            label="Pengeluaran Hari Ini"
                             value={formatMoney(data.stats.expenses_today)}
                         />
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Billing queue</h2>
+                            <h2 className="font-semibold">Antrean tagihan</h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Total</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Remaining</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Sisa Tagihan</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {data.billing_queue.length === 0 ? (
-                                        <TableEmpty colSpan={5}>No invoices awaiting checkout.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada invoice menunggu pembayaran.</TableEmpty>
                                     ) : (
                                         data.billing_queue.map((invoice) => (
                                             <TableRow key={invoice.id}>
@@ -94,20 +94,20 @@ export function CashierDashboardPage() {
                     <div className="grid gap-6 xl:grid-cols-2">
                         <Card>
                             <CardHeader>
-                                <h2 className="font-semibold">Pickup queue</h2>
+                                <h2 className="font-semibold">Antrean Pengambilan</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
                                             <TableHeaderCell>Invoice</TableHeaderCell>
-                                            <TableHeaderCell>Customer</TableHeaderCell>
-                                            <TableHeaderCell>Paid</TableHeaderCell>
+                                            <TableHeaderCell>Pelanggan</TableHeaderCell>
+                                            <TableHeaderCell>Dibayar</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {data.pickup_queue.length === 0 ? (
-                                            <TableEmpty colSpan={3}>No orders waiting for pickup.</TableEmpty>
+                                            <TableEmpty colSpan={3}>Belum ada pesanan menunggu pengambilan.</TableEmpty>
                                         ) : (
                                             data.pickup_queue.map((invoice) => (
                                                 <TableRow key={invoice.id}>
@@ -118,7 +118,7 @@ export function CashierDashboardPage() {
                                                     <TableCell>
                                                         {invoice.pickup_date
                                                             ? formatDate(invoice.pickup_date)
-                                                            : 'Ready'}
+                                                            : 'Siap'}
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -130,20 +130,20 @@ export function CashierDashboardPage() {
 
                         <Card>
                             <CardHeader>
-                                <h2 className="font-semibold">Recent expenses</h2>
+                                <h2 className="font-semibold">Pengeluaran Terbaru</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableHeaderCell>Date</TableHeaderCell>
-                                            <TableHeaderCell>Description</TableHeaderCell>
-                                            <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                                            <TableHeaderCell>Tanggal</TableHeaderCell>
+                                            <TableHeaderCell>Deskripsi</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Jumlah</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {data.expenses.length === 0 ? (
-                                            <TableEmpty colSpan={3}>No expenses yet.</TableEmpty>
+                                            <TableEmpty colSpan={3}>Belum ada pengeluaran.</TableEmpty>
                                         ) : (
                                             data.expenses.map((expense) => (
                                                 <TableRow key={expense.id}>

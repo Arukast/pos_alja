@@ -23,7 +23,7 @@ final class RegisterDownPayment
 
             if ($locked->status === 2) {
                 throw ValidationException::withMessages([
-                    'amount' => 'This invoice is already fully paid.',
+                    'amount' => 'Invoice ini sudah lunas.',
                 ]);
             }
 
@@ -32,13 +32,13 @@ final class RegisterDownPayment
 
             if ($amount <= 0) {
                 throw ValidationException::withMessages([
-                    'amount' => 'The payment amount must be greater than zero.',
+                    'amount' => 'Jumlah pembayaran harus lebih besar dari nol.',
                 ]);
             }
 
             if ($amount > $receivable + 0.001) {
                 throw ValidationException::withMessages([
-                    'amount' => 'The payment cannot exceed the remaining receivable.',
+                    'amount' => 'Pembayaran tidak boleh melebihi sisa tagihan.',
                 ]);
             }
 

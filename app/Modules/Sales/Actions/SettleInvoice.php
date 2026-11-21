@@ -23,7 +23,7 @@ final class SettleInvoice
 
             if ($locked->status === 2) {
                 throw ValidationException::withMessages([
-                    'amount' => 'This invoice is already fully paid.',
+                    'amount' => 'Invoice ini sudah lunas.',
                 ]);
             }
 
@@ -32,13 +32,13 @@ final class SettleInvoice
 
             if ($discount < 0) {
                 throw ValidationException::withMessages([
-                    'discount' => 'The discount cannot be negative.',
+                    'discount' => 'Diskon tidak boleh negatif.',
                 ]);
             }
 
             if ($discount > $receivable + 0.001) {
                 throw ValidationException::withMessages([
-                    'discount' => 'The discount cannot exceed the remaining receivable.',
+                    'discount' => 'Diskon tidak boleh melebihi sisa tagihan.',
                 ]);
             }
 
@@ -46,7 +46,7 @@ final class SettleInvoice
 
             if (isset($data['cash_received']) && (float) $data['cash_received'] < $amount) {
                 throw ValidationException::withMessages([
-                    'cash_received' => 'Cash received is less than the settlement amount.',
+                    'cash_received' => 'Uang diterima kurang dari jumlah pelunasan.',
                 ]);
             }
 

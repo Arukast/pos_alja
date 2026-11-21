@@ -54,3 +54,6 @@
 - Some Catalog controllers still use inline `$request->validate()` and direct model writes (materials update, attributes, attribute types, pricing). Sales and Identity use FormRequests plus Actions. Extract Catalog FormRequests/Actions in the next cleanup.
 - Catalog price/cost mutations are not fully written to `activity_logs`; FR25 remains partial.
 - `ProductionController::summary` builds its aggregate query in the controller; extract a `ProductionSummaryQuery` when FR19/FR21 work starts.
+- Existing audit descriptions and stock-ledger notes stay stored in English; new audit rows are Indonesian. Stock-ledger notes such as `Manual stock addition: +N` are persisted through the API but not displayed by the SPA, so they are left as-is.
+- The SPA has no i18n layer by design; copy is hardcoded Indonesian and code, API, and database values stay English, with one exception: `expense.category` is free text, new rows default to `Operasional`, and existing rows may be `Office`/`Operational`, so reports group by exact string.
+- `Item`, `Global`, and the printing loanwords `Finishing` and `File` are sanctioned in the design glossary and remain in English.

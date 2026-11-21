@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 export function PageHeader({
-    eyebrow = 'Workspace',
+    eyebrow = 'Ruang Kerja',
     title,
     description,
     actions,

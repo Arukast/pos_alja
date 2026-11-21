@@ -30,5 +30,7 @@ describe('periodRange', () => {
 describe('formatDate', () => {
     it('formats an ISO date without timezone drift', () => {
         expect(formatDate('2026-11-20')).toBe('20 Nov 2026');
+        expect(formatDate('2026-05-20')).toBe('20 Mei 2026');
+        expect(formatDate('2026-10-21')).toBe('21 Okt 2026');
     });
 });

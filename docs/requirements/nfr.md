@@ -36,3 +36,4 @@ npm --prefix frontend run build
 - NFR6 backup is not implemented by this refactor. Do not claim RPO/RTO coverage until FR26 lands.
 - NFR9 locking is implemented with `lockForUpdate()` in payments and production; SQLite makes it a no-op, so run the check against PostgreSQL before delivery.
 - NFR8 records PHP 8.5 as the tested runtime while `composer.json` keeps the `^8.3` compatibility floor.
+- User-facing copy and API messages are Indonesian; dates format with `id-ID`; production requires `APP_LOCALE=id`.

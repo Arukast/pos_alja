@@ -15,11 +15,11 @@ export function Pagination({
 
     return (
         <nav
-            aria-label="Pagination"
+            aria-label="Paginasi"
             className="flex flex-wrap items-center justify-between gap-3 pt-3"
         >
             <p className="text-light-muted text-sm dark:text-gray-400">
-                Page {page} of {lastPage}
+                Halaman {page} dari {lastPage}
             </p>
             <div className="flex items-center gap-2">
                 <Button
@@ -28,7 +28,7 @@ export function Pagination({
                     disabled={page <= 1}
                     onClick={() => onPageChange(page - 1)}
                 >
-                    Previous
+                    Sebelumnya
                 </Button>
                 <Button
                     variant="secondary"
@@ -36,7 +36,7 @@ export function Pagination({
                     disabled={page >= lastPage}
                     onClick={() => onPageChange(page + 1)}
                 >
-                    Next
+                    Berikutnya
                 </Button>
             </div>
         </nav>

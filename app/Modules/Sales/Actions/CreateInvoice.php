@@ -32,7 +32,7 @@ final class CreateInvoice
 
         if ($branchId === null) {
             throw ValidationException::withMessages([
-                'branch_id' => 'A designer must be assigned to a branch.',
+                'branch_id' => 'Desainer harus ditugaskan ke cabang.',
             ]);
         }
 
@@ -54,7 +54,7 @@ final class CreateInvoice
 
                 if ($pricing->branch_id !== $branchId) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => 'This pricing row belongs to another branch.',
+                        "items.{$index}.pricing_id" => 'Baris harga ini milik cabang lain.',
                     ]);
                 }
 
@@ -73,7 +73,7 @@ final class CreateInvoice
 
                 if ((float) $quote['area'] > 999999.99) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.width" => 'The calculated area exceeds the invoice limit.',
+                        "items.{$index}.width" => 'Luas yang dihitung melebihi batas invoice.',
                     ]);
                 }
 
@@ -82,7 +82,7 @@ final class CreateInvoice
                 if ($isManual) {
                     if (! isset($item['unit_price'], $item['cost'])) {
                         throw ValidationException::withMessages([
-                            "items.{$index}.unit_price" => 'Manual pricing requires both unit price and cost.',
+                            "items.{$index}.unit_price" => 'Harga manual memerlukan harga satuan dan biaya.',
                         ]);
                     }
 
@@ -98,7 +98,7 @@ final class CreateInvoice
 
                     if ($unitPrice <= 0 || $unitCost < 0 || $unitCost > $unitPrice) {
                         throw ValidationException::withMessages([
-                            "items.{$index}.unit_price" => 'Manual pricing requires a positive price and a cost no greater than the price.',
+                            "items.{$index}.unit_price" => 'Harga manual memerlukan harga positif dan biaya tidak melebihi harga.',
                         ]);
                     }
                     $lineSubtotal = round($unitPrice * (float) $quote['quantity'] * $factor, 2);
@@ -134,7 +134,7 @@ final class CreateInvoice
 
             if ($discount > $subtotal) {
                 throw ValidationException::withMessages([
-                    'discount' => 'Discount cannot exceed the invoice subtotal.',
+                    'discount' => 'Diskon tidak boleh melebihi subtotal invoice.',
                 ]);
             }
 
@@ -202,7 +202,7 @@ final class CreateInvoice
                         'username' => $designer->username,
                         'role' => $designer->role,
                         'action' => 'MANUAL_PRICE',
-                        'description' => 'Manual price applied to '.($line['file_name'] ?? 'order item'),
+                        'description' => 'Harga manual diterapkan pada '.($line['file_name'] ?? 'item pesanan'),
                         'model_type' => Order::class,
                         'model_id' => $order->id,
                         'payload' => [
@@ -220,7 +220,7 @@ final class CreateInvoice
                 'username' => $designer->username,
                 'role' => $designer->role,
                 'action' => 'CREATE',
-                'description' => 'Created invoice '.$invoiceNumber,
+                'description' => 'Membuat invoice '.$invoiceNumber,
                 'model_type' => Invoice::class,
                 'model_id' => $invoice->id,
                 'payload' => [

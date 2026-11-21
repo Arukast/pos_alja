@@ -41,7 +41,7 @@ export function CrudPage<T extends { id: string }>({
     update,
     remove,
     rowActions,
-    createLabel = 'New record',
+    createLabel = 'Tambah data',
 }: {
     eyebrow: string;
     title: string;
@@ -104,7 +104,7 @@ export function CrudPage<T extends { id: string }>({
             invalidate();
             setOpen(false);
             setEditing(null);
-            setNotice(editing ? 'Record updated.' : 'Record created.');
+            setNotice(editing ? 'Data diperbarui.' : 'Data ditambahkan.');
         },
         onError: (error) => {
             setErrors(mapApiErrors(error));
@@ -122,7 +122,7 @@ export function CrudPage<T extends { id: string }>({
         },
         onSuccess: () => {
             invalidate();
-            setNotice('Record deleted.');
+            setNotice('Data dihapus.');
         },
         onError: (error) => setNotice(errorMessage(error)),
     });
@@ -173,14 +173,14 @@ export function CrudPage<T extends { id: string }>({
                                             </TableHeaderCell>
                                         ))}
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                            Actions
+                                            Aksi
                                         </TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(query.data?.data ?? []).length === 0 ? (
                                         <TableEmpty colSpan={columns.length + 1}>
-                                            No records found.
+                                            Belum ada data.
                                         </TableEmpty>
                                     ) : (
                                         (query.data?.data ?? []).map((row) => (
@@ -199,7 +199,7 @@ export function CrudPage<T extends { id: string }>({
                                                                 variant="secondary"
                                                                 onClick={() => openEdit(row)}
                                                             >
-                                                                Edit
+                                                                Ubah
                                                             </Button>
                                                         ) : null}
                                                         {remove ? (
@@ -209,14 +209,14 @@ export function CrudPage<T extends { id: string }>({
                                                                 onClick={() => {
                                                                     if (
                                                                         window.confirm(
-                                                                            'Delete this record?'
+                                                                            'Hapus data ini?'
                                                                         )
                                                                     ) {
                                                                         destroy.mutate(row.id);
                                                                     }
                                                                 }}
                                                             >
-                                                                Delete
+                                                                Hapus
                                                             </Button>
                                                         ) : null}
                                                     </div>
@@ -244,7 +244,7 @@ export function CrudPage<T extends { id: string }>({
                     setOpen(false);
                     setEditing(null);
                 }}
-                title={editing ? `Edit ${title}` : createLabel}
+                title={editing ? 'Ubah data' : createLabel}
             >
                 <div className="space-y-4">
                     {fields.map((field) => {
@@ -283,7 +283,7 @@ export function CrudPage<T extends { id: string }>({
                                         setValues({ ...values, [field.key]: event.target.value })
                                     }
                                 >
-                                    <option value="">Select</option>
+                                    <option value="">Pilih</option>
                                     {(field.options ?? []).map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}
@@ -315,10 +315,10 @@ export function CrudPage<T extends { id: string }>({
                                 setEditing(null);
                             }}
                         >
-                            Cancel
+                            Batal
                         </Button>
                         <Button loading={save.isPending} onClick={() => save.mutate()}>
-                            Save
+                            Simpan
                         </Button>
                     </div>
                 </div>

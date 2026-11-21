@@ -11,6 +11,12 @@ import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { formatMoney } from '../../lib/money';
 
+const periodLabels: Record<string, string> = {
+    daily: 'Harian',
+    weekly: 'Mingguan',
+    monthly: 'Bulanan',
+};
+
 export function OwnerDashboardPage() {
     const [params, setParams] = useSearchParams();
     const period = params.get('period') ?? 'daily';
@@ -37,18 +43,18 @@ export function OwnerDashboardPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Owner"
-                title="Owner Dashboard"
-                description="Cross-branch revenue, cost, profit, and expenses."
+                eyebrow="Pemilik"
+                title="Dasbor Pemilik"
+                description="Pendapatan, biaya, laba, dan pengeluaran lintas cabang."
                 actions={
                     <>
                         <Select
-                            aria-label="Branch"
+                            aria-label="Cabang"
                             value={branchId}
                             onChange={(event) => updateParam('branch_id', event.target.value)}
                             className="h-9 py-1.5"
                         >
-                            <option value="all">All branches</option>
+                            <option value="all">Semua cabang</option>
                             {(branchesQuery.data?.data ?? []).map((branch) => (
                                 <option key={branch.id} value={branch.id}>
                                     {branch.name}
@@ -62,7 +68,7 @@ export function OwnerDashboardPage() {
                                 variant={period === value ? 'primary' : 'secondary'}
                                 onClick={() => updateParam('period', value)}
                             >
-                                {value.charAt(0).toUpperCase() + value.slice(1)}
+                                {periodLabels[value]}
                             </Button>
                         ))}
                     </>
@@ -79,37 +85,37 @@ export function OwnerDashboardPage() {
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <StatCard
-                            label="Gross Revenue"
+                            label="Pendapatan Bruto"
                             value={formatMoney(data.finance.gross_revenue)}
-                            hint="Payments collected in the period"
+                            hint="Pembayaran yang diterima pada periode ini"
                         />
                         <StatCard
-                            label="Base Cost"
+                            label="Biaya Dasar"
                             value={formatMoney(data.finance.total_cost)}
-                            hint="Invoice HPP plus waste"
+                            hint="HPP invoice ditambah sisa bahan"
                         />
                         <StatCard
-                            label="Net Profit"
+                            label="Laba Bersih"
                             value={formatMoney(data.finance.net_profit)}
-                            hint="Revenue minus HPP and expenses"
+                            hint="Pendapatan dikurangi HPP dan pengeluaran"
                         />
                         <StatCard
-                            label="Expenses"
+                            label="Pengeluaran"
                             value={formatMoney(data.finance.expenses)}
-                            hint="Operating expenses"
+                            hint="Biaya operasional"
                         />
                     </div>
 
                     <Card>
                         <CardHeader>
                             <div>
-                                <h2 className="font-semibold">Net profit movement</h2>
+                                <h2 className="font-semibold">Pergerakan laba bersih</h2>
                                 <p className="text-light-muted text-sm dark:text-gray-400">
                                     {period === 'daily'
-                                        ? 'Six four-hour buckets for today'
+                                        ? 'Enam blok empat jam untuk hari ini'
                                         : period === 'weekly'
-                                          ? 'The last seven days'
-                                          : 'The last four weeks'}
+                                          ? 'Tujuh hari terakhir'
+                                          : 'Empat minggu terakhir'}
                                 </p>
                             </div>
                         </CardHeader>

@@ -19,9 +19,9 @@ export function ProductionDashboardPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Production"
-                title="Production Dashboard"
-                description="Active print queue, completed jobs, and material waste."
+                eyebrow="Produksi"
+                title="Dasbor Produksi"
+                description="Antrean cetak aktif, pekerjaan selesai, dan sisa bahan."
             />
 
             {query.isLoading ? (
@@ -33,31 +33,31 @@ export function ProductionDashboardPage() {
             {data ? (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <StatCard label="Jobs in Queue" value={String(data.queued)} />
-                        <StatCard label="Currently Printing" value={String(data.processing)} />
-                        <StatCard label="Completed Today" value={String(data.completed_today)} />
-                        <StatCard label="Waste Today" value={String(data.waste_today)} />
+                        <StatCard label="Pekerjaan dalam Antrean" value={String(data.queued)} />
+                        <StatCard label="Sedang Dicetak" value={String(data.processing)} />
+                        <StatCard label="Selesai Hari Ini" value={String(data.completed_today)} />
+                        <StatCard label="Sisa Bahan Hari Ini" value={String(data.waste_today)} />
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Active print queue</h2>
+                            <h2 className="font-semibold">Antrean cetak aktif</h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
                                         <TableHeaderCell>File</TableHeaderCell>
-                                        <TableHeaderCell>Qty</TableHeaderCell>
+                                        <TableHeaderCell>Jml</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
-                                        <TableHeaderCell>Deadline</TableHeaderCell>
+                                        <TableHeaderCell>Tenggat</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {data.queue.length === 0 ? (
-                                        <TableEmpty colSpan={6}>The print queue is empty.</TableEmpty>
+                                        <TableEmpty colSpan={6}>Antrean cetak kosong.</TableEmpty>
                                     ) : (
                                         data.queue.map((order) => (
                                             <TableRow key={order.id}>

@@ -54,7 +54,7 @@ export function formatDate(value: string | Date): string {
         return '-';
     }
 
-    return new Intl.DateTimeFormat('en-GB', {
+    return new Intl.DateTimeFormat('id-ID', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',

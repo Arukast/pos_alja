@@ -18,7 +18,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
         <div className="fixed inset-0 z-40 lg:hidden">
             <button
                 type="button"
-                aria-label="Close navigation"
+                aria-label="Tutup navigasi"
                 className="absolute inset-0 bg-black/50"
                 onClick={onClose}
             />
@@ -30,7 +30,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
                     </div>
                     <button
                         type="button"
-                        aria-label="Close navigation"
+                        aria-label="Tutup navigasi"
                         className="text-light-muted rounded-lg p-1.5 hover:bg-light-surface-2 dark:text-gray-400 dark:hover:bg-surface-600"
                         onClick={onClose}
                     >

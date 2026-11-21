@@ -27,7 +27,7 @@ final class SparklineQuery
                     $date->copy()->endOfDay(),
                     $branchId
                 );
-                $labels[] = $date->format('D');
+                $labels[] = $date->locale('id')->isoFormat('ddd');
             }
 
             return ['points' => $points, 'labels' => $labels];
@@ -41,7 +41,7 @@ final class SparklineQuery
                     $week->copy()->endOfWeek()->endOfDay(),
                     $branchId
                 );
-                $labels[] = $index === 0 ? 'This Week' : $index.' wk ago';
+                $labels[] = $index === 0 ? 'Minggu Ini' : $index.' mgg lalu';
             }
 
             return ['points' => $points, 'labels' => $labels];

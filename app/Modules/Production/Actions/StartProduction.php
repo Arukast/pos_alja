@@ -27,7 +27,7 @@ final class StartProduction
 
             if ($locked->status !== 0) {
                 throw ValidationException::withMessages([
-                    'status' => 'Only queued orders can start production.',
+                    'status' => 'Hanya pesanan dalam antrean yang dapat memulai produksi.',
                 ]);
             }
 

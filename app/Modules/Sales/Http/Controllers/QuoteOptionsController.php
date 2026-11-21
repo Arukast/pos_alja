@@ -28,7 +28,7 @@ final class QuoteOptionsController extends Controller
         $actor = request()->user();
 
         if (! $actor instanceof User || $actor->branch_id === null) {
-            abort(403, 'A designer must be assigned to a branch.');
+            abort(403, 'Desainer harus ditugaskan ke cabang.');
         }
 
         $branchId = $actor->branch_id;

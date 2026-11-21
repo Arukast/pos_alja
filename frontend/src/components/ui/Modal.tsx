@@ -89,7 +89,7 @@ export function Modal({
                 </div>
                 <button
                     type="button"
-                    aria-label="Close dialog"
+                    aria-label="Tutup dialog"
                     className="text-light-muted rounded-lg p-1 transition hover:bg-light-surface-2 hover:text-light-text dark:text-gray-400 dark:hover:bg-surface-500 dark:hover:text-gray-100"
                     onClick={onClose}
                 >

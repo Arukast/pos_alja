@@ -19,9 +19,9 @@ export function ManagerDashboardPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Branch Manager"
-                title="Branch Dashboard"
-                description="Inventory, pricing, staff, and monthly designer performance."
+                eyebrow="Manajer Cabang"
+                title="Dasbor Cabang"
+                description="Inventaris, harga, staf, dan kinerja desainer bulan ini."
             />
 
             {query.isLoading ? (
@@ -33,31 +33,31 @@ export function ManagerDashboardPage() {
             {data ? (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <StatCard label="Stocked Materials" value={String(data.counts.materials)} />
-                        <StatCard label="Printer Machines" value={String(data.counts.machines)} />
-                        <StatCard label="Active Staff" value={String(data.counts.staff)} />
-                        <StatCard label="Pricing Rows" value={String(data.counts.pricing)} />
+                        <StatCard label="Bahan Tersedia" value={String(data.counts.materials)} />
+                        <StatCard label="Mesin Cetak" value={String(data.counts.machines)} />
+                        <StatCard label="Staf Aktif" value={String(data.counts.staff)} />
+                        <StatCard label="Baris Harga" value={String(data.counts.pricing)} />
                     </div>
 
                     <div className="grid gap-6 xl:grid-cols-2">
                         <Card>
                             <CardHeader>
-                                <h2 className="font-semibold">Recent stock movements</h2>
+                                <h2 className="font-semibold">Pergerakan stok terbaru</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableHeaderCell>Material</TableHeaderCell>
-                                            <TableHeaderCell>Added</TableHeaderCell>
-                                            <TableHeaderCell>Used</TableHeaderCell>
-                                            <TableHeaderCell>Remaining</TableHeaderCell>
-                                            <TableHeaderCell>Date</TableHeaderCell>
+                                            <TableHeaderCell>Bahan</TableHeaderCell>
+                                            <TableHeaderCell>Ditambahkan</TableHeaderCell>
+                                            <TableHeaderCell>Digunakan</TableHeaderCell>
+                                            <TableHeaderCell>Tersisa</TableHeaderCell>
+                                            <TableHeaderCell>Tanggal</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {data.stock_ledgers.length === 0 ? (
-                                            <TableEmpty colSpan={5}>No stock movements yet.</TableEmpty>
+                                            <TableEmpty colSpan={5}>Belum ada pergerakan stok.</TableEmpty>
                                         ) : (
                                             data.stock_ledgers.map((ledger) => (
                                                 <TableRow key={ledger.id}>
@@ -76,21 +76,21 @@ export function ManagerDashboardPage() {
 
                         <Card>
                             <CardHeader>
-                                <h2 className="font-semibold">Recent expenses</h2>
+                                <h2 className="font-semibold">Pengeluaran terbaru</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableHeaderCell>Date</TableHeaderCell>
-                                            <TableHeaderCell>Description</TableHeaderCell>
-                                            <TableHeaderCell>Category</TableHeaderCell>
-                                            <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                                            <TableHeaderCell>Tanggal</TableHeaderCell>
+                                            <TableHeaderCell>Deskripsi</TableHeaderCell>
+                                            <TableHeaderCell>Kategori</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Jumlah</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {data.expenses.length === 0 ? (
-                                            <TableEmpty colSpan={4}>No expenses yet.</TableEmpty>
+                                            <TableEmpty colSpan={4}>Belum ada pengeluaran.</TableEmpty>
                                         ) : (
                                             data.expenses.map((expense) => (
                                                 <TableRow key={expense.id}>
@@ -111,22 +111,22 @@ export function ManagerDashboardPage() {
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Designer leaderboard</h2>
+                            <h2 className="font-semibold">Papan Peringkat Desainer</h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableHeaderCell>Designer</TableHeaderCell>
-                                        <TableHeaderCell>Orders</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Revenue</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">AOV</TableHeaderCell>
-                                        <TableHeaderCell>Waste logs</TableHeaderCell>
+                                        <TableHeaderCell>Desainer</TableHeaderCell>
+                                        <TableHeaderCell>Pesanan</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Pendapatan</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Rata-rata pesanan</TableHeaderCell>
+                                        <TableHeaderCell>Catatan Sisa Bahan</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {data.leaderboard.length === 0 ? (
-                                        <TableEmpty colSpan={5}>No designer data this month.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada data desainer bulan ini.</TableEmpty>
                                     ) : (
                                         data.leaderboard.map((leader) => (
                                             <TableRow key={leader.id}>
