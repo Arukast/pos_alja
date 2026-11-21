@@ -44,7 +44,7 @@ export function CashierExpensesPage() {
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setForm({ ...form, amount: '', description: '' });
             setErrors({});
-            setNotice('Expense recorded.');
+            setNotice('Pengeluaran dicatat.');
         },
         onError: (error) => {
             setErrors(mapApiErrors(error));
@@ -55,16 +55,16 @@ export function CashierExpensesPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Cashier"
-                title="Expenses"
-                description="Record branch expenses and review the ledger."
+                eyebrow="Kasir"
+                title="Pengeluaran"
+                description="Catat pengeluaran cabang dan tinjau daftarnya."
             />
 
             <Card>
                 <CardBody className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-4">
                         <Input
-                            label="Amount"
+                            label="Jumlah"
                             type="number"
                             min="0"
                             value={form.amount}
@@ -72,7 +72,7 @@ export function CashierExpensesPage() {
                             onChange={(event) => setForm({ ...form, amount: event.target.value })}
                         />
                         <Select
-                            label="Type"
+                            label="Tipe"
                             value={form.type}
                             onChange={(event) => setForm({ ...form, type: event.target.value })}
                         >
@@ -80,13 +80,13 @@ export function CashierExpensesPage() {
                             <option value="modal">Modal</option>
                         </Select>
                         <Input
-                            label="Category"
+                            label="Kategori"
                             value={form.category}
                             error={errors.category}
                             onChange={(event) => setForm({ ...form, category: event.target.value })}
                         />
                         <Input
-                            label="Date"
+                            label="Tanggal"
                             type="date"
                             value={form.incurred_at}
                             error={errors.incurred_at}
@@ -94,13 +94,13 @@ export function CashierExpensesPage() {
                         />
                     </div>
                     <Input
-                        label="Description"
+                        label="Deskripsi"
                         value={form.description}
                         error={errors.description}
                         onChange={(event) => setForm({ ...form, description: event.target.value })}
                     />
                     <Button loading={create.isPending} onClick={() => create.mutate()}>
-                        Record expense
+                        Catat Pengeluaran
                     </Button>
                 </CardBody>
             </Card>
@@ -116,16 +116,16 @@ export function CashierExpensesPage() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableHeaderCell>Date</TableHeaderCell>
-                                        <TableHeaderCell>Type</TableHeaderCell>
-                                        <TableHeaderCell>Category</TableHeaderCell>
-                                        <TableHeaderCell>Description</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                                        <TableHeaderCell>Tanggal</TableHeaderCell>
+                                        <TableHeaderCell>Tipe</TableHeaderCell>
+                                        <TableHeaderCell>Kategori</TableHeaderCell>
+                                        <TableHeaderCell>Deskripsi</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Jumlah</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(query.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={5}>No expenses yet.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada pengeluaran.</TableEmpty>
                                     ) : (
                                         (query.data?.data ?? []).map((expense) => (
                                             <TableRow key={expense.id}>

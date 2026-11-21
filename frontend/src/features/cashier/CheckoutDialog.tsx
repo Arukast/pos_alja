@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Toast } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { paymentMethodLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 
 type Mode = 'down_payment' | 'settlement';
@@ -81,12 +82,12 @@ export function CheckoutDialog({
 
     return (
         <>
-            <Modal open onClose={onClose} title={`Checkout ${invoice.invoice_number}`}>
+            <Modal open onClose={onClose} title={`Pembayaran ${invoice.invoice_number}`}>
                 <div className="space-y-4">
                     <div className="grid gap-2 text-sm sm:grid-cols-2">
-                        <span className="text-light-muted dark:text-gray-400">Grand total</span>
+                        <span className="text-light-muted dark:text-gray-400">Total</span>
                         <span className="text-right font-medium">{formatMoney(invoice.grand_total)}</span>
-                        <span className="text-light-muted dark:text-gray-400">Receivable</span>
+                        <span className="text-light-muted dark:text-gray-400">Sisa Tagihan</span>
                         <span className="text-right font-medium">
                             {formatMoney(invoice.accounts_receivable)}
                         </span>
@@ -98,20 +99,20 @@ export function CheckoutDialog({
                             size="sm"
                             onClick={() => setMode('down_payment')}
                         >
-                            Down payment
+                            DP
                         </Button>
                         <Button
                             variant={mode === 'settlement' ? 'primary' : 'secondary'}
                             size="sm"
                             onClick={() => setMode('settlement')}
                         >
-                            Settle
+                            Pelunasan
                         </Button>
                     </div>
 
                     {mode === 'down_payment' ? (
                         <Input
-                            label="Amount"
+                            label="Jumlah"
                             type="number"
                             min="0"
                             value={amount}
@@ -121,7 +122,7 @@ export function CheckoutDialog({
                     ) : (
                         <>
                             <Input
-                                label="Discount"
+                                label="Diskon"
                                 type="number"
                                 min="0"
                                 value={discount}
@@ -129,36 +130,36 @@ export function CheckoutDialog({
                                 onChange={(event) => setDiscount(event.target.value)}
                             />
                             <Input
-                                label="Cash received"
+                                label="Uang diterima"
                                 type="number"
                                 min="0"
                                 value={cashReceived}
                                 error={errors.cash_received}
                                 onChange={(event) => setCashReceived(event.target.value)}
-                                hint="Optional, used for change display."
+                                hint="Opsional, untuk menampilkan kembalian."
                             />
                         </>
                     )}
 
                     <Select
-                        label="Payment method"
+                        label="Metode pembayaran"
                         value={method}
                         onChange={(event) => setMethod(event.target.value)}
                     >
-                        <option value="Cash">Cash</option>
-                        <option value="Transfer">Transfer</option>
-                        <option value="QRIS">QRIS</option>
+                        <option value="Cash">{paymentMethodLabel('Cash')}</option>
+                        <option value="Transfer">{paymentMethodLabel('Transfer')}</option>
+                        <option value="QRIS">{paymentMethodLabel('QRIS')}</option>
                     </Select>
 
                     <div className="flex justify-end gap-2">
                         <Button variant="secondary" onClick={onClose}>
-                            Cancel
+                            Batal
                         </Button>
                         <Button
                             loading={downPayment.isPending || settle.isPending}
                             onClick={submit}
                         >
-                            Confirm
+                            Konfirmasi
                         </Button>
                     </div>
                 </div>

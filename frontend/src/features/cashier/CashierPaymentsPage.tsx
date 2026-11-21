@@ -27,9 +27,9 @@ export function CashierPaymentsPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Cashier"
-                title="Payment Queue"
-                description="Unpaid and down-payment invoices awaiting checkout."
+                eyebrow="Kasir"
+                title="Antrean Pembayaran"
+                description="Invoice belum dibayar dan DP yang menunggu pembayaran."
             />
             <Card>
                 <CardBody>
@@ -43,18 +43,18 @@ export function CashierPaymentsPage() {
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Total</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Receivable</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Sisa Tagihan</TableHeaderCell>
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                            Action
+                                            Aksi
                                         </TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {invoices.length === 0 ? (
-                                        <TableEmpty colSpan={6}>No invoices awaiting payment.</TableEmpty>
+                                        <TableEmpty colSpan={6}>Belum ada invoice menunggu pembayaran.</TableEmpty>
                                     ) : (
                                         invoices.map((invoice) => (
                                             <TableRow key={invoice.id}>
@@ -71,7 +71,7 @@ export function CashierPaymentsPage() {
                                                 </TableCell>
                                                 <TableCell className="bg-white border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <Button size="sm" onClick={() => setSelected(invoice)}>
-                                                        Checkout
+                                                        Bayar
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
