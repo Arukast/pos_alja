@@ -17,6 +17,7 @@ Set these in the production `.env` before starting Compose:
 | `APP_DEBUG=false` | Never expose stack traces |
 | `APP_KEY` | Laravel application key |
 | `APP_URL` | Public HTTPS URL |
+| `APP_LOCALE=id`, `APP_FALLBACK_LOCALE=en` | Indonesian messages; `en` supplies fallback keys |
 | `DB_CONNECTION=pgsql`, `DB_HOST=db`, `DB_PORT=5432` | PostgreSQL connection |
 | `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database credentials |
 | `SESSION_DRIVER=database`, `SESSION_SECURE_COOKIE=true` | HTTPS session cookie |
@@ -28,6 +29,8 @@ Set these in the production `.env` before starting Compose:
 | `TRUSTED_PROXIES` | Exact proxy CIDRs, never `*` unless the proxy is fully trusted |
 
 The SPA is built during the Docker image build. Rebuild the `nginx` target whenever the `VITE_REVERB_*` values change.
+
+`config/app.php` defaults `locale` to `id`, but a production `.env` with `APP_LOCALE=en` overrides that default and silently re-enables English API messages even though the SPA copy stays Indonesian.
 
 ## 3. Docker Compose
 
@@ -75,7 +78,8 @@ FR26 (scheduled database backup) is not implemented. Until that sprint, use the 
 2. Build and start Compose.
 3. Run migrations.
 4. Confirm `/up` returns 200.
-5. Log in through the SPA; verify CSRF, cookies, and one flow per role.
-6. Confirm Reverb connects and `OrderUpdated` arrives on the private channel.
-7. Confirm the SPA is served from `frontend/dist` and API paths never return the SPA shell.
-8. Record any skipped verification in the change description.
+5. Run `php artisan tinker --execute="echo app()->getLocale();"`; it must print `id`.
+6. Log in through the SPA; verify CSRF, cookies, and one flow per role.
+7. Confirm Reverb connects and `OrderUpdated` arrives on the private channel.
+8. Confirm the SPA is served from `frontend/dist` and API paths never return the SPA shell.
+9. Record any skipped verification in the change description.
