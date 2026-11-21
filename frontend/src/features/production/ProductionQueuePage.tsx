@@ -33,7 +33,7 @@ export function ProductionQueuePage() {
         mutationFn: (id: string) => api.startOrder(id),
         onSuccess: () => {
             refresh();
-            setNotice('Production started and stock was deducted.');
+            setNotice('Produksi dimulai dan stok telah dikurangi.');
         },
         onError: (error) => setNotice(errorMessage(error)),
     });
@@ -42,7 +42,7 @@ export function ProductionQueuePage() {
         mutationFn: (id: string) => api.completeOrder(id),
         onSuccess: () => {
             refresh();
-            setNotice('Order marked completed.');
+            setNotice('Pesanan ditandai selesai.');
         },
         onError: (error) => setNotice(errorMessage(error)),
     });
@@ -50,9 +50,9 @@ export function ProductionQueuePage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Production"
-                title="Print Queue"
-                description="Start and complete print jobs. Money is intentionally hidden."
+                eyebrow="Produksi"
+                title="Antrean Cetak"
+                description="Mulai dan selesaikan pekerjaan cetak. Informasi uang sengaja disembunyikan."
             />
             <Card>
                 <CardBody>
@@ -66,19 +66,19 @@ export function ProductionQueuePage() {
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
                                         <TableHeaderCell>Item</TableHeaderCell>
-                                        <TableHeaderCell>Qty</TableHeaderCell>
-                                        <TableHeaderCell>Deadline</TableHeaderCell>
+                                        <TableHeaderCell>Jml</TableHeaderCell>
+                                        <TableHeaderCell>Tenggat</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                            Action
+                                            Aksi
                                         </TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(query.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={7}>No jobs in the queue.</TableEmpty>
+                                        <TableEmpty colSpan={7}>Belum ada pekerjaan dalam antrean.</TableEmpty>
                                     ) : (
                                         (query.data?.data ?? []).map((order) => (
                                             <TableRow key={order.id}>
@@ -103,7 +103,7 @@ export function ProductionQueuePage() {
                                                             loading={start.isPending}
                                                             onClick={() => start.mutate(order.id)}
                                                         >
-                                                            Start
+                                                            Mulai
                                                         </Button>
                                                     ) : (
                                                         <Button
@@ -112,7 +112,7 @@ export function ProductionQueuePage() {
                                                             loading={complete.isPending}
                                                             onClick={() => complete.mutate(order.id)}
                                                         >
-                                                            Complete
+                                                            Selesaikan
                                                         </Button>
                                                     )}
                                                 </TableCell>
