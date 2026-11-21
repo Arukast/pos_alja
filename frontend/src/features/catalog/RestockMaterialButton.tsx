@@ -32,12 +32,12 @@ export function RestockMaterialButton({ material }: { material: Material }) {
     return (
         <>
             <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-                Restock
+                Tambah Stok
             </Button>
-            <Modal open={open} onClose={() => setOpen(false)} title={`Restock ${material.name}`}>
+            <Modal open={open} onClose={() => setOpen(false)} title={`Tambah Stok ${material.name}`}>
                 <div className="space-y-4">
                     <Input
-                        label="Quantity"
+                        label="Jumlah"
                         type="number"
                         min="0"
                         value={quantity}
@@ -45,10 +45,10 @@ export function RestockMaterialButton({ material }: { material: Material }) {
                     />
                     <div className="flex justify-end gap-2">
                         <Button variant="secondary" onClick={() => setOpen(false)}>
-                            Cancel
+                            Batal
                         </Button>
                         <Button loading={restock.isPending} onClick={() => restock.mutate()}>
-                            Add stock
+                            Tambah stok
                         </Button>
                     </div>
                 </div>
