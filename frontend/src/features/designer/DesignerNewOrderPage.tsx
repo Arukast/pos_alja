@@ -342,7 +342,7 @@ export function DesignerNewOrderPage() {
                                 <TableRow>
                                     <TableHeaderCell>Item</TableHeaderCell>
                                     <TableHeaderCell>Jml</TableHeaderCell>
-                                    <TableHeaderCell className="text-right">Harga</TableHeaderCell>
+                                    <TableHeaderCell className="text-right">Subtotal</TableHeaderCell>
                                     <TableHeaderCell>Aksi</TableHeaderCell>
                                 </TableRow>
                             </TableHead>
