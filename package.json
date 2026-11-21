@@ -1,32 +1,25 @@
 {
-  "$schema": "https://www.schemastore.org/package.json",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "vite build",
-    "dev": "vite",
-    "prepare": "husky"
-  },
-  "devDependencies": {
-    "@tailwindcss/forms": "^0.5.2",
-    "@tailwindcss/vite": "^4.0.0",
-    "concurrently": "^10.0.3",
-    "husky": "^9.1.7",
-    "laravel-echo": "^2.3.7",
-    "laravel-vite-plugin": "^3.1",
-    "lint-staged": "^17.0.8",
-    "prettier": "^3.8.4",
-    "prettier-plugin-tailwindcss": "^0.8.0",
-    "pusher-js": "^8.5.0",
-    "tailwindcss": "^4.0.0",
-    "vite": "^8.0.0"
-  },
-  "lint-staged": {
-    "**/*.php": [
-      "./vendor/bin/pint"
-    ],
-    "**/*.blade.php": [
-      "npx prettier --write"
-    ]
-  }
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "prepare": "husky",
+        "frontend:dev": "npm --prefix frontend run dev",
+        "frontend:build": "npm --prefix frontend run build",
+        "frontend:typecheck": "npm --prefix frontend run typecheck",
+        "frontend:test": "npm --prefix frontend run test",
+        "frontend:lint": "npm --prefix frontend run lint"
+    },
+    "devDependencies": {
+        "concurrently": "^10.0.3",
+        "husky": "^9.1.7",
+        "lint-staged": "^17.0.8",
+        "prettier": "^3.8.4",
+        "prettier-plugin-tailwindcss": "^0.8.0"
+    },
+    "lint-staged": {
+        "**/*.php": [
+            "./vendor/bin/pint"
+        ]
+    }
 }

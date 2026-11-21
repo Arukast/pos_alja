@@ -3,6 +3,7 @@
 - **Scope:** Target scope. All use cases shown are required. Implementation progress is tracked in `docs/requirements/implementation-gaps.md`.
 - **Source:** `docs/requirements/fr.md` FR1–FR26, `docs/requirements/access-matrix.md`, and the capstone proposal.
 - **Role mapping:** Pemilik = `owner`, Branch Manager = `manager`, Kasir = `cashier`, Designer = `designer`, Produksi = `production`.
+- **Implementation:** These actors use the React SPA. Every use case maps to `/api/v1` endpoints enforced by Laravel policies; see `docs/architecture/api-contracts.md`.
 
 ```mermaid
 flowchart LR

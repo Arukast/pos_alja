@@ -1,34 +1,11 @@
 <?php
 
-use App\Models\Invoice;
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/dashboard');
-
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
-
-Route::view('profile', 'profile')
-    ->middleware(['auth'])
-    ->name('profile');
-
-Route::get('/orders/{invoice}/ticket', function (Invoice $invoice) {
-    if (auth()->user()->role !== 'owner' && auth()->user()->branch_id && $invoice->branch_id !== auth()->user()->branch_id) {
-        abort(403, 'Unauthorized branch access.');
-    }
-    $invoice->load(['customer', 'orders']);
-
-    return view('orders.ticket', compact('invoice'));
-})->middleware(['auth'])->name('orders.ticket');
-
-Route::get('/orders/{invoice}/receipt', function (Invoice $invoice) {
-    if (auth()->user()->role !== 'owner' && auth()->user()->branch_id && $invoice->branch_id !== auth()->user()->branch_id) {
-        abort(403, 'Unauthorized branch access.');
-    }
-    $invoice->load(['customer', 'orders']);
-
-    return view('orders.receipt', compact('invoice'));
-})->middleware(['auth'])->name('orders.receipt');
-
-require __DIR__.'/auth.php';
+Route::get('/', fn () => response()->json([
+    'name' => 'Alja POS API',
+    'version' => 'v1',
+    'status' => 'ok',
+]));

@@ -33,26 +33,41 @@ class Invoice extends Model
         'source',
     ];
 
+    /**
+     * @return BelongsTo<Customer, $this>
+     */
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function designer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'designer_id');
     }
 
+    /**
+     * @return HasMany<Order, $this>
+     */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
 
+    /**
+     * @return BelongsTo<Branch, $this>
+     */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
+    /**
+     * @return HasMany<Payment, $this>
+     */
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
@@ -63,9 +78,11 @@ class Invoice extends Model
      */
     public function recalculatePayments(): void
     {
-        $totalPaid = $this->payments()->sum('amount');
-        $this->dp_amount = (int) $this->payments()->where('type', 'down_payment')->sum('amount');
-        $this->accounts_receivable = max(0, $this->grand_total - $totalPaid);
+        $totalPaid = (float) $this->payments()->sum('amount');
+        $downPayments = (float) $this->payments()->where('type', 'down_payment')->sum('amount');
+
+        $this->dp_amount = round($downPayments, 2);
+        $this->accounts_receivable = round(max(0, (float) $this->grand_total - $totalPaid), 2);
 
         if ($this->accounts_receivable <= 0) {
             $this->status = 2; // Fully Paid

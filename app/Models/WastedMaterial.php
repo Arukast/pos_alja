@@ -26,31 +26,49 @@ class WastedMaterial extends Model
         'notes',
     ];
 
+    /**
+     * @return BelongsTo<Material, $this>
+     */
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);
     }
 
+    /**
+     * @return BelongsTo<Machine, $this>
+     */
     public function machine(): BelongsTo
     {
         return $this->belongsTo(Machine::class);
     }
 
+    /**
+     * @return BelongsTo<Branch, $this>
+     */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
+    /**
+     * @return BelongsTo<Order, $this>
+     */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function designer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'designer_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function operator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'operator_id');

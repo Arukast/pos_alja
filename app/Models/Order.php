@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
 {
@@ -31,22 +33,34 @@ class Order extends Model
         'is_manual_price',
     ];
 
-    public function invoice()
+    /**
+     * @return BelongsTo<Invoice, $this>
+     */
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
-    public function pricing()
+    /**
+     * @return BelongsTo<Pricing, $this>
+     */
+    public function pricing(): BelongsTo
     {
         return $this->belongsTo(Pricing::class, 'pricing_id');
     }
 
-    public function operator()
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function operator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'operator_id');
     }
 
-    public function statusLogs()
+    /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function statusLogs(): HasMany
     {
         return $this->hasMany(OrderStatusLog::class);
     }
