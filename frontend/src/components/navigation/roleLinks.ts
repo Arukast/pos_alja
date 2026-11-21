@@ -34,96 +34,96 @@ export interface NavGroup {
 export const roleLinks: Record<string, NavGroup[]> = {
     owner: [
         {
-            label: 'Overview',
-            links: [{ to: '/owner', label: 'Dashboard', icon: LayoutDashboard, end: true }],
+            label: 'Ringkasan',
+            links: [{ to: '/owner', label: 'Dasbor', icon: LayoutDashboard, end: true }],
         },
         {
-            label: 'Insights',
+            label: 'Analitik',
             links: [
-                { to: '/owner/revenue', label: 'Gross Revenue Detail', icon: TrendingUp },
-                { to: '/owner/base-cost', label: 'Base Cost Detail', icon: Wallet },
-                { to: '/owner/net-profit', label: 'Net Profit Detail', icon: PiggyBank },
-                { to: '/owner/expenses', label: 'Expenses Detail', icon: Receipt },
-                { to: '/owner/audit', label: 'Audit Trail', icon: ClipboardList },
+                { to: '/owner/revenue', label: 'Rincian Pendapatan Bruto', icon: TrendingUp },
+                { to: '/owner/base-cost', label: 'Rincian Biaya Dasar', icon: Wallet },
+                { to: '/owner/net-profit', label: 'Rincian Laba Bersih', icon: PiggyBank },
+                { to: '/owner/expenses', label: 'Rincian Pengeluaran', icon: Receipt },
+                { to: '/owner/audit', label: 'Jejak Audit', icon: ClipboardList },
             ],
         },
         {
-            label: 'Administration',
+            label: 'Administrasi',
             links: [
-                { to: '/owner/users', label: 'User Management', icon: Users },
-                { to: '/owner/branches', label: 'Branch Management', icon: Building2 },
-                { to: '/owner/categories', label: 'Product Categories', icon: Tags },
-                { to: '/owner/machines', label: 'Printer Machines', icon: Printer },
-                { to: '/owner/materials', label: 'Materials & Stock', icon: Package },
+                { to: '/owner/users', label: 'Manajemen Pengguna', icon: Users },
+                { to: '/owner/branches', label: 'Manajemen Cabang', icon: Building2 },
+                { to: '/owner/categories', label: 'Kategori Produk', icon: Tags },
+                { to: '/owner/machines', label: 'Mesin Cetak', icon: Printer },
+                { to: '/owner/materials', label: 'Bahan & Stok', icon: Package },
             ],
         },
     ],
     manager: [
         {
-            label: 'Overview',
+            label: 'Ringkasan',
             links: [
-                { to: '/manager', label: 'Dashboard', icon: LayoutDashboard, end: true },
-                { to: '/manager/leaderboard', label: 'Designer Leaderboard', icon: TrendingUp },
+                { to: '/manager', label: 'Dasbor', icon: LayoutDashboard, end: true },
+                { to: '/manager/leaderboard', label: 'Papan Peringkat Desainer', icon: TrendingUp },
             ],
         },
         {
-            label: 'Inventory',
+            label: 'Inventaris',
             links: [
-                { to: '/manager/materials', label: 'Materials & Stock', icon: Package },
-                { to: '/manager/ledgers', label: 'Stock Ledgers', icon: ListOrdered },
+                { to: '/manager/materials', label: 'Bahan & Stok', icon: Package },
+                { to: '/manager/ledgers', label: 'Buku Stok', icon: ListOrdered },
             ],
         },
         {
-            label: 'Configuration',
+            label: 'Konfigurasi',
             links: [
                 { to: '/manager/finishing', label: 'Display & Finishing', icon: Tags },
-                { to: '/manager/categories', label: 'Product Categories', icon: Tags },
-                { to: '/manager/machines', label: 'Printer Machines', icon: Printer },
-                { to: '/manager/pricing', label: 'Pricing Matrices', icon: CircleDollarSign },
+                { to: '/manager/categories', label: 'Kategori Produk', icon: Tags },
+                { to: '/manager/machines', label: 'Mesin Cetak', icon: Printer },
+                { to: '/manager/pricing', label: 'Matriks Harga', icon: CircleDollarSign },
             ],
         },
         {
-            label: 'Administration',
-            links: [{ to: '/manager/users', label: 'User Management', icon: Users }],
+            label: 'Administrasi',
+            links: [{ to: '/manager/users', label: 'Manajemen Pengguna', icon: Users }],
         },
     ],
     cashier: [
         {
-            label: 'Overview',
-            links: [{ to: '/cashier', label: 'Dashboard', icon: LayoutDashboard, end: true }],
+            label: 'Ringkasan',
+            links: [{ to: '/cashier', label: 'Dasbor', icon: LayoutDashboard, end: true }],
         },
         {
-            label: 'Operations',
+            label: 'Operasional',
             links: [
-                { to: '/cashier/payments', label: 'Payment Queue', icon: CreditCard },
-                { to: '/cashier/pickup', label: 'Pickup Queue', icon: Truck },
-                { to: '/cashier/expenses', label: 'Expenses', icon: Receipt },
+                { to: '/cashier/payments', label: 'Antrean Pembayaran', icon: CreditCard },
+                { to: '/cashier/pickup', label: 'Antrean Pengambilan', icon: Truck },
+                { to: '/cashier/expenses', label: 'Pengeluaran', icon: Receipt },
             ],
         },
     ],
     designer: [
         {
-            label: 'Overview',
-            links: [{ to: '/designer', label: 'Dashboard', icon: LayoutDashboard, end: true }],
+            label: 'Ringkasan',
+            links: [{ to: '/designer', label: 'Dasbor', icon: LayoutDashboard, end: true }],
         },
         {
-            label: 'Orders',
+            label: 'Pesanan',
             links: [
-                { to: '/designer/new-order', label: 'New Order', icon: ShoppingCart },
-                { to: '/designer/orders', label: 'Order List', icon: ClipboardList },
+                { to: '/designer/new-order', label: 'Pesanan Baru', icon: ShoppingCart },
+                { to: '/designer/orders', label: 'Daftar Pesanan', icon: ClipboardList },
             ],
         },
     ],
     production: [
         {
-            label: 'Overview',
-            links: [{ to: '/production', label: 'Dashboard', icon: LayoutDashboard, end: true }],
+            label: 'Ringkasan',
+            links: [{ to: '/production', label: 'Dasbor', icon: LayoutDashboard, end: true }],
         },
         {
-            label: 'Operations',
+            label: 'Operasional',
             links: [
-                { to: '/production/queue', label: 'Print Queue', icon: Printer },
-                { to: '/production/waste', label: 'Waste Logging', icon: Recycle },
+                { to: '/production/queue', label: 'Antrean Cetak', icon: Printer },
+                { to: '/production/waste', label: 'Catat Sisa Bahan', icon: Recycle },
             ],
         },
     ],

@@ -32,7 +32,7 @@ export function AppShell() {
                 <header className="border-light-border flex h-14 items-center justify-between border-b px-4 lg:hidden dark:border-surface-300">
                     <button
                         type="button"
-                        aria-label="Open navigation"
+                        aria-label="Buka navigasi"
                         className="text-light-muted hover:bg-light-surface-2 dark:hover:bg-surface-600 rounded-lg p-2 dark:text-gray-400"
                         onClick={() => setMobileOpen(true)}
                     >

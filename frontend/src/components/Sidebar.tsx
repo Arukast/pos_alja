@@ -33,7 +33,7 @@ export function Sidebar({
                     <div className="min-w-0">
                         <p className="truncate text-sm font-bold">Alja POS</p>
                         <p className="text-light-muted truncate text-xs dark:text-gray-400">
-                            {user.branch?.name ?? 'All branches'}
+                            {user.branch?.name ?? 'Semua cabang'}
                         </p>
                     </div>
                 ) : null}
@@ -81,7 +81,7 @@ export function Sidebar({
             <button
                 type="button"
                 onClick={onToggleCollapsed}
-                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-label={collapsed ? 'Perluas bilah sisi' : 'Sempitkan bilah sisi'}
                 className="border-light-border text-light-muted absolute top-20 -right-3 hidden h-6 w-6 items-center justify-center rounded-full border bg-white shadow-sm transition hover:text-brand-primary lg:flex dark:border-surface-300 dark:bg-surface-700 dark:text-gray-400"
             >
                 {collapsed ? (
