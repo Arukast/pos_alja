@@ -7,6 +7,7 @@ import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { useBranches } from '../../hooks/useBranches';
 import { collectionAsPage } from '../../lib/pagination';
+import { archetypeLabel, roleLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
@@ -17,74 +18,74 @@ export function OwnerUsersPage() {
     const options = branchOptions(branches.data?.data ?? []);
 
     const fields: Array<CrudField<UserRecord>> = [
-        { key: 'name', label: 'Name', required: true },
-        { key: 'username', label: 'Username', required: true },
+        { key: 'name', label: 'Nama', required: true },
+        { key: 'username', label: 'Nama Pengguna', required: true },
         { key: 'email', label: 'Email', type: 'email' },
-        { key: 'password', label: 'Password', type: 'password', hideOnEdit: true },
+        { key: 'password', label: 'Kata Sandi', type: 'password', hideOnEdit: true },
         {
             key: 'role',
-            label: 'Role',
+            label: 'Peran',
             type: 'select',
             options: [
-                { value: 'owner', label: 'Owner' },
-                { value: 'manager', label: 'Manager' },
-                { value: 'cashier', label: 'Cashier' },
-                { value: 'designer', label: 'Designer' },
-                { value: 'production', label: 'Production' },
+                { value: 'owner', label: roleLabel('owner') },
+                { value: 'manager', label: roleLabel('manager') },
+                { value: 'cashier', label: roleLabel('cashier') },
+                { value: 'designer', label: roleLabel('designer') },
+                { value: 'production', label: roleLabel('production') },
             ],
         },
-        { key: 'branch_id', label: 'Branch', type: 'select', options, getValue: (user) => user.branch?.id ?? '' },
-        { key: 'phone', label: 'Phone' },
-        { key: 'address', label: 'Address' },
+        { key: 'branch_id', label: 'Cabang', type: 'select', options, getValue: (user) => user.branch?.id ?? '' },
+        { key: 'phone', label: 'Telepon' },
+        { key: 'address', label: 'Alamat' },
     ];
 
     return (
         <CrudPage
-            eyebrow="Administration"
-            title="User Management"
-            description="Owner-wide staff accounts, roles, and branch assignments."
+            eyebrow="Administrasi"
+            title="Manajemen Pengguna"
+            description="Akun staf, peran, dan penugasan cabang untuk semua cabang."
             queryKey={['owner', 'users']}
             queryFn={(page) => api.users({ page, include_deleted: 1 })}
             columns={[
-                { header: 'Name', cell: (user) => <span className="font-medium">{user.name}</span> },
-                { header: 'Username', cell: (user) => user.username },
-                { header: 'Role', cell: (user) => <Badge tone="brand">{user.role}</Badge> },
-                { header: 'Branch', cell: (user) => user.branch?.name ?? 'Global' },
+                { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
+                { header: 'Nama Pengguna', cell: (user) => user.username },
+                { header: 'Peran', cell: (user) => <Badge tone="brand">{roleLabel(user.role)}</Badge> },
+                { header: 'Cabang', cell: (user) => user.branch?.name ?? 'Global' },
             ]}
             fields={fields}
             create={(values) => api.admin.createUser(values)}
             update={(id, values) => api.admin.updateUser(id, values)}
             remove={(id) => api.admin.deleteUser(id)}
-            createLabel="New user"
+            createLabel="Tambah pengguna"
         />
     );
 }
 
 export function BranchesPage() {
     const fields: Array<CrudField<Branch>> = [
-        { key: 'name', label: 'Name', required: true },
-        { key: 'code', label: 'Code' },
-        { key: 'phone', label: 'Phone' },
-        { key: 'address', label: 'Address' },
-        { key: 'is_active', label: 'Active', type: 'checkbox', defaultValue: true },
+        { key: 'name', label: 'Nama', required: true },
+        { key: 'code', label: 'Kode' },
+        { key: 'phone', label: 'Telepon' },
+        { key: 'address', label: 'Alamat' },
+        { key: 'is_active', label: 'Aktif', type: 'checkbox', defaultValue: true },
     ];
 
     return (
         <CrudPage
-            eyebrow="Administration"
-            title="Branch Management"
-            description="Branch records, contact details, and active status."
+            eyebrow="Administrasi"
+            title="Manajemen Cabang"
+            description="Data cabang, detail kontak, dan status aktif."
             queryKey={['owner', 'branches']}
             queryFn={(page) => api.branches({ page, include_deleted: 1 })}
             columns={[
-                { header: 'Name', cell: (branch) => <span className="font-medium">{branch.name}</span> },
-                { header: 'Code', cell: (branch) => branch.code ?? '-' },
-                { header: 'Phone', cell: (branch) => branch.phone ?? '-' },
+                { header: 'Nama', cell: (branch) => <span className="font-medium">{branch.name}</span> },
+                { header: 'Kode', cell: (branch) => branch.code ?? '-' },
+                { header: 'Telepon', cell: (branch) => branch.phone ?? '-' },
                 {
                     header: 'Status',
                     cell: (branch) => (
                         <Badge tone={branch.is_active ? 'success' : 'neutral'}>
-                            {branch.is_active ? 'Active' : 'Inactive'}
+                            {branch.is_active ? 'Aktif' : 'Nonaktif'}
                         </Badge>
                     ),
                 },
@@ -93,7 +94,7 @@ export function BranchesPage() {
             create={(values) => api.admin.createBranch(values)}
             update={(id, values) => api.admin.updateBranch(id, values)}
             remove={(id) => api.admin.deleteBranch(id)}
-            createLabel="New branch"
+            createLabel="Tambah cabang"
         />
     );
 }
@@ -106,34 +107,34 @@ export function OwnerMaterialsPage() {
     }));
 
     const fields: Array<CrudField<Material>> = [
-        { key: 'name', label: 'Name', required: true },
+        { key: 'name', label: 'Nama', required: true },
         {
             key: 'product_category_id',
-            label: 'Category',
+            label: 'Kategori',
             type: 'select',
             options: categoryOptions,
             getValue: (material) => material.category?.id ?? '',
         },
-        { key: 'type', label: 'Type' },
-        { key: 'dimensions', label: 'Dimensions' },
-        { key: 'cost', label: 'Cost', type: 'number' },
-        { key: 'price', label: 'Price', type: 'number' },
-        { key: 'initial_stock', label: 'Initial stock', type: 'number', hideOnEdit: true },
-        { key: 'min_stock', label: 'Minimum stock', type: 'number', hideOnEdit: true },
+        { key: 'type', label: 'Jenis' },
+        { key: 'dimensions', label: 'Dimensi' },
+        { key: 'cost', label: 'Biaya', type: 'number' },
+        { key: 'price', label: 'Harga', type: 'number' },
+        { key: 'initial_stock', label: 'Stok awal', type: 'number', hideOnEdit: true },
+        { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
 
     return (
         <CrudPage
-            eyebrow="Administration"
-            title="Materials & Stock"
-            description="Global materials, branch stock levels, and pricing."
+            eyebrow="Administrasi"
+            title="Bahan & Stok"
+            description="Bahan global, stok per cabang, dan harga."
             queryKey={['owner', 'materials']}
             queryFn={(page) => api.materials({ page, branch_id: 'all' })}
             columns={[
-                { header: 'Material', cell: (material) => <span className="font-medium">{material.name}</span> },
-                { header: 'Category', cell: (material) => material.category?.name ?? '-' },
+                { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
+                { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
                 {
-                    header: 'Stock by branch',
+                    header: 'Stok per cabang',
                     cell: (material) =>
                         material.stocks.length === 0
                             ? '-'
@@ -141,56 +142,56 @@ export function OwnerMaterialsPage() {
                                   .map((stock) => `${stock.branch_name ?? '-'}: ${stock.current_stock}`)
                                   .join(', '),
                 },
-                { header: 'Cost', cell: (material) => formatMoney(material.cost) },
-                { header: 'Price', cell: (material) => formatMoney(material.price) },
+                { header: 'Biaya', cell: (material) => formatMoney(material.cost) },
+                { header: 'Harga', cell: (material) => formatMoney(material.price) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
             remove={(id) => api.admin.deleteMaterial(id)}
             rowActions={(material) => <RestockMaterialButton material={material} />}
-            createLabel="New material"
+            createLabel="Tambah bahan"
         />
     );
 }
 
 export function OwnerCategoriesPage() {
     const fields: Array<CrudField<Category>> = [
-        { key: 'name', label: 'Name', required: true },
+        { key: 'name', label: 'Nama', required: true },
         {
             key: 'calculation_archetype',
-            label: 'Archetype',
+            label: 'Arketipe',
             type: 'select',
             options: [
-                { value: 'per_piece', label: 'Per piece' },
-                { value: 'surface_area', label: 'Surface area' },
-                { value: 'linear_dimension', label: 'Linear dimension' },
-                { value: 'tiered_volume', label: 'Tiered volume' },
+                { value: 'per_piece', label: archetypeLabel('per_piece') },
+                { value: 'surface_area', label: archetypeLabel('surface_area') },
+                { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
+                { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
             ],
             getValue: (category) => category.calculation_archetype,
         },
         {
             key: 'allowed_attribute_types',
-            label: 'Allowed attribute types (comma separated)',
+            label: 'Jenis atribut yang diizinkan (pisahkan dengan koma)',
             getValue: (category) => category.allowed_attribute_types.join(','),
         },
     ];
 
     return (
         <CrudPage
-            eyebrow="Administration"
-            title="Product Categories"
-            description="Category archetypes and allowed attribute types."
+            eyebrow="Administrasi"
+            title="Kategori Produk"
+            description="Arketipe kategori dan jenis atribut yang diizinkan."
             queryKey={['owner', 'categories']}
             queryFn={() => api.categories().then((response) => collectionAsPage(response.data))}
             columns={[
-                { header: 'Name', cell: (category) => <span className="font-medium">{category.name}</span> },
-                { header: 'Archetype', cell: (category) => category.calculation_archetype },
+                { header: 'Nama', cell: (category) => <span className="font-medium">{category.name}</span> },
+                { header: 'Arketipe', cell: (category) => archetypeLabel(category.calculation_archetype) },
                 {
-                    header: 'Allowed attributes',
+                    header: 'Atribut yang diizinkan',
                     cell: (category) =>
                         category.allowed_attribute_types.length === 0
-                            ? 'All'
+                            ? 'Semua'
                             : category.allowed_attribute_types.join(', '),
                 },
             ]}
@@ -214,7 +215,7 @@ export function OwnerCategoriesPage() {
                 })
             }
             remove={(id) => api.admin.deleteCategory(id)}
-            createLabel="New category"
+            createLabel="Tambah kategori"
         />
     );
 }
@@ -224,28 +225,28 @@ export function OwnerMachinesPage() {
     const options = branchOptions(branches.data?.data ?? []);
 
     const fields: Array<CrudField<Machine>> = [
-        { key: 'name', label: 'Name', required: true },
-        { key: 'branch_id', label: 'Branch', type: 'select', options, getValue: (machine) => machine.branch?.id ?? '' },
-        { key: 'cost', label: 'Base cost', type: 'number' },
+        { key: 'name', label: 'Nama', required: true },
+        { key: 'branch_id', label: 'Cabang', type: 'select', options, getValue: (machine) => machine.branch?.id ?? '' },
+        { key: 'cost', label: 'Biaya Dasar', type: 'number' },
     ];
 
     return (
         <CrudPage
-            eyebrow="Administration"
-            title="Printer Machines"
-            description="Machine records and base cost."
+            eyebrow="Administrasi"
+            title="Mesin Cetak"
+            description="Data mesin dan biaya dasar."
             queryKey={['owner', 'machines']}
             queryFn={(page) => api.machines({ page, include_deleted: 1 })}
             columns={[
-                { header: 'Machine', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Branch', cell: (machine) => machine.branch?.name ?? 'Global' },
-                { header: 'Base cost', cell: (machine) => formatMoney(machine.cost) },
+                { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
+                { header: 'Cabang', cell: (machine) => machine.branch?.name ?? 'Global' },
+                { header: 'Biaya Dasar', cell: (machine) => formatMoney(machine.cost) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMachine(values)}
             update={(id, values) => api.admin.updateMachine(id, values)}
             remove={(id) => api.admin.deleteMachine(id)}
-            createLabel="New machine"
+            createLabel="Tambah mesin"
         />
     );
 }
