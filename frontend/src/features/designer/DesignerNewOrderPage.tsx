@@ -57,7 +57,7 @@ export function DesignerNewOrderPage() {
         onSuccess: (response) => {
             setCustomer(response.customer);
             setCustomerErrors({});
-            setNotice('Customer created and selected.');
+            setNotice('Pelanggan dibuat dan dipilih.');
         },
         onError: (error) => {
             setCustomerErrors(mapApiErrors(error));
@@ -85,7 +85,7 @@ export function DesignerNewOrderPage() {
     const submit = useMutation({
         mutationFn: () => {
             if (!customer) {
-                throw new Error('Select or create a customer first.');
+                throw new Error('Pilih atau buat pelanggan terlebih dahulu.');
             }
 
             return api.createInvoice({
@@ -109,7 +109,7 @@ export function DesignerNewOrderPage() {
             void queryClient.invalidateQueries({ queryKey: ['invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['designer', 'invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setNotice(`Invoice ${response.invoice.invoice_number} created.`);
+            setNotice(`Invoice ${response.invoice.invoice_number} dibuat.`);
             setCart([]);
             setQuote(null);
             setItem(emptyItem);
@@ -123,7 +123,7 @@ export function DesignerNewOrderPage() {
 
     const addLine = () => {
         if (!quote) {
-            setNotice('Calculate a quote before adding the item.');
+            setNotice('Hitung penawaran sebelum menambah item.');
             return;
         }
 
@@ -152,16 +152,16 @@ export function DesignerNewOrderPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Designer"
-                title="New Order"
-                description="Create the customer, configure the item, preview the price, and submit the invoice."
+                eyebrow="Desainer"
+                title="Pesanan Baru"
+                description="Buat pelanggan, atur item, pratinjau harga, lalu kirim invoice."
             />
 
             <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
                 <div className="space-y-6">
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Customer</h2>
+                            <h2 className="font-semibold">Pelanggan</h2>
                         </CardHeader>
                         <CardBody className="space-y-4">
                             {customer ? (
@@ -169,18 +169,18 @@ export function DesignerNewOrderPage() {
                                     <div>
                                         <p className="font-medium">{customer.name}</p>
                                         <p className="text-light-muted text-sm dark:text-gray-400">
-                                            {customer.phone ?? 'No phone'} · {customer.type ?? 'Reguler'}
+                                            {customer.phone ?? 'Tanpa telepon'} · {customer.type ?? 'Reguler'}
                                         </p>
                                     </div>
                                     <Button variant="secondary" size="sm" onClick={() => setCustomer(null)}>
-                                        Change
+                                        Ubah
                                     </Button>
                                 </div>
                             ) : (
                                 <>
                                     <div className="grid gap-3 sm:grid-cols-3">
                                         <Input
-                                            label="Name"
+                                            label="Nama"
                                             value={customerForm.name}
                                             error={customerErrors.name}
                                             onChange={(event) =>
@@ -188,7 +188,7 @@ export function DesignerNewOrderPage() {
                                             }
                                         />
                                         <Input
-                                            label="Phone"
+                                            label="Telepon"
                                             value={customerForm.phone}
                                             error={customerErrors.phone}
                                             onChange={(event) =>
@@ -196,7 +196,7 @@ export function DesignerNewOrderPage() {
                                             }
                                         />
                                         <Select
-                                            label="Type"
+                                            label="Tipe"
                                             value={customerForm.type}
                                             onChange={(event) =>
                                                 setCustomerForm({ ...customerForm, type: event.target.value })
@@ -211,7 +211,7 @@ export function DesignerNewOrderPage() {
                                         loading={createCustomer.isPending}
                                         onClick={() => createCustomer.mutate()}
                                     >
-                                        Create customer
+                                        Buat pelanggan
                                     </Button>
                                 </>
                             )}
@@ -225,13 +225,13 @@ export function DesignerNewOrderPage() {
                         <CardBody className="space-y-4">
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <Select
-                                    label="Product"
+                                    label="Produk"
                                     value={item.product_id}
                                     onChange={(event) =>
                                         setItem({ ...item, product_id: event.target.value })
                                     }
                                 >
-                                    <option value="">Select product</option>
+                                    <option value="">Pilih produk</option>
                                     {(options?.products ?? []).map((product) => (
                                         <option key={product.id} value={product.id}>
                                             {product.name}
@@ -239,13 +239,13 @@ export function DesignerNewOrderPage() {
                                     ))}
                                 </Select>
                                 <Select
-                                    label="Material"
+                                    label="Bahan"
                                     value={item.material_id}
                                     onChange={(event) =>
                                         setItem({ ...item, material_id: event.target.value })
                                     }
                                 >
-                                    <option value="">Select material</option>
+                                    <option value="">Pilih bahan</option>
                                     {(options?.materials ?? []).map((material) => (
                                         <option key={material.id} value={material.id}>
                                             {material.name}
@@ -253,13 +253,13 @@ export function DesignerNewOrderPage() {
                                     ))}
                                 </Select>
                                 <Select
-                                    label="Machine"
+                                    label="Mesin"
                                     value={item.machine_id}
                                     onChange={(event) =>
                                         setItem({ ...item, machine_id: event.target.value })
                                     }
                                 >
-                                    <option value="">No machine</option>
+                                    <option value="">Tanpa mesin</option>
                                     {(options?.machines ?? []).map((machine) => (
                                         <option key={machine.id} value={machine.id}>
                                             {machine.name}
@@ -267,7 +267,7 @@ export function DesignerNewOrderPage() {
                                     ))}
                                 </Select>
                                 <Input
-                                    label="Quantity"
+                                    label="Jml"
                                     type="number"
                                     min="1"
                                     value={item.quantity}
@@ -276,7 +276,7 @@ export function DesignerNewOrderPage() {
                                     }
                                 />
                                 <Input
-                                    label="Width (m)"
+                                    label="Lebar (m)"
                                     type="number"
                                     min="0.01"
                                     step="0.01"
@@ -286,7 +286,7 @@ export function DesignerNewOrderPage() {
                                     }
                                 />
                                 <Input
-                                    label="Length (m)"
+                                    label="Panjang (m)"
                                     type="number"
                                     min="0.01"
                                     step="0.01"
@@ -296,14 +296,14 @@ export function DesignerNewOrderPage() {
                                     }
                                 />
                                 <Input
-                                    label="File name"
+                                    label="Nama file"
                                     value={item.file_name}
                                     onChange={(event) =>
                                         setItem({ ...item, file_name: event.target.value })
                                     }
                                 />
                                 <Input
-                                    label="Notes"
+                                    label="Catatan"
                                     value={item.notes}
                                     onChange={(event) =>
                                         setItem({ ...item, notes: event.target.value })
@@ -317,7 +317,7 @@ export function DesignerNewOrderPage() {
                                     loading={calculate.isPending}
                                     onClick={() => calculate.mutate()}
                                 >
-                                    Calculate quote
+                                    Hitung penawaran
                                 </Button>
                                 {quote ? (
                                     <span className="text-light-muted text-sm dark:text-gray-400">
@@ -325,7 +325,7 @@ export function DesignerNewOrderPage() {
                                     </span>
                                 ) : null}
                                 <Button onClick={addLine} disabled={!quote}>
-                                    Add to cart
+                                    Tambah ke keranjang
                                 </Button>
                             </div>
                         </CardBody>
@@ -334,21 +334,21 @@ export function DesignerNewOrderPage() {
 
                 <Card>
                     <CardHeader>
-                        <h2 className="font-semibold">Cart</h2>
+                        <h2 className="font-semibold">Keranjang</h2>
                     </CardHeader>
                     <CardBody className="space-y-4">
                         <Table>
                             <TableHead>
                                 <TableRow>
                                     <TableHeaderCell>Item</TableHeaderCell>
-                                    <TableHeaderCell>Qty</TableHeaderCell>
-                                    <TableHeaderCell className="text-right">Subtotal</TableHeaderCell>
-                                    <TableHeaderCell>Action</TableHeaderCell>
+                                    <TableHeaderCell>Jml</TableHeaderCell>
+                                    <TableHeaderCell className="text-right">Harga</TableHeaderCell>
+                                    <TableHeaderCell>Aksi</TableHeaderCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {cart.length === 0 ? (
-                                    <TableEmpty colSpan={4}>Add at least one item.</TableEmpty>
+                                    <TableEmpty colSpan={4}>Tambahkan minimal satu item.</TableEmpty>
                                 ) : (
                                     cart.map((line, index) => (
                                         <TableRow key={`${line.quote.pricing_id}-${index}`}>
@@ -363,7 +363,7 @@ export function DesignerNewOrderPage() {
                                                     size="sm"
                                                     onClick={() => removeLine(index)}
                                                 >
-                                                    Remove
+                                                    Hapus
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -389,7 +389,7 @@ export function DesignerNewOrderPage() {
                             disabled={!customer || cart.length === 0}
                             onClick={() => submit.mutate()}
                         >
-                            Create invoice
+                            Buat invoice
                         </Button>
                     </CardBody>
                 </Card>

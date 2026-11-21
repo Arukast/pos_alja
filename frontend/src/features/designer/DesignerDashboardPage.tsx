@@ -21,15 +21,15 @@ export function DesignerDashboardPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Designer"
-                title="Designer Dashboard"
-                description="Today’s intake, draft workload, and recent invoices."
+                eyebrow="Desainer"
+                title="Dasbor Desainer"
+                description="Pesanan masuk hari ini, beban draf, dan invoice terbaru."
                 actions={
                     <Link
                         to="/designer/new-order"
                         className="bg-brand-primary hover:bg-brand-primary-hover rounded-lg px-4 py-2 text-sm font-semibold text-white"
                     >
-                        New order
+                        Pesanan Baru
                     </Link>
                 }
             />
@@ -44,33 +44,33 @@ export function DesignerDashboardPage() {
                 <>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <StatCard
-                            label="Invoices Today"
+                            label="Invoice Hari Ini"
                             value={String(data.stats.invoices_today)}
                         />
                         <StatCard
-                            label="Grand Total Today"
+                            label="Total Hari Ini"
                             value={formatMoney(data.stats.grand_total_today)}
                         />
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Recent invoices</h2>
+                            <h2 className="font-semibold">Invoice Terbaru</h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
-                                        <TableHeaderCell>Deadline</TableHeaderCell>
+                                        <TableHeaderCell>Tenggat</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Total</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {data.recent_invoices.length === 0 ? (
-                                        <TableEmpty colSpan={5}>No invoices yet.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada invoice.</TableEmpty>
                                     ) : (
                                         data.recent_invoices.map((invoice) => (
                                             <TableRow key={invoice.id}>
