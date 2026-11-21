@@ -25,11 +25,17 @@ class StockLedger extends Model
         'notes',
     ];
 
+    /**
+     * @return BelongsTo<Material, $this>
+     */
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);
     }
 
+    /**
+     * @return BelongsTo<Branch, $this>
+     */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);

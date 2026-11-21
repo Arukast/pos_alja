@@ -3,164 +3,211 @@
 ## Section 1: Agent Operational Workflow
 
 ### 1.1 Startup Workflow
-Before writing any code, the agent must complete these steps:
-1. Confirm the working directory using `pwd`.
-2. Review recent repository history by checking the last 5 commits using `git log --oneline -5`.
-3. Run the initialization script via `./init.sh`.
-4. Run the required smoke or end-to-end verification before starting new work. If baseline verification fails, fix that issue first before stacking new feature work on top of a broken starting state.
+
+Before writing code:
+
+1. Confirm the working directory with `pwd`.
+2. Review the last five commits with `git log --oneline -5`.
+3. Run `./init.sh`. It installs backend and frontend dependencies, runs the API test suite, and runs the frontend typecheck, lint, tests, and production build.
+4. If verification fails, fix the baseline before adding new work.
+
+The repository runs natively. Docker Compose is the deployment path, not the default development path.
 
 ### 1.2 Working Rules
-1. Focus entirely on one feature at a time.
-2. Do not mark a feature complete just because code was added.
-3. Keep all changes within the selected feature scope unless a critical blocker forces a narrow supporting fix.
-4. Do not silently alter verification rules during implementation.
-5. Prefer durable repository artifacts over transient chat summaries.
+
+1. Work on one feature at a time.
+2. Do not mark work complete because code was added.
+3. Keep changes inside the requested scope.
+4. Do not silently change verification rules.
+5. Put durable decisions in `docs/`, not only in chat.
 
 ### 1.3 Required Artifacts
-1. `docs/`: The maintained requirements and architecture set defined in §1.6.
-2. `init.sh`: The standardized repository startup and verification path.
-3. `session-handoff.md`: An optional, compact handoff document reserved for larger development sessions.
+
+1. `docs/`: the maintained requirements, architecture, and contract set.
+2. `init.sh`: the standard native startup and verification path.
+3. `session-handoff.md`: optional, for long sessions.
 
 ### 1.4 Definition Of Done
-A feature achieves the status of completed only when all of the following conditions are met:
-1. The target behavior is fully implemented.
-2. The required verification scripts actually executed successfully.
-3. Direct evidence of verification is recorded in the change description or the relevant `docs/` entry.
-4. The documentation required by §1.6 is updated in the same change.
-5. The repository remains completely restartable from the standard startup path using `./init.sh`.
 
-### 1.5 End Of Session Workflow
-Before ending a session, the agent must perform these tasks:
-1. Confirm that the documentation required by §1.6 matches the code.
-2. Explicitly record any unresolved risk, technical debt, or workflow blocker in the relevant `docs/` entry or in `session-handoff.md`.
-3. Commit the changes with a descriptive message adhering to the Conventional Commits specification once the work is in a safe state.
-4. Leave the repository clean enough for the next session to execute `./init.sh` immediately.
+A change is complete only when:
 
-### 1.6 Development Documentation (`docs/`)
-`docs/` is the maintained source of truth for system behavior and contracts. It is not optional background reading.
+1. The behavior is implemented.
+2. Backend tests and frontend checks pass.
+3. Verification evidence is recorded.
+4. The matching `docs/` entries are updated.
+5. `./init.sh` succeeds from a clean checkout.
 
-1. Keep the docs synchronized with the code in the same change. A feature, behavior change, schema change, role or permission change, route/service/event change, or new workflow is incomplete until the matching docs are updated.
-2. When the user asks to add or change a feature, add or amend the relevant entries before or alongside the implementation:
-   - Functional behavior and acceptance criteria -> `docs/requirements/fr.md`.
-   - Quality attributes, security, performance, reliability, portability, and operations -> `docs/requirements/nfr.md`.
-   - Roles, permissions, branch scope, and profile rights -> `docs/requirements/access-matrix.md`.
-   - Tables, columns, keys, and relationships -> `docs/architecture/erd.md`.
-   - Cross-component or multi-actor workflows -> `docs/architecture/sequence-diagrams.md`.
-   - Service signatures, HTTP routes, broadcast events, Livewire actions, and error contracts -> `docs/architecture/api-contracts.md`.
-3. Do not create parallel requirement sources. Do not leave a feature described only in chat, a commit message, or a code comment.
-4. Keep Mermaid diagrams valid. After editing, re-check block balance and rendering-relevant syntax.
-5. If code and docs disagree, treat it as a defect: fix the code, or document the actual behavior and the gap. Do not silently rewrite the docs to match a bug.
-6. When deleting or renaming a documented feature, remove or update its FR, NFR, access-matrix, ERD, sequence-diagram, and contract entries in the same change.
+### 1.5 End Of Session
 
-## Section 2: General Project Rules
+1. Check that `docs/` matches the code.
+2. Record unresolved risks or debt in the relevant doc or `session-handoff.md`.
+3. Commit with a Conventional Commit message.
+4. Leave the repository restartable through `./init.sh`.
 
-### 2.1 Framework & Stack
-1. This project is built using Laravel 13, PostgreSQL, Livewire 4, Tailwind CSS v4 (configured via Vite plugin and CSS `@theme` variables, no longer using `tailwind.config.js`), and Laravel Reverb.
+## Section 2: Stack And Architecture
 
-### 2.2 Privacy & Security
-1. Do not hardcode personal user data in the source code, comments, or documentation. Always use generic names (e.g., "Generic Print Shop", "admin_owner", "test@example.com").
-2. SQL Injection Prevention: Avoid raw SQL queries. Always utilize Eloquent ORM, Query Builder parameter bindings, or safe input sanitization.
-3. XSS Prevention: Escape dynamic parameters in templates using double curly braces `{{ $value }}`. For inline JavaScript contexts, always use `\Illuminate\Support\Js::from($value)` to prevent code breaks or injections.
-4. CSRF Protection: Secure all post/put form requests with standard CSRF middleware using `@csrf` directives.
+### 2.1 Stack
 
-### 2.3 Language & Naming Conventions
-1. Maintain international coding standards by translating legacy Indonesian domain terms to English. All code structures (variables, methods, database tables, models) must strictly be in English.
-2. Financial Metrics Naming at the Invoice Level: Use `grand_total` (Omset), `total_cost` (HPP), and `total_profit` (Laba).
-3. Financial Metrics Naming at the Order Level: Use `subtotal` (Subtotal), `cost` (HPP), and `profit` (Laba).
-4. Material Waste: Use the `WastedMaterial` model and `wasted_materials` database table (Bahan Gagal).
+- Laravel 13, PHP 8.5 (composer floor `^8.3`).
+- PostgreSQL in production; SQLite `:memory:` in tests.
+- Laravel Sanctum SPA cookie authentication.
+- Laravel Reverb private channels.
+- React 19, TypeScript 7, Vite, Tailwind CSS 4.
+- TanStack Query, React Router, React Hook Form/Zod where needed.
+- No Livewire and no Blade application UI. The SPA is the only UI.
 
-### 2.4 Role-Based Access Control
-1. Strict role segregation applies with native English database values: `owner`, `manager`, `cashier`, `designer`, and `production`. Ensure gates and middleware enforce these boundaries.
-2. Profile & Settings Rule: Only `owner` and `manager` roles are authorized to update user profiles (name and email). All other roles can only view their profile information and update their personal passwords.
-3. Owner Dashboard Responsibilities: Cross-branch financial analytics (Omset/HPP/Laba, Expenses), period filters (Daily, Weekly, Monthly), branch selection toggle, and sparkline charts mapping net profits.
-4. Manager Dashboard Responsibilities: Material inventory management, stock ledgers, display/finishing master data, pricing engine matrices, and user profile management.
-5. Cashier Dashboard Responsibilities: Checkouts, down payments (DP), balance settlements, cashier drawer expenses, receipt printing, and customer pickup queue (`pickup_status = 0` / Not Picked Up, and invoice `status = 2` / Paid).
-6. Designer Dashboard Responsibilities: Customer select/creation wizard, parameter inputs (sizes, dimensions, options), real-time pricing calculator preview, and printable job tickets (Work Order sheets).
-7. Production Dashboard Responsibilities: Print queue lists, printer machine assignments, waste logging, and updating job status to completed (which must decrement stock ledgers).
+### 2.2 API-First Layout
 
-### 2.5 Real-Time Reactivity
-1. When data state changes (e.g., creating an order, updating payment, completing a print job), ensure `OrderUpdated` or equivalent WebSocket broadcast events are dispatched to keep Livewire UI components in sync without manual page reloads.
+```
+app/Modules/{Identity,Catalog,Sales,Inventory,Production,Reporting,Audit}
+  Http/Controllers
+  Http/Requests
+  Http/Resources
+  Actions
+  Queries
+app/Models              shared Eloquent persistence
+app/Policies            record-level authorization
+app/Support             BranchScope, Decimal, SafeBroadcast
+app/Services            shared domain services used by module Actions
+routes/api.php          /api/v1
+routes/channels.php     private branch and owner channels
+frontend/               React SPA
+```
 
-### 2.6 Aesthetics & UI
-1. Prioritize visual excellence. Build dynamic, responsive designs with smooth interactions (micro-animations, modern typography). Maintain styling conventions primarily through Tailwind CSS instead of inline styles. Use a sidebar navigation layout instead of a top navigation bar for the frontend dashboard interface.
+Rules:
 
-### 2.7 Service-Oriented Architecture (API-Ready)
-1. Core business logic must reside in isolated PHP Service classes located in the `app/Services/` directory and utilize constructor dependency injection within Livewire components. Livewire components or controllers must call these services rather than implementing business logic directly.
-2. `PricingService`: Handles complex pricing matrix matching by product category parameters (Merchandise, Large Format, Print Kertas, etc.).
-3. `InventoryService`: Manages stock ledger adjustments and logging material waste.
+1. Controllers validate through FormRequests, authorize through policies, delegate to one Action or Query, and return a Resource.
+2. Business writes live in Actions, not controllers.
+3. Multi-table writes run in `DB::transaction()`.
+4. Reporting may read across modules; other cross-module writes go through the owning module.
+5. Models are shared; do not duplicate persistence classes per module.
 
-### 2.8 Multi-Branch Tenancy
-1. The application supports multiple physical branches. Tables containing branch-specific data must include a `branch_id` foreign key.
-2. Ensure queries and dashboards scope data to the active user's branch (`auth()->user()->branch_id`) to prevent cross-branch data leakage, unless explicitly handled for the owner role (e.g., the owner dashboard can view all branches combined or switch active branches).
-3. Restrict access to ticket and receipt routes (`/orders/{invoice}/ticket` and `/orders/{invoice}/receipt`) using middleware/policies to block cross-branch data access for non-owner roles.
+### 2.3 Roles And Branch Scope
 
-### 2.9 Theme Support (Light/Dark Mode) & Tailwind CSS v4 Styling
-1. Ensure UI components support both light and dark modes dynamically using Tailwind's `dark:` variant and `localStorage` state.
-2. All interactive elements, dropdowns, inputs, text labels, and modal backgrounds must use responsive Tailwind classes (e.g. `bg-white dark:bg-surface-600 border border-gray-200 dark:border-surface-300/50`) to ensure proper readability and contrast in both themes. Avoid hardcoding absolute dark/light background colors.
-3. Tailwind CSS v4 Configuration Rule: Do NOT edit or create `tailwind.config.js`. Any custom theme configurations, fonts, brand colors, keyframes, and animations must be defined directly in `resources/css/app.css` using the `@theme` directive.
+- Roles: `owner`, `manager`, `cashier`, `designer`, `production`.
+- Non-owner users are always scoped to `auth()->user()->branch_id`.
+- A non-owner with no branch is denied, not treated as global.
+- Owner may use `branch_id=all` in reporting; managers cannot.
+- Use `App\Support\BranchScope` for branch columns.
+- Managers manage only their own branch and only cashier/designer/production staff.
+- Global masters (customers, materials) follow `docs/architecture/erd.md`; stock operations are branch-scoped.
+- Ticket is visible to all roles. Receipt is denied to production.
 
-## Section 3: Technical & Database Specifications
+### 2.4 Money Visibility
 
-### 3.1 Database Status Codes
-1. Invoice status codes (`invoices.status`): `0` = Unpaid / Pending DP (Belum Lunas), `1` = Down Payment Paid (DP), `2` = Fully Paid (Lunas).
-2. Invoice pickup codes (`invoices.pickup_status`): `0` = Not Picked Up (Belum), `1` = Picked Up / Done (Done).
-3. Order status codes (`orders.status`): `0` = Pending / Not Processed (Belum di Proses), `1` = Processing / Printing (Sedang di Proses), `2` = Completed (Telah Beres).
+- Owner and manager: price, cost, profit.
+- Designer: sell price, no cost or profit.
+- Cashier: invoice totals, receivable, discount, payments; no cost or profit.
+- Production: no price, cost, profit, discount, receivable, or payment fields.
+- Money is transported as decimal strings with two places. Use `App\Support\Decimal`.
+- Never trust client money. Quotes and invoice lines are recomputed server-side.
 
-### 3.2 Database Transaction Safety
-1. Any service method performing multiple database mutations must be wrapped entirely within an atomic `DB::transaction()` block.
+## Section 3: Database And Domain Codes
 
-### 3.3 Structured Error Logging
-1. All caught domain exceptions must be logged via `Log::error()` with structured contextual metadata, including the active `user_id` and `branch_id`, before throwing or flashing the error.
+### 3.1 Status Codes
 
-### 3.4 Testing & Database Portability (PHPUnit 12)
-1. The automated test environment utilizes an SQLite in-memory database (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), while production uses PostgreSQL. All migrations, queries, and Eloquent interactions must remain dialect-agnostic and fully compatible with SQLite. Do not use PostgreSQL-specific or MariaDB-specific raw query statements.
-2. UUIDv7 Assertions & Key Generation: Since all keys in the new database schema are UUIDs, all unit and feature tests must mock records and assert database states using valid UUID strings (`Laravel Str::uuid()`) rather than auto-incrementing integers. All model factories must explicitly generate primary and foreign key attributes using stringified UUIDs `(string) Str::uuid()`.
-3. Branch Scoping Rule Tests: All new features must include feature tests asserting active branch isolation scoping rules.
+- `invoices.status`: 0 Unpaid, 1 Down Payment, 2 Paid.
+- `invoices.pickup_status`: 0 Not Picked Up, 1 Picked Up.
+- `orders.status`: 0 Pending, 1 Processing, 2 Completed.
 
-### 3.5 WebSocket Broadcast Structure
-1. Real-time updates rely on the `App\Events\OrderUpdated` event class broadcasting to a public channel named `orders`. Livewire dashboards should register Echo listeners (e.g., `protected $listeners = ['echo:orders,OrderUpdated' => '$refresh'];`) to automatically update UI states.
+### 3.2 Keys And Portability
 
-## Section 4: Development, Coding, & DevOps Best Practices
+1. All primary and foreign keys are UUID strings. Tests and factories use UUIDs.
+2. Migrations and queries must work on SQLite and PostgreSQL. No platform-specific raw SQL.
+3. Never edit a merged migration. Add a new migration.
 
-### 4.1 Code Modularity & View Architecture (Anti-Bloat Rule)
-1. Keep the codebase strictly modular by breaking down views into small, focused files. Main dashboard blade templates must act exclusively as structural layout orchestrators and should not exceed 150 lines of code. Massive role-specific templates must be decomposed using specialized Livewire v4 and Tailwind v4 atomic patterns.
-2. Blade Partials (`@include`): Extract heavy, single-use layout blocks that share the parent component's state context (such as sidebars, navigation layout shells, and groups of system modals) into dedicated partials nested by role namespace (e.g., `resources/views/livewire/cashier/partials/_checkout_sidebar.blade.php`).
-3. Anonymous Components (`<x-`): Convert highly repetitive UI elements (such as the Cashier's item grid cards, the Owner's financial metric tiles, or Production's status badges) into reusable presentation components within `resources/views/components/`.
-4. Livewire v4 Islands (`@island`): Isolate computationally heavy or high-frequency rendering features to prevent system-wide DOM-morphing overhead. Wrap high-overhead components—such as the Owner's cross-branch financial analytics graphs, the Designer's real-time pricing calculator preview, and the Production print queue tables—directly in `@island` directives.
-5. Tailwind v4 Responsive Utilities: Utilize native Tailwind v4 container queries (`@container` and container variants like `@lg:`) on shared widgets so they adapt structurally to whichever dashboard column grid they occupy. Always leverage native `data-loading:` modifiers for asynchronous transitions and UI skeleton states instead of custom Alpine.js loading toggles.
+### 3.3 Transactions And Logging
 
-### 4.2 Environment Variables & Secrets
-1. Always use environment variables. API keys, passwords, and tokens should never appear directly in your code. Store them in a `.env` file and verify it is listed in `.gitignore`. Never hardcode or commit `.env` file credentials. When introducing new configurations or environment dependencies, append placeholder entries to `.env.example` immediately.
+1. Multi-table mutations run in one transaction.
+2. Lock invoices and orders with `lockForUpdate()` for payment and production transitions.
+3. Log caught domain exceptions with user and branch context through `Log::error()`.
+4. Use `App\Support\SafeBroadcast` for after-commit broadcast failures; a broadcaster must not fail a successful write.
 
-### 4.3 Database Migrations
-1. Never edit migrations that have already been merged or deployed. Create a new migration file for schema adjustments. Keep all schema definitions dialect-agnostic so they execute cleanly on both SQLite and PostgreSQL.
+## Section 4: Frontend
 
-### 4.4 Vite Asset Management
-1. Propose running `npm run build` (or keeping `npm run dev` running) after editing layout files, CSS styles, or configuration parameters to ensure changes reflect properly in the browser.
+### 4.1 Structure
 
-### 4.5 Coding Standards & Formatting
-1. Adhere strictly to PSR-12 standards for PHP classes and code structure.
-2. Require `declare(strict_types=1);` at the top of every PHP class file, along with mandatory explicit argument types and return type-hints for all methods.
-3. Indent PHP files, Blade views, and JS templates using 4 spaces. For YAML and Markdown files, use 2 spaces.
-4. Livewire Separation of Concerns & Input Validation: Maintain a clean separation between backend and frontend files by using class-based Livewire components. Controller logic must reside in `app/Livewire/` and frontend templates in `resources/views/livewire/` (avoid single-file Volt components). All multi-input forms must utilize Livewire Form Objects to isolate validation rules and properties.
-5. Blade Template Formatting & Formatter Safety: Avoid using inline Blade conditional tags (like `@if ... @endif`) on the same line as HTML text content. Instead, use inline PHP ternary expressions inside double curly braces: `{{ $condition ? $value : '' }}`.
-6. Ensure PHP arrow operators (`->`) in Blade views are never split across multiple lines. Keep the variable, operator, and method call together on a single line.
-7. HTML Tag Attributes: To prevent Prettier from splitting the PHP arrow operator (`->`) across lines inside HTML tags, declare merged attributes within a `@php` block first, then echo the variable (e.g. `{{ $mergedAttributes }}`) on the tag.
-8. Prettier Ignore: Use `<!-- prettier-ignore -->` comments before HTML tags (like `<p>`) where inline blade directives (e.g. `@if`) or long string concatenations must be kept verbatim to prevent line wrapping from splitting the directive name from its condition.
+```
+frontend/src/
+  api/            client, queries, mutations, types
+  auth/           AuthProvider, guards, role home
+  components/     shell, UI primitives, tables, admin CRUD shell
+  features/       owner, manager, cashier, designer, production, print
+  hooks/          branch, period, realtime
+  lib/            money, dates, errors, Echo
+  routes/         router and legacy redirects
+  styles/         Tailwind @theme tokens
+```
 
-### 4.6 Container Network Ports
-1. Reverb runs internally on container port `8080`, mapped externally to host port `8084` to prevent conflict with other services. Always ensure WebSocket client URLs connect through the host mapped port.
+### 4.2 Rules
 
-### 4.7 Dependency Management
-1. Avoid installing external PHP or JavaScript packages unless explicitly requested or absolutely necessary. Rely on core Laravel 13, Livewire 4, Alpine, and Tailwind utilities.
-2. When dependencies are added or updated, commit both the package definition files (`composer.json`, `package.json`) and their lock files (`composer.lock`, `package-lock.json`) together.
-3. Verify container and PHP system extension requirements (e.g., the `pcntl` extension needed for Laravel Reverb signal handling) before introducing new packages.
+1. Tailwind 4 tokens live in `frontend/src/styles/app.css` via `@theme`. Do not create `tailwind.config.js`.
+2. Use the shared UI primitives and `CrudPage` before adding one-off markup.
+3. Server state uses TanStack Query. Invalidate the affected keys after mutations.
+4. Use `apiFetch` for every API call so CSRF, cookies, and 401 handling stay consistent.
+5. Keep the sidebar layout, dark mode, responsive breakpoints (390, 768, 1440), and print layouts.
+6. Keep the current UI copy and Indonesian domain terms; code stays English.
+7. The SPA must not compute authoritative prices. Quotes come from `/api/v1/quotes`.
+8. `OrderUpdated` invalidates queries; do not trust event payloads.
 
-### 4.8 Git Commit Conventions
-1. All git commit messages generated by the agent must strictly follow the Conventional Commits specification (e.g., `feat:`, `fix:`, `chore:`).
+## Section 5: Testing And Verification
 
-### 4.9 Workflow Instructions
-1. Assume the project is run and tested inside a Docker Compose container stack. All PHP and Artisan commands must be proposed to run inside the container (e.g. `docker exec -it -w /var/www/html/pos_alja local-php83 php artisan <command>`).
-2. Avoid proposing `sudo` or interactive command prompts unless requested.
-3. Documentation style: Do NOT use emojis. Ensure technical guides provide complete, end-to-end instructions for both installation and post-installation usage.
-4. Automated Deployment Guidelines: Enforce production asset compilation via `npm run build`. Follow a strict optimization caching command order during deployments. Ensure safe zero-downtime Reverb worker reloads via signals rather than dropping the container infrastructure.
+### 5.1 Backend
+
+```bash
+php artisan test
+./vendor/bin/pint --test
+./vendor/bin/phpstan analyse --memory-limit=1G
+composer audit
+```
+
+Every endpoint needs tests for guest 401, wrong role 403, cross-branch denial, validation 422, and the happy path. Production responses must be asserted free of money keys.
+
+### 5.2 Frontend
+
+```bash
+npm --prefix frontend run typecheck
+npm --prefix frontend run lint
+npm --prefix frontend run test
+npm --prefix frontend run build
+```
+
+Use `agent-browser` for role and viewport smoke checks. Verify 390, 768, and 1440 px.
+
+### 5.3 Startup
+
+`./init.sh` is the standard verification path. Do not replace it with an undocumented command sequence.
+
+## Section 6: Environment And Deployment
+
+1. Never read, print, or commit `.env` or secrets.
+2. Add every new variable to `.env.example`.
+3. Production uses PostgreSQL, database sessions/cache/queue, HTTPS cookies, and Sanctum stateful domains.
+4. Reverb runs on container port 8080, host port 8084.
+5. Docker Compose services: `app`, `nginx`, `db`, `reverb`. Nginx serves the SPA and proxies `/api`, `/sanctum`, and `/broadcasting`.
+6. Build the SPA with `npm --prefix frontend run build`; serve `frontend/dist`.
+7. CI runs backend and frontend jobs on `main`, `staging`, and pull requests. It never auto-commits.
+
+## Section 7: Coding Standards
+
+1. PSR-12; `declare(strict_types=1);`; explicit argument and return types.
+2. Four spaces in PHP and TypeScript; two spaces in YAML and Markdown.
+3. Conventional Commits.
+4. No new dependency without asking.
+5. Do not stage with `git add -A` or `git add .`.
+6. No emojis in documentation.
+
+## Section 8: Documentation
+
+Update in the same change:
+
+- Behavior and acceptance criteria: `docs/requirements/fr.md`.
+- Security, performance, reliability, portability, operations: `docs/requirements/nfr.md`.
+- Roles, permissions, branch scope: `docs/requirements/access-matrix.md`.
+- Tables and relationships: `docs/architecture/erd.md`.
+- Multi-actor flows: `docs/architecture/sequence-diagrams.md`.
+- HTTP routes, resources, errors, broadcasting, frontend routes: `docs/architecture/api-contracts.md`, `docs/architecture/frontend-architecture.md`.
+- Deployment: `docs/architecture/deployment.md`.
+- As-built status and remaining FR sprints: `docs/requirements/implementation-gaps.md`.
+
+If code and docs disagree, treat it as a defect.

@@ -1,0 +1,13 @@
+.git
+.env
+.ai-docs
+.superpowers
+.worktrees
+node_modules
+vendor
+frontend/node_modules
+frontend/dist
+public/build
+storage/logs
+tests
+docs

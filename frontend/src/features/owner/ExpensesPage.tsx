@@ -1,0 +1,105 @@
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+
+import { api } from '../../api/queries';
+import { PageHeader } from '../../components/PageHeader';
+import { ReportFilterBar, type ReportDraft } from '../../components/ReportFilterBar';
+import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { Spinner } from '../../components/ui/Spinner';
+import { StatCard } from '../../components/ui/StatCard';
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
+import { useBranches } from '../../hooks/useBranches';
+import { formatDate, todayIso } from '../../lib/dates';
+import { formatMoney } from '../../lib/money';
+
+export function ExpensesPage() {
+    const today = todayIso();
+    const branchesQuery = useBranches();
+    const [draft, setDraft] = useState<ReportDraft>({ start: today, end: today, branch: 'all' });
+    const [applied, setApplied] = useState(draft);
+
+    const query = useQuery({
+        queryKey: ['report', 'expenses', applied],
+        queryFn: () =>
+            api.report.expenses({
+                branch_id: applied.branch,
+                start_date: applied.start,
+                end_date: applied.end,
+            }),
+    });
+
+    const categories = Object.entries(query.data?.by_category ?? {});
+
+    return (
+        <div className="space-y-6">
+            <PageHeader
+                eyebrow="Owner insights"
+                title="Expenses Detail"
+                description="Branch operating expenses by category and period."
+            />
+            <ReportFilterBar
+                draft={draft}
+                branches={branchesQuery.data?.data ?? []}
+                loading={query.isFetching}
+                onChange={setDraft}
+                onApply={() => setApplied(draft)}
+            />
+
+            {query.isLoading ? (
+                <div className="flex justify-center py-16">
+                    <Spinner className="text-brand-primary h-6 w-6" />
+                </div>
+            ) : null}
+
+            {query.data ? (
+                <>
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <StatCard
+                            label="Total Expenses"
+                            value={formatMoney(query.data.expenses_total)}
+                        />
+                        {categories.slice(0, 3).map(([category, total]) => (
+                            <StatCard key={category} label={category} value={formatMoney(total)} />
+                        ))}
+                    </div>
+
+                    <Card>
+                        <CardHeader>
+                            <h2 className="font-semibold">Operational expense ledger</h2>
+                        </CardHeader>
+                        <CardBody>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableHeaderCell>Date</TableHeaderCell>
+                                        <TableHeaderCell>Cashier</TableHeaderCell>
+                                        <TableHeaderCell>Category</TableHeaderCell>
+                                        <TableHeaderCell>Description</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {query.data.expenses.length === 0 ? (
+                                        <TableEmpty colSpan={5}>No expenses in this period.</TableEmpty>
+                                    ) : (
+                                        query.data.expenses.map((expense) => (
+                                            <TableRow key={expense.id}>
+                                                <TableCell>{formatDate(expense.incurred_at)}</TableCell>
+                                                <TableCell>{expense.cashier_name ?? '-'}</TableCell>
+                                                <TableCell>{expense.category}</TableCell>
+                                                <TableCell>{expense.description ?? '-'}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {formatMoney(expense.amount)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardBody>
+                    </Card>
+                </>
+            ) : null}
+        </div>
+    );
+}

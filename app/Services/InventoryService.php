@@ -102,9 +102,6 @@ class InventoryService
             DB::transaction(function () use ($materialId) {
                 $material = Material::findOrFail($materialId);
                 $material->delete();
-
-                // Soft-Delete Propagation Rule: update/flush junction footprints
-                MaterialBranchStock::where('material_id', $materialId)->delete();
             });
         } catch (\Throwable $e) {
             Log::error('Global material deletion failed.', [
