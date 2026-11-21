@@ -264,6 +264,7 @@ class PricingServiceTest extends TestCase
         ]);
 
         $this->expectException(PricingNotFoundException::class);
+        $this->expectExceptionMessage('Data harga untuk produk: Merchandise dengan parameter ini tidak ditemukan.');
 
         $this->pricingService->calculateQuote([
             'product_id' => $product->id,
