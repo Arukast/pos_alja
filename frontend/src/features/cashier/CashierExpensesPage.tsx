@@ -21,7 +21,7 @@ export function CashierExpensesPage() {
     const [form, setForm] = useState({
         amount: '',
         type: 'laba',
-        category: 'Operational',
+        category: 'Operasional',
         description: '',
         incurred_at: todayIso(),
     });
