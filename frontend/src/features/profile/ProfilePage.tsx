@@ -47,7 +47,7 @@ export function ProfilePage() {
 
             await refresh();
             setProfile({ name: response.user.name, email: response.user.email ?? '' });
-            setNotice('Profile updated.');
+            setNotice('Profil diperbarui.');
         } catch (caught) {
             setProfileErrors(caught instanceof ApiError ? mapApiErrors(caught.payload) : {});
             setNotice(errorMessage(caught));
@@ -67,7 +67,7 @@ export function ProfilePage() {
             });
 
             setPassword({ current_password: '', password: '', password_confirmation: '' });
-            setNotice('Password updated.');
+            setNotice('Kata sandi diperbarui.');
         } catch (caught) {
             setPasswordErrors(caught instanceof ApiError ? mapApiErrors(caught.payload) : {});
             setNotice(errorMessage(caught));
@@ -96,13 +96,13 @@ export function ProfilePage() {
         <div className="space-y-6">
             <header>
                 <p className="text-brand-primary text-xs font-semibold uppercase tracking-[0.25em]">
-                    Account
+                    Akun
                 </p>
-                <h1 className="mt-1 text-2xl font-bold">Profile & Settings</h1>
+                <h1 className="mt-1 text-2xl font-bold">Profil &amp; Pengaturan</h1>
                 <p className="text-light-muted mt-1 text-sm dark:text-gray-400">
                     {canEditProfile
-                        ? 'Update your name and email, change your password, or deactivate your account.'
-                        : 'View your account details and change your password.'}
+                        ? 'Perbarui nama dan email Anda, ubah kata sandi, atau nonaktifkan akun Anda.'
+                        : 'Lihat detail akun Anda dan ubah kata sandi.'}
                 </p>
             </header>
 
@@ -111,16 +111,16 @@ export function ProfilePage() {
             <Card>
                 <CardHeader>
                     <div>
-                        <h2 className="font-semibold">Profile information</h2>
+                        <h2 className="font-semibold">Informasi profil</h2>
                         <p className="text-light-muted text-sm dark:text-gray-400">
-                            Your username is fixed: {user.username}
+                            Nama pengguna Anda tetap: {user.username}
                         </p>
                     </div>
                 </CardHeader>
                 <CardBody className="space-y-4">
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Input
-                            label="Full name"
+                            label="Nama lengkap"
                             value={profile.name}
                             disabled={!canEditProfile}
                             onChange={(event) =>
@@ -141,7 +141,7 @@ export function ProfilePage() {
                     </div>
                     {canEditProfile ? (
                         <Button loading={profileLoading} onClick={() => void saveProfile()}>
-                            Save profile
+                            Simpan profil
                         </Button>
                     ) : null}
                 </CardBody>
@@ -149,11 +149,11 @@ export function ProfilePage() {
 
             <Card>
                 <CardHeader>
-                    <h2 className="font-semibold">Change password</h2>
+                    <h2 className="font-semibold">Ubah kata sandi</h2>
                 </CardHeader>
                 <CardBody className="space-y-4">
                     <Input
-                        label="Current password"
+                        label="Kata sandi saat ini"
                         type="password"
                         autoComplete="current-password"
                         value={password.current_password}
@@ -167,7 +167,7 @@ export function ProfilePage() {
                     />
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Input
-                            label="New password"
+                            label="Kata sandi baru"
                             type="password"
                             autoComplete="new-password"
                             value={password.password}
@@ -180,7 +180,7 @@ export function ProfilePage() {
                             error={passwordErrors.password}
                         />
                         <Input
-                            label="Confirm new password"
+                            label="Konfirmasi kata sandi baru"
                             type="password"
                             autoComplete="new-password"
                             value={password.password_confirmation}
@@ -193,7 +193,7 @@ export function ProfilePage() {
                         />
                     </div>
                     <Button loading={passwordLoading} onClick={() => void savePassword()}>
-                        Update password
+                        Perbarui kata sandi
                     </Button>
                 </CardBody>
             </Card>
@@ -203,16 +203,16 @@ export function ProfilePage() {
                     <CardHeader>
                         <div>
                             <h2 className="font-semibold text-red-600 dark:text-red-300">
-                                Deactivate account
+                                Nonaktifkan akun
                             </h2>
                             <p className="text-light-muted text-sm dark:text-gray-400">
-                                The account is soft-deleted and can be restored by an owner.
+                                Akun akan dihapus sementara dan dapat dipulihkan oleh pemilik.
                             </p>
                         </div>
                     </CardHeader>
                     <CardBody>
                         <Button variant="danger" onClick={() => setDeleteOpen(true)}>
-                            Deactivate my account
+                            Nonaktifkan akun saya
                         </Button>
                     </CardBody>
                 </Card>
@@ -221,25 +221,25 @@ export function ProfilePage() {
             <Modal
                 open={deleteOpen}
                 onClose={() => setDeleteOpen(false)}
-                title="Deactivate account"
-                description="This signs you out and soft-deletes your account."
+                title="Nonaktifkan akun"
+                description="Anda akan keluar dan akun Anda dihapus sementara."
                 footer={
                     <>
                         <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
-                            Cancel
+                            Batal
                         </Button>
                         <Button variant="danger" onClick={() => void deleteAccount()}>
-                            Deactivate
+                            Nonaktifkan
                         </Button>
                     </>
                 }
             >
                 <div className="space-y-3">
                     <p className="text-light-muted text-sm dark:text-gray-400">
-                        Confirm with your current password.
+                        Konfirmasi dengan kata sandi Anda saat ini.
                     </p>
                     <Input
-                        label="Password"
+                        label="Kata Sandi"
                         type="password"
                         autoComplete="current-password"
                         value={deletePassword}

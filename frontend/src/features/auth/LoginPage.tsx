@@ -49,17 +49,17 @@ export function LoginPage() {
                         <p className="text-brand-primary text-xs font-semibold uppercase tracking-[0.25em]">
                             Alja Digital Printing
                         </p>
-                        <h1 className="text-2xl font-bold">Sign in</h1>
+                        <h1 className="text-2xl font-bold">Masuk</h1>
                     </div>
                 </div>
 
                 <p className="text-light-muted mt-3 text-sm dark:text-gray-400">
-                    Use the username and password issued by your branch administrator.
+                    Gunakan nama pengguna dan kata sandi yang diberikan oleh administrator cabang Anda.
                 </p>
 
                 <form className="mt-6 space-y-4" onSubmit={(event) => void handleSubmit(event)}>
                     <Input
-                        label="Username"
+                        label="Nama Pengguna"
                         name="username"
                         autoComplete="username"
                         autoFocus
@@ -68,7 +68,7 @@ export function LoginPage() {
                         required
                     />
                     <Input
-                        label="Password"
+                        label="Kata Sandi"
                         name="password"
                         type="password"
                         autoComplete="current-password"
@@ -77,7 +77,7 @@ export function LoginPage() {
                         required
                     />
                     <Checkbox
-                        label="Remember me"
+                        label="Ingat Saya"
                         checked={remember}
                         onChange={(event) => setRemember(event.target.checked)}
                     />
@@ -92,7 +92,7 @@ export function LoginPage() {
                     ) : null}
 
                     <Button type="submit" className="w-full" loading={submitting}>
-                        Sign In
+                        Masuk
                     </Button>
                 </form>
             </section>
