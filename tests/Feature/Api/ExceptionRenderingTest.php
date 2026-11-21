@@ -54,6 +54,25 @@ class ExceptionRenderingTest extends TestCase
             ->assertJsonPath('message', 'Data yang diminta tidak ditemukan.');
     }
 
+    public function test_app_authored_403_messages_survive_rendering(): void
+    {
+        Route::get('/api/v1/_abort_with_message', static function (): void {
+            abort(403, 'Desainer harus ditugaskan ke cabang.');
+        });
+
+        Route::get('/api/v1/_abort_without_message', static function (): void {
+            abort(403);
+        });
+
+        $this->getJson('/api/v1/_abort_with_message')
+            ->assertForbidden()
+            ->assertExactJson(['message' => 'Desainer harus ditugaskan ke cabang.']);
+
+        $this->getJson('/api/v1/_abort_without_message')
+            ->assertForbidden()
+            ->assertExactJson(['message' => 'Anda tidak memiliki izin untuk tindakan ini.']);
+    }
+
     public function test_server_errors_hide_internal_details_when_debug_is_off(): void
     {
         config(['app.debug' => false]);
@@ -64,8 +83,34 @@ class ExceptionRenderingTest extends TestCase
 
         $response = $this->getJson('/api/v1/_boom')->assertStatus(500);
 
-        $response->assertJsonPath('message', 'Terjadi kesalahan pada server.');
+        $response->assertExactJson(['message' => 'Terjadi kesalahan pada server.']);
         $this->assertStringNotContainsString('internal-marker', (string) $response->getContent());
+    }
+
+    public function test_throttled_login_keeps_its_indonesian_message(): void
+    {
+        User::factory()->create([
+            'username' => 'throttled-user',
+            'role' => 'cashier',
+        ]);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/v1/auth/login', [
+                'username' => 'throttled-user',
+                'password' => 'wrong-password',
+            ])->assertStatus(422);
+        }
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'username' => 'throttled-user',
+            'password' => 'wrong-password',
+        ])->assertStatus(429);
+
+        $this->assertMatchesRegularExpression(
+            '/^Terlalu banyak percobaan masuk\. Silakan coba lagi dalam \d+ detik\.$/',
+            (string) $response->json('message')
+        );
+        $this->assertStringNotContainsString('Too Many Requests', (string) $response->getContent());
     }
 
     public function test_non_json_requests_keep_the_html_not_found_response(): void

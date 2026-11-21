@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -60,10 +61,25 @@ return Application::configure(basePath: dirname(__DIR__))
                 default => 500,
             };
 
+            $customMessage = $e instanceof HttpException
+                && ! $e instanceof AccessDeniedHttpException
+                && ! $e instanceof NotFoundHttpException
+                && in_array($status, [401, 403, 404], true)
+                && $e->getMessage() !== ''
+                && ! in_array($e->getMessage(), [
+                    'Forbidden',
+                    'Not Found',
+                    'Unauthorized',
+                    'This action is unauthorized.',
+                    'Unauthenticated.',
+                ], true)
+                ? $e->getMessage()
+                : null;
+
             $message = match (true) {
-                $status === 401 => 'Silakan masuk terlebih dahulu.',
-                $status === 403 => 'Anda tidak memiliki izin untuk tindakan ini.',
-                $status === 404 => 'Data yang diminta tidak ditemukan.',
+                $status === 401 => $customMessage ?? 'Silakan masuk terlebih dahulu.',
+                $status === 403 => $customMessage ?? 'Anda tidak memiliki izin untuk tindakan ini.',
+                $status === 404 => $customMessage ?? 'Data yang diminta tidak ditemukan.',
                 $status >= 500 => config('app.debug')
                     ? $e->getMessage()
                     : 'Terjadi kesalahan pada server.',
