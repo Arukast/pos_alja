@@ -116,7 +116,7 @@ export function ManagerLedgersPage() {
                 { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
                 { header: 'Ditambahkan', cell: (ledger) => ledger.added_stock },
                 { header: 'Digunakan', cell: (ledger) => ledger.used_stock },
-                { header: 'Sisa', cell: (ledger) => ledger.wasted_stock },
+                { header: 'Sisa Bahan', cell: (ledger) => ledger.wasted_stock },
                 { header: 'Tersisa', cell: (ledger) => ledger.remaining_stock },
             ]}
         />

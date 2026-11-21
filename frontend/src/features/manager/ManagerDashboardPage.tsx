@@ -21,7 +21,7 @@ export function ManagerDashboardPage() {
             <PageHeader
                 eyebrow="Manajer Cabang"
                 title="Dasbor Cabang"
-                description="Persediaan, harga, staf, dan kinerja desainer bulan ini."
+                description="Inventaris, harga, staf, dan kinerja desainer bulan ini."
             />
 
             {query.isLoading ? (
