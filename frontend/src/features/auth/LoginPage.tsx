@@ -54,7 +54,7 @@ export function LoginPage() {
                 </div>
 
                 <p className="text-light-muted mt-3 text-sm dark:text-gray-400">
-                    Gunakan nama pengguna dan kata sandi yang diberikan oleh administrator cabang Anda.
+                    Gunakan nama pengguna dan kata sandi yang diberikan oleh manajer cabang Anda.
                 </p>
 
                 <form className="mt-6 space-y-4" onSubmit={(event) => void handleSubmit(event)}>

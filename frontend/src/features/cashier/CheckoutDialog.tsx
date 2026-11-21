@@ -97,6 +97,7 @@ export function CheckoutDialog({
                         <Button
                             variant={mode === 'down_payment' ? 'primary' : 'secondary'}
                             size="sm"
+                            aria-pressed={mode === 'down_payment'}
                             onClick={() => setMode('down_payment')}
                         >
                             DP
@@ -104,6 +105,7 @@ export function CheckoutDialog({
                         <Button
                             variant={mode === 'settlement' ? 'primary' : 'secondary'}
                             size="sm"
+                            aria-pressed={mode === 'settlement'}
                             onClick={() => setMode('settlement')}
                         >
                             Pelunasan
@@ -112,7 +114,7 @@ export function CheckoutDialog({
 
                     {mode === 'down_payment' ? (
                         <Input
-                            label="Jumlah"
+                            label="Jumlah Pembayaran"
                             type="number"
                             min="0"
                             value={amount}
@@ -136,7 +138,7 @@ export function CheckoutDialog({
                                 value={cashReceived}
                                 error={errors.cash_received}
                                 onChange={(event) => setCashReceived(event.target.value)}
-                                hint="Opsional, untuk menampilkan kembalian."
+                                hint="Opsional."
                             />
                         </>
                     )}

@@ -35,6 +35,7 @@ export function ReceiptPage() {
 
     return (
         <main className="min-h-screen bg-gray-100 p-6">
+            <h1 className="sr-only">Nota</h1>
             <div className="no-print mx-auto mb-4 flex max-w-[80mm] justify-end gap-2">
                 <Button variant="secondary" onClick={() => navigate(-1)}>
                     Kembali

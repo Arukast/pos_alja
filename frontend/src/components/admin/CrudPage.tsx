@@ -244,7 +244,7 @@ export function CrudPage<T extends { id: string }>({
                     setOpen(false);
                     setEditing(null);
                 }}
-                title={editing ? `Ubah ${title}` : createLabel}
+                title={editing ? 'Ubah data' : createLabel}
             >
                 <div className="space-y-4">
                     {fields.map((field) => {
