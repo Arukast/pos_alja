@@ -32,8 +32,8 @@ describe('archetypeLabel', () => {
     it('labels every stored archetype', () => {
         expect(archetypeLabel('per_piece')).toBe('Per Potong');
         expect(archetypeLabel('surface_area')).toBe('Per Meter Persegi');
-        expect(archetypeLabel('linear_dimension')).toBe('Dimensi Linear');
-        expect(archetypeLabel('tiered_volume')).toBe('Volume Bertingkat');
+        expect(archetypeLabel('linear_dimension')).toBe('Per Meter Lari');
+        expect(archetypeLabel('tiered_volume')).toBe('Harga Bertingkat');
     });
 
     it('falls back to the input for an unknown archetype', () => {

@@ -15,8 +15,8 @@ const paymentMethods: Record<string, string> = {
 const archetypes: Record<string, string> = {
     per_piece: 'Per Potong',
     surface_area: 'Per Meter Persegi',
-    linear_dimension: 'Dimensi Linear',
-    tiered_volume: 'Volume Bertingkat',
+    linear_dimension: 'Per Meter Lari',
+    tiered_volume: 'Harga Bertingkat',
 };
 
 const attributeTypes: Record<string, string> = {
