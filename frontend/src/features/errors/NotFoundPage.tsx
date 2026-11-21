@@ -9,7 +9,7 @@ export function NotFoundPage() {
                 </p>
                 <h1 className="mt-2 text-3xl font-bold">Halaman Tidak Ditemukan</h1>
                 <p className="text-light-muted mt-2 text-sm dark:text-gray-400">
-                    Halaman yang Anda minta tidak tersedia atau telah dipindahkan.
+                    Halaman yang Anda minta tidak ada.
                 </p>
                 <Link
                     to="/"
