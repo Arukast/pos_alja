@@ -10,6 +10,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { useBranches } from '../../hooks/useBranches';
 import { formatDate, todayIso } from '../../lib/dates';
+import { paymentMethodLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 
 export function GrossRevenuePage() {
@@ -31,9 +32,9 @@ export function GrossRevenuePage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Owner insights"
-                title="Gross Revenue Detail"
-                description="Collected payments by method, branch, and period."
+                eyebrow="Analitik Pemilik"
+                title="Rincian Pendapatan Bruto"
+                description="Pembayaran yang diterima berdasarkan metode, cabang, dan periode."
             />
             <ReportFilterBar
                 draft={draft}
@@ -52,31 +53,31 @@ export function GrossRevenuePage() {
             {query.data ? (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <StatCard label="Total Collected" value={formatMoney(query.data.grand_total)} />
-                        <StatCard label="Cash" value={formatMoney(query.data.cash_total)} />
+                        <StatCard label="Total Diterima" value={formatMoney(query.data.grand_total)} />
+                        <StatCard label="Tunai" value={formatMoney(query.data.cash_total)} />
                         <StatCard label="Transfer" value={formatMoney(query.data.transfer_total)} />
                         <StatCard label="QRIS" value={formatMoney(query.data.qris_total)} />
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Payment ledger</h2>
+                            <h2 className="font-semibold">Catatan Pembayaran</h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableHeaderCell>Date</TableHeaderCell>
+                                        <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
-                                        <TableHeaderCell>Branch</TableHeaderCell>
-                                        <TableHeaderCell>Method</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
+                                        <TableHeaderCell>Cabang</TableHeaderCell>
+                                        <TableHeaderCell>Metode</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Jumlah</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {query.data.payments.length === 0 ? (
-                                        <TableEmpty colSpan={6}>No payments in this period.</TableEmpty>
+                                        <TableEmpty colSpan={6}>Belum ada pembayaran pada periode ini.</TableEmpty>
                                     ) : (
                                         query.data.payments.map((payment) => (
                                             <TableRow key={payment.id}>
@@ -84,7 +85,7 @@ export function GrossRevenuePage() {
                                                 <TableCell>{payment.invoice_number ?? '-'}</TableCell>
                                                 <TableCell>{payment.customer_name ?? '-'}</TableCell>
                                                 <TableCell>{payment.branch_name ?? '-'}</TableCell>
-                                                <TableCell>{payment.payment_method}</TableCell>
+                                                <TableCell>{paymentMethodLabel(payment.payment_method)}</TableCell>
                                                 <TableCell className="text-right">
                                                     {formatMoney(payment.amount)}
                                                 </TableCell>

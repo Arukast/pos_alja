@@ -31,9 +31,9 @@ export function BaseCostPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Owner insights"
-                title="Base Cost Detail"
-                description="Invoice HPP and material waste cost breakdowns."
+                eyebrow="Analitik Pemilik"
+                title="Rincian Biaya Dasar"
+                description="Rincian HPP invoice dan biaya sisa bahan."
             />
             <ReportFilterBar
                 draft={draft}
@@ -58,7 +58,7 @@ export function BaseCostPage() {
                             value={formatMoney(query.data.invoice_cost_total)}
                         />
                         <StatCard
-                            label="Material Waste HPP"
+                            label="HPP Sisa Bahan"
                             value={formatMoney(query.data.wasted_cost_total)}
                         />
                     </div>
@@ -73,13 +73,13 @@ export function BaseCostPage() {
                                     <TableHead>
                                         <TableRow>
                                             <TableHeaderCell>Invoice</TableHeaderCell>
-                                            <TableHeaderCell>Customer</TableHeaderCell>
+                                            <TableHeaderCell>Pelanggan</TableHeaderCell>
                                             <TableHeaderCell className="text-right">HPP</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {query.data.invoices.length === 0 ? (
-                                            <TableEmpty colSpan={3}>No invoices in this period.</TableEmpty>
+                                            <TableEmpty colSpan={3}>Belum ada invoice pada periode ini.</TableEmpty>
                                         ) : (
                                             query.data.invoices.map((invoice) => (
                                                 <TableRow key={invoice.id}>
@@ -98,21 +98,21 @@ export function BaseCostPage() {
 
                         <Card>
                             <CardHeader>
-                                <h2 className="font-semibold">Material waste</h2>
+                                <h2 className="font-semibold">Sisa Bahan</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableHeaderCell>Date</TableHeaderCell>
-                                            <TableHeaderCell>Material</TableHeaderCell>
-                                            <TableHeaderCell>Qty</TableHeaderCell>
-                                            <TableHeaderCell className="text-right">Cost</TableHeaderCell>
+                                            <TableHeaderCell>Tanggal</TableHeaderCell>
+                                            <TableHeaderCell>Bahan</TableHeaderCell>
+                                            <TableHeaderCell>Jml</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Biaya</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {query.data.wasted_materials.length === 0 ? (
-                                            <TableEmpty colSpan={4}>No waste logged in this period.</TableEmpty>
+                                            <TableEmpty colSpan={4}>Belum ada sisa bahan pada periode ini.</TableEmpty>
                                         ) : (
                                             query.data.wasted_materials.map((waste) => (
                                                 <TableRow key={waste.id}>

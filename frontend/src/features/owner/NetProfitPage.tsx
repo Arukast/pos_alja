@@ -31,9 +31,9 @@ export function NetProfitPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Owner insights"
-                title="Net Profit Detail"
-                description="Revenue minus HPP and operating expenses, with the underlying ledgers."
+                eyebrow="Analitik Pemilik"
+                title="Rincian Laba Bersih"
+                description="Pendapatan dikurangi HPP dan biaya operasional, beserta catatan pendukungnya."
             />
             <ReportFilterBar
                 draft={draft}
@@ -53,36 +53,36 @@ export function NetProfitPage() {
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <StatCard
-                            label="Net Profit"
+                            label="Laba Bersih"
                             value={formatMoney(query.data.net_profit)}
                             hint={`${query.data.margin_rate.toFixed(2)}% margin`}
                         />
-                        <StatCard label="Gross Revenue" value={formatMoney(query.data.gross_revenue)} />
+                        <StatCard label="Pendapatan Bruto" value={formatMoney(query.data.gross_revenue)} />
                         <StatCard label="Total HPP" value={formatMoney(query.data.total_hpp)} />
                         <StatCard
-                            label="Expenses"
+                            label="Pengeluaran"
                             value={formatMoney(query.data.expenses_total)}
                         />
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Invoice ledger</h2>
+                            <h2 className="font-semibold">Catatan Invoice</h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Customer</TableHeaderCell>
+                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Total</TableHeaderCell>
                                         <TableHeaderCell className="text-right">HPP</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Profit</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Laba</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {query.data.invoices.length === 0 ? (
-                                        <TableEmpty colSpan={5}>No invoices in this period.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada invoice pada periode ini.</TableEmpty>
                                     ) : (
                                         query.data.invoices.map((invoice) => (
                                             <TableRow key={invoice.id}>
@@ -108,20 +108,20 @@ export function NetProfitPage() {
                     <div className="grid gap-6 xl:grid-cols-2">
                         <Card>
                             <CardHeader>
-                                <h2 className="font-semibold">Operating expenses</h2>
+                                <h2 className="font-semibold">Biaya operasional</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableHeaderCell>Date</TableHeaderCell>
-                                            <TableHeaderCell>Description</TableHeaderCell>
-                                            <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                                            <TableHeaderCell>Tanggal</TableHeaderCell>
+                                            <TableHeaderCell>Deskripsi</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Jumlah</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {query.data.expenses.length === 0 ? (
-                                            <TableEmpty colSpan={3}>No expenses in this period.</TableEmpty>
+                                            <TableEmpty colSpan={3}>Belum ada pengeluaran pada periode ini.</TableEmpty>
                                         ) : (
                                             query.data.expenses.map((expense) => (
                                                 <TableRow key={expense.id}>
@@ -140,20 +140,20 @@ export function NetProfitPage() {
 
                         <Card>
                             <CardHeader>
-                                <h2 className="font-semibold">Material waste</h2>
+                                <h2 className="font-semibold">Sisa Bahan</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableHeaderCell>Date</TableHeaderCell>
-                                            <TableHeaderCell>Material</TableHeaderCell>
-                                            <TableHeaderCell className="text-right">Cost</TableHeaderCell>
+                                            <TableHeaderCell>Tanggal</TableHeaderCell>
+                                            <TableHeaderCell>Bahan</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Biaya</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {query.data.wasted_materials.length === 0 ? (
-                                            <TableEmpty colSpan={3}>No waste in this period.</TableEmpty>
+                                            <TableEmpty colSpan={3}>Belum ada sisa bahan pada periode ini.</TableEmpty>
                                         ) : (
                                             query.data.wasted_materials.map((waste) => (
                                                 <TableRow key={waste.id}>

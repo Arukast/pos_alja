@@ -33,9 +33,9 @@ export function ExpensesPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                eyebrow="Owner insights"
-                title="Expenses Detail"
-                description="Branch operating expenses by category and period."
+                eyebrow="Analitik Pemilik"
+                title="Rincian Pengeluaran"
+                description="Biaya operasional cabang berdasarkan kategori dan periode."
             />
             <ReportFilterBar
                 draft={draft}
@@ -55,7 +55,7 @@ export function ExpensesPage() {
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <StatCard
-                            label="Total Expenses"
+                            label="Total Pengeluaran"
                             value={formatMoney(query.data.expenses_total)}
                         />
                         {categories.slice(0, 3).map(([category, total]) => (
@@ -65,22 +65,22 @@ export function ExpensesPage() {
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Operational expense ledger</h2>
+                            <h2 className="font-semibold">Catatan Biaya Operasional</h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableHeaderCell>Date</TableHeaderCell>
-                                        <TableHeaderCell>Cashier</TableHeaderCell>
-                                        <TableHeaderCell>Category</TableHeaderCell>
-                                        <TableHeaderCell>Description</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Amount</TableHeaderCell>
+                                        <TableHeaderCell>Tanggal</TableHeaderCell>
+                                        <TableHeaderCell>Kasir</TableHeaderCell>
+                                        <TableHeaderCell>Kategori</TableHeaderCell>
+                                        <TableHeaderCell>Deskripsi</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Jumlah</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {query.data.expenses.length === 0 ? (
-                                        <TableEmpty colSpan={5}>No expenses in this period.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada pengeluaran pada periode ini.</TableEmpty>
                                     ) : (
                                         query.data.expenses.map((expense) => (
                                             <TableRow key={expense.id}>
