@@ -22,7 +22,7 @@ export function ResourceTable<T extends { id: string }>({
     queryFn,
     columns,
     actions,
-    emptyMessage = 'No records found.',
+    emptyMessage = 'Belum ada data.',
 }: {
     title: string;
     description?: string;
@@ -53,7 +53,7 @@ export function ResourceTable<T extends { id: string }>({
 
                     {query.isError ? (
                         <p role="alert" className="py-6 text-sm text-red-600 dark:text-red-300">
-                            Unable to load this screen.
+                            Gagal memuat halaman ini.
                         </p>
                     ) : null}
 

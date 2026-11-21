@@ -2,7 +2,7 @@ export function Sparkline({ points, labels }: { points: number[]; labels: string
     if (points.length === 0) {
         return (
             <p className="text-light-muted px-2 py-10 text-center text-sm dark:text-gray-400">
-                No profit data for this period.
+                Belum ada data laba untuk periode ini.
             </p>
         );
     }
@@ -24,7 +24,7 @@ export function Sparkline({ points, labels }: { points: number[]; labels: string
             <svg
                 viewBox={`0 0 ${width} ${height}`}
                 role="img"
-                aria-label="Net profit sparkline"
+                aria-label="Grafik laba bersih"
                 className="h-48 w-full"
                 preserveAspectRatio="none"
             >

@@ -32,7 +32,7 @@ export function Toast({
             {onClose ? (
                 <button
                     type="button"
-                    aria-label="Dismiss notification"
+                    aria-label="Tutup notifikasi"
                     className="rounded p-0.5 opacity-70 transition hover:opacity-100"
                     onClick={onClose}
                 >
