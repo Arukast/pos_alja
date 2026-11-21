@@ -260,6 +260,8 @@ return [
         'width' => 'lebar',
         'length' => 'panjang',
         'selected_attributes' => 'atribut',
+        'selected_attributes.*' => 'atribut',
+        'items.*.selected_attributes.*' => 'atribut',
     ],
 
 ];
