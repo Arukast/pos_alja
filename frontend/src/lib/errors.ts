@@ -9,7 +9,7 @@ export class ApiError extends Error {
     public readonly payload: ApiErrorPayload;
 
     public constructor(status: number, payload: ApiErrorPayload = {}) {
-        super(payload.message ?? `Request failed with status ${status}`);
+        super(payload.message ?? `Permintaan gagal dengan status ${status}`);
         this.name = 'ApiError';
         this.status = status;
         this.errors = payload.errors ?? {};
@@ -50,5 +50,5 @@ export function errorMessage(error: unknown): string {
         return error.message;
     }
 
-    return 'Something went wrong.';
+    return 'Terjadi kesalahan.';
 }

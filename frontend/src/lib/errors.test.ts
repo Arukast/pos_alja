@@ -39,6 +39,6 @@ describe('errorMessage', () => {
     });
 
     it('has a generic fallback', () => {
-        expect(errorMessage(undefined)).toBe('Something went wrong.');
+        expect(errorMessage(undefined)).toBe('Terjadi kesalahan.');
     });
 });

@@ -30,7 +30,7 @@ async function ensureCsrf(): Promise<void> {
     }).then((response) => {
         if (!response.ok) {
             throw new ApiError(response.status, {
-                message: 'Unable to initialize the session.',
+                message: 'Tidak dapat memulai sesi.',
             });
         }
     });
