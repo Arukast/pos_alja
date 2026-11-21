@@ -150,7 +150,7 @@ final class MaterialController extends Controller
             : ($data['branch_id'] ?? null);
 
         if ($branchId === null) {
-            abort(422, 'A branch is required.');
+            abort(422, 'Cabang wajib diisi.');
         }
 
         $inventory->addStock(
@@ -186,7 +186,7 @@ final class MaterialController extends Controller
             : ($data['branch_id'] ?? null);
 
         if ($branchId === null) {
-            abort(422, 'A branch is required.');
+            abort(422, 'Cabang wajib diisi.');
         }
 
         $exists = $material->branchStocks()->where('branch_id', $branchId)->exists();

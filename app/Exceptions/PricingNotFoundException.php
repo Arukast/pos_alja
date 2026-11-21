@@ -8,7 +8,7 @@ class PricingNotFoundException extends Exception
 {
     protected array $params;
 
-    public function __construct(string $message = 'Pricing record not found for the given criteria.', array $params = [], int $code = 0, ?\Throwable $previous = null)
+    public function __construct(string $message = 'Data harga untuk kriteria ini tidak ditemukan.', array $params = [], int $code = 0, ?\Throwable $previous = null)
     {
         parent::__construct($message, $code, $previous);
         $this->params = $params;

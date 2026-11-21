@@ -26,7 +26,7 @@ final class LogWaste
 
         if ($branchId === null) {
             throw ValidationException::withMessages([
-                'branch_id' => 'A production user must be assigned to a branch.',
+                'branch_id' => 'Pengguna produksi harus ditugaskan ke cabang.',
             ]);
         }
 
@@ -37,7 +37,7 @@ final class LogWaste
 
         if (! $hasStock) {
             throw ValidationException::withMessages([
-                'material_id' => 'This material is not stocked in your branch.',
+                'material_id' => 'Bahan ini tidak tersedia di cabang Anda.',
             ]);
         }
 
@@ -49,7 +49,7 @@ final class LogWaste
 
             if (! $machineInBranch) {
                 throw ValidationException::withMessages([
-                    'machine_id' => 'This machine belongs to another branch.',
+                    'machine_id' => 'Mesin ini milik cabang lain.',
                 ]);
             }
         }
@@ -63,7 +63,7 @@ final class LogWaste
 
             if (! $designerInBranch) {
                 throw ValidationException::withMessages([
-                    'designer_id' => 'This designer belongs to another branch.',
+                    'designer_id' => 'Desainer ini milik cabang lain.',
                 ]);
             }
         }
@@ -79,7 +79,7 @@ final class LogWaste
 
             if (! $orderInBranch) {
                 throw ValidationException::withMessages([
-                    'order_id' => 'This order belongs to another branch.',
+                    'order_id' => 'Pesanan ini milik cabang lain.',
                 ]);
             }
         }

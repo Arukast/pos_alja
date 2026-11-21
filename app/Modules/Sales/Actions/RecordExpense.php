@@ -22,7 +22,7 @@ final class RecordExpense
             'description' => $data['description'] ?? null,
             'cashier_name' => $cashier->name,
             'type' => $data['type'],
-            'category' => $data['category'] ?? 'Operational',
+            'category' => $data['category'] ?? 'Operasional',
         ]);
 
         SafeBroadcast::orderUpdated($cashier->branch_id, $cashier);

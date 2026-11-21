@@ -24,7 +24,7 @@ final class CompleteProduction
 
             if ($locked->status !== 1) {
                 throw ValidationException::withMessages([
-                    'status' => 'Only processing orders can be completed.',
+                    'status' => 'Hanya pesanan yang sedang diproses yang dapat diselesaikan.',
                 ]);
             }
 

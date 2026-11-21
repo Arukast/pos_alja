@@ -29,7 +29,7 @@ final class QuoteController extends Controller
         Gate::authorize('createQuote', Invoice::class);
 
         if ($actor->branch_id === null) {
-            abort(403, 'A designer must be assigned to a branch.');
+            abort(403, 'Desainer harus ditugaskan ke cabang.');
         }
 
         $data = $request->validated();

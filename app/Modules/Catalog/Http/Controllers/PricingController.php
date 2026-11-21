@@ -60,7 +60,7 @@ final class PricingController extends Controller
             : $actor->branch_id;
 
         if ($data['branch_id'] === null) {
-            abort(422, 'A branch is required.');
+            abort(422, 'Cabang wajib diisi.');
         }
 
         $data['profit'] = $data['profit'] ?? max(0, (float) $data['price'] - (float) $data['cost']);
@@ -123,7 +123,7 @@ final class PricingController extends Controller
             : $actor->branch_id;
 
         if ($branchId === null) {
-            abort(422, 'A branch is required.');
+            abort(422, 'Cabang wajib diisi.');
         }
 
         $rows = Pricing::query()
