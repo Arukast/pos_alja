@@ -25,6 +25,11 @@ const attributeTypes: Record<string, string> = {
     display: 'Display',
 };
 
+const expenseTypes: Record<string, string> = {
+    laba: 'Laba',
+    modal: 'Modal',
+};
+
 export function roleLabel(role: string): string {
     return roles[role] ?? role;
 }
@@ -39,4 +44,8 @@ export function archetypeLabel(archetype: string): string {
 
 export function attributeTypeLabel(type: string): string {
     return attributeTypes[type] ?? type;
+}
+
+export function expenseTypeLabel(type: string): string {
+    return expenseTypes[type] ?? type;
 }

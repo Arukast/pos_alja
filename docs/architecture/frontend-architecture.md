@@ -78,7 +78,7 @@ src/
 - Tables scroll horizontally on small screens.
 - Print views have dedicated `@media print` CSS: A4 ticket and 80 mm receipt.
 - `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only lists.
-- Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English.
+- Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English, with one exception: `expense.category` is free text, new rows default to `Operasional`, and existing rows may be `Office`/`Operational`, so reports group by exact string.
 - Shared copy lives in `roleLinks`, `admin/CrudPage`, `components/ui`, and `lib/labels.ts`.
 - Dates format with `id-ID`; money already formats with `id-ID`.
 

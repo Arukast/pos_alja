@@ -98,7 +98,7 @@ export function AuditPage() {
                                             <TableRow key={log.id}>
                                                 <TableCell>{formatDate(log.created_at)}</TableCell>
                                                 <TableCell>{log.username}</TableCell>
-                                                <TableCell className="capitalize">{roleLabel(log.role)}</TableCell>
+                                                <TableCell>{roleLabel(log.role)}</TableCell>
                                                 <TableCell>{log.action}</TableCell>
                                                 <TableCell>{log.description}</TableCell>
                                             </TableRow>

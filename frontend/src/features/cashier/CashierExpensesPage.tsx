@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatDate, todayIso } from '../../lib/dates';
+import { expenseTypeLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 
 export function CashierExpensesPage() {
@@ -130,7 +131,7 @@ export function CashierExpensesPage() {
                                         (query.data?.data ?? []).map((expense) => (
                                             <TableRow key={expense.id}>
                                                 <TableCell>{formatDate(expense.incurred_at)}</TableCell>
-                                                <TableCell>{expense.type}</TableCell>
+                                                <TableCell>{expenseTypeLabel(expense.type)}</TableCell>
                                                 <TableCell>{expense.category}</TableCell>
                                                 <TableCell>{expense.description ?? '-'}</TableCell>
                                                 <TableCell className="text-right">

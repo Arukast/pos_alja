@@ -37,7 +37,7 @@ export function RestockMaterialButton({ material }: { material: Material }) {
             <Modal open={open} onClose={() => setOpen(false)} title={`Tambah Stok ${material.name}`}>
                 <div className="space-y-4">
                     <Input
-                        label="Jumlah"
+                        label="Jml"
                         type="number"
                         min="0"
                         value={quantity}
@@ -48,7 +48,7 @@ export function RestockMaterialButton({ material }: { material: Material }) {
                             Batal
                         </Button>
                         <Button loading={restock.isPending} onClick={() => restock.mutate()}>
-                            Tambah stok
+                            Tambah Stok
                         </Button>
                     </div>
                 </div>

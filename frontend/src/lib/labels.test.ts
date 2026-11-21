@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { archetypeLabel, attributeTypeLabel, paymentMethodLabel, roleLabel } from './labels';
+import { archetypeLabel, attributeTypeLabel, expenseTypeLabel, paymentMethodLabel, roleLabel } from './labels';
 
 describe('roleLabel', () => {
     it('labels every stored role', () => {
@@ -38,6 +38,17 @@ describe('archetypeLabel', () => {
 
     it('falls back to the input for an unknown archetype', () => {
         expect(archetypeLabel('flat_rate')).toBe('flat_rate');
+    });
+});
+
+describe('expenseTypeLabel', () => {
+    it('labels every stored expense type', () => {
+        expect(expenseTypeLabel('laba')).toBe('Laba');
+        expect(expenseTypeLabel('modal')).toBe('Modal');
+    });
+
+    it('falls back to the input for an unknown type', () => {
+        expect(expenseTypeLabel('operational')).toBe('operational');
     });
 });
 
