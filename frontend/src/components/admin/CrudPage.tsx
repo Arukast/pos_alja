@@ -42,6 +42,8 @@ export function CrudPage<T extends { id: string }>({
     remove,
     rowActions,
     createLabel = 'Tambah data',
+    summary,
+    footer,
 }: {
     eyebrow: string;
     title: string;
@@ -55,6 +57,8 @@ export function CrudPage<T extends { id: string }>({
     remove?: (id: string) => Promise<unknown>;
     rowActions?: (row: T) => ReactNode;
     createLabel?: string;
+    summary?: ReactNode;
+    footer?: ReactNode;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -162,6 +166,8 @@ export function CrudPage<T extends { id: string }>({
                 }
             />
 
+            {summary}
+
             <Card>
                 <CardBody>
                     {query.isLoading ? (
@@ -245,6 +251,8 @@ export function CrudPage<T extends { id: string }>({
                     )}
                 </CardBody>
             </Card>
+
+            {footer}
 
             <Modal
                 open={open}

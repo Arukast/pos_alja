@@ -10,11 +10,14 @@ import { ResourceTable } from '../../components/ResourceTable';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody } from '../../components/ui/Card';
+import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
+import { Spinner } from '../../components/ui/Spinner';
+import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, attributeTypeLabel, roleLabel } from '../../lib/labels';
+import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 
 export function ManagerUsersPage() {
@@ -63,8 +66,38 @@ export function ManagerUsersPage() {
     );
 }
 
+function materialStatus(material: Material): { label: string; tone: 'success' | 'warning' } | null {
+    if (material.current_stock === null || material.min_stock === null) {
+        return null;
+    }
+
+    const current = Number(material.current_stock);
+    const minimum = Number(material.min_stock);
+
+    if (!Number.isFinite(current) || !Number.isFinite(minimum)) {
+        return null;
+    }
+
+    return current < minimum
+        ? { label: 'Menipis', tone: 'warning' }
+        : { label: 'Tersedia', tone: 'success' };
+}
+
 export function ManagerMaterialsPage() {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const materialCount = useQuery({
+        queryKey: ['manager', 'materials', 'count'],
+        queryFn: () => api.materials({ page: 1, per_page: 1 }),
+    });
+    const machineCount = useQuery({
+        queryKey: ['manager', 'machines', 'count'],
+        queryFn: () => api.machines({ page: 1, per_page: 1 }),
+    });
+    const ledgers = useQuery({
+        queryKey: ['manager', 'materials', 'ledgers'],
+        queryFn: () => api.stockLedgers({ page: 1 }),
+    });
+
     const options = (categories.data?.data ?? []).map((category) => ({
         value: category.id,
         label: category.name,
@@ -81,6 +114,8 @@ export function ManagerMaterialsPage() {
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
 
+    const ledgerRows = ledgers.data?.data ?? [];
+
     return (
         <CrudPage
             eyebrow="Inventaris"
@@ -88,17 +123,108 @@ export function ManagerMaterialsPage() {
             description="Tingkat stok cabang, penambahan stok, dan aktivasi."
             queryKey={['manager', 'materials']}
             queryFn={(page) => api.materials({ page })}
+            summary={
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <StatCard
+                        label="Bahan Aktif"
+                        value={materialCount.isSuccess ? String(materialCount.data.meta.total) : '—'}
+                    />
+                    <StatCard
+                        label="Kategori"
+                        value={categories.isSuccess ? String(categories.data.data.length) : '—'}
+                    />
+                    <StatCard
+                        label="Mesin"
+                        value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
+                    />
+                </div>
+            }
             columns={[
-                { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
+                {
+                    header: 'Bahan',
+                    cell: (material) => (
+                        <div>
+                            <span className="font-medium">{material.name}</span>
+                            {material.type || material.dimensions ? (
+                                <p className="text-light-muted text-xs dark:text-gray-400">
+                                    {[material.type, material.dimensions].filter(Boolean).join(' · ')}
+                                </p>
+                            ) : null}
+                        </div>
+                    ),
+                },
                 { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
-                { header: 'Stok', cell: (material) => material.current_stock ?? '-' },
-                { header: 'Minimum', cell: (material) => material.min_stock ?? '-' },
-                { header: 'Biaya', cell: (material) => formatMoney(material.cost) },
+                {
+                    header: 'Stok',
+                    className: 'text-right tabular-nums',
+                    cell: (material) => material.current_stock ?? '-',
+                },
+                {
+                    header: 'Minimum',
+                    className: 'text-right tabular-nums',
+                    cell: (material) => material.min_stock ?? '-',
+                },
+                {
+                    header: 'Biaya',
+                    className: 'text-right tabular-nums',
+                    cell: (material) => formatMoney(material.cost),
+                },
+                {
+                    header: 'Status',
+                    cell: (material) => {
+                        const status = materialStatus(material);
+
+                        return status ? <Badge tone={status.tone}>{status.label}</Badge> : '-';
+                    },
+                },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
             rowActions={(material) => <RestockMaterialButton material={material} />}
             createLabel="Tambah bahan"
+            footer={
+                <Card>
+                    <CardHeader>
+                        <h2 className="font-semibold">Pergerakan stok terbaru</h2>
+                    </CardHeader>
+                    <CardBody>
+                        {ledgers.isLoading ? (
+                            <div role="status" className="flex items-center justify-center py-6">
+                                <Spinner className="text-brand-primary h-5 w-5" />
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableHeaderCell>Tanggal</TableHeaderCell>
+                                        <TableHeaderCell>Bahan</TableHeaderCell>
+                                        <TableHeaderCell>Ditambahkan</TableHeaderCell>
+                                        <TableHeaderCell>Digunakan</TableHeaderCell>
+                                        <TableHeaderCell>Tersisa</TableHeaderCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {ledgerRows.length === 0 ? (
+                                        <TableEmpty colSpan={5}>
+                                            Belum ada pergerakan stok.
+                                        </TableEmpty>
+                                    ) : (
+                                        ledgerRows.map((ledger) => (
+                                            <TableRow key={ledger.id}>
+                                                <TableCell>{formatDate(ledger.logged_at)}</TableCell>
+                                                <TableCell>{ledger.material?.name ?? '-'}</TableCell>
+                                                <TableCell>{ledger.added_stock}</TableCell>
+                                                <TableCell>{ledger.used_stock}</TableCell>
+                                                <TableCell>{ledger.remaining_stock}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardBody>
+                </Card>
+            }
         />
     );
 }
