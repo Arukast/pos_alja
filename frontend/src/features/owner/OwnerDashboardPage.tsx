@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { Sparkline } from '../../components/Sparkline';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
@@ -42,7 +42,7 @@ export function OwnerDashboardPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Pemilik"
                 title="Dasbor Pemilik"
                 description="Pendapatan, biaya, laba, dan pengeluaran lintas cabang."

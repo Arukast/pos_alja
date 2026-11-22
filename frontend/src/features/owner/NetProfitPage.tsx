@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { ReportFilterBar, type ReportDraft } from '../../components/ReportFilterBar';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
@@ -30,7 +30,7 @@ export function NetProfitPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Analitik Pemilik"
                 title="Rincian Laba Bersih"
                 description="Pendapatan dikurangi HPP dan biaya operasional, beserta catatan pendukungnya."

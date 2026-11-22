@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import type { Paginated } from '../api/types';
-import { PageHeader } from './PageHeader';
+import { PageBanner } from './PageBanner';
 import { Card, CardBody } from './ui/Card';
 import { Pagination } from './ui/Pagination';
 import { Spinner } from './ui/Spinner';
@@ -41,7 +41,7 @@ export function ResourceTable<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
+            <PageBanner eyebrow={eyebrow} title={title} description={description} actions={actions} />
 
             <Card>
                 <CardBody>

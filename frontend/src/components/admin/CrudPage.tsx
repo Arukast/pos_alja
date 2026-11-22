@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import type { Paginated } from '../../api/types';
-import { PageHeader } from '../PageHeader';
+import { PageBanner } from '../PageBanner';
 import { Button } from '../ui/Button';
 import { Card, CardBody } from '../ui/Card';
 import { Checkbox } from '../ui/Checkbox';
@@ -143,7 +143,7 @@ export function CrudPage<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow={eyebrow}
                 title={title}
                 description={description}

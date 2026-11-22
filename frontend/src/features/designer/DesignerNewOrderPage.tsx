@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 import { api } from '../../api/queries';
 import type { Quote } from '../../api/queries';
 import type { Customer } from '../../api/types';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -151,7 +151,7 @@ export function DesignerNewOrderPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Desainer"
                 title="Pesanan Baru"
                 description="Buat pelanggan, atur item, pratinjau harga, lalu kirim invoice."

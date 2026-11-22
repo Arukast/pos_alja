@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { Card, CardBody } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
@@ -31,7 +31,7 @@ export function AuditPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Analitik Pemilik"
                 title="Jejak Audit"
                 description="Catatan perubahan penting pada sistem yang dapat dicari."

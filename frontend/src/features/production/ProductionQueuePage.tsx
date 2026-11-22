@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { OrderStatusBadge } from '../../components/StatusBadge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
@@ -49,7 +49,7 @@ export function ProductionQueuePage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Produksi"
                 title="Antrean Cetak"
                 description="Mulai dan selesaikan pekerjaan cetak. Informasi uang sengaja disembunyikan."

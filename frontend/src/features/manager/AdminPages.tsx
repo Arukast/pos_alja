@@ -5,7 +5,7 @@ import { api } from '../../api/queries';
 import type { Attribute, AttributeType, Category, Machine, Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
@@ -356,7 +356,7 @@ function PricingClonePanel() {
     return (
         <Card>
             <CardBody className="space-y-4">
-                <PageHeader
+                <PageBanner
                     eyebrow="Konfigurasi"
                     title="Salin tingkat harga"
                     description="Salin setiap baris harga dari satu bahan ke bahan lain di cabang Anda."
@@ -400,7 +400,7 @@ export function ManagerLeaderboardPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Ringkasan"
                 title="Papan Peringkat Desainer"
                 description="Pendapatan, jumlah pesanan, dan akurasi sisa bahan bulan ini."

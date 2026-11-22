@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import { api } from '../../api/queries';
 import type { Invoice } from '../../api/types';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
 import { Pagination } from '../../components/ui/Pagination';
@@ -26,7 +26,7 @@ export function CashierPaymentsPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Kasir"
                 title="Antrean Pembayaran"
                 description="Invoice belum dibayar dan DP yang menunggu pembayaran."

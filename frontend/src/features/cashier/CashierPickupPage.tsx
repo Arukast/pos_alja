@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
 import { Pagination } from '../../components/ui/Pagination';
@@ -38,7 +38,7 @@ export function CashierPickupPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Kasir"
                 title="Antrean Pengambilan"
                 description="Pesanan lunas yang menunggu pengambilan pelanggan."
