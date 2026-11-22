@@ -90,6 +90,7 @@ export function OwnerDashboardPage() {
                                 key={value}
                                 size="sm"
                                 variant={period === value ? 'primary' : 'secondary'}
+                                aria-pressed={period === value}
                                 onClick={() => updateParam('period', value)}
                             >
                                 {periodLabels[value]}

@@ -71,11 +71,11 @@ export function ManagerDashboardPage() {
                                 <Table>
                                     <TableHead>
                                         <TableRow>
+                                            <TableHeaderCell>Tanggal</TableHeaderCell>
                                             <TableHeaderCell>Bahan</TableHeaderCell>
                                             <TableHeaderCell className="text-right">Ditambahkan</TableHeaderCell>
                                             <TableHeaderCell className="text-right">Digunakan</TableHeaderCell>
                                             <TableHeaderCell className="text-right">Tersisa</TableHeaderCell>
-                                            <TableHeaderCell>Tanggal</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -84,6 +84,7 @@ export function ManagerDashboardPage() {
                                         ) : (
                                             data.stock_ledgers.map((ledger) => (
                                                 <TableRow key={ledger.id}>
+                                                    <TableCell>{formatDate(ledger.logged_at)}</TableCell>
                                                     <TableCell>{ledger.material?.name ?? '-'}</TableCell>
                                                     <TableCell className="text-right tabular-nums">
                                                         {ledger.added_stock}
@@ -94,7 +95,6 @@ export function ManagerDashboardPage() {
                                                     <TableCell className="text-right tabular-nums">
                                                         {ledger.remaining_stock}
                                                     </TableCell>
-                                                    <TableCell>{formatDate(ledger.logged_at)}</TableCell>
                                                 </TableRow>
                                             ))
                                         )}

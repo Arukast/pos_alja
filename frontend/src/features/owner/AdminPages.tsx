@@ -91,7 +91,7 @@ export function OwnerUsersPage() {
             columns={[
                 { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
                 { header: 'Nama Pengguna', className: 'hidden sm:table-cell', cell: (user) => user.username },
-                { header: 'Peran', cell: (user) => roleLabel(user.role) },
+                { header: 'Peran', cell: (user) => <Badge tone="neutral">{roleLabel(user.role)}</Badge> },
                 { header: 'Cabang', className: 'hidden sm:table-cell', cell: (user) => user.branch?.name ?? 'Global' },
             ]}
             fields={fields}
