@@ -33,6 +33,15 @@ export function ReceiptPage() {
         );
     }
 
+    const orders = invoice.orders ?? [];
+    const showLineTotals = orders.some((order) => order.subtotal != null);
+    const payments = [...(invoice.payments ?? [])].sort((a, b) =>
+        a.created_at.localeCompare(b.created_at)
+    );
+    const paid = payments.reduce((total, payment) => total + Number(payment.amount), 0);
+    const hasDiscount = Number(invoice.discount) > 0;
+    const subtotal = Math.round((Number(invoice.grand_total) + Number(invoice.discount)) * 100) / 100;
+
     return (
         <main className="print-backdrop min-h-screen p-4 text-white sm:p-6 print:min-h-0 print:p-0">
             <h1 className="sr-only">Nota</h1>
@@ -62,26 +71,28 @@ export function ReceiptPage() {
                         <tr className="border-b border-black text-left">
                             <th className="py-0.5">Item</th>
                             <th className="w-7 py-0.5 text-right">Jml</th>
-                            <th className="w-[84px] py-0.5 text-right">Total</th>
+                            {showLineTotals ? <th className="w-[84px] py-0.5 text-right">Total</th> : null}
                         </tr>
                     </thead>
                     <tbody>
-                        {(invoice.orders ?? []).length === 0 ? (
+                        {orders.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="py-1 text-center">
+                                <td colSpan={showLineTotals ? 3 : 2} className="py-1 text-center">
                                     Belum ada item.
                                 </td>
                             </tr>
                         ) : (
-                            (invoice.orders ?? []).map((order) => (
+                            orders.map((order) => (
                                 <tr key={order.id} className="align-top">
                                     <td className="py-0.5 pr-1">{order.file_name ?? 'Item'}</td>
                                     <td className="py-0.5 text-right whitespace-nowrap tabular-nums">
                                         {order.quantity}
                                     </td>
-                                    <td className="py-0.5 text-right whitespace-nowrap tabular-nums">
-                                        {order.subtotal === undefined ? '-' : formatMoney(order.subtotal)}
-                                    </td>
+                                    {showLineTotals ? (
+                                        <td className="py-0.5 text-right whitespace-nowrap tabular-nums">
+                                            {order.subtotal == null ? '-' : formatMoney(order.subtotal)}
+                                        </td>
+                                    ) : null}
                                 </tr>
                             ))
                         )}
@@ -89,24 +100,25 @@ export function ReceiptPage() {
                 </table>
 
                 <div className="mt-2 space-y-0.5 border-t border-dashed border-black pt-2">
+                    {hasDiscount ? (
+                        <>
+                            <p className="flex justify-between gap-2">
+                                <span>Subtotal</span>
+                                <span className="text-right tabular-nums">{formatMoney(subtotal)}</span>
+                            </p>
+                            <p className="flex justify-between gap-2">
+                                <span>Diskon</span>
+                                <span className="text-right tabular-nums">{formatMoney(invoice.discount)}</span>
+                            </p>
+                        </>
+                    ) : null}
                     <p className="flex justify-between gap-2">
                         <span>Total</span>
                         <span className="text-right tabular-nums">{formatMoney(invoice.grand_total)}</span>
                     </p>
                     <p className="flex justify-between gap-2">
-                        <span>Diskon</span>
-                        <span className="text-right tabular-nums">{formatMoney(invoice.discount)}</span>
-                    </p>
-                    <p className="flex justify-between gap-2">
                         <span>Dibayar</span>
-                        <span className="text-right tabular-nums">
-                            {formatMoney(
-                                (invoice.payments ?? []).reduce(
-                                    (total, payment) => total + Number(payment.amount),
-                                    0
-                                )
-                            )}
-                        </span>
+                        <span className="text-right tabular-nums">{formatMoney(paid)}</span>
                     </p>
                     <p className="flex justify-between gap-2 border-t border-dashed border-black pt-1 font-bold">
                         <span>Sisa Tagihan</span>
@@ -118,11 +130,11 @@ export function ReceiptPage() {
 
                 <div className="mt-2 border-t border-dashed border-black pt-2">
                     <p className="font-semibold">Pembayaran</p>
-                    {(invoice.payments ?? []).length === 0 ? (
+                    {payments.length === 0 ? (
                         <p>Belum ada pembayaran.</p>
                     ) : (
                         <ul className="space-y-0.5">
-                            {(invoice.payments ?? []).map((payment) => (
+                            {payments.map((payment) => (
                                 <li key={payment.id} className="flex justify-between gap-2">
                                     <span>
                                         <span className="font-semibold">
