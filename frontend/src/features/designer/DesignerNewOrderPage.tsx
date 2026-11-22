@@ -370,10 +370,10 @@ export function DesignerNewOrderPage() {
                                     cart.map((line, index) => (
                                         <TableRow key={`${line.quote.pricing_id}-${index}`}>
                                             <TableCell>{line.file_name || `Item ${index + 1}`}</TableCell>
-                                            <TableCell className="text-right tabular-nums">
+                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                 {line.quantity}
                                             </TableCell>
-                                            <TableCell className="text-right tabular-nums">
+                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                 {formatMoney(line.quote.subtotal)}
                                             </TableCell>
                                             <TableCell>
