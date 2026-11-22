@@ -12,9 +12,32 @@ import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { formatDate, todayIso } from '../../lib/dates';
+import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 import { CheckoutDialog } from './CheckoutDialog';
+
+// The server totals expenses for Asia/Jakarta today, so the row filter must use the same calendar day.
+const jakartaDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' });
+const hasOffset = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/;
+
+function toJakartaDate(value: string | Date): string {
+    if (value instanceof Date) {
+        return jakartaDate.format(value);
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return value;
+    }
+
+    // The API sends either ISO timestamps with an offset or raw Jakarta wall-clock values without one.
+    const zoned = hasOffset.test(value) ? value : `${value.replace(' ', 'T')}+07:00`;
+
+    return jakartaDate.format(new Date(zoned));
+}
+
+function jakartaToday(): string {
+    return toJakartaDate(new Date());
+}
 
 export function CashierPaymentsPage() {
     const [page, setPage] = useState(1);
@@ -31,10 +54,10 @@ export function CashierPaymentsPage() {
 
     const data = dashboard.data?.role === 'cashier' ? dashboard.data : null;
     const invoices = (query.data?.data ?? []).filter((invoice) => invoice.status !== 2);
-    const today = todayIso();
+    const today = jakartaToday();
     // Server sends the latest expenses of any date; the panel and its total claim "today".
     const todaysExpenses = (data?.expenses ?? []).filter(
-        (expense) => expense.incurred_at.slice(0, 10) === today,
+        (expense) => toJakartaDate(expense.incurred_at) === today,
     );
 
     return (
