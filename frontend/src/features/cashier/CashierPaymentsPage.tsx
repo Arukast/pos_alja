@@ -115,7 +115,7 @@ export function CashierPaymentsPage() {
                                         <TableHeaderCell>Status</TableHeaderCell>
                                         <TableHeaderCell className="hidden text-right sm:table-cell">Total</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Sisa Tagihan</TableHeaderCell>
-                                        <TableHeaderCell className="bg-light-surface border-light-border sm:sticky sm:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
                                     </TableRow>
@@ -139,7 +139,7 @@ export function CashierPaymentsPage() {
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(invoice.accounts_receivable)}
                                                 </TableCell>
-                                                <TableCell className="bg-white border-light-border sm:sticky sm:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                                <TableCell className="bg-white border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <Button size="sm" onClick={() => setSelected(invoice)}>
                                                         Bayar
                                                     </Button>

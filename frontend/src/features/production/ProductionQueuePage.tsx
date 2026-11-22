@@ -120,7 +120,7 @@ export function ProductionQueuePage() {
                                         <TableHeaderCell className="hidden sm:table-cell">Diterima</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Tenggat</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
-                                        <TableHeaderCell className="bg-light-surface border-light-border sm:sticky sm:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
                                     </TableRow>
@@ -154,7 +154,7 @@ export function ProductionQueuePage() {
                                                 <TableCell>
                                                     <OrderStatusBadge status={order.status} />
                                                 </TableCell>
-                                                <TableCell className="bg-light-surface border-light-border sm:sticky sm:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                                <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     {order.status === 0 ? (
                                                         <Button
                                                             size="sm"
