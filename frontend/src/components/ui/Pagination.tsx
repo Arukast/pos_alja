@@ -14,11 +14,15 @@ export function Pagination({
     perPage?: number;
     onPageChange: (page: number) => void;
 }) {
-    if (total === 0 || (total === undefined && lastPage <= 1)) {
+    if (total === 0) {
         return null;
     }
 
     const range = total !== undefined && perPage !== undefined ? pageWindow(page, perPage, total) : null;
+
+    if ((range && range.to === 0) || (total === undefined && lastPage <= 1)) {
+        return null;
+    }
 
     let summary = `Halaman ${page} dari ${lastPage}`;
 
