@@ -31,6 +31,7 @@ RUN apt-get update \
 
 WORKDIR /var/www/html
 COPY --from=vendor /app/vendor ./vendor
+COPY --from=vendor /usr/bin/composer /usr/bin/composer
 COPY . .
 RUN composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \
