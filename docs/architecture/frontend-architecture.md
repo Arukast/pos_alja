@@ -43,7 +43,7 @@
 src/
   api/            client, queries, mutations, shared types
   auth/           AuthProvider, useAuth, RequireAuth, roleHome
-  components/     AppShell, Sidebar, MobileDrawer, ThemeToggle, UserPopover
+  components/     AppShell, Sidebar, MobileDrawer, LogoMark, PageBanner, PrintHeader, ThemeToggle, UserPopover
   components/ui/  Button, Input, Select, Checkbox, Modal, Table, Card, ...
   components/admin/CrudPage
   features/       owner, manager, cashier, designer, production, print
@@ -71,13 +71,23 @@ src/
 
 ## 5. UI Conventions
 
+- Design tokens and component specifications live in `docs/architecture/design-system.md`. Read it before
+  adding a token, a primitive, or a new page layout.
 - Sidebar navigation, collapsible desktop rail, mobile drawer.
 - Light/dark mode with `dark` class and `theme` in `localStorage`.
 - Responsive layouts checked at 390, 768, and 1440 px.
 - Native `<dialog>` modals with focus handling.
-- Tables scroll horizontally on small screens.
-- Print views have dedicated `@media print` CSS: A4 ticket and 80 mm receipt.
-- `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only lists.
+- Tables scroll horizontally on small screens. Action columns stick to the right only at `lg:` and above.
+- Pagination copy is Indonesian: `Menampilkan X–Y dari Z` when a total is known, with `Halaman X dari Y` for
+  lists whose total cannot be stated honestly.
+- Print views have dedicated `@media print` CSS: A4 ticket at `min-h-[297mm] print:min-h-0`, 80 mm receipt,
+  `PrintHeader` with CMYK marks, white paper.
+- `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
+  spec (10px uppercase label, 22px/800 value). Controls are 40px tall, labels 10px uppercase.
+- `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only
+  lists. `CrudPage` supports `summary` and `footer` slots, `pageResetKey` to return to page 1 when a filter
+  changes, and `hideBanner` so a second section on the same page can render a labelled panel header instead of
+  a second page banner.
 - Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English, with one exception: `expense.category` is free text, new rows default to `Operasional`, and existing rows may be `Office`/`Operational`, so reports group by exact string.
 - Shared copy lives in `roleLinks`, `admin/CrudPage`, `components/ui`, and `lib/labels.ts`.
 - Dates format with `id-ID`; money already formats with `id-ID`.
