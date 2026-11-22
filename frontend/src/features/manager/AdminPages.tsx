@@ -11,6 +11,7 @@ import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
@@ -156,17 +157,17 @@ export function ManagerMaterialsPage() {
                 { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok',
-                    className: 'text-right tabular-nums',
+                    className: 'text-right tabular-nums whitespace-nowrap',
                     cell: (material) => material.current_stock ?? '-',
                 },
                 {
                     header: 'Minimum',
-                    className: 'text-right tabular-nums',
+                    className: 'text-right tabular-nums whitespace-nowrap',
                     cell: (material) => material.min_stock ?? '-',
                 },
                 {
                     header: 'Biaya',
-                    className: 'text-right tabular-nums',
+                    className: 'text-right tabular-nums whitespace-nowrap',
                     cell: (material) => formatMoney(material.cost),
                 },
                 {
@@ -192,6 +193,16 @@ export function ManagerMaterialsPage() {
                             <div role="status" className="flex items-center justify-center py-6">
                                 <Spinner className="text-brand-primary h-5 w-5" />
                             </div>
+                        ) : ledgers.isError ? (
+                            <EmptyState
+                                title="Pergerakan stok gagal dimuat"
+                                description="Periksa koneksi lalu coba lagi."
+                                action={
+                                    <Button variant="secondary" onClick={() => ledgers.refetch()}>
+                                        Coba lagi
+                                    </Button>
+                                }
+                            />
                         ) : (
                             <Table>
                                 <TableHead>
