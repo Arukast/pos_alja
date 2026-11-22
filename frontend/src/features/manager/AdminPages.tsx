@@ -411,6 +411,7 @@ export function ManagerFinishingPage() {
                 remove={(id) => api.admin.deleteAttributeType(id)}
                 createLabel="Tambah tipe atribut"
                 paginated={false}
+                hideBanner
             />
         </div>
     );
@@ -555,36 +556,52 @@ export function ManagerLeaderboardPage() {
             <Card>
                 <CardBody>
                     <h2 className="font-semibold">Papan Peringkat</h2>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableHeaderCell>Desainer</TableHeaderCell>
-                                <TableHeaderCell>Pesanan</TableHeaderCell>
-                                <TableHeaderCell className="text-right whitespace-nowrap">Pendapatan</TableHeaderCell>
-                                <TableHeaderCell className="text-right whitespace-nowrap">Rata-rata pesanan</TableHeaderCell>
-                                <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {(query.data?.leaders ?? []).length === 0 ? (
-                                <TableEmpty colSpan={5}>Belum ada aktivitas desainer bulan ini.</TableEmpty>
-                            ) : (
-                                (query.data?.leaders ?? []).map((leader) => (
-                                    <TableRow key={leader.id}>
-                                        <TableCell>{leader.name}</TableCell>
-                                        <TableCell>{leader.order_count}</TableCell>
-                                        <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                            {formatMoney(leader.revenue)}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                            {formatMoney(leader.average_order_value)}
-                                        </TableCell>
-                                        <TableCell>{leader.waste_count}</TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                    {query.isLoading ? (
+                        <div role="status" className="flex items-center justify-center py-6">
+                            <Spinner className="text-brand-primary h-5 w-5" />
+                        </div>
+                    ) : query.isError ? (
+                        <EmptyState
+                            title="Papan peringkat gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
+                    ) : query.data ? (
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableHeaderCell>Desainer</TableHeaderCell>
+                                    <TableHeaderCell>Pesanan</TableHeaderCell>
+                                    <TableHeaderCell className="text-right whitespace-nowrap">Pendapatan</TableHeaderCell>
+                                    <TableHeaderCell className="text-right whitespace-nowrap">Rata-rata pesanan</TableHeaderCell>
+                                    <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {query.data.leaders.length === 0 ? (
+                                    <TableEmpty colSpan={5}>Belum ada aktivitas desainer bulan ini.</TableEmpty>
+                                ) : (
+                                    query.data.leaders.map((leader) => (
+                                        <TableRow key={leader.id}>
+                                            <TableCell>{leader.name}</TableCell>
+                                            <TableCell>{leader.order_count}</TableCell>
+                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                {formatMoney(leader.revenue)}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                {formatMoney(leader.average_order_value)}
+                                            </TableCell>
+                                            <TableCell>{leader.waste_count}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    ) : null}
                 </CardBody>
             </Card>
         </div>

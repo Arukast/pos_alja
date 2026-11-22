@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import type { Paginated } from '../../api/types';
 import { PageBanner } from '../PageBanner';
 import { Button } from '../ui/Button';
-import { Card, CardBody } from '../ui/Card';
+import { Card, CardBody, CardHeader } from '../ui/Card';
 import { Checkbox } from '../ui/Checkbox';
 import { EmptyState } from '../ui/EmptyState';
 import { Input } from '../ui/Input';
@@ -47,6 +47,7 @@ export function CrudPage<T extends { id: string }>({
     summary,
     footer,
     paginated = true,
+    hideBanner = false,
 }: {
     eyebrow: string;
     title: string;
@@ -64,6 +65,7 @@ export function CrudPage<T extends { id: string }>({
     summary?: ReactNode;
     footer?: ReactNode;
     paginated?: boolean;
+    hideBanner?: boolean;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -163,22 +165,39 @@ export function CrudPage<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            <PageBanner
-                eyebrow={eyebrow}
-                title={title}
-                description={description}
-                actions={
-                    create ? (
-                        <Button size="sm" onClick={openCreate}>
-                            {createLabel}
-                        </Button>
-                    ) : null
-                }
-            />
+            {hideBanner ? null : (
+                <PageBanner
+                    eyebrow={eyebrow}
+                    title={title}
+                    description={description}
+                    actions={
+                        create ? (
+                            <Button size="sm" onClick={openCreate}>
+                                {createLabel}
+                            </Button>
+                        ) : null
+                    }
+                />
+            )}
 
             {summary}
 
             <Card>
+                {hideBanner ? (
+                    <CardHeader>
+                        <div className="space-y-1">
+                            <h2 className="text-light-text text-base font-bold dark:text-gray-100">{title}</h2>
+                            {description ? (
+                                <p className="text-light-muted-strong text-sm dark:text-gray-400">{description}</p>
+                            ) : null}
+                        </div>
+                        {create ? (
+                            <Button size="sm" onClick={openCreate}>
+                                {createLabel}
+                            </Button>
+                        ) : null}
+                    </CardHeader>
+                ) : null}
                 <CardBody>
                     {query.isLoading ? (
                         <div className="flex justify-center py-10">
