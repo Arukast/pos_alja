@@ -13,12 +13,12 @@ export function Checkbox({ label, error, className, id, ...props }: CheckboxProp
 
     return (
         <div className="space-y-1">
-            <label htmlFor={checkboxId} className="flex items-start gap-3 text-sm">
+            <label htmlFor={checkboxId} className="flex min-h-10 items-center gap-3 text-sm">
                 <input
                     id={checkboxId}
                     type="checkbox"
                     className={cn(
-                        'text-brand-primary focus:ring-brand-primary/40 dark:border-surface-300 mt-0.5 h-4 w-4 rounded border-gray-300 dark:bg-surface-700',
+                        'text-brand-fill focus:ring-brand-fill/30 h-4 w-4 rounded-[4px] border-light-border focus:ring-2 dark:border-surface-300 dark:bg-surface-700',
                         className
                     )}
                     {...props}
