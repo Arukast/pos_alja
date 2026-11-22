@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { apiFetch, setUnauthorizedHandler } from '../lib/api';
@@ -5,6 +6,7 @@ import { AuthContext } from './context';
 import type { AuthUser } from './types';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+    const queryClient = useQueryClient();
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -25,10 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [refresh]);
 
     useEffect(() => {
-        setUnauthorizedHandler(() => setUser(null));
+        setUnauthorizedHandler(() => {
+            queryClient.clear();
+            setUser(null);
+        });
 
         return () => setUnauthorizedHandler(null);
-    }, []);
+    }, [queryClient]);
 
     const login = useCallback(
         async (username: string, password: string, remember = false) => {
@@ -46,8 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const logout = useCallback(async () => {
         await apiFetch<void>('/auth/logout', { method: 'POST' });
+        queryClient.clear();
         setUser(null);
-    }, []);
+    }, [queryClient]);
 
     const value = useMemo(
         () => ({ user, loading, login, logout, refresh }),
