@@ -157,16 +157,16 @@ export function DesignerNewOrderPage() {
                 description="Buat pelanggan, atur item, pratinjau harga, lalu kirim invoice."
             />
 
-            <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-                <div className="space-y-6">
-                    <Card>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+                <div className="min-w-0 space-y-6">
+                    <Card className="min-w-0">
                         <CardHeader>
                             <h2 className="font-semibold">Pelanggan</h2>
                         </CardHeader>
                         <CardBody className="space-y-4">
                             {customer ? (
-                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-light-surface-2 px-3 py-2 dark:bg-surface-600">
-                                    <div>
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-light-border bg-light-surface-2 px-4 py-3 dark:border-surface-300 dark:bg-surface-600">
+                                    <div className="min-w-0">
                                         <p className="font-medium">{customer.name}</p>
                                         <p className="text-light-muted text-sm dark:text-gray-400">
                                             {customer.phone ?? 'Tanpa telepon'} · {customer.type ?? 'Reguler'}
@@ -218,7 +218,7 @@ export function DesignerNewOrderPage() {
                         </CardBody>
                     </Card>
 
-                    <Card>
+                    <Card className="min-w-0">
                         <CardHeader>
                             <h2 className="font-semibold">Item</h2>
                         </CardHeader>
@@ -311,28 +311,45 @@ export function DesignerNewOrderPage() {
                                 />
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-3">
-                                <Button
-                                    variant="secondary"
-                                    loading={calculate.isPending}
-                                    onClick={() => calculate.mutate()}
-                                >
-                                    Hitung penawaran
-                                </Button>
-                                {quote ? (
-                                    <span className="text-light-muted text-sm dark:text-gray-400">
-                                        {formatMoney(quote.subtotal)} · {quote.area} m²
-                                    </span>
-                                ) : null}
-                                <Button onClick={addLine} disabled={!quote}>
-                                    Tambah ke keranjang
-                                </Button>
+                            <div className="rounded-xl border border-light-border bg-light-surface-2/60 px-4 py-3 dark:border-surface-300 dark:bg-surface-600/40">
+                                <div className="flex flex-wrap items-center justify-between gap-4">
+                                    <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+                                        <div>
+                                            <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                                Subtotal
+                                            </dt>
+                                            <dd className="text-light-text text-lg font-extrabold tabular-nums dark:text-gray-100">
+                                                {quote ? formatMoney(quote.subtotal) : '-'}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                                Area
+                                            </dt>
+                                            <dd className="text-light-muted-strong text-sm font-semibold tabular-nums dark:text-gray-300">
+                                                {quote ? `${quote.area} m²` : '-'}
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            loading={calculate.isPending}
+                                            onClick={() => calculate.mutate()}
+                                        >
+                                            Hitung penawaran
+                                        </Button>
+                                        <Button onClick={addLine} disabled={!quote}>
+                                            Tambah ke keranjang
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </CardBody>
                     </Card>
                 </div>
 
-                <Card>
+                <Card className="min-w-0 self-start xl:sticky xl:top-6">
                     <CardHeader>
                         <h2 className="font-semibold">Keranjang</h2>
                     </CardHeader>
@@ -341,7 +358,7 @@ export function DesignerNewOrderPage() {
                             <TableHead>
                                 <TableRow>
                                     <TableHeaderCell>Item</TableHeaderCell>
-                                    <TableHeaderCell>Jml</TableHeaderCell>
+                                    <TableHeaderCell className="text-right">Jml</TableHeaderCell>
                                     <TableHeaderCell className="text-right">Subtotal</TableHeaderCell>
                                     <TableHeaderCell>Aksi</TableHeaderCell>
                                 </TableRow>
@@ -353,8 +370,10 @@ export function DesignerNewOrderPage() {
                                     cart.map((line, index) => (
                                         <TableRow key={`${line.quote.pricing_id}-${index}`}>
                                             <TableCell>{line.file_name || `Item ${index + 1}`}</TableCell>
-                                            <TableCell>{line.quantity}</TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="text-right tabular-nums">
+                                                {line.quantity}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums">
                                                 {formatMoney(line.quote.subtotal)}
                                             </TableCell>
                                             <TableCell>
@@ -370,14 +389,23 @@ export function DesignerNewOrderPage() {
                                     ))
                                 )}
                             </TableBody>
+                            <tfoot className="border-t border-light-border dark:border-surface-300">
+                                <TableRow>
+                                    <td
+                                        colSpan={2}
+                                        className="text-light-text px-3 py-2 text-right align-middle font-semibold dark:text-gray-100"
+                                    >
+                                        Total
+                                    </td>
+                                    <td
+                                        colSpan={2}
+                                        className="text-brand-fill dark:text-brand-primary-light px-3 py-2 text-right align-middle text-lg font-bold tabular-nums whitespace-nowrap"
+                                    >
+                                        {formatMoney(cartTotal)}
+                                    </td>
+                                </TableRow>
+                            </tfoot>
                         </Table>
-
-                        <div className="flex items-center justify-between border-t border-light-border pt-4 dark:border-surface-300">
-                            <span className="font-semibold">Total</span>
-                            <span className="text-brand-primary text-xl font-bold">
-                                {formatMoney(cartTotal)}
-                            </span>
-                        </div>
 
                         {submitErrors.items ? (
                             <p className="text-sm text-red-600 dark:text-red-400">{submitErrors.items}</p>
