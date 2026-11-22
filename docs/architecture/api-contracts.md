@@ -1,587 +1,186 @@
 # API Contracts
 
-- **Status:** Internal contracts. The application has no public JSON API, no API authentication, and no versioned external surface.
-- **What this document covers:**
-  1. PHP service interfaces that contain the business logic.
-  2. The small set of HTTP routes that return HTML.
-  3. The WebSocket broadcast contract.
-  4. The Livewire action surface that the browser calls.
-  5. Target contracts for the redevelopment (§13).
-- **What it does not cover:** Public JSON API endpoints. None exist in the repository.
+- **Status:** Implemented external API consumed by the React SPA.
+- **Base path:** `/api/v1`.
+- **Authentication:** Laravel Sanctum stateful cookie plus CSRF. No bearer tokens are issued by the SPA.
+- **Format:** JSON only. Keys are `snake_case`.
 
-The service layer is described as "API-ready" in `AGENTS.md` §2.7 because business logic is isolated there. That is an architectural property, not an exposed API.
-
----
-
-## 1. Common Conventions
+## 1. Conventions
 
 | Topic | Convention |
 | :--- | :--- |
-| Actor | Service methods receive a `User` model or read `auth()` implicitly. Check the individual contract. |
-| Identifiers | UUID strings. Never integers. |
-| Money | Stored as `DECIMAL(15,2)`. Treat Eloquent decimal attributes as numeric strings unless explicitly cast; services cast to `float` before arithmetic. |
-| Dates | `Y-m-d` strings for filters and date columns; ISO-8601 strings for `logged_at`; `timestampTz` columns for transactional times. |
-| Branch scope | `branch_id` may be `'all'` only in reporting filters. A null branch on a data row means global or unassigned. |
-| Transactions | Multi-table mutations are wrapped in `DB::transaction()`. Nested service calls join the outer transaction. |
-| Errors | Services throw standard exceptions; callers translate them into Livewire validation errors, HTTP 403, or HTTP 500. |
-| Side effects | Services may write `activity_logs`, `order_status_logs`, or `stock_ledgers`. They do not dispatch `OrderUpdated`; the calling Livewire component does. |
+| Authentication | `GET /sanctum/csrf-cookie`, then `POST /api/v1/auth/login`. Session cookie is sent on subsequent requests. |
+| CSRF | Send `X-XSRF-TOKEN` on unsafe methods. The SPA obtains it from the CSRF cookie. |
+| IDs | UUID strings. |
+| Money | Decimal strings with two places, e.g. `"125000.00"`. |
+| Dates | `Y-m-d` for filters and date fields; ISO-8601 for timestamps. |
+| Pagination | `?page=`; response includes `data`, `links`, and `meta` (`current_page`, `last_page`, `per_page`, `total`). |
+| Errors | `{ "message": "...", "errors": { "field": ["..."] } }` with 401, 403, 404, 409, 419, 422, or 429. |
+| Language | All user-facing messages are Indonesian. Field names, route paths, enum values, and action codes remain English. |
+| Error rendering | Framework-generated 401/403/404/500 on `/api/*` and `/broadcasting/*` render as `{"message": "..."}` in Indonesian. App-authored `abort()` messages with explicit **401/403** text are preserved; 404 route/model errors use the fixed message. 500 hides internals unless `APP_DEBUG=true`. 422 keeps `message` plus `errors`; 419 and 429 keep default rendering; non-JSON requests keep default rendering. |
+| Branch scope | Derived from the authenticated user. Owner may use `branch_id=all` in reporting. |
+| Rate limits | Named `api` limiter: 60/min per user or IP. `sensitive` limiter: 5/min on password routes. Login is 5 attempts per username + IP. |
+| Broadcast auth | `POST /broadcasting/auth` with Sanctum session; private channels only. |
 
----
+## 2. Authentication
 
-## 2. Service Catalog
+| Method | Path | Access | Purpose |
+| :--- | :--- | :--- | :--- |
+| POST | `/auth/login` | guest | Username, password, remember. 422 on failure, 429 when throttled. |
+| POST | `/auth/logout` | authenticated | Invalidate session. 204. |
+| GET | `/auth/me` | authenticated | User, role, branch. |
+| PUT | `/auth/profile` | owner, manager | Name and email. |
+| PUT | `/auth/password` | authenticated | Current password plus confirmed new password. 204. |
+| POST | `/auth/confirm-password` | authenticated | Validate current password and record confirmation time. 204. |
+| DELETE | `/auth/profile` | owner, manager | Current password required; soft delete and logout. 204. |
 
-| Service | Responsibility | Authentication context |
+`UserResource` never returns `password` or `remember_token`.
+
+## 3. Identity
+
+### Branches
+
+| Method | Path | Access |
 | :--- | :--- | :--- |
-| `OrderService` | Invoice creation, production start, production completion | Explicit `User` or `user_id` |
-| `PaymentService` | Down payment and settlement | Explicit `User $cashier` |
-| `PricingService` | Quote calculation from the pricing matrix | Optional `auth()` for reseller branch fallback |
-| `InventoryService` | Material catalog, branch stock, stock ledger, waste | Implicit `auth()` for actor and branch defaults |
-| `FinanceService` | Read-only financial aggregations | None; caller passes `branchId` |
-| `BranchService` | Branch CRUD | Explicit `User $actor` |
-| `UserService` | User CRUD and restore | Explicit `User $actor` |
-| `MachineService` | Machine CRUD and restore | Explicit `User $actor` |
-| `CustomerService` | Customer creation | Explicit `User $creator` |
-| `ProductCategoryService` | Category CRUD | Implicit `auth()` for logging context |
+| GET | `/branches` | owner |
+| POST | `/branches` | owner |
+| GET | `/branches/{branch}` | owner |
+| PUT | `/branches/{branch}` | owner |
+| PATCH | `/branches/{branch}/status` | owner |
+| DELETE | `/branches/{branch}` | owner |
 
----
+### Users
 
-## 3. OrderService
-
-Namespace: `App\Services\OrderService`
-
-### 3.1 `createInvoice(array $data): Invoice`
-
-Creates an invoice, its order lines, initial status logs, and an activity log in one transaction.
-
-Input:
-
-| Key | Type | Required | Notes |
-| :--- | :--- | :--- | :--- |
-| `customer_id` | UUID string | Yes | Must exist |
-| `items` | array of item maps | Yes | At least one item is enforced by the caller, not the service |
-| `discount` | integer | No | Defaults to 0; subtracted from the subtotal sum |
-| `deadline` | date-time string | No | Stored as `invoices.deadline` |
-| `source` | string | No | Defaults to `Offline`; any other value is stored as `1` |
-| `user_id` | UUID string | Yes | Designer; must exist |
-| `branch_id` | UUID string | Yes | Used for the invoice and the invoice number prefix |
-
-Item map:
-
-| Key | Type | Required | Notes |
-| :--- | :--- | :--- | :--- |
-| `pricing_id` | UUID string | Yes | Snapshot of the pricing row |
-| `file_name` | string | Yes | Display name only |
-| `notes` | string | Yes | May be empty; the key must exist. Falls back to `details_string` when empty |
-| `details_string` | string | Yes | May be empty; the key must exist |
-| `width` | number | Yes | Multiplied by `length` to store `orders.area` |
-| `length` | number | Yes | |
-| `quantity` | number | Yes | |
-| `unit_price` | number | Yes | |
-| `subtotal` | number | Yes | Summed into `grand_total` |
-| `cost` | number | Yes | Summed into `total_cost` |
-| `profit` | number | Yes | Replaced by `grand_total - total_cost` at invoice level |
-| `is_manual_price` | boolean | Yes | |
-
-Output: `Invoice` with `status = 0`, `accounts_receivable = grand_total`, `pickup_status = 0`, `source` normalized to `0` or `1`.
-
-Throws: `ModelNotFoundException` when the user is missing. The customer is not loaded; a missing customer surfaces as a database integrity error (`QueryException`) and rolls the transaction back.
-
-Side effects: inserts `invoices`, `orders`, `order_status_logs`, `activity_logs`.
-
-### 3.2 `startProduction(Order $order, User $operator): void`
-
-Sets `orders.status = 1`, assigns `operator_id`, and appends a status log. If `pricing_id` is present, deducts stock:
-
-- `area` product: `order.area * order.quantity`
-- otherwise: `order.quantity`
-
-The branch used for the deduction is `operator.branch_id`, falling back to the invoice branch.
-
-Throws: database exceptions; no domain exception for insufficient stock.
-
-### 3.3 `completeProduction(Order $order, User $operator): void`
-
-Sets `orders.status = 2`, assigns `operator_id`, and appends a status log. Does not touch stock.
-
----
-
-## 4. PaymentService
-
-Namespace: `App\Services\PaymentService`
-
-### 4.1 `registerDownPayment(Invoice $invoice, array $data, User $cashier): Payment`
-
-Input:
-
-| Key | Type | Required | Notes |
-| :--- | :--- | :--- | :--- |
-| `amount` | number | Yes | Caller validates 1,000 to `grand_total` |
-| `payment_method` | string | Yes | Caller validates `Cash`, `Transfer`, or `QRIS` |
-
-Output: `Payment` with `type = down_payment`, `cashier_name` cached from the user.
-
-A down payment equal to the full `grand_total` drives the invoice to status `2`, not `1`.
-
-Side effects: creates the payment and calls `$invoice->recalculatePayments()` inside a transaction.
-
-### 4.2 `settleInvoice(Invoice $invoice, array $data, User $cashier): Payment`
-
-Input:
-
-| Key | Type | Required | Notes |
-| :--- | :--- | :--- | :--- |
-| `discount` | number | No | Defaults to 0; the Cashier validates it against the receivable, but the service does not enforce the bound |
-| `amount_to_pay` | number | Yes | Caller computes `accounts_receivable - discount` |
-| `payment_method` | string | Yes | `Cash`, `Transfer`, or `QRIS` |
-
-Output: `Payment` with `type = settlement`.
-
-Side effects: increments `invoices.discount`, reduces `invoices.grand_total` and `invoices.total_profit` by the discount with both clamped at zero, inserts the payment, and recalculates the invoice, all in one transaction.
-
-### 4.3 Invoice recalculation (`Invoice::recalculatePayments(): void`)
-
-- `dp_amount = sum(payments where type = down_payment)`
-- `accounts_receivable = max(0, grand_total - sum(all payments))`
-- `status = 2` when receivable is 0, `1` when any payment exists, `0` otherwise
-- `dp_date` and `payment_date` are set on first entry into the corresponding state
-
----
-
-## 5. PricingService
-
-Namespace: `App\Services\PricingService`
-
-### 5.1 `calculateQuote(array $params): array`
-
-Input:
-
-| Key | Type | Required | Notes |
-| :--- | :--- | :--- | :--- |
-| `product_id` | UUID string | Yes | Loaded with `findOrFail` |
-| `material_id` | UUID string | Yes | Pricing match key |
-| `machine_id` | UUID string | No | Adds the machine's `cost`; adds `machine_pricing.price` only when a matching modifier exists |
-| `finishing_id` | UUID string | No | Legacy single-attribute input |
-| `cut_id` | UUID string | No | Legacy single-attribute input |
-| `display_id` | UUID string | No | Legacy single-attribute input |
-| `selected_attributes` | UUID array | No | Preferred over the three legacy fields |
-| `sides` | integer | No | Accepted but not used in the calculation |
-| `finishing_sides` | integer | No | Accepted but not used in the calculation |
-| `quantity` | number | No | Defaults to 1 |
-| `width` | number | Conditional | Required for `surface_area` |
-| `length` | number | Conditional | Required for `surface_area` and `linear_dimension` |
-| `customer_type` | string | No | Defaults to `Reguler` |
-| `branch_id` | UUID string | No | Restricts the pricing lookup to a branch |
-
-Lookup order:
-
-1. Exact `(product_id, material_id, customer_type)` with `min_qty <= quantity`, highest `min_qty` wins.
-2. If no match and the type is not `Reguler`, retry with `Reguler`.
-3. If the fallback is used and the type is `Reseller`, apply `branches.settings.reseller_discount_percent` to the base price.
-4. Add matching `machine_pricing` and `attribute_pricing` modifiers.
-
-Output:
-
-| Key | Type | Notes |
+| Method | Path | Access |
 | :--- | :--- | :--- |
-| `pricing_id` | UUID string | Matched matrix row |
-| `unit_price` | float | Base price plus modifiers, rounded to 2 decimals |
-| `unit_cost` | float | Base cost plus modifiers, rounded to 2 decimals |
-| `area` | float | `width * length` for surface area, otherwise 0 |
-| `quantity` | float | Echoes the requested quantity |
-| `subtotal` | float | Archetype-dependent, rounded to 2 decimals |
-| `cost` | float | Archetype-dependent, rounded to 2 decimals |
-| `profit` | float | `subtotal - cost`, rounded to 2 decimals |
+| GET | `/users` | owner all; manager own branch staff |
+| POST | `/users` | owner; manager creates cashier/designer/production in own branch |
+| GET | `/users/{user}` | owner; manager own branch staff |
+| PUT | `/users/{user}` | same as show |
+| DELETE | `/users/{user}` | same as show |
+| POST | `/users/{user}/restore` | same as show |
 
-Base cost rule: use `pricing.cost` when greater than zero; otherwise use `materials.cost`.
+Managers cannot create or manage owner/manager accounts or assign another branch. Passwords are never included in audit payloads.
 
-Throws:
+## 4. Catalog And Inventory
 
-- `App\Exceptions\PricingNotFoundException` with `getParams()` returning the input map.
-- `InvalidArgumentException` when geometry is missing for `surface_area` or `linear_dimension`.
-
-Archetype formulas:
-
-| Archetype | Subtotal | Cost |
+| Method | Path | Access |
 | :--- | :--- | :--- |
-| `surface_area` | `unit_price * quantity * width * length` | `unit_cost * quantity * width * length` |
-| `linear_dimension` | `unit_price * quantity * length` | `unit_cost * quantity * length` |
-| `tiered_volume` | `unit_price * quantity` | `unit_cost * quantity` |
-| `per_piece` (default) | `unit_price * quantity` | `unit_cost * quantity` |
+| GET | `/categories` | owner, manager |
+| POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner, manager |
+| GET | `/attribute-types` | owner, manager |
+| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner, manager |
+| GET | `/attributes` | owner all; manager own branch/global |
+| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner, manager |
+| GET | `/products` | owner, manager, cashier, designer |
+| GET | `/materials` | owner all; manager/production own branch |
+| POST | `/materials` | owner; manager (own branch stock only) |
+| PUT | `/materials/{material}` | owner |
+| DELETE | `/materials/{material}` | owner |
+| POST | `/materials/{material}/restore` | owner |
+| POST | `/materials/{material}/stock` | owner, manager (manager branch forced) |
+| POST | `/materials/{material}/activate` | owner, manager |
+| GET | `/materials/similar?name=` | owner, manager |
+| GET | `/machines` | owner all; manager own branch |
+| POST/PUT/DELETE | `/machines`, `/machines/{machine}` | owner; manager own branch |
+| POST | `/machines/{machine}/restore` | owner; manager own branch |
+| GET | `/pricing` | owner all; manager own branch |
+| POST/PUT/DELETE | `/pricing`, `/pricing/{pricing}` | owner; manager own branch |
+| POST | `/pricing/clone-tiers` | owner; manager own branch |
+| GET | `/stock-ledgers` | owner all; manager own branch |
 
----
+Material responses include `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data.
 
-## 6. InventoryService
+## 5. Sales
 
-Namespace: `App\Services\InventoryService`
-
-All methods require an authenticated user. Each reads `auth()->id()`. Branch defaults vary: `createGlobalMaterial()` and `deleteGlobalMaterial()` use the actor branch then the first branch; `initializeBranchStock()` takes an explicit branch; `addStock()`, `logWaste()`, and `deductStockOnPrint()` prefer the argument, then the actor branch, then the first branch.
-
-### 6.1 `createGlobalMaterial(array $data): Material`
-
-| Key | Type | Required | Notes |
-| :--- | :--- | :--- | :--- |
-| `name` | string | Yes | |
-| `product_category_id` | UUID string | Yes | |
-| `type` | string | No | |
-| `dimensions` | string | No | |
-| `cost` | number | No | Defaults to 0 |
-| `price` | number | No | Defaults to 0 |
-
-Inserts one material with an explicit UUID. Does not create branch stock.
-
-### 6.2 `initializeBranchStock(string $materialId, string $branchId, float $initialStock, float $minStock): void`
-
-Creates the `material_branch_stock` row. When `initialStock > 0`, also writes an initial `stock_ledgers` row with `added_stock = initialStock` and `remaining_stock = initialStock`.
-
-Throws if the junction already exists (unique constraint).
-
-### 6.3 `deleteGlobalMaterial(string $materialId): void`
-
-Soft deletes the material and hard deletes its `material_branch_stock` rows in one transaction.
-
-### 6.4 `addStock(Material $material, float $quantity, ?string $notes = null, ?string $branchId = null): Material`
-
-- Branch defaults to `auth()->user()->branch_id`, then the first branch.
-- Locks the stock row with `lockForUpdate()`.
-- Increments `current_stock`.
-- Writes a `stock_ledgers` row with `added_stock` and the new `remaining_stock`.
-- Returns the material, not the stock row.
-
-### 6.5 `logWaste(array $params): WastedMaterial`
-
-| Key | Type | Required | Notes |
-| :--- | :--- | :--- | :--- |
-| `material_id` | UUID string | Yes | |
-| `quantity` | number | Yes | Subtracted from stock |
-| `machine_id` | UUID string or null | No | |
-| `dimensions` | string | No | |
-| `designer_id` | UUID string or null | No | |
-| `operator_id` | UUID string or null | No | |
-| `order_id` | UUID string or null | No | |
-| `notes` | string | No | Defaults to `Print failure` |
-| `branch_id` | UUID string | No | Defaults to the actor branch |
-
-Writes `wasted_materials`, decrements stock, and writes a ledger row with `wasted_stock`, all in one transaction.
-
-### 6.6 `deductStockOnPrint(string $materialId, float $quantity, ?string $branchId = null): Material`
-
-Locks the stock row, decrements `current_stock`, and writes a ledger row with `used_stock`. No floor at zero.
-
----
-
-## 7. FinanceService
-
-Namespace: `App\Services\FinanceService`
-
-All methods are read-only and take `(?string $branchId, string $startDate, string $endDate)`, where `branchId` is `'all'`, null, or a UUID, and dates are `Y-m-d`.
-
-### 7.1 `getGrossRevenueBreakdown(...): array`
-
-| Key | Type |
-| :--- | :--- |
-| `grand_total` | integer |
-| `cash_total` | integer |
-| `transfer_total` | integer |
-| `qris_total` | integer |
-| `payments` | `Collection<Payment>` with `invoice.customer` and `branch` |
-
-Source: `payments.created_at` within the period.
-
-`grand_total` is the sum of the Cash, Transfer, and QRIS buckets only. Payments with another method remain in the `payments` collection but are excluded from `grand_total`. By contrast, `getNetProfitBreakdown()` sums all payment rows.
-
-### 7.2 `getBaseCostBreakdown(...): array`
-
-| Key | Type |
-| :--- | :--- |
-| `total_hpp` | integer |
-| `invoice_cost_total` | integer |
-| `wasted_cost_total` | integer |
-| `invoices` | `Collection<Invoice>` |
-| `wasted_materials` | `Collection<WastedMaterial>` |
-
-Source: `invoices.created_date` for `total_cost`, plus `wasted_materials.logged_at` multiplied by `materials.cost`.
-
-### 7.3 `getNetProfitBreakdown(...): array`
-
-| Key | Type |
-| :--- | :--- |
-| `net_profit` | integer |
-| `gross_revenue` | integer |
-| `total_hpp` | integer |
-| `expenses_total` | integer |
-| `margin_rate` | float |
-| `invoices` | `Collection<Invoice>` |
-| `wasted_materials` | `Collection<WastedMaterial>` |
-| `expenses` | `Collection<Expense>` |
-
-Formula: `net_profit = gross_revenue - total_hpp - expenses_total`; `margin_rate = net_profit / gross_revenue * 100`, or 0 when revenue is zero.
-
-### 7.4 `getExpensesBreakdown(...): array`
-
-| Key | Type |
-| :--- | :--- |
-| `expenses_total` | integer |
-| `by_category` | map of category to integer |
-| `expenses` | `Collection<Expense>` |
-
-Source: `expenses.incurred_at` within the period.
-
-All aggregates are cast to `int`, so fractional currency is truncated in reports.
-
----
-
-## 8. Administration Services
-
-### 8.1 BranchService
-
-| Method | Input keys | Output | Side effects |
-| :--- | :--- | :--- | :--- |
-| `createBranch(array $data, User $actor): Branch` | `name`, `code`, `address`, `phone`, `is_active`, `settings` | `Branch` | `activity_logs` |
-| `updateBranch(Branch $branch, array $data, User $actor): Branch` | same as create | `Branch` | `activity_logs` with before/after |
-| `toggleBranchStatus(Branch $branch, User $actor): Branch` | none | `Branch` | `activity_logs` |
-| `deleteBranch(Branch $branch, User $actor): void` | none | void | `activity_logs`, soft delete |
-
-### 8.2 UserService
-
-| Method | Input keys | Output | Side effects |
-| :--- | :--- | :--- | :--- |
-| `createUser(array $data, User $actor): User` | `name`, `username`, `email`, `phone`, `address`, `role`, `branch_id`, `password` | `User` | Hash password, `activity_logs` |
-| `updateUser(User $user, array $data, User $actor): User` | same; `password` optional | `User` | Hash password when supplied, `activity_logs` with before/after |
-| `deleteUser(User $user, User $actor): void` | none | void | Soft delete, `activity_logs` |
-| `restoreUser(User $user, User $actor): void` | none | void | Restore, `activity_logs` |
-
-Password is always removed from audit payloads.
-
-### 8.3 MachineService
-
-| Method | Input keys | Output |
+| Method | Path | Access |
 | :--- | :--- | :--- |
-| `createMachine(array $data, User $actor): Machine` | `branch_id`, `name`, `cost` | `Machine` |
-| `updateMachine(Machine $machine, array $data, User $actor): Machine` | `branch_id`, `name`, `cost` | `Machine` |
-| `deleteMachine(Machine $machine, User $actor): void` | none | void, soft delete |
-| `restoreMachine(Machine $machine, User $actor): void` | none | void |
+| GET | `/customers?search=` | owner, manager, cashier, designer |
+| POST | `/customers` | designer |
+| GET | `/quotes/options` | designer |
+| POST | `/quotes` | designer |
+| POST | `/invoices` | designer with a branch |
+| GET | `/invoices` | all roles, branch-scoped |
+| GET | `/invoices/{invoice}` | all roles, branch-scoped |
+| POST | `/invoices/{invoice}/down-payments` | cashier |
+| POST | `/invoices/{invoice}/settlements` | cashier |
+| POST | `/invoices/{invoice}/pickup` | cashier |
+| GET | `/invoices/{invoice}/ticket` | all roles, branch-scoped; no money |
+| GET | `/invoices/{invoice}/receipt` | owner, manager, cashier, designer |
+| GET | `/expenses` | owner all; manager/cashier own branch |
+| POST | `/expenses` | cashier |
 
-Each method writes `activity_logs` inside a transaction and logs failures with the actor's `user_id` and `branch_id`.
+### Quote And Invoice Input
 
-### 8.4 CustomerService
+`POST /quotes` accepts `product_id`, `material_id`, `machine_id?`, `selected_attributes?`, `quantity`, `width?`, `length?`, and `customer_type?`. It returns `pricing_id`, `unit_price`, `area`, `quantity`, and `subtotal`; cost and profit are not returned to the designer.
 
-| Method | Input keys | Output |
+`POST /invoices` accepts `customer_id`, `discount?`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `machine_id?`, `selected_attributes?`, `is_manual_price`, `unit_price?`, and `cost?`.
+
+Server rules:
+
+- Line prices are recomputed from the pricing matrix; client prices are ignored unless `is_manual_price` is true.
+- Manual lines require both `unit_price` and `cost`, must be non-negative, and `cost` must not exceed `unit_price`.
+- Machine ids must belong to the designer branch.
+- Discount cannot exceed the computed subtotal.
+- Invoice numbers use the unique branch code and a per-branch daily sequence.
+- Creation and manual-price audit entries are atomic.
+
+### Payment Rules
+
+- Down payments cannot exceed the receivable.
+- Settlement amount is computed server-side as `receivable - discount`.
+- The invoice row is locked during payment and pickup.
+- A paid invoice has `status=2` and zero receivable.
+- Pickup requires a paid invoice and is branch-scoped.
+
+## 6. Production
+
+| Method | Path | Access |
 | :--- | :--- | :--- |
-| `createCustomer(array $data, User $creator): Customer` | `name`, `phone`, `address`, `email`, `type` | `Customer` |
+| GET | `/production/queue` | all roles, branch-scoped |
+| GET | `/production/summary` | production |
+| POST | `/orders/{order}/start` | production, branch-scoped |
+| POST | `/orders/{order}/complete` | production, branch-scoped |
+| GET | `/waste` | production, branch-scoped |
+| POST | `/waste` | production, branch-scoped |
+| GET | `/waste/options` | production, branch-scoped |
 
-`type` defaults to `Reguler`. Writes `activity_logs`.
+Starting an order deducts material stock once, sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2. Waste requires a material with stock in the branch; optional machine, designer, and order must belong to the branch.
 
-### 8.5 ProductCategoryService
+Production responses omit all money fields. Quantities are numeric.
 
-| Method | Input keys | Output |
+## 7. Reporting And Audit
+
+| Method | Path | Access |
 | :--- | :--- | :--- |
-| `createCategory(array $data): ProductCategory` | `name`, `calculation_archetype`, `allowed_attribute_types` | `ProductCategory` |
-| `updateCategory(string $id, array $data): ProductCategory` | same | `ProductCategory` |
-| `deleteCategory(string $id): void` | none | void |
+| GET | `/dashboard` | all roles; role-shaped payload |
+| GET | `/reports/gross-revenue` | owner |
+| GET | `/reports/base-cost` | owner |
+| GET | `/reports/net-profit` | owner |
+| GET | `/reports/expenses` | owner |
+| GET | `/reports/sparkline?period=daily|weekly|monthly` | owner |
+| GET | `/reports/designer-leaderboard` | manager |
+| GET | `/audit-logs` | owner |
+| GET | `/audit-logs/{activityLog}` | owner |
 
-Each method wraps its write in a transaction and logs failures with the actor context. No `activity_logs` row is written by this service.
+Report filters: `branch_id`, `start_date`, `end_date`. `end_date` must be on or after `start_date`. Owner net profit subtracts invoice HPP, wasted material cost, and operating expenses.
 
----
+Audit logs support `search`, `sort` (`created_at`, `username`, `role`, `action`), `direction`, and pagination.
 
-## 9. HTTP Routes
-
-The application exposes HTML routes only. There is no `routes/api.php`.
-
-| Method | Path | Name | Middleware | Response | Errors |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| GET | `/` | none | none | 302 redirect to `/dashboard` | none |
-| GET | `/dashboard` | `dashboard` | `auth`, `verified` | HTML role dashboard | 302 to login; 302 to verification notice if verification is enabled |
-| GET | `/profile` | `profile` | `auth` | HTML profile page | 302 to login |
-| GET | `/orders/{invoice}/ticket` | `orders.ticket` | `auth` | HTML work-order sheet | 403 for cross-branch non-owner; 404 for unknown invoice |
-| GET | `/orders/{invoice}/receipt` | `orders.receipt` | `auth` | HTML 80 mm receipt | 403 for cross-branch non-owner; 404 for unknown invoice |
-| GET | `/login` | `login` | `guest` | HTML login page | 302 if already authenticated |
-| GET | `/confirm-password` | `password.confirm` | `auth` | HTML confirmation page | 302 to login |
-
-Branch rule for ticket and receipt:
-
-```
-if role !== 'owner'
-   and user.branch_id is not null
-   and invoice.branch_id !== user.branch_id:
-       abort(403)
-```
-
-The routes return Blade views; they are not JSON endpoints.
-
----
-
-## 10. WebSocket Contract
+## 8. Realtime
 
 | Item | Value |
 | :--- | :--- |
-| Driver | Laravel Reverb |
-| Event class | `App\Events\OrderUpdated` |
-| Interface | `ShouldBroadcastNow` (broadcast immediately, not queued) |
-| Channel | `orders` |
-| Channel type | Public (`Channel`), no authorization callback |
-| Broadcast name | `OrderUpdated` |
-| Payload | Empty object |
-| Client listener | `echo:orders,OrderUpdated` mapped to `$refresh` on Owner, Manager, Cashier, Production, `MachineManagement`, `MaterialManagement`, `CategoryManagement`, and the four owner detail components; not registered on Designer, `BranchManagement`, or `UserManagement` |
+| Event | `App\Events\OrderUpdated` with optional `branchId`. |
+| Branch channel | `private-branch.{branchId}` |
+| Owner channel | `private-owners` |
+| Payload | Empty; clients refetch authenticated endpoints. |
+| Authorization | Owner may join any branch and the owners channel. Branch users may join only their own branch. |
+| Dispatch | After every successful non-GET API request, and after transaction commit in the write Actions. |
+| Failure handling | `App\Support\SafeBroadcast` logs broadcaster failures; it does not fail the write. |
 
-Client subscription shape:
+The SPA subscribes to `owners` for owners and `branch.{id}` for branch users, then invalidates all relevant queries on `OrderUpdated`.
 
-```js
-Echo.channel('orders').listen('.OrderUpdated', () => {
-    // Livewire refresh is registered by the component listener
-});
-```
+## 9. Frontend Routes
 
-Operational ports:
-
-- Reverb listens on container port `8080`.
-- The host maps it to `8084` per `AGENTS.md` §4.6.
-- The client must use the host-mapped port when running in Docker.
-
----
-
-## 11. Livewire Action Surface
-
-These are the browser-facing actions. They are not versioned, are not JSON contracts, and are coupled to the component templates. They are listed so integrators know where the UI writes.
-
-### Designer
-
-`selectCustomer`, `createCustomer`, `calculateQuote`, `addItem`, `removeItem`, `submitOrder`, `updatingInvoiceSearch`, `updatingActiveTab`.
-
-### Cashier
-
-`logExpense`, `selectInvoice`, `closeCheckout`, `processCheckout`, `markAsPickedUp`.
-
-### Production
-
-`startOrderProduction`, `completeOrderProduction`, `logWaste`.
-
-### Manager
-
-`setTab`, `addMaterialStock`, `openMaterialModal`, `closeMaterialModal`, `saveMaterial`, `saveAttribute`, `editAttribute`, `deleteAttribute`, `resetAttributeForm`, `savePricing`, `editPricing`, `deletePricing`, `resetPricingForm`, `clonePricingTiers`.
-
-### Owner
-
-`setTab`, `setPeriod`, `updatedPeriod`, `updatedSelectedBranchId`, `openAuditDetail`, `closeAuditDetail`, `updatingAuditSearch`, `sortByAudit`.
-
-The detail components `GrossRevenueDetail`, `BaseCostDetail`, `NetProfitDetail`, and `ExpensesDetail` each expose `applyCustomRange` for their custom date forms.
-
-### BranchManagement
-
-`openCreateModal`, `openEditModal`, `saveBranch`, `toggleBranchStatus`, `deleteBranch`.
-
-### UserManagement
-
-`openCreateModal`, `openEditModal`, `saveUser`, `deleteUser`, `openDetailModal`, `closeDetailModal`, `restoreUser`.
-
-### MaterialManagement
-
-`handleBranchSelected`, `addMaterialStock`, `openMaterialModal`, `editMaterial`, `deleteMaterial`, `closeMaterialModal`, `activateExistingMaterial`, `acceptSimilarMaterial`, `bypassSimilarityAndSave`, `saveMaterial`, `restoreMaterial`.
-
-### MachineManagement
-
-`handleBranchSelected`, `openCreateModal`, `openEditModal`, `saveMachine`, `deleteMachine`, `restoreMachine`.
-
-### CategoryManagement
-
-`openCategoryModal`, `editCategory`, `saveCategory`, `deleteCategory`, `closeCategoryModal`, `openTypeModal`, `closeTypeModal`, `saveType`, `deleteType`.
-
----
-
-## 12. Error Model
-
-| Error | Produced by | Caller behavior |
-| :--- | :--- | :--- |
-| `Illuminate\Validation\ValidationException` | Livewire form validation | 422-style error bag rendered in the component |
-| `Symfony\Component\HttpKernel\Exception\HttpException` (403) | `abort(403)` in routes and components | Error page; no JSON envelope |
-| `ModelNotFoundException` | `findOrFail` | 404 |
-| `PricingNotFoundException` | `PricingService` | Designer catches and displays `calcError` |
-| `InvalidArgumentException` | `PricingService` | Designer catches and displays the message |
-| `Throwable` from the database | Constraint or connection failure | Transaction rollback; 500; typically reported by Laravel |
-
-Broadcast calls are synchronous. A Reverb outage can surface as an exception from `event(new OrderUpdated)`. Some callers wrap it in `try/catch` (`UserManagement`, `Manager::clonePricingTiers`); others do not.
-
----
-
-## 13. Target Contracts
-
-These contracts define the target scope. Keep them aligned with `docs/requirements/fr.md` and `docs/architecture/erd.md`.
-
-### 13.1 ProductService
-
-| Method | Input | Output | Notes |
-| :--- | :--- | :--- | :--- |
-| `paginate(array $filters): LengthAwarePaginator` | `search`, `category_id`, `is_active`, `per_page` | Paginated products | FR7; default 20 rows |
-| `create(array $data, User $actor): Product` | `name`, `product_category_id`, `pricing_type`, `is_active` | `Product` | FR6; audit log |
-| `update(Product $product, array $data, User $actor): Product` | same fields | `Product` | FR6; audit log |
-| `delete(Product $product, User $actor): void` | none | void | FR6; soft delete |
-
-### 13.2 OrderService extensions
-
-| Method | Input | Output | Notes |
-| :--- | :--- | :--- | :--- |
-| `updateOrder(Invoice $invoice, array $data, User $actor): Invoice` | `items`, `discount`, `deadline` | Updated `Invoice` | FR9; Designer only; reject if any order `status > 0`; recalculate totals and receivable; audit before/after |
-| `updateDesignStatus(Order $order, string $status, User $actor): void` | `pending`, `in_design`, `approved` | void | FR10; forward-only transition; store approver and timestamp |
-
-### 13.3 PurchaseService
-
-| Method | Input | Output | Notes |
-| :--- | :--- | :--- | :--- |
-| `recordPurchase(array $data, User $actor): Purchase` | `purchased_at`, `supplier`, `notes`, `items[]` | `Purchase` | FR15; Owner/Branch Manager; items require `material_id`, `quantity`, `unit_cost`; one transaction; increment stock; write `stock_ledgers` type `purchase` |
-
-### 13.4 StockService
-
-| Method | Input | Output | Notes |
-| :--- | :--- | :--- | :--- |
-| `adjustStock(Material $material, string $mode, float $quantity, string $reason, User $manager): StockLedger` | `mode` (`set` or `delta`), `quantity`, `reason` | `StockLedger` | FR18; reason required; new stock cannot be negative; type `adjustment` |
-| `lowStock(?string $branchId = null): Collection` | branch or null | Materials below minimum | FR17; owner null means all branches |
-| `recordUsage(Order $order, Material $material, float $quantity, User $operator): StockLedger` | order, material, quantity | `StockLedger` | FR16; type `usage` with order reference |
-
-### 13.5 ReportExportService
-
-| Method | Input | Output | Notes |
-| :--- | :--- | :--- | :--- |
-| `export(string $report, string $format, ?string $branchId, string $startDate, string $endDate): string` | report name, `xlsx` or `pdf`, branch, dates | Storage path | FR24; owner all branches, manager own branch; write audit log |
-
-### 13.6 BackupService
-
-| Method | Input | Output | Notes |
-| :--- | :--- | :--- | :--- |
-| `run(string $mode, ?User $actor = null): BackupResult` | `manual` or `scheduled` | path, size, status | FR26; manual is owner-only; store outside the database |
-| `prune(int $days): int` | retention days | Deleted count | FR26; retention policy |
-
-### 13.7 Target HTTP Routes
-
-| Method | Path | Access | Response | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| GET | `/reports/export` | Owner, manager | File download | Query: `report`, `format`, `branch_id`, `start_date`, `end_date`; 403 for invalid branch |
-| POST | `/backups` | Owner | Redirect or 202 | Trigger manual backup; 403 for other roles |
-| GET | `/backups` | Owner | HTML list | Backup history and status |
-
-### 13.8 Target Broadcast Events
-
-| Event | Channel | Payload | Notes |
-| :--- | :--- | :--- | :--- |
-| `StockUpdated` | `private-branch.{branchId}` | Empty | FR15, FR16, FR18; branch authorization callback |
-| `OrderUpdated` | `private-branch.{branchId}` | Empty | Authorize owner or matching branch |
-
-`OrderUpdated` uses a private branch channel with an empty payload. Authorization allows the owner or a user in the matching branch.
-
-### 13.9 Target Error Additions
-
-| Error | Condition | Response |
-| :--- | :--- | :--- |
-| `409 Conflict` | Order update after production started | Reject with a clear message |
-| `422 Unprocessable Entity` | Invalid design-status transition, negative stock, missing adjustment reason | Validation error |
-| `403 Forbidden` | Role or branch mismatch | Standard error page |
-| `507 Insufficient Storage` | Backup target unavailable | Backup failure, logged and visible to the owner |
-| `409 Conflict` | Duplicate purchase submission when an idempotency key is configured (optional) | Reject duplicate |
-
----
-
-## 14. Compatibility Rules
-
-1. These contracts are internal. Changing a service signature requires updating every caller and its tests in the same change.
-2. Do not add a public JSON API by exposing services directly. Add routes, request validation, API authentication, and a versioning strategy first.
-3. Any new service method that mutates more than one table must use `DB::transaction()` and must document whether it relies on `auth()` or an explicit actor.
-4. Any new broadcast contract must state the channel, event name, payload shape, and whether the channel is public or private.
-5. Keep UUIDs and decimal money in any future API; do not switch to integer IDs or floats in transport without an explicit decision.
+The SPA routes and role guards are documented in `docs/architecture/frontend-architecture.md`. API clients must send relative `/api`, `/sanctum`, and `/broadcasting` requests so the Vite proxy and Nginx keep cookies same-origin.

@@ -70,7 +70,7 @@ class PricingService
 
         if (! $pricing) {
             throw new PricingNotFoundException(
-                "Pricing record not found for product: {$product->name} matching these parameters.",
+                "Data harga untuk produk: {$product->name} dengan parameter ini tidak ditemukan.",
                 $params
             );
         }
@@ -79,18 +79,24 @@ class PricingService
         $machinePrice = 0.0;
         $machineCost = 0.0;
         if (! empty($machineId)) {
-            $machine = Machine::find($machineId);
+            $machineBranchId = $branchId ?: (auth()->check() ? auth()->user()->branch_id : null);
+            $machine = $machineBranchId
+                ? Machine::query()->where('branch_id', $machineBranchId)->find($machineId)
+                : null;
+
             if ($machine) {
                 $machineCost = (float) $machine->cost;
-            }
 
-            $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
-                ->where('machine_id', $machineId)
-                ->first();
-            if ($machinePricing) {
-                $machinePrice = (float) $machinePricing->price;
-                if ((float) $machinePricing->cost > 0.0) {
-                    $machineCost = (float) $machinePricing->cost;
+                $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
+                    ->where('machine_id', $machineId)
+                    ->first();
+
+                if ($machinePricing) {
+                    $machinePrice = (float) $machinePricing->price;
+
+                    if ((float) $machinePricing->cost > 0.0) {
+                        $machineCost = (float) $machinePricing->cost;
+                    }
                 }
             }
         }
@@ -139,7 +145,7 @@ class PricingService
         switch ($category->calculation_archetype) {
             case 'surface_area':
                 if ($width <= 0 || $length <= 0) {
-                    throw new InvalidArgumentException('Width and length must be greater than zero for surface area calculation.');
+                    throw new InvalidArgumentException('Lebar dan panjang harus lebih besar dari nol untuk perhitungan luas.');
                 }
                 $area = $width * $length;
                 $subtotal = $unitPrice * $quantity * $area;
@@ -148,7 +154,7 @@ class PricingService
 
             case 'linear_dimension':
                 if ($length <= 0) {
-                    throw new InvalidArgumentException('Length must be greater than zero for linear dimension calculation.');
+                    throw new InvalidArgumentException('Panjang harus lebih besar dari nol untuk perhitungan meter lari.');
                 }
                 $subtotal = $unitPrice * $quantity * $length;
                 $cost = $unitCost * $quantity * $length;

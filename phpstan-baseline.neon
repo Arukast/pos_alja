@@ -1,23 +1,2 @@
 parameters:
-	ignoreErrors:
-
-		-
-			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Auth/VerifyEmailController.php
-
-
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Order\:\:\$invoice\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Livewire/Dashboards/Production.php
-
-		-
-			message: '#^Relation ''invoice'' is not found in App\\Models\\Order model\.$#'
-			identifier: larastan.relationExistence
-			count: 7
-			path: app/Livewire/Dashboards/Production.php
-
+    ignoreErrors: []

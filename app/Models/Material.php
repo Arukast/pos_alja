@@ -24,16 +24,25 @@ class Material extends Model
         'price',
     ];
 
+    /**
+     * @return HasMany<MaterialBranchStock, $this>
+     */
     public function stocks(): HasMany
     {
         return $this->hasMany(MaterialBranchStock::class);
     }
 
+    /**
+     * @return HasMany<MaterialBranchStock, $this>
+     */
     public function branchStocks(): HasMany
     {
         return $this->hasMany(MaterialBranchStock::class, 'material_id');
     }
 
+    /**
+     * @return BelongsTo<ProductCategory, $this>
+     */
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class, 'product_category_id');

@@ -20,7 +20,7 @@ class RoleMiddleware
         }
 
         if (! in_array($request->user()->role, $roles)) {
-            abort(403, 'Unauthorized action.');
+            abort(403, 'Anda tidak memiliki izin untuk tindakan ini.');
         }
 
         return $next($request);

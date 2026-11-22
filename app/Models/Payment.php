@@ -21,16 +21,25 @@ class Payment extends Model
         'cashier_name',
     ];
 
+    /**
+     * @return BelongsTo<Branch, $this>
+     */
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
+    /**
+     * @return BelongsTo<Invoice, $this>
+     */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
