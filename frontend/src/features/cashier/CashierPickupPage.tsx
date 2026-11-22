@@ -5,6 +5,7 @@ import { api } from '../../api/queries';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -49,14 +50,24 @@ export function CashierPickupPage() {
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
+                    ) : query.isError ? (
+                        <EmptyState
+                            title="Antrean pengambilan gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
                     ) : (
                         <>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
-                                        <TableHeaderCell>Dibayar</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Pelanggan</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Dibayar</TableHeaderCell>
                                         <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
@@ -69,8 +80,12 @@ export function CashierPickupPage() {
                                         invoices.map((invoice) => (
                                             <TableRow key={invoice.id}>
                                                 <TableCell>{invoice.invoice_number}</TableCell>
-                                                <TableCell>{invoice.customer?.name ?? '-'}</TableCell>
-                                                <TableCell>{formatMoney(invoice.grand_total)}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">
+                                                    {invoice.customer?.name ?? '-'}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                    {formatMoney(invoice.grand_total)}
+                                                </TableCell>
                                                 <TableCell className="bg-white border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <Button
                                                         size="sm"
@@ -89,6 +104,8 @@ export function CashierPickupPage() {
                                 <Pagination
                                     page={query.data?.meta.current_page ?? 1}
                                     lastPage={query.data?.meta.last_page ?? 1}
+                                    total={query.data?.meta.total}
+                                    perPage={query.data?.meta.per_page}
                                     onPageChange={setPage}
                                 />
                             </div>

@@ -5,6 +5,7 @@ import { api } from '../../api/queries';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
 import { Select } from '../../components/ui/Select';
@@ -112,15 +113,25 @@ export function CashierExpensesPage() {
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
+                    ) : query.isError ? (
+                        <EmptyState
+                            title="Pengeluaran gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
                     ) : (
                         <>
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableHeaderCell>Tanggal</TableHeaderCell>
+                                        <TableHeaderCell className="whitespace-nowrap">Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Tipe</TableHeaderCell>
-                                        <TableHeaderCell>Kategori</TableHeaderCell>
-                                        <TableHeaderCell>Deskripsi</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Kategori</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Deskripsi</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Jumlah</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
@@ -130,11 +141,13 @@ export function CashierExpensesPage() {
                                     ) : (
                                         (query.data?.data ?? []).map((expense) => (
                                             <TableRow key={expense.id}>
-                                                <TableCell>{formatDate(expense.incurred_at)}</TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {formatDate(expense.incurred_at)}
+                                                </TableCell>
                                                 <TableCell>{expenseTypeLabel(expense.type)}</TableCell>
-                                                <TableCell>{expense.category}</TableCell>
-                                                <TableCell>{expense.description ?? '-'}</TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="hidden sm:table-cell">{expense.category}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{expense.description ?? '-'}</TableCell>
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(expense.amount)}
                                                 </TableCell>
                                             </TableRow>
@@ -146,6 +159,8 @@ export function CashierExpensesPage() {
                                 <Pagination
                                     page={query.data?.meta.current_page ?? 1}
                                     lastPage={query.data?.meta.last_page ?? 1}
+                                    total={query.data?.meta.total}
+                                    perPage={query.data?.meta.per_page}
                                     onPageChange={setPage}
                                 />
                             </div>
