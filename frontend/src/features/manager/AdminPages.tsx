@@ -250,12 +250,12 @@ export function ManagerLedgersPage() {
             queryKey={['manager', 'ledgers']}
             queryFn={(page) => api.stockLedgers({ page })}
             columns={[
-                { header: 'Tanggal', cell: (ledger) => ledger.logged_at },
+                { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
                 { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
-                { header: 'Ditambahkan', cell: (ledger) => ledger.added_stock },
-                { header: 'Digunakan', cell: (ledger) => ledger.used_stock },
-                { header: 'Sisa Bahan', cell: (ledger) => ledger.wasted_stock },
-                { header: 'Tersisa', cell: (ledger) => ledger.remaining_stock },
+                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.added_stock },
+                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.used_stock },
+                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.wasted_stock },
+                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.remaining_stock },
             ]}
         />
     );
@@ -276,7 +276,7 @@ export function ManagerMachinesPage() {
             queryFn={(page) => api.machines({ page, include_deleted: 1 })}
             columns={[
                 { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Biaya Dasar', cell: (machine) => formatMoney(machine.cost) },
+                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMachine(values)}
@@ -341,6 +341,7 @@ export function ManagerCategoriesPage() {
             }
             remove={(id) => api.admin.deleteCategory(id)}
             createLabel="Tambah kategori"
+            paginated={false}
         />
     );
 }
@@ -392,6 +393,7 @@ export function ManagerFinishingPage() {
                 update={(id, values) => api.admin.updateAttribute(id, values)}
                 remove={(id) => api.admin.deleteAttribute(id)}
                 createLabel="Tambah atribut"
+                paginated={false}
             />
 
             <CrudPage
@@ -408,6 +410,7 @@ export function ManagerFinishingPage() {
                 create={(values) => api.admin.createAttributeType(values)}
                 remove={(id) => api.admin.deleteAttributeType(id)}
                 createLabel="Tambah tipe atribut"
+                paginated={false}
             />
         </div>
     );
@@ -456,9 +459,9 @@ export function ManagerPricingPage() {
                     { header: 'Produk', cell: (pricing) => pricing.product?.name ?? '-' },
                     { header: 'Bahan', cell: (pricing) => pricing.material?.name ?? '-' },
                     { header: 'Tipe', cell: (pricing) => pricing.customer_type },
-                    { header: 'Jml min', cell: (pricing) => pricing.min_qty },
-                    { header: 'Harga', cell: (pricing) => formatMoney(pricing.price) },
-                    { header: 'Biaya', cell: (pricing) => formatMoney(pricing.cost) },
+                    { header: 'Jml min', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => pricing.min_qty },
+                    { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.price) },
+                    { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.cost) },
                 ]}
                 fields={fields}
                 create={(values) => api.admin.createPricing(values)}
@@ -557,8 +560,8 @@ export function ManagerLeaderboardPage() {
                             <TableRow>
                                 <TableHeaderCell>Desainer</TableHeaderCell>
                                 <TableHeaderCell>Pesanan</TableHeaderCell>
-                                <TableHeaderCell>Pendapatan</TableHeaderCell>
-                                <TableHeaderCell>Rata-rata pesanan</TableHeaderCell>
+                                <TableHeaderCell className="text-right whitespace-nowrap">Pendapatan</TableHeaderCell>
+                                <TableHeaderCell className="text-right whitespace-nowrap">Rata-rata pesanan</TableHeaderCell>
                                 <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
                             </TableRow>
                         </TableHead>
@@ -570,8 +573,12 @@ export function ManagerLeaderboardPage() {
                                     <TableRow key={leader.id}>
                                         <TableCell>{leader.name}</TableCell>
                                         <TableCell>{leader.order_count}</TableCell>
-                                        <TableCell>{formatMoney(leader.revenue)}</TableCell>
-                                        <TableCell>{formatMoney(leader.average_order_value)}</TableCell>
+                                        <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                            {formatMoney(leader.revenue)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                            {formatMoney(leader.average_order_value)}
+                                        </TableCell>
                                         <TableCell>{leader.waste_count}</TableCell>
                                     </TableRow>
                                 ))
