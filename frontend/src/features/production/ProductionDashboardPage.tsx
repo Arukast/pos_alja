@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/queries';
 import { OrderStatusBadge } from '../../components/StatusBadge';
 import { PageBanner } from '../../components/PageBanner';
+import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -28,6 +30,18 @@ export function ProductionDashboardPage() {
                 <div className="flex justify-center py-16">
                     <Spinner className="text-brand-primary h-6 w-6" />
                 </div>
+            ) : null}
+
+            {query.isError ? (
+                <EmptyState
+                    title="Dasbor gagal dimuat"
+                    description="Periksa koneksi lalu coba lagi."
+                    action={
+                        <Button variant="secondary" onClick={() => query.refetch()}>
+                            Coba lagi
+                        </Button>
+                    }
+                />
             ) : null}
 
             {data ? (
