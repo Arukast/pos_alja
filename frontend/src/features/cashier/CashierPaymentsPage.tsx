@@ -125,11 +125,10 @@ export function CashierPaymentsPage() {
                                 </TableBody>
                             </Table>
                             <div className="mt-4">
+                                {/* shortcut: page-level status filter is client-side, so no honest total is available; pass a server-side status filter to enable it */}
                                 <Pagination
                                     page={query.data?.meta.current_page ?? 1}
                                     lastPage={query.data?.meta.last_page ?? 1}
-                                    total={query.data?.meta.total}
-                                    perPage={query.data?.meta.per_page}
                                     onPageChange={setPage}
                                 />
                             </div>
