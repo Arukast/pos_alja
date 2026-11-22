@@ -39,6 +39,12 @@ function shareOfRevenue(part: string, gross: string, suffix: string): string {
 export function OwnerDashboardPage() {
     const [params, setParams] = useSearchParams();
     const period = params.get('period') ?? 'daily';
+    const periodDescription =
+        period === 'daily'
+            ? 'Enam blok empat jam untuk hari ini'
+            : period === 'weekly'
+              ? 'Tujuh hari terakhir'
+              : 'Empat minggu terakhir';
     const branchId = params.get('branch_id') ?? 'all';
 
     const updateParam = (key: string, value: string) => {
@@ -155,11 +161,7 @@ export function OwnerDashboardPage() {
                                 <div className="min-w-0">
                                     <h2 className="font-semibold">Pergerakan laba bersih</h2>
                                     <p className="text-light-muted text-sm dark:text-gray-400">
-                                        {period === 'daily'
-                                            ? 'Enam blok empat jam untuk hari ini'
-                                            : period === 'weekly'
-                                              ? 'Tujuh hari terakhir'
-                                              : 'Empat minggu terakhir'}
+                                        {periodDescription}
                                     </p>
                                 </div>
                                 <div className="shrink-0 text-right">
@@ -175,6 +177,7 @@ export function OwnerDashboardPage() {
                                 <Sparkline
                                     points={data.sparkline.points}
                                     labels={data.sparkline.labels}
+                                    period={periodDescription}
                                 />
                             </CardBody>
                         </Card>

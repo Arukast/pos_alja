@@ -1,4 +1,14 @@
-export function Sparkline({ points, labels }: { points: number[]; labels: string[] }) {
+import { formatMoney } from '../lib/money';
+
+export function Sparkline({
+    points,
+    labels,
+    period,
+}: {
+    points: number[];
+    labels: string[];
+    period: string;
+}) {
     if (points.length === 0) {
         return (
             <p className="text-light-muted px-2 py-10 text-center text-sm dark:text-gray-400">
@@ -10,21 +20,25 @@ export function Sparkline({ points, labels }: { points: number[]; labels: string
     const width = 640;
     const height = 190;
     const padding = 26;
-    const min = Math.min(...points, 0);
-    const max = Math.max(...points, 0);
-    const span = max - min || 1;
+    const baselineMin = Math.min(...points, 0);
+    const baselineMax = Math.max(...points, 0);
+    const span = baselineMax - baselineMin || 1;
+    const lowest = Math.min(...points);
+    const highest = Math.max(...points);
     const x = (index: number) =>
         padding + (index * (width - padding * 2)) / Math.max(points.length - 1, 1);
-    const y = (value: number) => height - padding - ((value - min) / span) * (height - padding * 2);
+    const y = (value: number) =>
+        height - padding - ((value - baselineMin) / span) * (height - padding * 2);
     const line = points.map((value, index) => `${index === 0 ? 'M' : 'L'}${x(index)},${y(value)}`).join(' ');
     const area = `${line} L${x(points.length - 1)},${height - padding} L${x(0)},${height - padding} Z`;
+    const gridlines = [1, 2, 3].map((step) => y(baselineMin + (span * step) / 4));
 
     return (
         <div>
             <svg
                 viewBox={`0 0 ${width} ${height}`}
                 role="img"
-                aria-label="Grafik laba bersih"
+                aria-label={`Grafik laba bersih ${period}: ${points.length} titik, terendah ${formatMoney(lowest)}, tertinggi ${formatMoney(highest)}.`}
                 className="h-48 w-full"
                 preserveAspectRatio="none"
             >
@@ -34,6 +48,17 @@ export function Sparkline({ points, labels }: { points: number[]; labels: string
                         <stop offset="100%" stopColor="var(--color-brand-primary)" stopOpacity="0" />
                     </linearGradient>
                 </defs>
+                {gridlines.map((guide) => (
+                    <line
+                        key={guide}
+                        x1={padding}
+                        x2={width - padding}
+                        y1={guide}
+                        y2={guide}
+                        stroke="currentColor"
+                        className="text-light-muted/40 dark:text-gray-400/30"
+                    />
+                ))}
                 <line
                     x1={padding}
                     x2={width - padding}
@@ -41,7 +66,7 @@ export function Sparkline({ points, labels }: { points: number[]; labels: string
                     y2={y(0)}
                     stroke="currentColor"
                     strokeDasharray="4 4"
-                    className="text-light-border dark:text-surface-300"
+                    className="text-light-muted"
                 />
                 <path d={area} fill="url(#sparklineFill)" />
                 <path
