@@ -163,7 +163,7 @@ export function ProductionWastePage() {
                 <CardHeader>
                     <h2 className="font-semibold">Riwayat sisa bahan</h2>
                     {listQuery.data ? (
-                        <span className="bg-light-surface-2 text-light-muted rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
+                        <span className="bg-light-surface-2 text-light-muted-strong rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
                             {listQuery.data.meta.total}
                         </span>
                     ) : null}

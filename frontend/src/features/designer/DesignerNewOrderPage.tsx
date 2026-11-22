@@ -168,7 +168,7 @@ export function DesignerNewOrderPage() {
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-light-border bg-light-surface-2 px-4 py-3 dark:border-surface-300 dark:bg-surface-600">
                                     <div className="min-w-0">
                                         <p className="font-medium">{customer.name}</p>
-                                        <p className="text-light-muted text-sm dark:text-gray-400">
+                                        <p className="text-light-muted-strong text-sm dark:text-gray-400">
                                             {customer.phone ?? 'Tanpa telepon'} · {customer.type ?? 'Reguler'}
                                         </p>
                                     </div>

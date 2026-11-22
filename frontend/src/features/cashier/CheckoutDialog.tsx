@@ -134,14 +134,14 @@ export function CheckoutDialog({
 
                 <dl className="space-y-2 rounded-xl border border-light-border bg-light-surface-2 px-4 py-3 text-sm dark:border-surface-300 dark:bg-surface-600">
                     <div className="flex items-center justify-between gap-4">
-                        <dt className="text-light-muted dark:text-gray-400">Total</dt>
+                        <dt className="text-light-muted-strong dark:text-gray-400">Total</dt>
                         <dd className="text-light-text font-semibold tabular-nums dark:text-gray-100">
                             {formatMoney(invoice.grand_total)}
                         </dd>
                     </div>
                     {Number(invoice.dp_amount) > 0 ? (
                         <div className="flex items-center justify-between gap-4">
-                            <dt className="text-light-muted dark:text-gray-400">DP</dt>
+                            <dt className="text-light-muted-strong dark:text-gray-400">DP</dt>
                             <dd className="text-light-text font-semibold tabular-nums dark:text-gray-100">
                                 {formatMoney(invoice.dp_amount)}
                             </dd>
@@ -217,7 +217,7 @@ export function CheckoutDialog({
                                     className={
                                         change < 0
                                             ? 'text-red-700 dark:text-red-300'
-                                            : 'text-light-muted dark:text-gray-400'
+                                            : 'text-light-muted-strong dark:text-gray-400'
                                     }
                                 >
                                     {change < 0 ? 'Kurang' : 'Kembalian'}

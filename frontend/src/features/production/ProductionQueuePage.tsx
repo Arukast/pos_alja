@@ -88,7 +88,7 @@ export function ProductionQueuePage() {
                 <CardHeader>
                     <h2 className="font-semibold">Antrean cetak</h2>
                     {query.data ? (
-                        <span className="bg-light-surface-2 text-light-muted rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
+                        <span className="bg-light-surface-2 text-light-muted-strong rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
                             {query.data.meta.total}
                         </span>
                     ) : null}
