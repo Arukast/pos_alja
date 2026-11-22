@@ -48,7 +48,7 @@ export function OwnerUsersPage() {
 
     return (
         <CrudPage
-            key={`${search}:${role}`}
+            pageResetKey={`${search}:${role}`}
             eyebrow="Pemilik"
             title="Manajemen Pengguna"
             description="Akun staf, peran, dan penugasan cabang untuk semua cabang."

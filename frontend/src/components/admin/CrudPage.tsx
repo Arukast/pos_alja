@@ -41,6 +41,7 @@ export function CrudPage<T extends { id: string }>({
     create,
     update,
     remove,
+    pageResetKey,
     rowActions,
     createLabel = 'Tambah data',
     summary,
@@ -56,6 +57,7 @@ export function CrudPage<T extends { id: string }>({
     create?: (values: FormValues) => Promise<unknown>;
     update?: (id: string, values: FormValues) => Promise<unknown>;
     remove?: (id: string) => Promise<unknown>;
+    pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
     createLabel?: string;
     summary?: ReactNode;
@@ -63,6 +65,11 @@ export function CrudPage<T extends { id: string }>({
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
+    const [lastReset, setLastReset] = useState(pageResetKey);
+    if (lastReset !== pageResetKey) {
+        setLastReset(pageResetKey);
+        setPage(1);
+    }
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<T | null>(null);
     const [values, setValues] = useState<FormValues>({});
