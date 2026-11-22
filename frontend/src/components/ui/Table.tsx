@@ -36,14 +36,14 @@ export function TableHeaderCell({
     ...props
 }: ThHTMLAttributes<HTMLTableCellElement> & { children: ReactNode }) {
     return (
-        <th scope="col" className={cn('px-3 py-2', className)} {...props}>
+        <th scope="col" className={cn('px-2 py-2 sm:px-3', className)} {...props}>
             {children}
         </th>
     );
 }
 
 export function TableCell({ className, children }: { className?: string; children: ReactNode }) {
-    return <td className={cn('px-3 py-2 align-middle', className)}>{children}</td>;
+    return <td className={cn('px-2 py-2 align-middle sm:px-3', className)}>{children}</td>;
 }
 
 export function TableEmpty({ colSpan, children }: { colSpan: number; children: ReactNode }) {
