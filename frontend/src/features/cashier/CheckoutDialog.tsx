@@ -165,7 +165,9 @@ export function CheckoutDialog({
                             {formatMoney(invoice.accounts_receivable)}
                         </dd>
                     </div>
-                    {mode === 'settlement' && settlementAmount !== receivable ? (
+                    {mode === 'settlement' &&
+                    discountValue <= receivable &&
+                    settlementAmount !== receivable ? (
                         <div className="flex items-center justify-between gap-4">
                             <dt className="text-light-text font-medium dark:text-gray-100">
                                 Jumlah pelunasan
@@ -191,7 +193,7 @@ export function CheckoutDialog({
                             className={
                                 mode === option.value
                                     ? 'bg-light-surface text-light-text rounded-lg px-4 py-1.5 text-sm font-semibold shadow-sm dark:bg-surface-500 dark:text-gray-100'
-                                    : 'text-light-muted hover:text-light-text rounded-lg px-4 py-1.5 text-sm font-medium transition dark:text-gray-400 dark:hover:text-gray-100'
+                                    : 'text-light-muted-strong hover:text-light-text rounded-lg px-4 py-1.5 text-sm font-medium transition dark:text-gray-400 dark:hover:text-gray-100'
                             }
                         >
                             {option.label}

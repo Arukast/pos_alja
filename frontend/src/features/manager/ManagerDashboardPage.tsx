@@ -126,7 +126,7 @@ export function ManagerDashboardPage() {
                                                     <TableCell>{formatDate(expense.incurred_at)}</TableCell>
                                                     <TableCell>{expense.description ?? '-'}</TableCell>
                                                     <TableCell>{expense.category}</TableCell>
-                                                    <TableCell className="text-right tabular-nums">
+                                                    <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                         {formatMoney(expense.amount)}
                                                     </TableCell>
                                                 </TableRow>
@@ -170,10 +170,10 @@ export function ManagerDashboardPage() {
                                                 <TableCell className="text-right tabular-nums">
                                                     {leader.order_count}
                                                 </TableCell>
-                                                <TableCell className="text-right tabular-nums">
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(leader.revenue)}
                                                 </TableCell>
-                                                <TableCell className="text-right tabular-nums">
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(leader.average_order_value)}
                                                 </TableCell>
                                                 <TableCell className="text-right tabular-nums">
