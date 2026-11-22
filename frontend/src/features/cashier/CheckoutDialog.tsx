@@ -7,12 +7,16 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
-import { Toast } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { paymentMethodLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 
 type Mode = 'down_payment' | 'settlement';
+
+const modes: { value: Mode; label: string }[] = [
+    { value: 'down_payment', label: 'DP' },
+    { value: 'settlement', label: 'Pelunasan' },
+];
 
 export function CheckoutDialog({
     invoice,
@@ -73,6 +77,7 @@ export function CheckoutDialog({
 
     const submit = () => {
         setErrors({});
+        setNotice(null);
         if (mode === 'down_payment') {
             downPayment.mutate();
         } else {
@@ -80,93 +85,149 @@ export function CheckoutDialog({
         }
     };
 
+    const switchMode = (next: Mode) => {
+        setMode(next);
+        setErrors({});
+        setNotice(null);
+    };
+
+    // Display only: the server recomputes the settlement amount from receivable minus discount.
+    const settlementAmount = Math.max(0, Number(invoice.accounts_receivable) - (Number(discount) || 0));
+    const change =
+        cashReceived !== '' && Number.isFinite(Number(cashReceived))
+            ? Math.max(0, Number(cashReceived) - settlementAmount)
+            : null;
+
     return (
-        <>
-            <Modal open onClose={onClose} title={`Pembayaran ${invoice.invoice_number}`}>
-                <div className="space-y-4">
-                    <div className="grid gap-2 text-sm sm:grid-cols-2">
-                        <span className="text-light-muted dark:text-gray-400">Total</span>
-                        <span className="text-right font-medium">{formatMoney(invoice.grand_total)}</span>
-                        <span className="text-light-muted dark:text-gray-400">Sisa Tagihan</span>
-                        <span className="text-right font-medium">
+        <Modal
+            open
+            onClose={onClose}
+            title={`Pembayaran ${invoice.invoice_number}`}
+            description={invoice.customer?.name ?? undefined}
+            footer={
+                <>
+                    <Button variant="secondary" onClick={onClose}>
+                        Batal
+                    </Button>
+                    <Button
+                        loading={downPayment.isPending || settle.isPending}
+                        onClick={submit}
+                    >
+                        Konfirmasi
+                    </Button>
+                </>
+            }
+        >
+            <div className="space-y-4">
+                {notice ? (
+                    <p
+                        role="alert"
+                        className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                    >
+                        {notice}
+                    </p>
+                ) : null}
+
+                <dl className="space-y-2 rounded-xl border border-light-border bg-light-surface-2 px-4 py-3 text-sm dark:border-surface-300 dark:bg-surface-600">
+                    <div className="flex items-center justify-between gap-4">
+                        <dt className="text-light-muted dark:text-gray-400">Total</dt>
+                        <dd className="text-light-text font-semibold tabular-nums dark:text-gray-100">
+                            {formatMoney(invoice.grand_total)}
+                        </dd>
+                    </div>
+                    {Number(invoice.dp_amount) > 0 ? (
+                        <div className="flex items-center justify-between gap-4">
+                            <dt className="text-light-muted dark:text-gray-400">DP</dt>
+                            <dd className="text-light-text font-semibold tabular-nums dark:text-gray-100">
+                                {formatMoney(invoice.dp_amount)}
+                            </dd>
+                        </div>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-4 border-t border-light-border pt-2 dark:border-surface-300">
+                        <dt className="text-light-text font-medium dark:text-gray-100">Sisa Tagihan</dt>
+                        <dd className="text-light-text font-semibold tabular-nums dark:text-gray-100">
                             {formatMoney(invoice.accounts_receivable)}
-                        </span>
+                        </dd>
                     </div>
+                </dl>
 
-                    <div className="flex gap-2">
-                        <Button
-                            variant={mode === 'down_payment' ? 'primary' : 'secondary'}
-                            size="sm"
-                            aria-pressed={mode === 'down_payment'}
-                            onClick={() => setMode('down_payment')}
+                <div
+                    role="group"
+                    aria-label="Jenis pembayaran"
+                    className="inline-flex rounded-xl border border-light-border bg-light-surface-2 p-1 dark:border-surface-300 dark:bg-surface-600"
+                >
+                    {modes.map((option) => (
+                        <button
+                            key={option.value}
+                            type="button"
+                            aria-pressed={mode === option.value}
+                            onClick={() => switchMode(option.value)}
+                            className={
+                                mode === option.value
+                                    ? 'bg-light-surface text-light-text rounded-lg px-4 py-1.5 text-sm font-semibold shadow-sm dark:bg-surface-500 dark:text-gray-100'
+                                    : 'text-light-muted hover:text-light-text rounded-lg px-4 py-1.5 text-sm font-medium transition dark:text-gray-400 dark:hover:text-gray-100'
+                            }
                         >
-                            DP
-                        </Button>
-                        <Button
-                            variant={mode === 'settlement' ? 'primary' : 'secondary'}
-                            size="sm"
-                            aria-pressed={mode === 'settlement'}
-                            onClick={() => setMode('settlement')}
-                        >
-                            Pelunasan
-                        </Button>
-                    </div>
+                            {option.label}
+                        </button>
+                    ))}
+                </div>
 
-                    {mode === 'down_payment' ? (
+                {mode === 'down_payment' ? (
+                    <Input
+                        label="Jumlah Pembayaran"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        className="text-right tabular-nums"
+                        value={amount}
+                        error={errors.amount}
+                        onChange={(event) => setAmount(event.target.value)}
+                    />
+                ) : (
+                    <>
                         <Input
-                            label="Jumlah Pembayaran"
+                            label="Diskon"
                             type="number"
                             min="0"
-                            value={amount}
-                            error={errors.amount}
-                            onChange={(event) => setAmount(event.target.value)}
+                            inputMode="numeric"
+                            className="text-right tabular-nums"
+                            value={discount}
+                            error={errors.discount}
+                            onChange={(event) => setDiscount(event.target.value)}
                         />
-                    ) : (
-                        <>
-                            <Input
-                                label="Diskon"
-                                type="number"
-                                min="0"
-                                value={discount}
-                                error={errors.discount}
-                                onChange={(event) => setDiscount(event.target.value)}
-                            />
-                            <Input
-                                label="Uang diterima"
-                                type="number"
-                                min="0"
-                                value={cashReceived}
-                                error={errors.cash_received}
-                                onChange={(event) => setCashReceived(event.target.value)}
-                                hint="Opsional."
-                            />
-                        </>
-                    )}
+                        <Input
+                            label="Uang diterima"
+                            type="number"
+                            min="0"
+                            inputMode="numeric"
+                            className="text-right tabular-nums"
+                            value={cashReceived}
+                            error={errors.cash_received}
+                            onChange={(event) => setCashReceived(event.target.value)}
+                            hint="Opsional."
+                        />
+                        {change !== null ? (
+                            <div className="flex items-center justify-between rounded-xl border border-light-border bg-light-surface-2 px-4 py-2.5 text-sm dark:border-surface-300 dark:bg-surface-600">
+                                <span className="text-light-muted dark:text-gray-400">Kembalian</span>
+                                <span className="text-light-text font-semibold tabular-nums dark:text-gray-100">
+                                    {formatMoney(change)}
+                                </span>
+                            </div>
+                        ) : null}
+                    </>
+                )}
 
-                    <Select
-                        label="Metode pembayaran"
-                        value={method}
-                        onChange={(event) => setMethod(event.target.value)}
-                    >
-                        <option value="Cash">{paymentMethodLabel('Cash')}</option>
-                        <option value="Transfer">{paymentMethodLabel('Transfer')}</option>
-                        <option value="QRIS">{paymentMethodLabel('QRIS')}</option>
-                    </Select>
-
-                    <div className="flex justify-end gap-2">
-                        <Button variant="secondary" onClick={onClose}>
-                            Batal
-                        </Button>
-                        <Button
-                            loading={downPayment.isPending || settle.isPending}
-                            onClick={submit}
-                        >
-                            Konfirmasi
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
-            {notice ? <Toast message={notice} tone="error" onClose={() => setNotice(null)} /> : null}
-        </>
+                <Select
+                    label="Metode pembayaran"
+                    value={method}
+                    onChange={(event) => setMethod(event.target.value)}
+                >
+                    <option value="Cash">{paymentMethodLabel('Cash')}</option>
+                    <option value="Transfer">{paymentMethodLabel('Transfer')}</option>
+                    <option value="QRIS">{paymentMethodLabel('QRIS')}</option>
+                </Select>
+            </div>
+        </Modal>
     );
 }
