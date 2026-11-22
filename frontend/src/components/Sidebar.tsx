@@ -46,7 +46,7 @@ export function Sidebar({
                 {groups.map((group) => (
                     <div key={group.label}>
                         {!collapsed ? (
-                            <p className="text-light-muted px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest dark:text-gray-500">
+                            <p className="text-light-muted px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest dark:text-gray-400">
                                 {group.label}
                             </p>
                         ) : null}

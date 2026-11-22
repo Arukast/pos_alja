@@ -42,7 +42,7 @@ export function Button({
             type={type}
             disabled={disabled || loading}
             className={cn(
-                'focus-visible:ring-brand-fill inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60',
+                'focus-visible:ring-brand-fill focus-visible:ring-offset-light-bg dark:focus-visible:ring-offset-surface-900 inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60',
                 variants[variant],
                 sizes[size],
                 className

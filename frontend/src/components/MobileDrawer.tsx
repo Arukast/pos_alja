@@ -60,7 +60,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
                 <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-3">
                     {groups.map((group) => (
                         <div key={group.label}>
-                            <p className="text-light-muted px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest dark:text-gray-500">
+                            <p className="text-light-muted px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest dark:text-gray-400">
                                 {group.label}
                             </p>
                             <ul className="space-y-1">

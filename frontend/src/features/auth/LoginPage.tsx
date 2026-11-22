@@ -43,7 +43,7 @@ export function LoginPage() {
                 <div className="brand-stripe-bar" />
                 <div className="p-8">
                     <div className="flex items-center gap-3">
-                        <LogoMark className="h-10 w-10" />
+                        <LogoMark className="h-10 w-10" decorative />
                         <div>
                             <p className="text-brand-fill text-xs font-semibold uppercase tracking-[0.25em] dark:text-brand-primary-light">
                                 Alja Digital Printing
