@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { api } from '../../api/queries';
 import { PageBanner } from '../../components/PageBanner';
 import { ReportFilterBar, type ReportDraft } from '../../components/ReportFilterBar';
+import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -46,9 +48,23 @@ export function ExpensesPage() {
             />
 
             {query.isLoading ? (
-                <div className="flex justify-center py-16">
-                    <Spinner className="text-brand-primary h-6 w-6" />
-                </div>
+                <Card>
+                    <div role="status" className="flex items-center justify-center px-5 py-16">
+                        <Spinner className="text-brand-primary h-6 w-6" />
+                    </div>
+                </Card>
+            ) : null}
+
+            {query.isError ? (
+                <EmptyState
+                    title="Pengeluaran gagal dimuat"
+                    description="Periksa koneksi lalu coba lagi."
+                    action={
+                        <Button variant="secondary" onClick={() => query.refetch()}>
+                            Coba lagi
+                        </Button>
+                    }
+                />
             ) : null}
 
             {query.data ? (
@@ -88,7 +104,7 @@ export function ExpensesPage() {
                                                 <TableCell>{expense.cashier_name ?? '-'}</TableCell>
                                                 <TableCell>{expense.category}</TableCell>
                                                 <TableCell>{expense.description ?? '-'}</TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(expense.amount)}
                                                 </TableCell>
                                             </TableRow>
