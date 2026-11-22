@@ -62,7 +62,10 @@ export function CrudPage<T extends { id: string }>({
     const [editing, setEditing] = useState<T | null>(null);
     const [values, setValues] = useState<FormValues>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [notice, setNotice] = useState<string | null>(null);
+    const [notice, setNotice] = useState<{
+        message: string;
+        tone: 'success' | 'error';
+    } | null>(null);
 
     const query = useQuery({
         queryKey: [...queryKey, page],
@@ -104,11 +107,14 @@ export function CrudPage<T extends { id: string }>({
             invalidate();
             setOpen(false);
             setEditing(null);
-            setNotice(editing ? 'Data diperbarui.' : 'Data ditambahkan.');
+            setNotice({
+                message: editing ? 'Data diperbarui.' : 'Data ditambahkan.',
+                tone: 'success',
+            });
         },
         onError: (error) => {
             setErrors(mapApiErrors(error));
-            setNotice(errorMessage(error));
+            setNotice({ message: errorMessage(error), tone: 'error' });
         },
     });
 
@@ -122,9 +128,9 @@ export function CrudPage<T extends { id: string }>({
         },
         onSuccess: () => {
             invalidate();
-            setNotice('Data dihapus.');
+            setNotice({ message: 'Data dihapus.', tone: 'success' });
         },
-        onError: (error) => setNotice(errorMessage(error)),
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const openCreate = () => {
@@ -168,7 +174,7 @@ export function CrudPage<T extends { id: string }>({
                                 <TableHead>
                                     <TableRow>
                                         {columns.map((column) => (
-                                            <TableHeaderCell key={column.header}>
+                                            <TableHeaderCell key={column.header} className={column.className}>
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
@@ -186,7 +192,7 @@ export function CrudPage<T extends { id: string }>({
                                         (query.data?.data ?? []).map((row) => (
                                             <TableRow key={row.id}>
                                                 {columns.map((column) => (
-                                                    <TableCell key={column.header}>
+                                                    <TableCell key={column.header} className={column.className}>
                                                         {column.cell(row)}
                                                     </TableCell>
                                                 ))}
@@ -326,7 +332,9 @@ export function CrudPage<T extends { id: string }>({
                 </div>
             </Modal>
 
-            {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
         </div>
     );
 }
