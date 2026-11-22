@@ -28,6 +28,7 @@ export function ManagerUsersPage() {
         { key: 'username', label: 'Nama Pengguna', required: true },
         { key: 'email', label: 'Email', type: 'email' },
         { key: 'password', label: 'Kata Sandi', type: 'password', hideOnEdit: true },
+        { key: 'password_confirmation', label: 'Konfirmasi Kata Sandi', type: 'password', hideOnEdit: true },
         {
             key: 'role',
             label: 'Peran',

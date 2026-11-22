@@ -40,6 +40,7 @@ export function OwnerUsersPage() {
         { key: 'username', label: 'Nama Pengguna', required: true },
         { key: 'email', label: 'Email', type: 'email' },
         { key: 'password', label: 'Kata Sandi', type: 'password', hideOnEdit: true },
+        { key: 'password_confirmation', label: 'Konfirmasi Kata Sandi', type: 'password', hideOnEdit: true },
         { key: 'role', label: 'Peran', type: 'select', options: roleOptions },
         { key: 'branch_id', label: 'Cabang', type: 'select', options, getValue: (user) => user.branch?.id ?? '' },
         { key: 'phone', label: 'Telepon' },
