@@ -59,6 +59,11 @@ export function OwnerDashboardPage() {
 
     const data = dashboardQuery.data?.role === 'owner' ? dashboardQuery.data : null;
 
+    const branchLabel =
+        branchId === 'all'
+            ? 'Semua cabang'
+            : branchesQuery.data?.data.find((branch) => branch.id === branchId)?.name;
+
     return (
         <div className="space-y-6">
             <PageBanner
@@ -120,7 +125,11 @@ export function OwnerDashboardPage() {
                         <StatCard
                             label="Pendapatan Bruto"
                             value={formatMoney(data.finance.gross_revenue)}
-                            hint="Semua cabang · Pembayaran yang diterima pada periode ini"
+                            hint={
+                                branchLabel
+                                    ? `${branchLabel} · Pembayaran yang diterima pada periode ini`
+                                    : 'Pembayaran yang diterima pada periode ini'
+                            }
                         />
                         <StatCard
                             label="Biaya Dasar"
