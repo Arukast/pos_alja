@@ -102,6 +102,18 @@ export function CheckoutDialog({
             ? cashValue - settlementAmount
             : null;
 
+    const methodField = (
+        <Select
+            label="Metode pembayaran"
+            value={method}
+            onChange={(event) => setMethod(event.target.value)}
+        >
+            <option value="Cash">{paymentMethodLabel('Cash')}</option>
+            <option value="Transfer">{paymentMethodLabel('Transfer')}</option>
+            <option value="QRIS">{paymentMethodLabel('QRIS')}</option>
+        </Select>
+    );
+
     return (
         <Modal
             open
@@ -153,6 +165,16 @@ export function CheckoutDialog({
                             {formatMoney(invoice.accounts_receivable)}
                         </dd>
                     </div>
+                    {mode === 'settlement' && settlementAmount !== receivable ? (
+                        <div className="flex items-center justify-between gap-4">
+                            <dt className="text-light-text font-medium dark:text-gray-100">
+                                Jumlah pelunasan
+                            </dt>
+                            <dd className="text-light-text font-semibold tabular-nums dark:text-gray-100">
+                                {formatMoney(settlementAmount)}
+                            </dd>
+                        </div>
+                    ) : null}
                 </dl>
 
                 <div
@@ -178,16 +200,19 @@ export function CheckoutDialog({
                 </div>
 
                 {mode === 'down_payment' ? (
-                    <Input
-                        label="Jumlah Pembayaran"
-                        type="number"
-                        min="0"
-                        inputMode="numeric"
-                        className="text-right tabular-nums"
-                        value={amount}
-                        error={errors.amount}
-                        onChange={(event) => setAmount(event.target.value)}
-                    />
+                    <>
+                        <Input
+                            label="Jumlah Pembayaran"
+                            type="number"
+                            min="0"
+                            inputMode="numeric"
+                            className="text-right tabular-nums"
+                            value={amount}
+                            error={errors.amount}
+                            onChange={(event) => setAmount(event.target.value)}
+                        />
+                        {methodField}
+                    </>
                 ) : (
                     <>
                         <Input
@@ -200,6 +225,7 @@ export function CheckoutDialog({
                             error={errors.discount}
                             onChange={(event) => setDiscount(event.target.value)}
                         />
+                        {methodField}
                         <Input
                             label="Uang diterima"
                             type="number"
@@ -235,16 +261,6 @@ export function CheckoutDialog({
                         ) : null}
                     </>
                 )}
-
-                <Select
-                    label="Metode pembayaran"
-                    value={method}
-                    onChange={(event) => setMethod(event.target.value)}
-                >
-                    <option value="Cash">{paymentMethodLabel('Cash')}</option>
-                    <option value="Transfer">{paymentMethodLabel('Transfer')}</option>
-                    <option value="QRIS">{paymentMethodLabel('QRIS')}</option>
-                </Select>
             </div>
         </Modal>
     );
