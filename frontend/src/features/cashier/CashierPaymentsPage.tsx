@@ -111,9 +111,9 @@ export function CashierPaymentsPage() {
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Pelanggan</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Total</TableHeaderCell>
+                                        <TableHeaderCell className="hidden text-right sm:table-cell">Total</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Sisa Tagihan</TableHeaderCell>
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
@@ -127,11 +127,13 @@ export function CashierPaymentsPage() {
                                         invoices.map((invoice) => (
                                             <TableRow key={invoice.id}>
                                                 <TableCell>{invoice.invoice_number}</TableCell>
-                                                <TableCell>{invoice.customer?.name ?? '-'}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">
+                                                    {invoice.customer?.name ?? '-'}
+                                                </TableCell>
                                                 <TableCell>
                                                     <InvoiceStatusBadge status={invoice.status} />
                                                 </TableCell>
-                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                <TableCell className="hidden text-right tabular-nums whitespace-nowrap sm:table-cell">
                                                     {formatMoney(invoice.grand_total)}
                                                 </TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">

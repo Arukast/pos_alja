@@ -155,7 +155,7 @@ export function ManagerMaterialsPage() {
                         </div>
                     ),
                 },
-                { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
+                { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok',
                     className: 'text-right tabular-nums whitespace-nowrap',
@@ -163,12 +163,12 @@ export function ManagerMaterialsPage() {
                 },
                 {
                     header: 'Minimum',
-                    className: 'text-right tabular-nums whitespace-nowrap',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
                     cell: (material) => material.min_stock ?? '-',
                 },
                 {
                     header: 'Biaya',
-                    className: 'text-right tabular-nums whitespace-nowrap',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
                     cell: (material) => formatMoney(material.cost),
                 },
                 {

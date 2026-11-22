@@ -90,9 +90,9 @@ export function OwnerUsersPage() {
             }
             columns={[
                 { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
-                { header: 'Nama Pengguna', cell: (user) => user.username },
+                { header: 'Nama Pengguna', className: 'hidden sm:table-cell', cell: (user) => user.username },
                 { header: 'Peran', cell: (user) => roleLabel(user.role) },
-                { header: 'Cabang', cell: (user) => user.branch?.name ?? 'Global' },
+                { header: 'Cabang', className: 'hidden sm:table-cell', cell: (user) => user.branch?.name ?? 'Global' },
             ]}
             fields={fields}
             create={(values) => api.admin.createUser(values)}

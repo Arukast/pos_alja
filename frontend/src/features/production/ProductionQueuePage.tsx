@@ -114,11 +114,11 @@ export function ProductionQueuePage() {
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell>Pelanggan</TableHeaderCell>
-                                        <TableHeaderCell>Item</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Pelanggan</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Item</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Jml</TableHeaderCell>
-                                        <TableHeaderCell>Diterima</TableHeaderCell>
-                                        <TableHeaderCell>Tenggat</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Diterima</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Tenggat</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
@@ -134,15 +134,19 @@ export function ProductionQueuePage() {
                                                 <TableCell className="font-medium">
                                                     {order.invoice?.invoice_number ?? '-'}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden sm:table-cell">
                                                     {order.invoice?.customer?.name ?? '-'}
                                                 </TableCell>
-                                                <TableCell>{order.file_name ?? '-'}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">
+                                                    {order.file_name ?? '-'}
+                                                </TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {order.quantity}
                                                 </TableCell>
-                                                <TableCell>{formatDate(order.ordered_at)}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden sm:table-cell">
+                                                    {formatDate(order.ordered_at)}
+                                                </TableCell>
+                                                <TableCell className="hidden sm:table-cell">
                                                     {order.invoice?.deadline
                                                         ? formatDate(order.invoice.deadline)
                                                         : '-'}

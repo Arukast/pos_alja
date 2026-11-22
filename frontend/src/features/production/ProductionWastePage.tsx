@@ -190,10 +190,10 @@ export function ProductionWastePage() {
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
-                                        <TableHeaderCell>Mesin</TableHeaderCell>
-                                        <TableHeaderCell>Desainer</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Mesin</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Desainer</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Jml</TableHeaderCell>
-                                        <TableHeaderCell>Dimensi</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Dimensi</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -215,12 +215,12 @@ export function ProductionWastePage() {
                                                         </p>
                                                     ) : null}
                                                 </TableCell>
-                                                <TableCell>{waste.machine?.name ?? '-'}</TableCell>
-                                                <TableCell>{waste.designer?.name ?? '-'}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{waste.machine?.name ?? '-'}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{waste.designer?.name ?? '-'}</TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {waste.quantity}
                                                 </TableCell>
-                                                <TableCell>{waste.dimensions ?? '-'}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{waste.dimensions ?? '-'}</TableCell>
                                             </TableRow>
                                         ))
                                     )}
