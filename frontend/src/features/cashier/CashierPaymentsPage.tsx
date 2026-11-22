@@ -12,7 +12,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { formatDate } from '../../lib/dates';
+import { formatDate, todayIso } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 import { CheckoutDialog } from './CheckoutDialog';
 
@@ -31,6 +31,11 @@ export function CashierPaymentsPage() {
 
     const data = dashboard.data?.role === 'cashier' ? dashboard.data : null;
     const invoices = (query.data?.data ?? []).filter((invoice) => invoice.status !== 2);
+    const today = todayIso();
+    // Server sends the latest expenses of any date; the panel and its total claim "today".
+    const todaysExpenses = (data?.expenses ?? []).filter(
+        (expense) => expense.incurred_at.slice(0, 10) === today,
+    );
 
     return (
         <div className="space-y-6">
@@ -216,8 +221,8 @@ export function CashierPaymentsPage() {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {data && data.expenses.length > 0 ? (
-                                        data.expenses.map((expense) => (
+                                    {todaysExpenses.length > 0 ? (
+                                        todaysExpenses.map((expense) => (
                                             <TableRow key={expense.id}>
                                                 <TableCell>{formatDate(expense.incurred_at)}</TableCell>
                                                 <TableCell>{expense.description ?? '-'}</TableCell>
