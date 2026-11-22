@@ -92,10 +92,14 @@ export function CheckoutDialog({
     };
 
     // Display only: the server recomputes the settlement amount from receivable minus discount.
-    const settlementAmount = Math.max(0, Number(invoice.accounts_receivable) - (Number(discount) || 0));
+    const receivable = Number(invoice.accounts_receivable);
+    const discountValue = Number(discount) || 0;
+    const settlementAmount = Math.max(0, receivable - discountValue);
+    const cashValue = Number(cashReceived);
+    // A discount larger than the receivable is rejected by the server, so there is no honest change to show.
     const change =
-        cashReceived !== '' && Number.isFinite(Number(cashReceived))
-            ? Math.max(0, Number(cashReceived) - settlementAmount)
+        cashReceived !== '' && Number.isFinite(cashValue) && discountValue <= receivable
+            ? cashValue - settlementAmount
             : null;
 
     return (
@@ -209,9 +213,23 @@ export function CheckoutDialog({
                         />
                         {change !== null ? (
                             <div className="flex items-center justify-between rounded-xl border border-light-border bg-light-surface-2 px-4 py-2.5 text-sm dark:border-surface-300 dark:bg-surface-600">
-                                <span className="text-light-muted dark:text-gray-400">Kembalian</span>
-                                <span className="text-light-text font-semibold tabular-nums dark:text-gray-100">
-                                    {formatMoney(change)}
+                                <span
+                                    className={
+                                        change < 0
+                                            ? 'text-red-700 dark:text-red-300'
+                                            : 'text-light-muted dark:text-gray-400'
+                                    }
+                                >
+                                    {change < 0 ? 'Kurang' : 'Kembalian'}
+                                </span>
+                                <span
+                                    className={
+                                        change < 0
+                                            ? 'text-red-700 font-semibold tabular-nums dark:text-red-300'
+                                            : 'text-light-text font-semibold tabular-nums dark:text-gray-100'
+                                    }
+                                >
+                                    {formatMoney(Math.abs(change))}
                                 </span>
                             </div>
                         ) : null}
