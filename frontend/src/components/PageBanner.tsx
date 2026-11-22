@@ -6,18 +6,19 @@ import { cn } from '../lib/cn';
 export type RoleTone = 'owner' | 'manager' | 'cashier' | 'designer' | 'production' | 'neutral';
 
 // Literal class strings only: Tailwind cannot see interpolated classes.
+const opsTone =
+    'bg-tint-ops border-sky-200 text-tint-ops-ink dark:bg-brand-secondary/10 dark:border-sky-400/25 dark:text-brand-secondary-light';
+
 const toneClasses: Record<RoleTone, string> = {
-    owner: 'bg-tint-owner border-brand-primary/20 text-brand-fill-hover dark:bg-brand-primary/10 dark:border-brand-primary/25',
-    manager:
-        'bg-tint-ops border-sky-200 text-tint-ops-ink dark:bg-brand-secondary/10 dark:border-sky-400/25',
-    cashier:
-        'bg-tint-ops border-sky-200 text-tint-ops-ink dark:bg-brand-secondary/10 dark:border-sky-400/25',
+    owner:
+        'bg-tint-owner border-brand-primary/20 text-brand-fill-hover dark:bg-brand-primary/10 dark:border-brand-primary/25 dark:text-brand-primary-light',
+    manager: opsTone,
+    cashier: opsTone,
     designer:
-        'bg-tint-designer border-teal-200 text-tint-designer-ink dark:bg-teal-400/10 dark:border-teal-400/25',
-    production:
-        'bg-tint-ops border-sky-200 text-tint-ops-ink dark:bg-brand-secondary/10 dark:border-sky-400/25',
+        'bg-tint-designer border-teal-200 text-tint-designer-ink dark:bg-teal-400/10 dark:border-teal-400/25 dark:text-teal-300',
+    production: opsTone,
     neutral:
-        'bg-light-surface border-light-border text-light-muted dark:bg-surface-700 dark:border-surface-300',
+        'bg-light-surface border-light-border text-light-muted dark:bg-surface-700 dark:border-surface-300 dark:text-gray-400',
 };
 
 function toneForRole(role: string | undefined): RoleTone {

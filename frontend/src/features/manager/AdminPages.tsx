@@ -356,11 +356,17 @@ function PricingClonePanel() {
     return (
         <Card>
             <CardBody className="space-y-4">
-                <PageBanner
-                    eyebrow="Konfigurasi"
-                    title="Salin tingkat harga"
-                    description="Salin setiap baris harga dari satu bahan ke bahan lain di cabang Anda."
-                />
+                <div className="space-y-1">
+                    <p className="text-light-muted text-[10px] font-semibold uppercase tracking-widest dark:text-gray-400">
+                        Konfigurasi
+                    </p>
+                    <h2 className="text-light-text text-lg font-semibold dark:text-gray-100">
+                        Salin tingkat harga
+                    </h2>
+                    <p className="text-light-muted text-sm dark:text-gray-400">
+                        Salin setiap baris harga dari satu bahan ke bahan lain di cabang Anda.
+                    </p>
+                </div>
                 <div className="flex flex-wrap items-end gap-3">
                     <Select label="Dari bahan" value={from} onChange={(event) => setFrom(event.target.value)}>
                         <option value="">Pilih</option>
