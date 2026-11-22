@@ -46,6 +46,7 @@ export function CrudPage<T extends { id: string }>({
     createLabel = 'Tambah data',
     summary,
     footer,
+    paginated = true,
 }: {
     eyebrow: string;
     title: string;
@@ -62,6 +63,7 @@ export function CrudPage<T extends { id: string }>({
     createLabel?: string;
     summary?: ReactNode;
     footer?: ReactNode;
+    paginated?: boolean;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -257,13 +259,15 @@ export function CrudPage<T extends { id: string }>({
                                 </TableBody>
                             </Table>
                             <div className="mt-4">
-                                <Pagination
-                                    page={query.data?.meta.current_page ?? 1}
-                                    lastPage={query.data?.meta.last_page ?? 1}
-                                    total={query.data?.meta.total}
-                                    perPage={query.data?.meta.per_page}
-                                    onPageChange={setPage}
-                                />
+                                {paginated ? (
+                                    <Pagination
+                                        page={query.data?.meta.current_page ?? 1}
+                                        lastPage={query.data?.meta.last_page ?? 1}
+                                        total={query.data?.meta.total}
+                                        perPage={query.data?.meta.per_page}
+                                        onPageChange={setPage}
+                                    />
+                                ) : null}
                             </div>
                         </>
                     )}

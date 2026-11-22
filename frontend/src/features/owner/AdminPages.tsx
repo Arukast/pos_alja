@@ -184,8 +184,8 @@ export function OwnerMaterialsPage() {
                                   .map((stock) => `${stock.branch_name ?? '-'}: ${stock.current_stock}`)
                                   .join(', '),
                 },
-                { header: 'Biaya', cell: (material) => formatMoney(material.cost) },
-                { header: 'Harga', cell: (material) => formatMoney(material.price) },
+                { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.cost) },
+                { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.price) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
@@ -258,6 +258,7 @@ export function OwnerCategoriesPage() {
             }
             remove={(id) => api.admin.deleteCategory(id)}
             createLabel="Tambah kategori"
+            paginated={false}
         />
     );
 }
@@ -282,7 +283,7 @@ export function OwnerMachinesPage() {
             columns={[
                 { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
                 { header: 'Cabang', cell: (machine) => machine.branch?.name ?? 'Global' },
-                { header: 'Biaya Dasar', cell: (machine) => formatMoney(machine.cost) },
+                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMachine(values)}
