@@ -64,7 +64,7 @@ export function Sidebar({
                                                 cn(
                                                     'relative flex h-10 items-center gap-3 rounded-xl px-2.5 text-sm font-medium transition',
                                                     isActive
-                                                        ? "bg-brand-primary/[0.08] text-brand-primary before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-brand-primary before:content-[''] dark:bg-brand-primary/15 dark:text-brand-primary-light dark:before:bg-brand-primary-light"
+                                                        ? "bg-brand-fill text-white shadow-glow-primary before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-white before:content-['']"
                                                         : 'text-light-muted hover:bg-light-surface-2 hover:text-light-text dark:text-gray-400 dark:hover:bg-surface-600 dark:hover:text-gray-100',
                                                     collapsed && 'justify-center px-2'
                                                 )

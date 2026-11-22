@@ -63,7 +63,7 @@ export function PageBanner({
                     {title}
                 </h1>
                 {description ? (
-                    <p className="text-light-muted mt-1 max-w-3xl text-sm dark:text-gray-400">
+                    <p className="text-light-muted-strong mt-1 max-w-3xl text-sm dark:text-gray-400">
                         {description}
                     </p>
                 ) : null}
