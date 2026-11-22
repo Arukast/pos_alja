@@ -177,11 +177,11 @@ export function TicketPage() {
                             </h2>
                             <div className="mt-2 grid grid-cols-2 gap-8">
                                 <div>
-                                    <p className="font-semibold">Operator</p>
+                                    <p className="font-semibold">Desainer</p>
                                     <div className="mt-12 border-b border-black" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold">QC</p>
+                                    <p className="font-semibold">Produksi</p>
                                     <div className="mt-12 border-b border-black" />
                                 </div>
                             </div>
