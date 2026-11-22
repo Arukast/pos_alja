@@ -32,7 +32,7 @@ export function Select({ label, error, hint, className, id, children, ...props }
                     'text-light-text block h-10 w-full rounded-xl border bg-light-surface px-3 text-sm shadow-none transition focus:outline-none focus:ring-2 dark:bg-surface-700 dark:text-gray-100',
                     error
                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                        : 'border-light-border focus:border-brand-fill focus:ring-brand-fill/30 dark:border-surface-300',
+                        : 'border-light-muted focus:border-brand-fill focus:ring-brand-fill/40',
                     className
                 )}
                 {...props}

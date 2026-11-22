@@ -73,12 +73,14 @@ export function UserPopover({
                 aria-expanded={open}
                 aria-label="Buka menu akun"
             >
-                <span className="bg-brand-primary/10 text-brand-primary dark:text-brand-primary-light flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                <span className="bg-brand-primary/10 text-brand-fill-hover dark:text-brand-primary-light flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                     {initials}
                 </span>
                 {compact ? null : (
                     <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold">{user.name}</span>
+                        <span className="text-light-text block truncate text-sm font-semibold dark:text-gray-100">
+                            {user.name}
+                        </span>
                         <span className="text-light-muted block truncate text-xs dark:text-gray-400">
                             {roleLabel(user.role)}
                         </span>

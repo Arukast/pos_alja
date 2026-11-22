@@ -32,7 +32,7 @@ export function StatCard({
                     </span>
                 ) : null}
             </div>
-            <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-light-text dark:text-gray-100">
+            <p className="mt-2 text-[22px] font-extrabold tracking-tight tabular-nums text-light-text dark:text-gray-100">
                 {value}
             </p>
             {hint ? <p className="mt-1 text-xs text-light-muted dark:text-gray-400">{hint}</p> : null}

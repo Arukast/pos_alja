@@ -32,7 +32,7 @@ export function TicketPage() {
     }
 
     return (
-        <main className="print-backdrop min-h-screen p-4 text-white sm:p-8">
+        <main className="print-backdrop min-h-screen p-4 text-white sm:p-8 print:min-h-0 print:p-0">
             <style>{`@media print { .no-print { display: none !important; } @page { size: A4; margin: 12mm; } }`}</style>
             <div className="no-print mx-auto mb-4 flex max-w-[210mm] justify-end gap-2">
                 <Button variant="secondary" onClick={() => navigate(-1)}>

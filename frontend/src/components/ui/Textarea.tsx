@@ -31,7 +31,7 @@ export function Textarea({ label, error, hint, className, id, ...props }: Textar
                     'text-light-text block min-h-24 w-full rounded-xl border bg-light-surface px-3 py-2.5 text-sm shadow-none transition placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-surface-700 dark:text-gray-100',
                     error
                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                        : 'border-light-border focus:border-brand-fill focus:ring-brand-fill/30 dark:border-surface-300',
+                        : 'border-light-muted focus:border-brand-fill focus:ring-brand-fill/40',
                     className
                 )}
                 {...props}

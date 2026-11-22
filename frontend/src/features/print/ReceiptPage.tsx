@@ -34,7 +34,7 @@ export function ReceiptPage() {
     }
 
     return (
-        <main className="print-backdrop min-h-screen p-4 text-white sm:p-6">
+        <main className="print-backdrop min-h-screen p-4 text-white sm:p-6 print:min-h-0 print:p-0">
             <h1 className="sr-only">Nota</h1>
             <div className="no-print mx-auto mb-4 flex max-w-[80mm] justify-end gap-2">
                 <Button variant="secondary" onClick={() => navigate(-1)}>

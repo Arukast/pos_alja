@@ -38,7 +38,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
             <button
                 type="button"
                 aria-label="Tutup navigasi"
-                className="bg-brand-dark/50 absolute inset-0"
+                className="bg-brand-dark/50 dark:bg-black/70 absolute inset-0"
                 onClick={onClose}
             />
             <aside className="border-light-border bg-light-surface absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r shadow-xl dark:border-surface-300 dark:bg-surface-800">

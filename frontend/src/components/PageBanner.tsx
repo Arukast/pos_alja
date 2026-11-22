@@ -53,22 +53,36 @@ export function PageBanner({
     return (
         <header
             className={cn(
-                'flex flex-wrap items-start justify-between gap-4 rounded-2xl border px-5 py-5 sm:px-6',
+                'relative flex flex-wrap items-start justify-between gap-4 overflow-hidden rounded-2xl border px-5 py-5 sm:px-6',
                 toneClasses[resolvedTone],
             )}
         >
-            <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-widest">{eyebrow}</p>
-                <h1 className="text-light-text mt-1 text-2xl font-bold tracking-tight dark:text-gray-100">
-                    {title}
-                </h1>
-                {description ? (
-                    <p className="text-light-muted-strong mt-1 max-w-3xl text-sm dark:text-gray-400">
-                        {description}
-                    </p>
-                ) : null}
+            <span
+                aria-hidden="true"
+                className="bg-brand-primary/10 dark:bg-brand-primary/15 pointer-events-none absolute -top-10 -right-6 h-[120px] w-[120px] rounded-full blur-2xl"
+            />
+            <div className="relative z-10 flex min-w-0 items-start gap-3">
+                <div className="flex gap-1 pt-1">
+                    <span aria-hidden="true" className="bg-brand-primary h-2 w-2 rounded-[1.5px]" />
+                    <span aria-hidden="true" className="bg-brand-secondary h-2 w-2 rounded-[1.5px]" />
+                    <span aria-hidden="true" className="bg-brand-accent h-2 w-2 rounded-[1.5px]" />
+                    <span aria-hidden="true" className="bg-brand-dark h-2 w-2 rounded-[1.5px]" />
+                </div>
+                <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest">{eyebrow}</p>
+                    <h1 className="text-light-text mt-1 text-[28px] font-extrabold tracking-tight dark:text-gray-100">
+                        {title}
+                    </h1>
+                    {description ? (
+                        <p className="text-light-muted-strong mt-1 max-w-3xl text-sm dark:text-gray-400">
+                            {description}
+                        </p>
+                    ) : null}
+                </div>
             </div>
-            {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+            {actions ? (
+                <div className="relative z-10 flex flex-wrap items-center gap-2">{actions}</div>
+            ) : null}
         </header>
     );
 }

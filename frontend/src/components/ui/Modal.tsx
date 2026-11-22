@@ -75,7 +75,7 @@ export function Modal({
                 }
             }}
             className={cn(
-                'm-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl border border-light-border bg-light-surface p-0 text-light-text shadow-card backdrop:bg-brand-dark/45 dark:border-surface-300 dark:bg-surface-700 dark:text-gray-100 dark:shadow-none',
+                'm-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl border border-light-border bg-light-surface p-0 text-light-text shadow-card backdrop:bg-brand-dark/55 dark:backdrop:bg-black/70 dark:border-surface-300 dark:bg-surface-700 dark:text-gray-100 dark:shadow-none',
                 sizes[size]
             )}
         >
