@@ -29,13 +29,14 @@ export function DesignerOrdersPage() {
                 },
                 {
                     header: 'Total',
+                    className: 'text-right tabular-nums whitespace-nowrap',
                     cell: (invoice) => formatMoney(invoice.grand_total),
                 },
                 {
                     header: 'Cetak',
                     cell: (invoice) => (
                         <Link
-                            className="text-brand-primary font-medium hover:underline"
+                            className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
                             to={`/orders/${invoice.id}/ticket`}
                         >
                             Tiket
