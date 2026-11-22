@@ -120,7 +120,7 @@ export function ManagerMaterialsPage() {
 
     return (
         <CrudPage
-            eyebrow="Inventaris"
+            eyebrow="Manajer Cabang"
             title="Bahan & Stok"
             description="Tingkat stok cabang, penambahan stok, dan aktivasi."
             queryKey={['manager', 'materials']}

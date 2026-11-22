@@ -67,7 +67,7 @@ export function ProductionWastePage() {
 
             <Card>
                 <CardHeader>
-                    <h2 className="font-semibold">Catat sisa bahan</h2>
+                    <h2 className="font-semibold">Entri baru</h2>
                 </CardHeader>
                 <CardBody className="space-y-4">
                     {optionsQuery.isLoading ? (
@@ -152,7 +152,7 @@ export function ProductionWastePage() {
                                 onChange={(event) => setForm({ ...form, notes: event.target.value })}
                             />
                             <Button loading={create.isPending} onClick={() => create.mutate()}>
-                                Catat Sisa Bahan
+                                Catat sisa bahan
                             </Button>
                         </>
                     )}

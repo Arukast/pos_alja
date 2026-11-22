@@ -66,7 +66,7 @@ export function ProductionQueuePage() {
             <PageBanner
                 eyebrow="Produksi"
                 title="Antrean Cetak"
-                description="Mulai dan selesaikan pekerjaan cetak. Informasi uang sengaja disembunyikan."
+                description="Antrean pekerjaan cetak diurutkan berdasarkan tenggat."
             />
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -86,7 +86,7 @@ export function ProductionQueuePage() {
 
             <Card>
                 <CardHeader>
-                    <h2 className="font-semibold">Antrean cetak</h2>
+                    <h2 className="font-semibold">Pekerjaan aktif</h2>
                     {query.data ? (
                         <span className="bg-light-surface-2 text-light-muted-strong rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
                             {query.data.meta.total} pekerjaan

@@ -215,7 +215,7 @@ export function CashierPaymentsPage() {
                     <CardHeader>
                         <h2 className="font-semibold">Pengeluaran hari ini</h2>
                         {data ? (
-                            <p className="text-sm font-semibold tabular-nums text-light-text dark:text-gray-100">
+                            <p className="text-light-muted text-[10px] font-semibold uppercase tracking-wider tabular-nums dark:text-gray-400">
                                 Total {formatMoney(data.stats.expenses_today)}
                             </p>
                         ) : null}
