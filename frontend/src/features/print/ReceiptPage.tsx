@@ -34,7 +34,7 @@ export function ReceiptPage() {
     }
 
     return (
-        <main className="min-h-screen bg-gray-100 p-6">
+        <main className="print-backdrop min-h-screen p-4 text-white sm:p-6">
             <h1 className="sr-only">Nota</h1>
             <div className="no-print mx-auto mb-4 flex max-w-[80mm] justify-end gap-2">
                 <Button variant="secondary" onClick={() => navigate(-1)}>
@@ -43,7 +43,7 @@ export function ReceiptPage() {
                 <Button onClick={() => window.print()}>Cetak nota</Button>
             </div>
 
-            <article className="mx-auto w-[80mm] bg-white p-4 text-[11px] text-black shadow print:shadow-none">
+            <article className="mx-auto w-[80mm] bg-white p-4 text-[11px] text-black shadow-2xl print:shadow-none">
                 <style>{`@media print { .no-print { display: none !important; } @page { size: 80mm auto; margin: 0; } }`}</style>
                 <header className="text-center">
                     <p className="text-base font-bold">ALJA DIGITAL PRINTING</p>
