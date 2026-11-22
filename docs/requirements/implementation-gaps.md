@@ -51,6 +51,31 @@
 | NFR9 | Partial | Locking is implemented; SQLite makes `lockForUpdate()` a no-op and PostgreSQL concurrency is untested. |
 | NFR10 | Implemented | Branch CRUD, branch scope, and branch tests exist; no formal five-minute benchmark. |
 
+## Sprint Status
+
+Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backlog order, not the actual delivery order; the refactor delivered Sprint 0 and part of Sprint 3 early.
+
+| Sprint | Backlog | FR | Status | Done | Missing |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Sprint 0 | Foundation, SPA shell, platform | FR1–FR5 plus shell/CI | Done | Auth, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
+| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product read/search/filter/pagination, category, pricing | Product create/update/delete and admin UI |
+| Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer, quote, cart, ticket | Order update before production, design status |
+| Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
+| Sprint 1 | PB-04 | FR13, FR14 | Done | Receipt, operational expenses | — |
+| Sprint 2 | PB-05 | FR15, FR17, FR18 | Partial | Stock read, restock, stock ledger | Purchase records, reason-required adjustment, low-stock alert |
+| Sprint 2 | PB-06 | FR19, FR20, FR21 | Partial | Start/complete production, status log | All-role queue UI, deadline/priority sort, order-level pickup |
+| Sprint 2 | PB-07 | FR16 | Partial | Automatic stock deduction, waste logging | Order-linked usage record, ledger type/order reference |
+| Sprint 3 | PB-08 | FR1–FR5 | Done | Auth, user management, RBAC, branch scope, money redaction | HTTPS/OWASP formal verification |
+| Sprint 3 | PB-09 | FR22, FR23, FR24 | Partial | Owner reports/dashboard, manager leaderboard | Manager dashboard/report completeness, Excel/PDF export |
+| Sprint 3 | PB-10 | FR25, FR26 | Partial | Audit read/detail, partial audit writes | Payment/order/stock audit coverage, manual and scheduled backup |
+
+Summary:
+
+- Sprint 0: done, except deployment verification.
+- Sprint 1: 2 of 4 backlog items done; PB-01 and PB-02 partial.
+- Sprint 2: 0 of 3 done; all partial.
+- Sprint 3: 1 of 3 done; PB-09 and PB-10 partial.
+
 ## What Is Left
 
 Priority order:
