@@ -190,7 +190,7 @@ export function CrudPage<T extends { id: string }>({
                                                         {column.cell(row)}
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="bg-white border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                                <TableCell className="border-light-border sticky right-0 border-l bg-light-surface dark:border-surface-300 dark:bg-surface-700">
                                                     <div className="flex flex-wrap gap-2">
                                                         {rowActions?.(row)}
                                                         {update ? (
@@ -230,6 +230,8 @@ export function CrudPage<T extends { id: string }>({
                                 <Pagination
                                     page={query.data?.meta.current_page ?? 1}
                                     lastPage={query.data?.meta.last_page ?? 1}
+                                    total={query.data?.meta.total}
+                                    perPage={query.data?.meta.per_page}
                                     onPageChange={setPage}
                                 />
                             </div>

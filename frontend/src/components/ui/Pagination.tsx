@@ -1,26 +1,40 @@
+import { pageWindow } from '../../lib/pagination';
 import { Button } from './Button';
 
 export function Pagination({
     page,
     lastPage,
+    total,
+    perPage,
     onPageChange,
 }: {
     page: number;
     lastPage: number;
+    total?: number;
+    perPage?: number;
     onPageChange: (page: number) => void;
 }) {
-    if (lastPage <= 1) {
+    if (total === 0 || (total === undefined && lastPage <= 1)) {
         return null;
+    }
+
+    const range = total !== undefined && perPage !== undefined ? pageWindow(page, perPage, total) : null;
+
+    let summary = `Halaman ${page} dari ${lastPage}`;
+
+    if (range && range.to > 0 && total !== undefined) {
+        summary =
+            range.from === range.to
+                ? `Menampilkan ${range.from} dari ${total}`
+                : `Menampilkan ${range.from}–${range.to} dari ${total}`;
     }
 
     return (
         <nav
             aria-label="Paginasi"
-            className="flex flex-wrap items-center justify-between gap-3 pt-3"
+            className="flex flex-wrap items-center justify-between gap-3 pt-3 text-xs text-light-muted dark:text-gray-400"
         >
-            <p className="text-light-muted text-sm dark:text-gray-400">
-                Halaman {page} dari {lastPage}
-            </p>
+            <p>{summary}</p>
             <div className="flex items-center gap-2">
                 <Button
                     variant="secondary"

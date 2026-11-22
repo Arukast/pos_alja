@@ -88,6 +88,8 @@ export function ResourceTable<T extends { id: string }>({
                             <Pagination
                                 page={query.data.meta.current_page}
                                 lastPage={query.data.meta.last_page}
+                                total={query.data.meta.total}
+                                perPage={query.data.meta.per_page}
                                 onPageChange={setPage}
                             />
                         </>
