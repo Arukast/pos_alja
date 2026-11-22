@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
 import type { Branch, Category, Machine, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
+import { Card, CardBody } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
 import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, roleLabel } from '../../lib/labels';
@@ -13,27 +17,30 @@ import { formatMoney } from '../../lib/money';
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
     branches.map((branch) => ({ value: branch.id, label: branch.name }));
 
+const roleOptions = ['owner', 'manager', 'cashier', 'designer', 'production'].map((role) => ({
+    value: role,
+    label: roleLabel(role),
+}));
+
 export function OwnerUsersPage() {
     const branches = useBranches();
     const options = branchOptions(branches.data?.data ?? []);
+    const [searchInput, setSearchInput] = useState('');
+    const [search, setSearch] = useState('');
+    const [role, setRole] = useState('');
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
+
+        return () => window.clearTimeout(timer);
+    }, [searchInput]);
 
     const fields: Array<CrudField<UserRecord>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'username', label: 'Nama Pengguna', required: true },
         { key: 'email', label: 'Email', type: 'email' },
         { key: 'password', label: 'Kata Sandi', type: 'password', hideOnEdit: true },
-        {
-            key: 'role',
-            label: 'Peran',
-            type: 'select',
-            options: [
-                { value: 'owner', label: roleLabel('owner') },
-                { value: 'manager', label: roleLabel('manager') },
-                { value: 'cashier', label: roleLabel('cashier') },
-                { value: 'designer', label: roleLabel('designer') },
-                { value: 'production', label: roleLabel('production') },
-            ],
-        },
+        { key: 'role', label: 'Peran', type: 'select', options: roleOptions },
         { key: 'branch_id', label: 'Cabang', type: 'select', options, getValue: (user) => user.branch?.id ?? '' },
         { key: 'phone', label: 'Telepon' },
         { key: 'address', label: 'Alamat' },
@@ -41,15 +48,49 @@ export function OwnerUsersPage() {
 
     return (
         <CrudPage
-            eyebrow="Administrasi"
+            key={`${search}:${role}`}
+            eyebrow="Pemilik"
             title="Manajemen Pengguna"
             description="Akun staf, peran, dan penugasan cabang untuk semua cabang."
-            queryKey={['owner', 'users']}
-            queryFn={(page) => api.users({ page, include_deleted: 1 })}
+            queryKey={['owner', 'users', search, role]}
+            queryFn={(page) =>
+                api.users({ page, include_deleted: 1, search, role })
+            }
+            summary={
+                <Card>
+                    <CardBody>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="w-full sm:max-w-xs">
+                                <Input
+                                    label="Cari pengguna"
+                                    type="search"
+                                    placeholder="Nama atau nama pengguna"
+                                    value={searchInput}
+                                    onChange={(event) => setSearchInput(event.target.value)}
+                                />
+                            </div>
+                            <div className="w-full sm:w-48">
+                                <Select
+                                    label="Peran"
+                                    value={role}
+                                    onChange={(event) => setRole(event.target.value)}
+                                >
+                                    <option value="">Semua peran</option>
+                                    {roleOptions.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </Select>
+                            </div>
+                        </div>
+                    </CardBody>
+                </Card>
+            }
             columns={[
                 { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
                 { header: 'Nama Pengguna', cell: (user) => user.username },
-                { header: 'Peran', cell: (user) => <Badge tone="brand">{roleLabel(user.role)}</Badge> },
+                { header: 'Peran', cell: (user) => roleLabel(user.role) },
                 { header: 'Cabang', cell: (user) => user.branch?.name ?? 'Global' },
             ]}
             fields={fields}

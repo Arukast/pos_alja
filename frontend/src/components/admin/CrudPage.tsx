@@ -6,6 +6,7 @@ import { PageBanner } from '../PageBanner';
 import { Button } from '../ui/Button';
 import { Card, CardBody } from '../ui/Card';
 import { Checkbox } from '../ui/Checkbox';
+import { EmptyState } from '../ui/EmptyState';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { Pagination } from '../ui/Pagination';
@@ -174,6 +175,16 @@ export function CrudPage<T extends { id: string }>({
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
+                    ) : query.isError ? (
+                        <EmptyState
+                            title="Data gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
                     ) : (
                         <>
                             <Table>
