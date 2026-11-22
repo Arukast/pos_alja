@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { api } from '../../api/queries';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody } from '../../components/ui/Card';
+import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
 import { Select } from '../../components/ui/Select';
@@ -65,79 +66,123 @@ export function ProductionWastePage() {
             />
 
             <Card>
+                <CardHeader>
+                    <h2 className="font-semibold">Catat sisa bahan</h2>
+                </CardHeader>
                 <CardBody className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-5">
-                        <Select
-                            label="Bahan"
-                            value={form.material_id}
-                            error={errors.material_id}
-                            onChange={(event) => setForm({ ...form, material_id: event.target.value })}
-                        >
-                            <option value="">Pilih bahan</option>
-                            {(options?.materials ?? []).map((material) => (
-                                <option key={material.id} value={material.id}>
-                                    {material.name}
-                                </option>
-                            ))}
-                        </Select>
-                        <Select
-                            label="Mesin"
-                            value={form.machine_id}
-                            error={errors.machine_id}
-                            onChange={(event) => setForm({ ...form, machine_id: event.target.value })}
-                        >
-                            <option value="">Tanpa mesin</option>
-                            {(options?.machines ?? []).map((machine) => (
-                                <option key={machine.id} value={machine.id}>
-                                    {machine.name}
-                                </option>
-                            ))}
-                        </Select>
-                        <Select
-                            label="Desainer"
-                            value={form.designer_id}
-                            error={errors.designer_id}
-                            onChange={(event) => setForm({ ...form, designer_id: event.target.value })}
-                        >
-                            <option value="">Tanpa desainer</option>
-                            {(options?.designers ?? []).map((designer) => (
-                                <option key={designer.id} value={designer.id}>
-                                    {designer.name}
-                                </option>
-                            ))}
-                        </Select>
-                        <Input
-                            label="Jml"
-                            type="number"
-                            min="0"
-                            value={form.quantity}
-                            error={errors.quantity}
-                            onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+                    {optionsQuery.isLoading ? (
+                        <div role="status" className="flex justify-center py-10">
+                            <Spinner className="text-brand-primary h-6 w-6" />
+                        </div>
+                    ) : optionsQuery.isError ? (
+                        <EmptyState
+                            title="Pilihan bahan gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => optionsQuery.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
                         />
-                        <Input
-                            label="Dimensi"
-                            value={form.dimensions}
-                            onChange={(event) => setForm({ ...form, dimensions: event.target.value })}
+                    ) : (options?.materials ?? []).length === 0 ? (
+                        <EmptyState
+                            title="Belum ada bahan di cabang ini"
+                            description="Tambahkan stok bahan lewat inventaris sebelum mencatat sisa."
                         />
-                    </div>
-                    <Input
-                        label="Catatan"
-                        value={form.notes}
-                        error={errors.notes}
-                        onChange={(event) => setForm({ ...form, notes: event.target.value })}
-                    />
-                    <Button loading={create.isPending} onClick={() => create.mutate()}>
-                        Catat Sisa Bahan
-                    </Button>
+                    ) : (
+                        <>
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                                <Select
+                                    label="Bahan"
+                                    value={form.material_id}
+                                    error={errors.material_id}
+                                    onChange={(event) => setForm({ ...form, material_id: event.target.value })}
+                                >
+                                    <option value="">Pilih bahan</option>
+                                    {(options?.materials ?? []).map((material) => (
+                                        <option key={material.id} value={material.id}>
+                                            {material.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                                <Select
+                                    label="Mesin"
+                                    value={form.machine_id}
+                                    error={errors.machine_id}
+                                    onChange={(event) => setForm({ ...form, machine_id: event.target.value })}
+                                >
+                                    <option value="">Tanpa mesin</option>
+                                    {(options?.machines ?? []).map((machine) => (
+                                        <option key={machine.id} value={machine.id}>
+                                            {machine.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                                <Select
+                                    label="Desainer"
+                                    value={form.designer_id}
+                                    error={errors.designer_id}
+                                    onChange={(event) => setForm({ ...form, designer_id: event.target.value })}
+                                >
+                                    <option value="">Tanpa desainer</option>
+                                    {(options?.designers ?? []).map((designer) => (
+                                        <option key={designer.id} value={designer.id}>
+                                            {designer.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                                <Input
+                                    label="Jml"
+                                    type="number"
+                                    min="0"
+                                    value={form.quantity}
+                                    error={errors.quantity}
+                                    onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+                                />
+                                <Input
+                                    label="Dimensi"
+                                    value={form.dimensions}
+                                    onChange={(event) => setForm({ ...form, dimensions: event.target.value })}
+                                />
+                            </div>
+                            <Input
+                                label="Catatan"
+                                value={form.notes}
+                                error={errors.notes}
+                                onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                            />
+                            <Button loading={create.isPending} onClick={() => create.mutate()}>
+                                Catat Sisa Bahan
+                            </Button>
+                        </>
+                    )}
                 </CardBody>
             </Card>
 
             <Card>
+                <CardHeader>
+                    <h2 className="font-semibold">Riwayat sisa bahan</h2>
+                    {listQuery.data ? (
+                        <span className="bg-light-surface-2 text-light-muted rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
+                            {listQuery.data.meta.total}
+                        </span>
+                    ) : null}
+                </CardHeader>
                 <CardBody>
                     {listQuery.isLoading ? (
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
+                    ) : listQuery.isError ? (
+                        <EmptyState
+                            title="Riwayat sisa bahan gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => listQuery.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
                     ) : (
                         <>
                             <Table>
@@ -147,20 +192,35 @@ export function ProductionWastePage() {
                                         <TableHeaderCell>Bahan</TableHeaderCell>
                                         <TableHeaderCell>Mesin</TableHeaderCell>
                                         <TableHeaderCell>Desainer</TableHeaderCell>
-                                        <TableHeaderCell>Jml</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Jml</TableHeaderCell>
+                                        <TableHeaderCell>Dimensi</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(listQuery.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={5}>Belum ada sisa bahan tercatat.</TableEmpty>
+                                        <TableEmpty colSpan={6}>Belum ada sisa bahan tercatat.</TableEmpty>
                                     ) : (
                                         (listQuery.data?.data ?? []).map((waste) => (
                                             <TableRow key={waste.id}>
-                                                <TableCell>{formatDate(waste.logged_at)}</TableCell>
-                                                <TableCell>{waste.material?.name ?? '-'}</TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {formatDate(waste.logged_at)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="font-medium">
+                                                        {waste.material?.name ?? '-'}
+                                                    </span>
+                                                    {waste.notes ? (
+                                                        <p className="text-light-muted text-xs dark:text-gray-400">
+                                                            {waste.notes}
+                                                        </p>
+                                                    ) : null}
+                                                </TableCell>
                                                 <TableCell>{waste.machine?.name ?? '-'}</TableCell>
                                                 <TableCell>{waste.designer?.name ?? '-'}</TableCell>
-                                                <TableCell>{waste.quantity}</TableCell>
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                    {waste.quantity}
+                                                </TableCell>
+                                                <TableCell>{waste.dimensions ?? '-'}</TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -170,6 +230,8 @@ export function ProductionWastePage() {
                                 <Pagination
                                     page={listQuery.data?.meta.current_page ?? 1}
                                     lastPage={listQuery.data?.meta.last_page ?? 1}
+                                    total={listQuery.data?.meta.total}
+                                    perPage={listQuery.data?.meta.per_page}
                                     onPageChange={setPage}
                                 />
                             </div>
