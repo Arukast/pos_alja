@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 
 import { api } from '../../api/queries';
-import { LogoMark } from '../../components/LogoMark';
+import { PrintHeader } from '../../components/PrintHeader';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { formatDate } from '../../lib/dates';
@@ -39,6 +39,7 @@ export function TicketPage() {
     }
 
     const orders = invoice.orders ?? [];
+    const showNotes = orders.some((order) => (order.notes ?? '').trim() !== '');
     const stageCounts = productionStages.map((stage) => ({
         ...stage,
         count: orders.filter((order) => order.status === stage.status).length,
@@ -54,21 +55,16 @@ export function TicketPage() {
                 <Button onClick={() => window.print()}>Cetak tiket</Button>
             </div>
 
-            <div className="mx-auto w-full max-w-[210mm] bg-white text-black shadow-2xl print:max-w-none print:shadow-none">
+            <div className="mx-auto flex min-h-[297mm] w-full max-w-[210mm] flex-col bg-white text-black shadow-2xl print:min-h-0 print:max-w-none print:shadow-none">
                 <div className="brand-stripe-bar print-color-exact" aria-hidden="true" />
-                <div className="p-6 sm:p-8 print:p-0">
+                <div className="flex flex-1 flex-col p-6 sm:p-8 print:p-0">
                     <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-brand-dark pb-4">
-                        <div className="flex items-start gap-3">
-                            <LogoMark className="h-10 w-10 shrink-0" decorative />
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.25em]">
-                                    Alja Digital Printing
-                                </p>
-                                <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
-                                    Tiket Perintah Kerja
-                                </h1>
-                                <p className="text-sm text-gray-600">{invoice.branch?.name ?? '-'}</p>
-                            </div>
+                        <div>
+                            <PrintHeader />
+                            <h1 className="mt-2 text-2xl font-extrabold tracking-tight">
+                                Tiket Perintah Kerja
+                            </h1>
+                            <p className="text-sm text-gray-600">{invoice.branch?.name ?? '-'}</p>
                         </div>
                         <dl className="w-full space-y-1 text-sm sm:w-64">
                             <div className="flex justify-between gap-4">
@@ -111,15 +107,17 @@ export function TicketPage() {
                         <thead>
                             <tr className="border-y border-black text-left">
                                 <th className="py-2 pr-2">Item</th>
-                                <th className="w-16 py-2 pr-2 sm:w-[34%]">Catatan</th>
+                                {showNotes ? (
+                                    <th className="w-[34%] py-2 pr-2">Catatan</th>
+                                ) : null}
                                 <th className="w-12 py-2 text-right sm:w-14">Jml</th>
-                                <th className="w-14 py-2 text-right sm:w-20">Luas</th>
+                                <th className="w-20 py-2 text-right">Luas (m²)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {orders.length === 0 ? (
                                 <tr className="border-b border-gray-300">
-                                    <td colSpan={4} className="py-6 text-center text-gray-600">
+                                    <td colSpan={showNotes ? 4 : 3} className="py-6 text-center text-gray-600">
                                         Belum ada item.
                                     </td>
                                 </tr>
@@ -129,14 +127,16 @@ export function TicketPage() {
                                         <td className="break-words py-2 pr-2">
                                             {order.file_name ?? '-'}
                                         </td>
-                                        <td className="break-words py-2 pr-2 text-gray-600">
-                                            {order.notes ?? '-'}
-                                        </td>
+                                        {showNotes ? (
+                                            <td className="break-words py-2 pr-2 text-gray-600">
+                                                {order.notes ?? '-'}
+                                            </td>
+                                        ) : null}
                                         <td className="py-2 text-right tabular-nums whitespace-nowrap">
                                             {order.quantity}
                                         </td>
                                         <td className="py-2 text-right tabular-nums whitespace-nowrap">
-                                            {order.area}
+                                            {Number(order.area) > 0 ? order.area : '—'}
                                         </td>
                                     </tr>
                                 ))
@@ -144,7 +144,7 @@ export function TicketPage() {
                         </tbody>
                     </table>
 
-                    <section className="mt-8 grid grid-cols-1 gap-8 text-sm sm:grid-cols-2">
+                    <section className="mt-auto grid grid-cols-1 gap-8 pt-8 text-sm sm:grid-cols-2">
                         <div>
                             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
                                 Daftar periksa produksi

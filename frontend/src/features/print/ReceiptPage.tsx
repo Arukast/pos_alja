@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 
 import { api } from '../../api/queries';
+import { PrintHeader } from '../../components/PrintHeader';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { formatDate } from '../../lib/dates';
@@ -55,8 +56,8 @@ export function ReceiptPage() {
             <article className="mx-auto w-[80mm] break-words bg-white p-4 text-[11px] leading-snug text-black shadow-2xl print:shadow-none">
                 <style>{`@media print { .no-print { display: none !important; } @page { size: 80mm auto; margin: 0; } }`}</style>
                 <header className="text-center">
-                    <p className="text-sm font-bold uppercase tracking-[0.2em]">ALJA DIGITAL PRINTING</p>
-                    {invoice.branch?.name ? <p>{invoice.branch.name}</p> : null}
+                    <PrintHeader className="justify-center" />
+                    {invoice.branch?.name ? <p className="mt-1">{invoice.branch.name}</p> : null}
                     {invoice.branch?.phone ? <p>{invoice.branch.phone}</p> : null}
                 </header>
 
