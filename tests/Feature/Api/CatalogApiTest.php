@@ -323,6 +323,147 @@ class CatalogApiTest extends TestCase
         $this->assertContains($this->ledgerTwo->id, $ids);
     }
 
+    public function test_products_are_paginated_at_ten_per_page(): void
+    {
+        for ($index = 1; $index <= 23; $index++) {
+            Product::create([
+                'name' => sprintf('Produk %02d', $index),
+                'pricing_type' => 'unit',
+                'product_category_id' => $this->category->id,
+            ]);
+        }
+
+        $pageOne = $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?page=1')
+            ->assertOk()
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 3)
+            ->assertJsonPath('meta.total', 25);
+
+        $pageTwo = $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?page=2')
+            ->assertOk()
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('meta.current_page', 2);
+
+        $pageThree = $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?page=3')
+            ->assertOk()
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('meta.current_page', 3);
+
+        $pageOneIds = collect($pageOne->json('data'))->pluck('id')->all();
+        $pageTwoIds = collect($pageTwo->json('data'))->pluck('id')->all();
+        $pageThreeIds = collect($pageThree->json('data'))->pluck('id')->all();
+
+        $this->assertEmpty(array_intersect($pageOneIds, $pageTwoIds));
+        $this->assertEmpty(array_intersect($pageOneIds, $pageThreeIds));
+        $this->assertEmpty(array_intersect($pageTwoIds, $pageThreeIds));
+        $this->assertCount(25, array_unique([...$pageOneIds, ...$pageTwoIds, ...$pageThreeIds]));
+    }
+
+    public function test_product_search_is_case_insensitive_and_filters_by_category_and_active_status(): void
+    {
+        $secondCategory = ProductCategory::create([
+            'name' => 'Print Lembaran',
+            'calculation_archetype' => 'per_piece',
+            'allowed_attribute_types' => ['finishing'],
+        ]);
+
+        $inactiveProduct = Product::create([
+            'name' => 'Goodie Bag',
+            'pricing_type' => 'unit',
+            'product_category_id' => $secondCategory->id,
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?search=banner')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Vinyl Banner');
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?search=BANNER')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Vinyl Banner');
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?search=lembaran')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $inactiveProduct->id);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?is_active=1')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonMissing(['id' => $inactiveProduct->id]);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?is_active=0')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $inactiveProduct->id);
+
+        $byCategory = $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?category_id='.$secondCategory->id)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $inactiveProduct->id);
+
+        $this->assertStringContainsString(
+            "category_id={$secondCategory->id}",
+            (string) $byCategory->json('links.first')
+        );
+    }
+
+    public function test_branchless_non_owner_cannot_read_products(): void
+    {
+        foreach (['manager', 'cashier', 'designer'] as $role) {
+            $branchlessUser = $this->user($role, null);
+
+            $this->actingAs($branchlessUser)
+                ->getJson('/api/v1/products')
+                ->assertForbidden();
+        }
+    }
+
+    public function test_include_deleted_products_is_restricted_to_owner_and_manager(): void
+    {
+        $deleted = Product::create([
+            'name' => 'Deleted Banner',
+            'pricing_type' => 'unit',
+            'product_category_id' => $this->category->id,
+        ]);
+        $deleted->delete();
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products')
+            ->assertOk()
+            ->assertJsonMissing(['id' => $deleted->id]);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?include_deleted=1')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $deleted->id]);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/products?include_deleted=1')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $deleted->id]);
+
+        foreach ([$this->cashier, $this->designer] as $user) {
+            $this->actingAs($user)
+                ->getJson('/api/v1/products?include_deleted=1')
+                ->assertOk()
+                ->assertJsonMissing(['id' => $deleted->id]);
+        }
+    }
+
     private function branch(string $name): Branch
     {
         return Branch::create([

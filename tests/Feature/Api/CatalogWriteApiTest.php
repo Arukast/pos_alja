@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
@@ -432,6 +433,137 @@ class CatalogWriteApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('price');
+    }
+
+    public function test_product_endpoints_require_authentication(): void
+    {
+        $this->getJson('/api/v1/products')->assertUnauthorized();
+        $this->postJson('/api/v1/products', [])->assertUnauthorized();
+        $this->putJson("/api/v1/products/{$this->product->id}", [])->assertUnauthorized();
+        $this->deleteJson("/api/v1/products/{$this->product->id}")->assertUnauthorized();
+        $this->postJson("/api/v1/products/{$this->product->id}/restore")->assertUnauthorized();
+    }
+
+    public function test_owner_and_manager_can_create_update_delete_and_restore_products_with_audit_logs(): void
+    {
+        $created = $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Banner Baru',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'area',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('product.is_active', true)
+            ->json('product');
+
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'CREATE',
+            'model_type' => Product::class,
+            'model_id' => $created['id'],
+        ]);
+
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/products/{$created['id']}", [
+                'name' => 'Banner Baru Updated',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'unit',
+                'is_active' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('product.is_active', false)
+            ->assertJsonPath('product.pricing_type', 'unit');
+
+        $updateLog = ActivityLog::query()
+            ->where('action', 'UPDATE')
+            ->where('model_type', Product::class)
+            ->where('model_id', $created['id'])
+            ->first();
+
+        $this->assertNotNull($updateLog);
+        $this->assertTrue((bool) $updateLog->payload['before']['is_active']);
+        $this->assertFalse((bool) $updateLog->payload['after']['is_active']);
+
+        $this->actingAs($this->manager)
+            ->deleteJson("/api/v1/products/{$created['id']}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('products', ['id' => $created['id']]);
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'DELETE',
+            'model_type' => Product::class,
+            'model_id' => $created['id'],
+        ]);
+
+        $this->actingAs($this->owner)
+            ->postJson("/api/v1/products/{$created['id']}/restore")
+            ->assertOk()
+            ->assertJsonPath('product.deleted_at', null);
+
+        $this->assertNotSoftDeleted('products', ['id' => $created['id']]);
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'RESTORE',
+            'model_type' => Product::class,
+            'model_id' => $created['id'],
+        ]);
+    }
+
+    public function test_unauthorized_roles_and_branchless_manager_cannot_manage_products(): void
+    {
+        $designer = $this->user('designer', $this->branchOne);
+        $production = $this->user('production', $this->branchOne);
+        $branchlessManager = $this->user('manager', null);
+
+        $payload = [
+            'name' => 'Blocked Product',
+            'product_category_id' => $this->category->id,
+            'pricing_type' => 'unit',
+        ];
+
+        foreach ([$this->cashier, $designer, $production, $branchlessManager] as $actor) {
+            $this->actingAs($actor)->postJson('/api/v1/products', $payload)->assertForbidden();
+            $this->actingAs($actor)->putJson("/api/v1/products/{$this->product->id}", $payload)->assertForbidden();
+            $this->actingAs($actor)->deleteJson("/api/v1/products/{$this->product->id}")->assertForbidden();
+            $this->actingAs($actor)->postJson("/api/v1/products/{$this->product->id}/restore")->assertForbidden();
+        }
+    }
+
+    public function test_product_write_validation_errors_are_422(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'unit',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('name');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Invalid Pricing Type',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'weight',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('pricing_type');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Missing Category',
+                'product_category_id' => (string) Str::uuid(),
+                'pricing_type' => 'unit',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('product_category_id');
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/products/{$this->product->id}", [
+                'name' => 'Invalid Active Flag',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'unit',
+                'is_active' => 'not-a-bool',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('is_active');
     }
 
     private function branch(string $name): Branch
