@@ -25,7 +25,21 @@ final class CatalogPolicy
 
     public function viewProducts(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager', 'cashier', 'designer'], true);
+        if ($user->role === 'owner') {
+            return true;
+        }
+
+        return in_array($user->role, ['manager', 'cashier', 'designer'], true)
+            && $user->branch_id !== null;
+    }
+
+    public function manageProducts(User $user): bool
+    {
+        if ($user->role === 'owner') {
+            return true;
+        }
+
+        return $user->role === 'manager' && $user->branch_id !== null;
     }
 
     public function viewPricing(User $user): bool

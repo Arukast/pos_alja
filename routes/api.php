@@ -57,6 +57,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/attribute-types', [AttributeTypeController::class, 'index']);
         Route::get('/attributes', [AttributeController::class, 'index']);
         Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::put('/products/{product}', [ProductController::class, 'update']);
+        Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+        Route::post('/products/{product}/restore', [ProductController::class, 'restore']);
         Route::get('/materials', [MaterialController::class, 'index']);
         Route::get('/machines', [MachineController::class, 'index']);
         Route::get('/pricing', [PricingController::class, 'index']);
