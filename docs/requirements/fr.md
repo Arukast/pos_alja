@@ -91,6 +91,7 @@
 - **Requirement:** Owner and Branch Manager SHALL manage products, product categories, and prices.
 - **Acceptance criteria:**
   - Product CRUD includes name, category, pricing type (`unit` or `area`), and active status.
+  - Product listing uses server-side pagination at 10 products per page.
   - Category CRUD includes name, calculation archetype, and allowed attribute types.
   - Price management includes the pricing matrix, customer type, tiered quantity, and machine/attribute modifiers.
   - All changes are branch-scoped where applicable and written to the audit log.
@@ -100,7 +101,7 @@
 - **Requirement:** Designer and Cashier SHALL search, filter, and browse products with pagination.
 - **Acceptance criteria:**
   - Search by name and category; filter by category and active status.
-  - At least 20 products per page with previous/next navigation.
+  - Server-side pagination at 10 products per page with previous/next navigation.
   - Results load within the NFR1 target.
   - Selecting a product feeds the order calculator or checkout.
 - **Traceability:** NFR1, PB-01.

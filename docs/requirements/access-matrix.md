@@ -12,7 +12,7 @@
 | Branch CRUD | all | no | no | no | no |
 | User CRUD | all | own branch staff only | no | no | no |
 | Categories, attribute types, attributes | all | yes | no | no | no |
-| Products | read | read | read | read | no |
+| Products | CRUD | CRUD | read | read | no |
 | Materials master | CRUD; global delete | create; restock/activate own branch; no master edit/delete | no | no | read own branch |
 | Machines | all | own branch | no | no | no |
 | Pricing | all | own branch | no | no | no |

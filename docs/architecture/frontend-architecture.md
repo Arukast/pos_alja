@@ -19,10 +19,10 @@
 | `/owner/net-profit` | owner | Net profit detail |
 | `/owner/expenses` | owner | Expense detail |
 | `/owner/audit` | owner | Audit trail |
-| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/machines`, `/owner/materials` | owner | Administration CRUD |
+| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/products`, `/owner/machines`, `/owner/materials` | owner | Administration CRUD |
 | `/manager` | manager | Branch dashboard |
 | `/manager/materials`, `/manager/ledgers`, `/manager/finishing`, `/manager/pricing` | manager | Inventory and configuration |
-| `/manager/leaderboard`, `/manager/users`, `/manager/categories`, `/manager/machines` | manager | Performance and administration |
+| `/manager/leaderboard`, `/manager/users`, `/manager/categories`, `/manager/products`, `/manager/machines` | manager | Performance and administration |
 | `/cashier` | cashier | Cashier dashboard |
 | `/cashier/payments` | cashier | Payment queue and checkout |
 | `/cashier/pickup` | cashier | Pickup queue |

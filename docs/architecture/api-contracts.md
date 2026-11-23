@@ -73,6 +73,8 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | GET | `/attributes` | owner all; manager own branch/global |
 | POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner, manager |
 | GET | `/products` | owner, manager, cashier, designer |
+| POST/PUT/DELETE | `/products`, `/products/{product}` | owner, manager |
+| POST | `/products/{product}/restore` | owner, manager |
 | GET | `/materials` | owner all; manager/production own branch |
 | POST | `/materials` | owner; manager (own branch stock only) |
 | PUT | `/materials/{material}` | owner |
@@ -90,6 +92,8 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | GET | `/stock-ledgers` | owner all; manager own branch |
 
 Material responses include `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data.
+
+`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` and `manager` only). `GET /quotes/options` returns active products (`is_active = true`) only.
 
 ## 5. Sales
 

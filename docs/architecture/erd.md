@@ -346,7 +346,6 @@ erDiagram
 11. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table. The migration defines `pricing.deleted_at`, but the model does not use `SoftDeletes`, so pricing rows are hard deleted and the column stays null.
 12. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and pricing rows when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
 13. **Target additions.** The following columns and tables are part of the target schema:
-    - `products.is_active` for catalog filtering.
     - `orders.design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`.
     - `purchases` and `purchase_items` for raw-material purchases. `purchases.user_id` is the actor (Owner or Branch Manager).

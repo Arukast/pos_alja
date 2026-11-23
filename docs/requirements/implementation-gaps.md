@@ -14,8 +14,8 @@
 | FR3 | Implemented | Logout invalidates session; password change and confirm-password; `AuthTest`. |
 | FR4 | Implemented | User update, soft delete, restore; manager branch/role limits; `UserApiTest`. |
 | FR5 | Implemented | Policies, `BranchScope`, cross-branch tests, production money redaction; `FoundationTest`, `InvoiceApiTest`, `CatalogApiTest`. |
-| FR6 | Partial | Product read, search, filter, and pagination exist. Product create/update/delete routes and UI are missing; `ProductController` only has `index`. |
-| FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 20-row pagination; `CatalogApiTest`. |
+| FR6 | Implemented | `ProductController` CRUD + restore, `StoreProductRequest`/`UpdateProductRequest`, product Actions with `ActivityLog` and `SafeBroadcast`, `products.is_active`, 10-row server-side pagination, `/owner/products` and `/manager/products`; `CatalogApiTest` and `CatalogWriteApiTest`. |
+| FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 10-row pagination, case-insensitive search, category and active-status filters; `CatalogApiTest`. |
 | FR8 | Implemented | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices; `CreateInvoiceApiTest`. |
 | FR9 | Target | No invoice update route or `UpdateInvoice` action. Order items cannot be changed after submission. |
 | FR10 | Target | No `design_status`, `design_approved_at`, or `design_approved_by` columns or actions. |
@@ -58,7 +58,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 | Sprint | Backlog | FR | Status | Done | Missing |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Sprint 0 | Foundation, SPA shell, platform | FR1–FR5 plus shell/CI | Done | Auth, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
-| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product read/search/filter/pagination, category, pricing | Product create/update/delete and admin UI |
+| Sprint 1 | PB-01 | FR6, FR7 | Done | Product CRUD/restore, active status, case-insensitive search/filter, 10-row pagination, category, pricing | — |
 | Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer, quote, cart, ticket | Order update before production, design status |
 | Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
 | Sprint 1 | PB-04 | FR13, FR14 | Done | Receipt, operational expenses | — |
@@ -72,7 +72,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 Summary:
 
 - Sprint 0: done, except deployment verification.
-- Sprint 1: 2 of 4 backlog items done; PB-01 and PB-02 partial.
+- Sprint 1: 3 of 4 backlog items done; PB-02 partial.
 - Sprint 2: 0 of 3 done; all partial.
 - Sprint 3: 1 of 3 done; PB-09 and PB-10 partial.
 
@@ -80,12 +80,11 @@ Summary:
 
 Priority order:
 
-1. **FR6** product create/update/delete and product admin UI.
-2. **FR9** order update before production; **FR10** design status.
-3. **FR15** purchase records; **FR18** stock adjustment with reason; **FR17** low-stock alert.
-4. **FR19** deadline/priority sorting and all-role queue UI; **FR21** order-level pickup propagation.
-5. **FR22/FR23** manager dashboard/report completeness; **FR24** Excel/PDF export.
-6. **FR25** audit coverage for payments, order updates, and stock; **FR26** manual and scheduled backup.
+1. **FR9** order update before production; **FR10** design status.
+2. **FR15** purchase records; **FR18** stock adjustment with reason; **FR17** low-stock alert.
+3. **FR19** deadline/priority sorting and all-role queue UI; **FR21** order-level pickup propagation.
+4. **FR22/FR23** manager dashboard/report completeness; **FR24** Excel/PDF export.
+5. **FR25** audit coverage for payments, order updates, and stock; **FR26** manual and scheduled backup.
 
 ## Refactor Completion
 
