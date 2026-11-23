@@ -18,20 +18,24 @@ export function StatCard({
     return (
         <div
             className={cn(
-                'border-light-border shadow-card rounded-2xl border bg-white p-4 dark:border-surface-300 dark:bg-surface-700',
+                'rounded-2xl border border-light-border bg-light-surface p-5 dark:border-surface-300 dark:bg-surface-700',
                 className
             )}
         >
             <div className="flex items-start justify-between gap-3">
-                <p className="text-light-muted text-xs font-semibold uppercase tracking-wide dark:text-gray-400">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-light-muted dark:text-gray-400">
                     {label}
                 </p>
-                {icon ? <span className="text-brand-primary">{icon}</span> : null}
+                {icon ? (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                        {icon}
+                    </span>
+                ) : null}
             </div>
-            <p className="text-light-text mt-2 text-2xl font-bold dark:text-gray-100">{value}</p>
-            {hint ? (
-                <p className="text-light-muted mt-1 text-xs dark:text-gray-400">{hint}</p>
-            ) : null}
+            <p className="mt-2 text-[22px] font-extrabold tracking-tight tabular-nums text-light-text dark:text-gray-100">
+                {value}
+            </p>
+            {hint ? <p className="mt-1 text-xs text-light-muted dark:text-gray-400">{hint}</p> : null}
         </div>
     );
 }

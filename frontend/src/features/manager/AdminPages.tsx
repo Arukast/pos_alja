@@ -5,16 +5,20 @@ import { api } from '../../api/queries';
 import type { Attribute, AttributeType, Category, Machine, Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody } from '../../components/ui/Card';
+import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Select } from '../../components/ui/Select';
+import { Spinner } from '../../components/ui/Spinner';
+import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, attributeTypeLabel, roleLabel } from '../../lib/labels';
+import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 
 export function ManagerUsersPage() {
@@ -24,6 +28,7 @@ export function ManagerUsersPage() {
         { key: 'username', label: 'Nama Pengguna', required: true },
         { key: 'email', label: 'Email', type: 'email' },
         { key: 'password', label: 'Kata Sandi', type: 'password', hideOnEdit: true },
+        { key: 'password_confirmation', label: 'Konfirmasi Kata Sandi', type: 'password', hideOnEdit: true },
         {
             key: 'role',
             label: 'Peran',
@@ -63,8 +68,38 @@ export function ManagerUsersPage() {
     );
 }
 
+function materialStatus(material: Material): { label: string; tone: 'success' | 'warning' } | null {
+    if (material.current_stock === null || material.min_stock === null) {
+        return null;
+    }
+
+    const current = Number(material.current_stock);
+    const minimum = Number(material.min_stock);
+
+    if (!Number.isFinite(current) || !Number.isFinite(minimum)) {
+        return null;
+    }
+
+    return current < minimum
+        ? { label: 'Menipis', tone: 'warning' }
+        : { label: 'Tersedia', tone: 'success' };
+}
+
 export function ManagerMaterialsPage() {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const materialCount = useQuery({
+        queryKey: ['manager', 'materials', 'count'],
+        queryFn: () => api.materials({ page: 1, per_page: 1 }),
+    });
+    const machineCount = useQuery({
+        queryKey: ['manager', 'machines', 'count'],
+        queryFn: () => api.machines({ page: 1, per_page: 1 }),
+    });
+    const ledgers = useQuery({
+        queryKey: ['manager', 'materials', 'ledgers'],
+        queryFn: () => api.stockLedgers({ page: 1 }),
+    });
+
     const options = (categories.data?.data ?? []).map((category) => ({
         value: category.id,
         label: category.name,
@@ -81,24 +116,127 @@ export function ManagerMaterialsPage() {
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
 
+    const ledgerRows = ledgers.data?.data ?? [];
+
     return (
         <CrudPage
-            eyebrow="Inventaris"
+            eyebrow="Manajer Cabang"
             title="Bahan & Stok"
             description="Tingkat stok cabang, penambahan stok, dan aktivasi."
             queryKey={['manager', 'materials']}
             queryFn={(page) => api.materials({ page })}
+            summary={
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <StatCard
+                        label="Bahan Aktif"
+                        value={materialCount.isSuccess ? String(materialCount.data.meta.total) : '—'}
+                    />
+                    <StatCard
+                        label="Kategori"
+                        value={categories.isSuccess ? String(categories.data.data.length) : '—'}
+                    />
+                    <StatCard
+                        label="Mesin Aktif"
+                        value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
+                    />
+                </div>
+            }
             columns={[
-                { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
-                { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
-                { header: 'Stok', cell: (material) => material.current_stock ?? '-' },
-                { header: 'Minimum', cell: (material) => material.min_stock ?? '-' },
-                { header: 'Biaya', cell: (material) => formatMoney(material.cost) },
+                {
+                    header: 'Bahan',
+                    cell: (material) => (
+                        <div>
+                            <span className="font-medium">{material.name}</span>
+                            {material.type || material.dimensions ? (
+                                <p className="text-light-muted text-xs dark:text-gray-400">
+                                    {[material.type, material.dimensions].filter(Boolean).join(' · ')}
+                                </p>
+                            ) : null}
+                        </div>
+                    ),
+                },
+                { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
+                {
+                    header: 'Stok',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    cell: (material) => material.current_stock ?? '-',
+                },
+                {
+                    header: 'Minimum',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    cell: (material) => material.min_stock ?? '-',
+                },
+                {
+                    header: 'Biaya',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    cell: (material) => formatMoney(material.cost),
+                },
+                {
+                    header: 'Status',
+                    cell: (material) => {
+                        const status = materialStatus(material);
+
+                        return status ? <Badge tone={status.tone}>{status.label}</Badge> : '-';
+                    },
+                },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
             rowActions={(material) => <RestockMaterialButton material={material} />}
             createLabel="Tambah bahan"
+            footer={
+                <Card>
+                    <CardHeader>
+                        <h2 className="font-semibold">Pergerakan stok terbaru</h2>
+                    </CardHeader>
+                    <CardBody>
+                        {ledgers.isLoading ? (
+                            <div role="status" className="flex items-center justify-center py-6">
+                                <Spinner className="text-brand-primary h-5 w-5" />
+                            </div>
+                        ) : ledgers.isError ? (
+                            <EmptyState
+                                title="Pergerakan stok gagal dimuat"
+                                description="Periksa koneksi lalu coba lagi."
+                                action={
+                                    <Button variant="secondary" onClick={() => ledgers.refetch()}>
+                                        Coba lagi
+                                    </Button>
+                                }
+                            />
+                        ) : (
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableHeaderCell>Tanggal</TableHeaderCell>
+                                        <TableHeaderCell>Bahan</TableHeaderCell>
+                                        <TableHeaderCell>Ditambahkan</TableHeaderCell>
+                                        <TableHeaderCell>Digunakan</TableHeaderCell>
+                                        <TableHeaderCell>Tersisa</TableHeaderCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {ledgerRows.length === 0 ? (
+                                        <TableEmpty colSpan={5}>
+                                            Belum ada pergerakan stok.
+                                        </TableEmpty>
+                                    ) : (
+                                        ledgerRows.map((ledger) => (
+                                            <TableRow key={ledger.id}>
+                                                <TableCell>{formatDate(ledger.logged_at)}</TableCell>
+                                                <TableCell>{ledger.material?.name ?? '-'}</TableCell>
+                                                <TableCell>{ledger.added_stock}</TableCell>
+                                                <TableCell>{ledger.used_stock}</TableCell>
+                                                <TableCell>{ledger.remaining_stock}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardBody>
+                </Card>
+            }
         />
     );
 }
@@ -112,12 +250,12 @@ export function ManagerLedgersPage() {
             queryKey={['manager', 'ledgers']}
             queryFn={(page) => api.stockLedgers({ page })}
             columns={[
-                { header: 'Tanggal', cell: (ledger) => ledger.logged_at },
+                { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
                 { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
-                { header: 'Ditambahkan', cell: (ledger) => ledger.added_stock },
-                { header: 'Digunakan', cell: (ledger) => ledger.used_stock },
-                { header: 'Sisa Bahan', cell: (ledger) => ledger.wasted_stock },
-                { header: 'Tersisa', cell: (ledger) => ledger.remaining_stock },
+                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.added_stock },
+                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.used_stock },
+                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.wasted_stock },
+                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.remaining_stock },
             ]}
         />
     );
@@ -138,7 +276,7 @@ export function ManagerMachinesPage() {
             queryFn={(page) => api.machines({ page, include_deleted: 1 })}
             columns={[
                 { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Biaya Dasar', cell: (machine) => formatMoney(machine.cost) },
+                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMachine(values)}
@@ -203,6 +341,7 @@ export function ManagerCategoriesPage() {
             }
             remove={(id) => api.admin.deleteCategory(id)}
             createLabel="Tambah kategori"
+            paginated={false}
         />
     );
 }
@@ -254,6 +393,7 @@ export function ManagerFinishingPage() {
                 update={(id, values) => api.admin.updateAttribute(id, values)}
                 remove={(id) => api.admin.deleteAttribute(id)}
                 createLabel="Tambah atribut"
+                paginated={false}
             />
 
             <CrudPage
@@ -270,6 +410,8 @@ export function ManagerFinishingPage() {
                 create={(values) => api.admin.createAttributeType(values)}
                 remove={(id) => api.admin.deleteAttributeType(id)}
                 createLabel="Tambah tipe atribut"
+                paginated={false}
+                hideBanner
             />
         </div>
     );
@@ -318,9 +460,9 @@ export function ManagerPricingPage() {
                     { header: 'Produk', cell: (pricing) => pricing.product?.name ?? '-' },
                     { header: 'Bahan', cell: (pricing) => pricing.material?.name ?? '-' },
                     { header: 'Tipe', cell: (pricing) => pricing.customer_type },
-                    { header: 'Jml min', cell: (pricing) => pricing.min_qty },
-                    { header: 'Harga', cell: (pricing) => formatMoney(pricing.price) },
-                    { header: 'Biaya', cell: (pricing) => formatMoney(pricing.cost) },
+                    { header: 'Jml min', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => pricing.min_qty },
+                    { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.price) },
+                    { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.cost) },
                 ]}
                 fields={fields}
                 create={(values) => api.admin.createPricing(values)}
@@ -356,11 +498,17 @@ function PricingClonePanel() {
     return (
         <Card>
             <CardBody className="space-y-4">
-                <PageHeader
-                    eyebrow="Konfigurasi"
-                    title="Salin tingkat harga"
-                    description="Salin setiap baris harga dari satu bahan ke bahan lain di cabang Anda."
-                />
+                <div className="space-y-1">
+                    <p className="text-light-muted text-[10px] font-semibold uppercase tracking-widest dark:text-gray-400">
+                        Konfigurasi
+                    </p>
+                    <h2 className="text-light-text text-lg font-semibold dark:text-gray-100">
+                        Salin tingkat harga
+                    </h2>
+                    <p className="text-light-muted text-sm dark:text-gray-400">
+                        Salin setiap baris harga dari satu bahan ke bahan lain di cabang Anda.
+                    </p>
+                </div>
                 <div className="flex flex-wrap items-end gap-3">
                     <Select label="Dari bahan" value={from} onChange={(event) => setFrom(event.target.value)}>
                         <option value="">Pilih</option>
@@ -400,7 +548,7 @@ export function ManagerLeaderboardPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Ringkasan"
                 title="Papan Peringkat Desainer"
                 description="Pendapatan, jumlah pesanan, dan akurasi sisa bahan bulan ini."
@@ -408,32 +556,52 @@ export function ManagerLeaderboardPage() {
             <Card>
                 <CardBody>
                     <h2 className="font-semibold">Papan Peringkat</h2>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableHeaderCell>Desainer</TableHeaderCell>
-                                <TableHeaderCell>Pesanan</TableHeaderCell>
-                                <TableHeaderCell>Pendapatan</TableHeaderCell>
-                                <TableHeaderCell>Rata-rata pesanan</TableHeaderCell>
-                                <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {(query.data?.leaders ?? []).length === 0 ? (
-                                <TableEmpty colSpan={5}>Belum ada aktivitas desainer bulan ini.</TableEmpty>
-                            ) : (
-                                (query.data?.leaders ?? []).map((leader) => (
-                                    <TableRow key={leader.id}>
-                                        <TableCell>{leader.name}</TableCell>
-                                        <TableCell>{leader.order_count}</TableCell>
-                                        <TableCell>{formatMoney(leader.revenue)}</TableCell>
-                                        <TableCell>{formatMoney(leader.average_order_value)}</TableCell>
-                                        <TableCell>{leader.waste_count}</TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                    {query.isLoading ? (
+                        <div role="status" className="flex items-center justify-center py-6">
+                            <Spinner className="text-brand-primary h-5 w-5" />
+                        </div>
+                    ) : query.isError ? (
+                        <EmptyState
+                            title="Papan peringkat gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
+                    ) : query.data ? (
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableHeaderCell>Desainer</TableHeaderCell>
+                                    <TableHeaderCell>Pesanan</TableHeaderCell>
+                                    <TableHeaderCell className="text-right whitespace-nowrap">Pendapatan</TableHeaderCell>
+                                    <TableHeaderCell className="text-right whitespace-nowrap">Rata-rata pesanan</TableHeaderCell>
+                                    <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {query.data.leaders.length === 0 ? (
+                                    <TableEmpty colSpan={5}>Belum ada aktivitas desainer bulan ini.</TableEmpty>
+                                ) : (
+                                    query.data.leaders.map((leader) => (
+                                        <TableRow key={leader.id}>
+                                            <TableCell>{leader.name}</TableCell>
+                                            <TableCell>{leader.order_count}</TableCell>
+                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                {formatMoney(leader.revenue)}
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                {formatMoney(leader.average_order_value)}
+                                            </TableCell>
+                                            <TableCell>{leader.waste_count}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    ) : null}
                 </CardBody>
             </Card>
         </div>

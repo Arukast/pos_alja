@@ -6,7 +6,7 @@ export function Card({ className, children }: { className?: string; children: Re
     return (
         <section
             className={cn(
-                'border-light-border shadow-card rounded-2xl border bg-white dark:border-surface-300 dark:bg-surface-700',
+                'rounded-2xl border border-light-border bg-light-surface shadow-card dark:border-surface-300 dark:bg-surface-700 dark:shadow-none',
                 className
             )}
         >
@@ -19,7 +19,7 @@ export function CardHeader({ className, children }: { className?: string; childr
     return (
         <header
             className={cn(
-                'border-light-border flex items-start justify-between gap-3 border-b px-4 py-3 dark:border-surface-300',
+                'flex items-start justify-between gap-3 border-b border-light-border px-5 py-4 dark:border-surface-300',
                 className
             )}
         >
@@ -29,14 +29,14 @@ export function CardHeader({ className, children }: { className?: string; childr
 }
 
 export function CardBody({ className, children }: { className?: string; children: ReactNode }) {
-    return <div className={cn('px-4 py-4', className)}>{children}</div>;
+    return <div className={cn('px-5 py-5', className)}>{children}</div>;
 }
 
 export function CardFooter({ className, children }: { className?: string; children: ReactNode }) {
     return (
         <footer
             className={cn(
-                'border-light-border border-t px-4 py-3 dark:border-surface-300',
+                'border-t border-light-border px-5 py-4 dark:border-surface-300',
                 className
             )}
         >

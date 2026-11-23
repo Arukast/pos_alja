@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';
 
@@ -7,7 +7,7 @@ export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
 const sizes: Record<ModalSize, string> = {
     sm: 'max-w-sm',
-    md: 'max-w-lg',
+    md: 'max-w-[560px]',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
 };
@@ -30,6 +30,7 @@ export function Modal({
     size?: ModalSize;
 }) {
     const dialogRef = useRef<HTMLDialogElement>(null);
+    const titleId = useId();
 
     useEffect(() => {
         const dialog = dialogRef.current;
@@ -67,22 +68,24 @@ export function Modal({
     return (
         <dialog
             ref={dialogRef}
-            aria-label={title}
+            aria-labelledby={titleId}
             onClick={(event) => {
                 if (event.target === event.currentTarget) {
                     onClose();
                 }
             }}
             className={cn(
-                'shadow-card m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl border border-light-border bg-white p-0 text-light-text backdrop:bg-black/60 dark:border-surface-300 dark:bg-surface-700 dark:text-gray-100',
+                'm-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl border border-light-border bg-light-surface p-0 text-light-text shadow-card backdrop:bg-brand-dark/55 dark:backdrop:bg-black/70 dark:border-surface-300 dark:bg-surface-700 dark:text-gray-100 dark:shadow-none',
                 sizes[size]
             )}
         >
-            <div className="border-light-border flex items-start justify-between gap-3 border-b px-4 py-3 dark:border-surface-300">
+            <div className="flex items-start justify-between gap-3 border-b border-light-border px-5 py-4 dark:border-surface-300">
                 <div>
-                    <h2 className="text-base font-semibold">{title}</h2>
+                    <h2 id={titleId} className="text-base font-semibold">
+                        {title}
+                    </h2>
                     {description ? (
-                        <p className="text-light-muted mt-0.5 text-sm dark:text-gray-400">
+                        <p className="mt-0.5 text-sm text-light-muted dark:text-gray-400">
                             {description}
                         </p>
                     ) : null}
@@ -90,15 +93,15 @@ export function Modal({
                 <button
                     type="button"
                     aria-label="Tutup dialog"
-                    className="text-light-muted rounded-lg p-1 transition hover:bg-light-surface-2 hover:text-light-text dark:text-gray-400 dark:hover:bg-surface-500 dark:hover:text-gray-100"
+                    className="rounded-lg p-1 text-light-muted transition hover:bg-light-surface-2 hover:text-light-text dark:text-gray-400 dark:hover:bg-surface-500 dark:hover:text-gray-100"
                     onClick={onClose}
                 >
                     <X className="h-4 w-4" />
                 </button>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto px-4 py-4">{children}</div>
+            <div className="max-h-[65vh] overflow-y-auto px-5 py-5">{children}</div>
             {footer ? (
-                <div className="border-light-border flex flex-wrap justify-end gap-2 border-t px-4 py-3 dark:border-surface-300">
+                <div className="flex flex-wrap justify-end gap-2 border-t border-light-border px-5 py-4 dark:border-surface-300">
                     {footer}
                 </div>
             ) : null}

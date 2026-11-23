@@ -26,11 +26,12 @@ FROM php:8.5-fpm-bookworm AS app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip libpq-dev libicu-dev libpng-dev libzip-dev \
-    && docker-php-ext-install pdo_pgsql bcmath intl gd zip pcntl opcache \
+    && docker-php-ext-install pdo_pgsql bcmath intl gd zip pcntl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
 COPY --from=vendor /app/vendor ./vendor
+COPY --from=vendor /usr/bin/composer /usr/bin/composer
 COPY . .
 RUN composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \

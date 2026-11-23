@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
+import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
 import { Select } from '../../components/ui/Select';
@@ -31,7 +33,7 @@ export function AuditPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Analitik Pemilik"
                 title="Jejak Audit"
                 description="Catatan perubahan penting pada sistem yang dapat dicari."
@@ -76,14 +78,22 @@ export function AuditPage() {
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
-                    ) : null}
-
-                    {query.data ? (
+                    ) : query.isError ? (
+                        <EmptyState
+                            title="Jejak audit gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
+                    ) : query.data ? (
                         <>
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        <TableHeaderCell>Waktu</TableHeaderCell>
+                                        <TableHeaderCell className="whitespace-nowrap">Waktu</TableHeaderCell>
                                         <TableHeaderCell>Pengguna</TableHeaderCell>
                                         <TableHeaderCell>Peran</TableHeaderCell>
                                         <TableHeaderCell>Aksi</TableHeaderCell>
@@ -96,7 +106,9 @@ export function AuditPage() {
                                     ) : (
                                         query.data.data.map((log) => (
                                             <TableRow key={log.id}>
-                                                <TableCell>{formatDate(log.created_at)}</TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {formatDate(log.created_at)}
+                                                </TableCell>
                                                 <TableCell>{log.username}</TableCell>
                                                 <TableCell>{roleLabel(log.role)}</TableCell>
                                                 <TableCell>{log.action}</TableCell>
@@ -109,6 +121,8 @@ export function AuditPage() {
                             <Pagination
                                 page={query.data.meta.current_page}
                                 lastPage={query.data.meta.last_page}
+                                total={query.data.meta.total}
+                                perPage={query.data.meta.per_page}
                                 onPageChange={setPage}
                             />
                         </>

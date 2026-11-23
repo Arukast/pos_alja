@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useAuth } from '../../auth/useAuth';
+import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -94,17 +95,16 @@ export function ProfilePage() {
 
     return (
         <div className="space-y-6">
-            <header>
-                <p className="text-brand-primary text-xs font-semibold uppercase tracking-[0.25em]">
-                    Akun
-                </p>
-                <h1 className="mt-1 text-2xl font-bold">Profil &amp; Pengaturan</h1>
-                <p className="text-light-muted mt-1 text-sm dark:text-gray-400">
-                    {canEditProfile
+            <PageBanner
+                tone="neutral"
+                eyebrow="Akun"
+                title="Profil & Pengaturan"
+                description={
+                    canEditProfile
                         ? 'Perbarui nama dan email Anda, ubah kata sandi, atau nonaktifkan akun Anda.'
-                        : 'Lihat detail akun Anda dan ubah kata sandi.'}
-                </p>
-            </header>
+                        : 'Lihat detail akun Anda dan ubah kata sandi.'
+                }
+            />
 
             {notice ? <Toast message={notice} onClose={() => setNotice('')} /> : null}
 

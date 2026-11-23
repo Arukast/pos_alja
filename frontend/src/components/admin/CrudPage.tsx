@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import type { Paginated } from '../../api/types';
-import { PageHeader } from '../PageHeader';
+import { PageBanner } from '../PageBanner';
 import { Button } from '../ui/Button';
-import { Card, CardBody } from '../ui/Card';
+import { Card, CardBody, CardHeader } from '../ui/Card';
 import { Checkbox } from '../ui/Checkbox';
+import { EmptyState } from '../ui/EmptyState';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { Pagination } from '../ui/Pagination';
@@ -40,8 +41,13 @@ export function CrudPage<T extends { id: string }>({
     create,
     update,
     remove,
+    pageResetKey,
     rowActions,
     createLabel = 'Tambah data',
+    summary,
+    footer,
+    paginated = true,
+    hideBanner = false,
 }: {
     eyebrow: string;
     title: string;
@@ -53,16 +59,29 @@ export function CrudPage<T extends { id: string }>({
     create?: (values: FormValues) => Promise<unknown>;
     update?: (id: string, values: FormValues) => Promise<unknown>;
     remove?: (id: string) => Promise<unknown>;
+    pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
     createLabel?: string;
+    summary?: ReactNode;
+    footer?: ReactNode;
+    paginated?: boolean;
+    hideBanner?: boolean;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
+    const [lastReset, setLastReset] = useState(pageResetKey);
+    if (lastReset !== pageResetKey) {
+        setLastReset(pageResetKey);
+        setPage(1);
+    }
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<T | null>(null);
     const [values, setValues] = useState<FormValues>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [notice, setNotice] = useState<string | null>(null);
+    const [notice, setNotice] = useState<{
+        message: string;
+        tone: 'success' | 'error';
+    } | null>(null);
 
     const query = useQuery({
         queryKey: [...queryKey, page],
@@ -104,11 +123,14 @@ export function CrudPage<T extends { id: string }>({
             invalidate();
             setOpen(false);
             setEditing(null);
-            setNotice(editing ? 'Data diperbarui.' : 'Data ditambahkan.');
+            setNotice({
+                message: editing ? 'Data diperbarui.' : 'Data ditambahkan.',
+                tone: 'success',
+            });
         },
         onError: (error) => {
             setErrors(mapApiErrors(error));
-            setNotice(errorMessage(error));
+            setNotice({ message: errorMessage(error), tone: 'error' });
         },
     });
 
@@ -122,9 +144,9 @@ export function CrudPage<T extends { id: string }>({
         },
         onSuccess: () => {
             invalidate();
-            setNotice('Data dihapus.');
+            setNotice({ message: 'Data dihapus.', tone: 'success' });
         },
-        onError: (error) => setNotice(errorMessage(error)),
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const openCreate = () => {
@@ -143,36 +165,65 @@ export function CrudPage<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            <PageHeader
-                eyebrow={eyebrow}
-                title={title}
-                description={description}
-                actions={
-                    create ? (
-                        <Button size="sm" onClick={openCreate}>
-                            {createLabel}
-                        </Button>
-                    ) : null
-                }
-            />
+            {hideBanner ? null : (
+                <PageBanner
+                    eyebrow={eyebrow}
+                    title={title}
+                    description={description}
+                    actions={
+                        create ? (
+                            <Button size="sm" onClick={openCreate}>
+                                {createLabel}
+                            </Button>
+                        ) : null
+                    }
+                />
+            )}
+
+            {summary}
 
             <Card>
+                {hideBanner ? (
+                    <CardHeader>
+                        <div className="space-y-1">
+                            <h2 className="text-light-text text-base font-bold dark:text-gray-100">{title}</h2>
+                            {description ? (
+                                <p className="text-light-muted-strong text-sm dark:text-gray-400">{description}</p>
+                            ) : null}
+                        </div>
+                        {create ? (
+                            <Button size="sm" onClick={openCreate}>
+                                {createLabel}
+                            </Button>
+                        ) : null}
+                    </CardHeader>
+                ) : null}
                 <CardBody>
                     {query.isLoading ? (
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
+                    ) : query.isError ? (
+                        <EmptyState
+                            title="Data gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
                     ) : (
                         <>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         {columns.map((column) => (
-                                            <TableHeaderCell key={column.header}>
+                                            <TableHeaderCell key={column.header} className={column.className}>
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
-                                        <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
                                     </TableRow>
@@ -186,11 +237,11 @@ export function CrudPage<T extends { id: string }>({
                                         (query.data?.data ?? []).map((row) => (
                                             <TableRow key={row.id}>
                                                 {columns.map((column) => (
-                                                    <TableCell key={column.header}>
+                                                    <TableCell key={column.header} className={column.className}>
                                                         {column.cell(row)}
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="bg-white border-light-border sticky right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                                <TableCell className="border-light-border lg:sticky lg:right-0 border-l bg-light-surface dark:border-surface-300 dark:bg-surface-700">
                                                     <div className="flex flex-wrap gap-2">
                                                         {rowActions?.(row)}
                                                         {update ? (
@@ -227,16 +278,22 @@ export function CrudPage<T extends { id: string }>({
                                 </TableBody>
                             </Table>
                             <div className="mt-4">
-                                <Pagination
-                                    page={query.data?.meta.current_page ?? 1}
-                                    lastPage={query.data?.meta.last_page ?? 1}
-                                    onPageChange={setPage}
-                                />
+                                {paginated ? (
+                                    <Pagination
+                                        page={query.data?.meta.current_page ?? 1}
+                                        lastPage={query.data?.meta.last_page ?? 1}
+                                        total={query.data?.meta.total}
+                                        perPage={query.data?.meta.per_page}
+                                        onPageChange={setPage}
+                                    />
+                                ) : null}
                             </div>
                         </>
                     )}
                 </CardBody>
             </Card>
+
+            {footer}
 
             <Modal
                 open={open}
@@ -324,7 +381,9 @@ export function CrudPage<T extends { id: string }>({
                 </div>
             </Modal>
 
-            {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
         </div>
     );
 }

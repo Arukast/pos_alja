@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import { api } from '../../api/queries';
 import { InvoiceStatusBadge } from '../../components/StatusBadge';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
+import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -12,6 +14,7 @@ import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 
 export function DesignerDashboardPage() {
+    const navigate = useNavigate();
     const query = useQuery({
         queryKey: ['dashboard', 'designer'],
         queryFn: () => api.dashboard(),
@@ -20,17 +23,12 @@ export function DesignerDashboardPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Desainer"
                 title="Dasbor Desainer"
                 description="Pesanan masuk hari ini, beban draf, dan invoice terbaru."
                 actions={
-                    <Link
-                        to="/designer/new-order"
-                        className="bg-brand-primary hover:bg-brand-primary-hover rounded-lg px-4 py-2 text-sm font-semibold text-white"
-                    >
-                        Pesanan Baru
-                    </Link>
+                    <Button onClick={() => navigate('/designer/new-order')}>Pesanan Baru</Button>
                 }
             />
 
@@ -38,6 +36,18 @@ export function DesignerDashboardPage() {
                 <div className="flex justify-center py-16">
                     <Spinner className="text-brand-primary h-6 w-6" />
                 </div>
+            ) : null}
+
+            {query.isError ? (
+                <EmptyState
+                    title="Dasbor gagal dimuat"
+                    description="Periksa koneksi lalu coba lagi."
+                    action={
+                        <Button variant="secondary" onClick={() => query.refetch()}>
+                            Coba lagi
+                        </Button>
+                    }
+                />
             ) : null}
 
             {data ? (
@@ -86,7 +96,7 @@ export function DesignerDashboardPage() {
                                                         ? formatDate(invoice.deadline)
                                                         : '-'}
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(invoice.grand_total)}
                                                 </TableCell>
                                             </TableRow>
