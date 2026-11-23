@@ -85,10 +85,10 @@ final class CatalogQueries
                 $filters['search'] ?? null,
                 fn (Builder $query, string $search) => $query->where(
                     function (Builder $nested) use ($search): void {
-                        $nested->where('name', 'like', "%{$search}%")
+                        $nested->whereLike('name', "%{$search}%", false)
                             ->orWhereHas(
                                 'category',
-                                fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', "%{$search}%")
+                                fn (Builder $categoryQuery) => $categoryQuery->whereLike('name', "%{$search}%", false)
                             );
                     }
                 )

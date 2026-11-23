@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/queries';
 import type { Branch, Category, Machine, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { ProductsPage } from '../catalog/ProductsPage';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
@@ -292,4 +293,8 @@ export function OwnerMachinesPage() {
             createLabel="Tambah mesin"
         />
     );
+}
+
+export function OwnerProductsPage() {
+    return <ProductsPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }

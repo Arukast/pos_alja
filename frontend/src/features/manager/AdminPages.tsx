@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { ProductsPage } from '../catalog/ProductsPage';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -417,8 +418,15 @@ export function ManagerFinishingPage() {
     );
 }
 
+export function ManagerProductsPage() {
+    return <ProductsPage eyebrow="Konfigurasi" queryKeyPrefix="manager" />;
+}
+
 export function ManagerPricingPage() {
-    const products = useQuery({ queryKey: ['products', 'options'], queryFn: () => api.products() });
+    const products = useQuery({
+        queryKey: ['products', 'options'],
+        queryFn: () => api.products({ is_active: 1 }),
+    });
     const materials = useQuery({ queryKey: ['materials', 'options'], queryFn: () => api.materials() });
 
     const productOptions = (products.data?.data ?? []).map((product) => ({

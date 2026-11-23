@@ -74,6 +74,8 @@ export interface Product {
     id: string;
     name: string;
     pricing_type: string;
+    is_active: boolean;
+    deleted_at?: string | null;
     category: { id: string; name: string; calculation_archetype: string } | null;
 }
 
