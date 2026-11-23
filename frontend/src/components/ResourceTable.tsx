@@ -3,7 +3,9 @@ import { useState, type ReactNode } from 'react';
 
 import type { Paginated } from '../api/types';
 import { PageBanner } from './PageBanner';
+import { Button } from './ui/Button';
 import { Card, CardBody } from './ui/Card';
+import { EmptyState } from './ui/EmptyState';
 import { Pagination } from './ui/Pagination';
 import { Spinner } from './ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from './ui/Table';
@@ -52,9 +54,15 @@ export function ResourceTable<T extends { id: string }>({
                     ) : null}
 
                     {query.isError ? (
-                        <p role="alert" className="py-6 text-sm text-red-600 dark:text-red-300">
-                            Gagal memuat halaman ini.
-                        </p>
+                        <EmptyState
+                            title="Data gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => query.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
+                        />
                     ) : null}
 
                     {query.data ? (

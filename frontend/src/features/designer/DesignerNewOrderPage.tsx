@@ -8,8 +8,10 @@ import type { Customer } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { Toast } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
@@ -223,128 +225,146 @@ export function DesignerNewOrderPage() {
                             <h2 className="font-semibold">Item</h2>
                         </CardHeader>
                         <CardBody className="space-y-4">
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <Select
-                                    label="Produk"
-                                    value={item.product_id}
-                                    onChange={(event) =>
-                                        setItem({ ...item, product_id: event.target.value })
-                                    }
-                                >
-                                    <option value="">Pilih produk</option>
-                                    {(options?.products ?? []).map((product) => (
-                                        <option key={product.id} value={product.id}>
-                                            {product.name}
-                                        </option>
-                                    ))}
-                                </Select>
-                                <Select
-                                    label="Bahan"
-                                    value={item.material_id}
-                                    onChange={(event) =>
-                                        setItem({ ...item, material_id: event.target.value })
-                                    }
-                                >
-                                    <option value="">Pilih bahan</option>
-                                    {(options?.materials ?? []).map((material) => (
-                                        <option key={material.id} value={material.id}>
-                                            {material.name}
-                                        </option>
-                                    ))}
-                                </Select>
-                                <Select
-                                    label="Mesin"
-                                    value={item.machine_id}
-                                    onChange={(event) =>
-                                        setItem({ ...item, machine_id: event.target.value })
-                                    }
-                                >
-                                    <option value="">Tanpa mesin</option>
-                                    {(options?.machines ?? []).map((machine) => (
-                                        <option key={machine.id} value={machine.id}>
-                                            {machine.name}
-                                        </option>
-                                    ))}
-                                </Select>
-                                <Input
-                                    label="Jml"
-                                    type="number"
-                                    min="1"
-                                    value={item.quantity}
-                                    onChange={(event) =>
-                                        setItem({ ...item, quantity: Number(event.target.value) })
-                                    }
-                                />
-                                <Input
-                                    label="Lebar (m)"
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    value={item.width}
-                                    onChange={(event) =>
-                                        setItem({ ...item, width: Number(event.target.value) })
-                                    }
-                                />
-                                <Input
-                                    label="Panjang (m)"
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    value={item.length}
-                                    onChange={(event) =>
-                                        setItem({ ...item, length: Number(event.target.value) })
-                                    }
-                                />
-                                <Input
-                                    label="Nama file"
-                                    value={item.file_name}
-                                    onChange={(event) =>
-                                        setItem({ ...item, file_name: event.target.value })
-                                    }
-                                />
-                                <Input
-                                    label="Catatan"
-                                    value={item.notes}
-                                    onChange={(event) =>
-                                        setItem({ ...item, notes: event.target.value })
-                                    }
-                                />
-                            </div>
-
-                            <div className="rounded-xl border border-light-border bg-light-surface-2/60 px-4 py-3 dark:border-surface-300 dark:bg-surface-600/40">
-                                <div className="flex flex-wrap items-center justify-between gap-4">
-                                    <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-                                        <div>
-                                            <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
-                                                Subtotal
-                                            </dt>
-                                            <dd className="text-light-text text-lg font-extrabold tabular-nums dark:text-gray-100">
-                                                {quote ? formatMoney(quote.subtotal) : '-'}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
-                                                Area
-                                            </dt>
-                                            <dd className="text-light-muted-strong text-sm font-semibold tabular-nums dark:text-gray-300">
-                                                {quote ? `${quote.area} m²` : '-'}
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <Button
-                                            variant="secondary"
-                                            loading={calculate.isPending}
-                                            onClick={() => calculate.mutate()}
-                                        >
-                                            Hitung penawaran
-                                        </Button>
-                                        <Button onClick={addLine} disabled={!quote}>
-                                            Tambah ke keranjang
-                                        </Button>
-                                    </div>
+                            {optionsQuery.isLoading ? (
+                                <div role="status" className="flex justify-center py-10">
+                                    <Spinner className="text-brand-primary h-6 w-6" />
                                 </div>
-                            </div>
+                            ) : optionsQuery.isError ? (
+                                <EmptyState
+                                    title="Pilihan produk gagal dimuat"
+                                    description="Periksa koneksi lalu coba lagi."
+                                    action={
+                                        <Button variant="secondary" onClick={() => optionsQuery.refetch()}>
+                                            Coba lagi
+                                        </Button>
+                                    }
+                                />
+                            ) : (
+                                <>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <Select
+                                            label="Produk"
+                                            value={item.product_id}
+                                            onChange={(event) =>
+                                                setItem({ ...item, product_id: event.target.value })
+                                            }
+                                        >
+                                            <option value="">Pilih produk</option>
+                                            {(options?.products ?? []).map((product) => (
+                                                <option key={product.id} value={product.id}>
+                                                    {product.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                        <Select
+                                            label="Bahan"
+                                            value={item.material_id}
+                                            onChange={(event) =>
+                                                setItem({ ...item, material_id: event.target.value })
+                                            }
+                                        >
+                                            <option value="">Pilih bahan</option>
+                                            {(options?.materials ?? []).map((material) => (
+                                                <option key={material.id} value={material.id}>
+                                                    {material.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                        <Select
+                                            label="Mesin"
+                                            value={item.machine_id}
+                                            onChange={(event) =>
+                                                setItem({ ...item, machine_id: event.target.value })
+                                            }
+                                        >
+                                            <option value="">Tanpa mesin</option>
+                                            {(options?.machines ?? []).map((machine) => (
+                                                <option key={machine.id} value={machine.id}>
+                                                    {machine.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                        <Input
+                                            label="Jml"
+                                            type="number"
+                                            min="1"
+                                            value={item.quantity}
+                                            onChange={(event) =>
+                                                setItem({ ...item, quantity: Number(event.target.value) })
+                                            }
+                                        />
+                                        <Input
+                                            label="Lebar (m)"
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            value={item.width}
+                                            onChange={(event) =>
+                                                setItem({ ...item, width: Number(event.target.value) })
+                                            }
+                                        />
+                                        <Input
+                                            label="Panjang (m)"
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            value={item.length}
+                                            onChange={(event) =>
+                                                setItem({ ...item, length: Number(event.target.value) })
+                                            }
+                                        />
+                                        <Input
+                                            label="Nama file"
+                                            value={item.file_name}
+                                            onChange={(event) =>
+                                                setItem({ ...item, file_name: event.target.value })
+                                            }
+                                        />
+                                        <Input
+                                            label="Catatan"
+                                            value={item.notes}
+                                            onChange={(event) =>
+                                                setItem({ ...item, notes: event.target.value })
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="rounded-xl border border-light-border bg-light-surface-2/60 px-4 py-3 dark:border-surface-300 dark:bg-surface-600/40">
+                                        <div className="flex flex-wrap items-center justify-between gap-4">
+                                            <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+                                                <div>
+                                                    <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                                        Subtotal
+                                                    </dt>
+                                                    <dd className="text-light-text text-lg font-extrabold tabular-nums dark:text-gray-100">
+                                                        {quote ? formatMoney(quote.subtotal) : '-'}
+                                                    </dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                                        Area
+                                                    </dt>
+                                                    <dd className="text-light-muted-strong text-sm font-semibold tabular-nums dark:text-gray-300">
+                                                        {quote ? `${quote.area} m²` : '-'}
+                                                    </dd>
+                                                </div>
+                                            </dl>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Button
+                                                    variant="secondary"
+                                                    loading={calculate.isPending}
+                                                    onClick={() => calculate.mutate()}
+                                                >
+                                                    Hitung penawaran
+                                                </Button>
+                                                <Button onClick={addLine} disabled={!quote}>
+                                                    Tambah ke keranjang
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </CardBody>
                     </Card>
                 </div>
