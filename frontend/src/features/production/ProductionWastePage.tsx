@@ -10,8 +10,10 @@ import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
+import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { Toast } from '../../components/ui/Toast';
+import { apiFetch } from '../../lib/api';
 import { formatDate } from '../../lib/dates';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 
@@ -31,6 +33,10 @@ export function ProductionWastePage() {
 
     const optionsQuery = useQuery({ queryKey: ['waste', 'options'], queryFn: api.wasteOptions });
     const listQuery = useQuery({ queryKey: ['waste', 'list', page], queryFn: () => api.waste({ page }) });
+    const summary = useQuery({
+        queryKey: ['production', 'summary'],
+        queryFn: () => apiFetch<{ waste_today: number }>('/production/summary'),
+    });
 
     const create = useMutation({
         mutationFn: () =>
@@ -64,6 +70,29 @@ export function ProductionWastePage() {
                 title="Catat Sisa Bahan"
                 description="Catat cetakan gagal dan kurangi stok bahan."
             />
+
+            <div className="grid gap-4 sm:max-w-xs">
+                {summary.isLoading ? (
+                    <div className="flex justify-center py-10">
+                        <Spinner className="text-brand-primary h-6 w-6" />
+                    </div>
+                ) : summary.isError ? (
+                    <EmptyState
+                        title="Ringkasan sisa bahan gagal dimuat"
+                        description="Periksa koneksi lalu coba lagi."
+                        action={
+                            <Button variant="secondary" onClick={() => summary.refetch()}>
+                                Coba lagi
+                            </Button>
+                        }
+                    />
+                ) : (
+                    <StatCard
+                        label="Sisa Bahan Hari Ini"
+                        value={summary.data ? String(summary.data.waste_today) : '—'}
+                    />
+                )}
+            </div>
 
             <Card>
                 <CardHeader>

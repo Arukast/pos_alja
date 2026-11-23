@@ -117,6 +117,8 @@ export function ProductionQueuePage() {
                                         <TableHeaderCell className="hidden sm:table-cell">Pelanggan</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Item</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Jml</TableHeaderCell>
+                                        <TableHeaderCell className="hidden lg:table-cell">Area</TableHeaderCell>
+                                        <TableHeaderCell className="hidden lg:table-cell">Operator</TableHeaderCell>
                                         <TableHeaderCell className="hidden xl:table-cell">Diterima</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Tenggat</TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
@@ -127,7 +129,7 @@ export function ProductionQueuePage() {
                                 </TableHead>
                                 <TableBody>
                                     {(query.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={8}>Belum ada pekerjaan dalam antrean.</TableEmpty>
+                                        <TableEmpty colSpan={10}>Belum ada pekerjaan dalam antrean.</TableEmpty>
                                     ) : (
                                         (query.data?.data ?? []).map((order) => (
                                             <TableRow key={order.id}>
@@ -142,6 +144,12 @@ export function ProductionQueuePage() {
                                                 </TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {order.quantity}
+                                                </TableCell>
+                                                <TableCell className="hidden tabular-nums whitespace-nowrap lg:table-cell">
+                                                    {Number(order.area) > 0 ? `${Number(order.area)} m²` : '-'}
+                                                </TableCell>
+                                                <TableCell className="hidden lg:table-cell">
+                                                    {order.operator?.name ?? '-'}
                                                 </TableCell>
                                                 <TableCell className="hidden xl:table-cell">
                                                     {formatDate(order.ordered_at)}
