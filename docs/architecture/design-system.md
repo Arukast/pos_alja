@@ -33,9 +33,10 @@ Outfit only, with tabular numerals for money and counts.
 
 - Page title: 28px/800 with tight tracking (`PageBanner`).
 - KPI value: 22px/800 (`StatCard`).
-- Panel heading: caller-owned. `Card` renders no title; where a panel heading exists it is 16px at
-  `font-semibold` (600), and the `CrudPage` section header uses 16px/700. The 16px/700 rule in the design
-  source is a convention for section headers, not something the component enforces.
+- Panel heading: caller-owned. `Card` renders no title, so each caller sets the heading size. The nominal size
+  is 16px at `font-semibold` (600), and the `CrudPage` section header uses 16px/700. Callers may deviate: the
+  price-copy panel on the manager pricing page uses 18px (`text-lg`). The 16px/700 rule in the design source
+  is a convention for section headers, not something a component enforces.
 - Body copy: 14px (`text-sm`) on cards, forms, tables, and descriptions. The base element has no global
   14px rule.
 - Table text: 14px (`text-sm`). The design source said 13px; the build uses 14px for readability.
@@ -86,8 +87,10 @@ width 1600px.
   16px header/footer padding. Headings are caller-owned and follow the Panel heading rule above.
 - Table: 10px uppercase muted headers, 1px row dividers, no zebra, 14px cells. Read-only rows are about 36px.
   Rows that contain an action render about 48px because `Button size="sm"` is 32px tall plus 8px vertical
-  cell padding. Numbers are right-aligned and tabular. The action column is sticky on the right only at
-  `lg:` and above.
+  cell padding. Numeric columns are right-aligned and tabular, with two exceptions: the production dashboard
+  queue table renders `Jml` left-aligned, and the manager materials movements panel (`Pergerakan stok
+  terbaru`) renders its stock counts left-aligned. The action column is sticky on the right only at `lg:` and
+  above.
 - Pagination: Indonesian copy. `Menampilkan X–Y dari Z` when a total is known, `Menampilkan X dari Z` when
   the window is a single row, and `Halaman X dari Y` for lists whose total cannot be stated honestly
   (client-side filtered lists that only know the current page). Buttons are `Sebelumnya` and `Berikutnya`.
@@ -99,8 +102,9 @@ width 1600px.
   secondary action.
 - Chart (`Sparkline`): one magenta area series, 3px line, area gradient from 28% to transparent, three
   quarter gridlines plus a dashed zero baseline, and 3.5px point markers.
-- Login: light grey canvas with a 4rem grid mesh, centred 448px, CMYK squares, white card with the brand
-  stripe.
+- Login: light grey canvas (`login-mesh`) with a 4rem grid mesh, a centred 448px (`max-w-md`) white card with
+  the 3px brand stripe, the `LogoMark` beside the wordmark, and one primary button. This screen has no CMYK
+  squares.
 - `LogoMark`: rounded square on a 32px grid, magenta fill, white A with a yellow crossbar and dot.
 
 ### Banner deviations
@@ -129,7 +133,10 @@ The design source is light-only. Dark mode is a required variant of the same sys
 - `PrintHeader` renders four CMYK squares and the wordmark with `print-color-exact`, so the marks survive the
   browser's print colour handling.
 - Ticket: A4 sheet, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The ticket
-  contains no price, cost, profit, discount, receivable, or payment field.
+  contains no price, cost, profit, discount, receivable, or payment field. Its production checklist is a
+  three-stage summary derived from `orders[].status`: `Antrean` (0), `Diproses` (1), `Selesai` (2), each with
+  an item count. It replaced the design source's static four-item list because the order data encodes only
+  three stages; a fourth row could not be stated honestly.
 - Receipt: 80mm wide, `@page size: 80mm auto`.
 - Paper is always white, including print output where the dark backdrop is dropped. The on-screen backdrop is
   `brand-dark`; `@media print` forces it white.
@@ -141,10 +148,16 @@ The design source is light-only. Dark mode is a required variant of the same sys
 - Compose screens only from data the API returns. Never invent telemetry, and never render a number that
   does not reconcile.
 - Loading and error states are distinct from an empty result. A failed request must never render as
-  "Belum ada ..." with a zero, especially on money or performance pages. Use the panel's spinner for loading
-  and an `EmptyState` with `Coba lagi` for failure, then the empty copy only for a successful empty response.
+  "Belum ada ..." with a zero, especially on money or performance pages. The default is the panel's spinner for
+  loading, an `EmptyState` with a `Coba lagi` retry for a failed query, and the empty copy only for a successful
+  empty response. Most panels follow it, including the paginated list shell `ResourceTable` and the designer
+  order form's `/quotes/options` selectors, which now use the same `EmptyState` + `Coba lagi`. Failures inside
+  a control stay inline instead: login and form submit errors render a red alert or field-level text because
+  there is no panel to replace.
 - Production screens never show price, cost, profit, discount, receivable, or payment fields. The ticket is
   visible to every role; the receipt is denied to production.
+- The production queue table shows `Area` (m²) and `Operator`; the waste page shows a `Sisa Bahan Hari Ini`
+  KPI from `/production/summary`. Both are quantities, never money.
 - Money is transported as decimal strings with two places and displayed through `formatMoney`; the SPA never
   submits authoritative line prices.
 
@@ -154,6 +167,10 @@ These elements appeared in the Stitch screens but were not built, because the AP
 needed to state them honestly:
 
 - Receivables aggregate on the owner dashboard.
+- Manager dashboard production-queue and low-stock panels: the dashboard payload already carries three panels,
+  and adding two more needs extra queries plus a policy check on the dashboard path.
+- Waste page low-stock panel: no non-page-scoped source exists, and A3 forbids deriving low stock from
+  page-scoped rows.
 - Per-branch comparison rows.
 - Order-to-machine link.
 - Order priority.

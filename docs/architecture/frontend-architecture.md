@@ -33,7 +33,7 @@
 | `/production` | production | Production dashboard |
 | `/production/queue` | production | Start/complete jobs |
 | `/production/waste` | production | Waste entry and ledger |
-| `/orders/:id/ticket` | authenticated | Work-order print view |
+| `/orders/:id/ticket` | authenticated | Work-order print view and three-stage production checklist |
 | `/orders/:id/receipt` | owner, manager, cashier, designer | 80 mm receipt |
 | `/dashboard?tab=...` | authenticated | Legacy redirect to role routes |
 
@@ -80,6 +80,11 @@ src/
 - Tables scroll horizontally on small screens. Action columns stick to the right only at `lg:` and above.
 - Pagination copy is Indonesian: `Menampilkan X–Y dari Z` when a total is known, with `Halaman X dari Y` for
   lists whose total cannot be stated honestly.
+- A failed query renders an `EmptyState` with a `Coba lagi` retry that refetches; `ResourceTable` and the
+  designer order form's `/quotes/options` selectors follow it. A successful empty result uses the empty copy,
+  and errors inside a control stay inline. The states are never merged.
+- `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above; `/production/waste` shows a
+  `Sisa Bahan Hari Ini` KPI from `/production/summary`, a quantity and never money.
 - Print views have dedicated `@media print` CSS: A4 ticket at `min-h-[297mm] print:min-h-0`, 80 mm receipt,
   `PrintHeader` with CMYK marks, white paper.
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
