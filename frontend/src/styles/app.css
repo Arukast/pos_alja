@@ -19,6 +19,15 @@
     --color-brand-accent-hover: #e6da00;
     --color-brand-dark: #1a1a2e;
 
+    /* Brand fills and role tints */
+    --color-brand-fill: #d01a7e;
+    --color-brand-fill-hover: #b0185f;
+    --color-tint-owner: #fff0f3;
+    --color-tint-ops: #e6f7fd;
+    --color-tint-designer: #f0fdfa;
+    --color-tint-ops-ink: #00658d;
+    --color-tint-designer-ink: #0f766e;
+
     /* Light surfaces */
     --color-light-bg: #f8f9fa;
     --color-light-surface: #ffffff;
@@ -26,6 +35,7 @@
     --color-light-border: #e5e7eb;
     --color-light-text: #111827;
     --color-light-muted: #6b7280;
+    --color-light-muted-strong: #4b5563;
 
     /* Dark surfaces */
     --color-surface-900: #0a0a16;
@@ -42,7 +52,7 @@
     --shadow-glow-primary: 0 0 20px -5px rgb(233 30 140 / 0.35);
     --shadow-glow-secondary: 0 0 20px -5px rgb(0 174 239 / 0.35);
     --shadow-glow-accent: 0 0 20px -5px rgb(255 242 0 / 0.25);
-    --shadow-card: 0 4px 24px -4px rgb(0 0 0 / 0.3);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --shadow-card-hover: 0 8px 32px -4px rgb(0 0 0 / 0.4);
 
     /* Borders */
@@ -137,4 +147,42 @@
         var(--color-brand-secondary) 100%
     );
     border-radius: 2px;
+}
+
+.login-mesh {
+    background-color: var(--color-light-bg);
+    background-image:
+        linear-gradient(to bottom, rgb(26 26 46 / 0.055) 1px, transparent 1px),
+        linear-gradient(to right, rgb(26 26 46 / 0.055) 1px, transparent 1px),
+        radial-gradient(circle at 15% 10%, rgb(233 30 140 / 0.14), transparent 45%),
+        radial-gradient(circle at 90% 90%, rgb(0 174 239 / 0.14), transparent 45%);
+    background-size:
+        4rem 4rem,
+        4rem 4rem,
+        100% 100%,
+        100% 100%;
+}
+
+.dark .login-mesh {
+    background-color: var(--color-surface-900);
+    background-image:
+        linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px),
+        linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px),
+        radial-gradient(circle at 15% 10%, rgb(233 30 140 / 0.24), transparent 45%),
+        radial-gradient(circle at 90% 90%, rgb(0 174 239 / 0.22), transparent 45%);
+}
+
+.print-backdrop {
+    background-color: var(--color-brand-dark);
+}
+
+.print-color-exact {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+
+@media print {
+    .print-backdrop {
+        background: #fff !important;
+    }
 }

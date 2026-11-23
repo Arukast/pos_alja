@@ -18,7 +18,7 @@ export function Textarea({ label, error, hint, className, id, ...props }: Textar
             {label ? (
                 <label
                     htmlFor={textareaId}
-                    className="text-light-text block text-sm font-medium dark:text-gray-200"
+                    className="text-light-muted block text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400"
                 >
                     {label}
                 </label>
@@ -28,10 +28,10 @@ export function Textarea({ label, error, hint, className, id, ...props }: Textar
                 aria-invalid={error ? true : undefined}
                 aria-describedby={describedBy}
                 className={cn(
-                    'text-light-text block w-full rounded-lg border bg-white px-3 py-2 text-sm shadow-sm transition placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-surface-700 dark:text-gray-100',
+                    'text-light-text block min-h-24 w-full rounded-xl border bg-light-surface px-3 py-2.5 text-sm shadow-none transition placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-surface-700 dark:text-gray-100',
                     error
                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
-                        : 'border-light-border focus:border-brand-primary focus:ring-brand-primary/30 dark:border-surface-300',
+                        : 'border-light-muted focus:border-brand-fill focus:ring-brand-fill/40',
                     className
                 )}
                 {...props}

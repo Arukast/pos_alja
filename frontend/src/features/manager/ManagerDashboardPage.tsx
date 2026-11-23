@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
+import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
+
+const panelLink =
+    'text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none';
 
 export function ManagerDashboardPage() {
     const query = useQuery({
@@ -18,16 +24,30 @@ export function ManagerDashboardPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Manajer Cabang"
                 title="Dasbor Cabang"
                 description="Inventaris, harga, staf, dan kinerja desainer bulan ini."
             />
 
             {query.isLoading ? (
-                <div className="flex justify-center py-16">
-                    <Spinner className="text-brand-primary h-6 w-6" />
-                </div>
+                <Card>
+                    <div role="status" className="flex items-center justify-center px-5 py-16">
+                        <Spinner className="text-brand-primary h-6 w-6" />
+                    </div>
+                </Card>
+            ) : null}
+
+            {query.isError ? (
+                <EmptyState
+                    title="Dasbor gagal dimuat"
+                    description="Periksa koneksi lalu coba lagi."
+                    action={
+                        <Button variant="secondary" onClick={() => query.refetch()}>
+                            Coba lagi
+                        </Button>
+                    }
+                />
             ) : null}
 
             {data ? (
@@ -39,20 +59,23 @@ export function ManagerDashboardPage() {
                         <StatCard label="Baris Harga" value={String(data.counts.pricing)} />
                     </div>
 
-                    <div className="grid gap-6 xl:grid-cols-2">
-                        <Card>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                        <Card className="min-w-0">
                             <CardHeader>
                                 <h2 className="font-semibold">Pergerakan stok terbaru</h2>
+                                <Link to="/manager/ledgers" className={panelLink}>
+                                    Lihat buku stok
+                                </Link>
                             </CardHeader>
                             <CardBody>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableHeaderCell>Bahan</TableHeaderCell>
-                                            <TableHeaderCell>Ditambahkan</TableHeaderCell>
-                                            <TableHeaderCell>Digunakan</TableHeaderCell>
-                                            <TableHeaderCell>Tersisa</TableHeaderCell>
                                             <TableHeaderCell>Tanggal</TableHeaderCell>
+                                            <TableHeaderCell>Bahan</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Ditambahkan</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Digunakan</TableHeaderCell>
+                                            <TableHeaderCell className="text-right">Tersisa</TableHeaderCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -61,11 +84,17 @@ export function ManagerDashboardPage() {
                                         ) : (
                                             data.stock_ledgers.map((ledger) => (
                                                 <TableRow key={ledger.id}>
-                                                    <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                    <TableCell>{ledger.added_stock}</TableCell>
-                                                    <TableCell>{ledger.used_stock}</TableCell>
-                                                    <TableCell>{ledger.remaining_stock}</TableCell>
                                                     <TableCell>{formatDate(ledger.logged_at)}</TableCell>
+                                                    <TableCell>{ledger.material?.name ?? '-'}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {ledger.added_stock}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {ledger.used_stock}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {ledger.remaining_stock}
+                                                    </TableCell>
                                                 </TableRow>
                                             ))
                                         )}
@@ -74,7 +103,7 @@ export function ManagerDashboardPage() {
                             </CardBody>
                         </Card>
 
-                        <Card>
+                        <Card className="min-w-0">
                             <CardHeader>
                                 <h2 className="font-semibold">Pengeluaran terbaru</h2>
                             </CardHeader>
@@ -97,7 +126,7 @@ export function ManagerDashboardPage() {
                                                     <TableCell>{formatDate(expense.incurred_at)}</TableCell>
                                                     <TableCell>{expense.description ?? '-'}</TableCell>
                                                     <TableCell>{expense.category}</TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                         {formatMoney(expense.amount)}
                                                     </TableCell>
                                                 </TableRow>
@@ -111,17 +140,24 @@ export function ManagerDashboardPage() {
 
                     <Card>
                         <CardHeader>
-                            <h2 className="font-semibold">Papan Peringkat Desainer</h2>
+                            <h2 className="font-semibold">
+                                <Link
+                                    to="/manager/leaderboard"
+                                    className="focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                                >
+                                    Papan Peringkat Desainer
+                                </Link>
+                            </h2>
                         </CardHeader>
                         <CardBody>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Desainer</TableHeaderCell>
-                                        <TableHeaderCell>Pesanan</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Pesanan</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Pendapatan</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Rata-rata pesanan</TableHeaderCell>
-                                        <TableHeaderCell>Catatan Sisa Bahan</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Catatan Sisa Bahan</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -131,14 +167,18 @@ export function ManagerDashboardPage() {
                                         data.leaderboard.map((leader) => (
                                             <TableRow key={leader.id}>
                                                 <TableCell className="font-medium">{leader.name}</TableCell>
-                                                <TableCell>{leader.order_count}</TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right tabular-nums">
+                                                    {leader.order_count}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(leader.revenue)}
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(leader.average_order_value)}
                                                 </TableCell>
-                                                <TableCell>{leader.waste_count}</TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {leader.waste_count}
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     )}

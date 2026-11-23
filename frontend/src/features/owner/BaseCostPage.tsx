@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { ReportFilterBar, type ReportDraft } from '../../components/ReportFilterBar';
+import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -30,7 +32,7 @@ export function BaseCostPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Analitik Pemilik"
                 title="Rincian Biaya Dasar"
                 description="Rincian HPP invoice dan biaya sisa bahan."
@@ -44,9 +46,23 @@ export function BaseCostPage() {
             />
 
             {query.isLoading ? (
-                <div className="flex justify-center py-16">
-                    <Spinner className="text-brand-primary h-6 w-6" />
-                </div>
+                <Card>
+                    <div role="status" className="flex items-center justify-center px-5 py-16">
+                        <Spinner className="text-brand-primary h-6 w-6" />
+                    </div>
+                </Card>
+            ) : null}
+
+            {query.isError ? (
+                <EmptyState
+                    title="Biaya dasar gagal dimuat"
+                    description="Periksa koneksi lalu coba lagi."
+                    action={
+                        <Button variant="secondary" onClick={() => query.refetch()}>
+                            Coba lagi
+                        </Button>
+                    }
+                />
             ) : null}
 
             {query.data ? (
@@ -64,7 +80,7 @@ export function BaseCostPage() {
                     </div>
 
                     <div className="grid gap-6 xl:grid-cols-2">
-                        <Card>
+                        <Card className="min-w-0">
                             <CardHeader>
                                 <h2 className="font-semibold">Invoice HPP</h2>
                             </CardHeader>
@@ -85,7 +101,7 @@ export function BaseCostPage() {
                                                 <TableRow key={invoice.id}>
                                                     <TableCell>{invoice.invoice_number}</TableCell>
                                                     <TableCell>{invoice.customer?.name ?? '-'}</TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                         {formatMoney(invoice.total_cost ?? '0')}
                                                     </TableCell>
                                                 </TableRow>
@@ -96,7 +112,7 @@ export function BaseCostPage() {
                             </CardBody>
                         </Card>
 
-                        <Card>
+                        <Card className="min-w-0">
                             <CardHeader>
                                 <h2 className="font-semibold">Sisa Bahan</h2>
                             </CardHeader>
@@ -119,7 +135,7 @@ export function BaseCostPage() {
                                                     <TableCell>{formatDate(waste.logged_at)}</TableCell>
                                                     <TableCell>{waste.material?.name ?? '-'}</TableCell>
                                                     <TableCell>{waste.quantity}</TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                         {formatMoney(waste.wasted_cost)}
                                                     </TableCell>
                                                 </TableRow>

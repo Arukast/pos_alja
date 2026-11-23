@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { api } from '../../api/queries';
 import { InvoiceStatusBadge } from '../../components/StatusBadge';
-import { PageHeader } from '../../components/PageHeader';
+import { PageBanner } from '../../components/PageBanner';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
@@ -19,7 +19,7 @@ export function CashierDashboardPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageBanner
                 eyebrow="Kasir"
                 title="Dasbor Kasir"
                 description="Antrean pembayaran, pengambilan, dan pengeluaran harian."
