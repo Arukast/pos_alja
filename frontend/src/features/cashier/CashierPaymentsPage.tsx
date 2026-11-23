@@ -139,7 +139,7 @@ export function CashierPaymentsPage() {
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(invoice.accounts_receivable)}
                                                 </TableCell>
-                                                <TableCell className="bg-white border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                                <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <Button size="sm" onClick={() => setSelected(invoice)}>
                                                         Bayar
                                                     </Button>
@@ -213,7 +213,10 @@ export function CashierPaymentsPage() {
 
                 <Card className="min-w-0">
                     <CardHeader>
-                        <h2 className="font-semibold">Pengeluaran hari ini</h2>
+                        <div className="min-w-0">
+                            <h2 className="font-semibold">Pengeluaran hari ini</h2>
+                            <p className="text-light-muted text-xs dark:text-gray-400">10 entri terbaru</p>
+                        </div>
                         {data ? (
                             <p className="text-light-muted text-[10px] font-semibold uppercase tracking-wider tabular-nums dark:text-gray-400">
                                 Total {formatMoney(data.stats.expenses_today)}

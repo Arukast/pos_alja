@@ -86,7 +86,7 @@ export function CashierPickupPage() {
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {formatMoney(invoice.grand_total)}
                                                 </TableCell>
-                                                <TableCell className="bg-white border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                                <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
                                                     <Button
                                                         size="sm"
                                                         loading={pickup.isPending}

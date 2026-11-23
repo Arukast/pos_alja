@@ -136,7 +136,7 @@ export function ManagerMaterialsPage() {
                         value={categories.isSuccess ? String(categories.data.data.length) : '—'}
                     />
                     <StatCard
-                        label="Mesin"
+                        label="Mesin Aktif"
                         value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
                     />
                 </div>
