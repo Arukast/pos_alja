@@ -38,6 +38,7 @@ import { ProfilePage } from '../features/profile/ProfilePage';
 import { ProductionDashboardPage } from '../features/production/ProductionDashboardPage';
 import { ProductionQueuePage } from '../features/production/ProductionQueuePage';
 import { ProductionWastePage } from '../features/production/ProductionWastePage';
+import { PurchasesPage } from '../features/purchases/PurchasesPage';
 import { ReceiptPage } from '../features/print/ReceiptPage';
 import { TicketPage } from '../features/print/TicketPage';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
                             { path: 'categories', element: <OwnerCategoriesPage /> },
                             { path: 'machines', element: <OwnerMachinesPage /> },
                             { path: 'materials', element: <OwnerMaterialsPage /> },
+                            { path: 'purchases', element: <PurchasesPage /> },
                         ],
                     },
                     {
@@ -83,6 +85,7 @@ export const router = createBrowserRouter([
                         children: [
                             { index: true, element: <ManagerDashboardPage /> },
                             { path: 'materials', element: <ManagerMaterialsPage /> },
+                            { path: 'purchases', element: <PurchasesPage /> },
                             { path: 'ledgers', element: <ManagerLedgersPage /> },
                             { path: 'finishing', element: <ManagerFinishingPage /> },
                             { path: 'pricing', element: <ManagerPricingPage /> },

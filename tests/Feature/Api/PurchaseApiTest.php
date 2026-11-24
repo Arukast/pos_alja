@@ -329,6 +329,16 @@ class PurchaseApiTest extends TestCase
         ]);
     }
 
+    public function test_purchased_at_is_returned_as_its_purchase_date(): void
+    {
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/purchases', $this->payload([
+                'purchased_at' => '2026-11-24',
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('purchase.purchased_at', '2026-11-24');
+    }
+
     public function test_line_subtotals_are_rounded_then_summed(): void
     {
         $payload = $this->payload([

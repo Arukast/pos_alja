@@ -27,7 +27,7 @@ final class PurchaseResource extends JsonResource
                 'id' => $this->user->id,
                 'name' => $this->user->name,
             ] : null,
-            'purchased_at' => $this->purchased_at,
+            'purchased_at' => $this->purchased_at->toDateString(),
             'supplier' => $this->supplier,
             'total_amount' => $this->total_amount,
             'notes' => $this->notes,
