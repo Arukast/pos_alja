@@ -229,7 +229,7 @@ Sebuah task dianggap selesai jika:
 | :--- | :--- | :--- |
 | Requirement dan ruang lingkup | A | FR1–FR26, NFR1–NFR10, access matrix, root cause |
 | Arsitektur dan keamanan | A | API-first, RBAC, branch scope, audit |
-| Demo alur utama | B | Catalog, order, payment, receipt, pickup |
+| Demo alur utama | B | Catalog, order, payment, invoice, pickup |
 | UI/UX dan responsive | B | Design system, dark mode, 390/768/1440 px |
 | Inventori dan produksi | C | Stock, purchase, adjustment, production queue, waste |
 | Laporan dan ekspor | C | Dashboard, report, Excel/PDF |
