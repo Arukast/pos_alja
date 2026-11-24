@@ -1,7 +1,7 @@
 # Use Case Diagram (Target Specification)
 
 - **Scope:** Target scope. All use cases shown are required. Implementation progress is tracked in `docs/requirements/implementation-gaps.md`.
-- **Source:** `docs/requirements/fr.md` FR1–FR26, `docs/requirements/access-matrix.md`, and the capstone proposal.
+- **Source:** `docs/requirements/fr.md` FR1–FR26, `docs/requirements/access-matrix.md`, `docs/requirements/sprint-review-1.md`, and the capstone proposal.
 - **Role mapping:** Pemilik = `owner`, Branch Manager = `manager`, Kasir = `cashier`, Designer = `designer`, Produksi = `production`.
 - **Implementation:** These actors use the React SPA. Every use case maps to `/api/v1` endpoints enforced by Laravel policies; see `docs/architecture/api-contracts.md`.
 
@@ -28,9 +28,9 @@ flowchart LR
             direction TB
             UC04(["Kelola Produk"])
             UC05(["Kelola Kategori Produk"])
-            UC06(["Kelola Harga"])
+            UC06(["Kelola Harga Bahan & Finishing"])
             UC07(["Cari & Filter Produk"])
-            UC08(["Kelola Mesin"])
+            UC08(["Kelola Diskon Kategori"])
         end
 
         subgraph INV["Inventaris"]
@@ -48,6 +48,7 @@ flowchart LR
             UC15(["Perbarui Status Desain"])
             UC16(["Lihat Daftar Transaksi"])
             UC17(["Kelola Pelanggan"])
+            UC29(["Cari Pelanggan"])
         end
 
         subgraph PAY["Pembayaran & Pickup"]
@@ -55,14 +56,14 @@ flowchart LR
             UC18(["Proses Pembayaran (DP/Pelunasan)"])
             UC19(["Catat Pengeluaran Operasional"])
             UC20(["Antrean Pickup"])
-            UC21(["Cetak Nota & Tiket"])
+            UC21(["Cetak Invoice & Nota"])
         end
 
         subgraph PROD["Produksi"]
             direction TB
-            UC22(["Lihat Antrean Produksi"])
+            UC22(["Lihat & Filter Antrean Produksi"])
             UC23(["Perbarui Status Produksi"])
-            UC24(["Catat Waste"])
+            UC24(["Catat Waste dari Antrean"])
         end
 
         subgraph REP["Pelaporan"]
@@ -86,8 +87,13 @@ flowchart LR
     Owner --- UC06
     Owner --- UC07
     Owner --- UC08
+    Owner --- UC09
     Owner --- UC11
+    Owner --- UC12
     Owner --- UC16
+    Owner --- UC17
+    Owner --- UC19
+    Owner --- UC21
     Owner --- UC22
     Owner --- UC25
     Owner --- UC26
@@ -95,29 +101,26 @@ flowchart LR
     Owner --- UC28
 
     Manager --- UC01
-    Manager --- UC04
-    Manager --- UC05
-    Manager --- UC06
     Manager --- UC07
-    Manager --- UC08
+    Manager --- UC09
     Manager --- UC11
     Manager --- UC12
     Manager --- UC16
+    Manager --- UC17
+    Manager --- UC19
+    Manager --- UC21
     Manager --- UC22
     Manager --- UC25
     Manager --- UC26
     Manager --- UC27
-    Owner --- UC09
-    Manager --- UC09
 
     Cashier --- UC07
     Cashier --- UC16
-    Cashier --- UC17
     Cashier --- UC18
-    Cashier --- UC19
     Cashier --- UC20
     Cashier --- UC21
     Cashier --- UC22
+    Cashier --- UC29
 
     Designer --- UC07
     Designer --- UC13
@@ -127,11 +130,11 @@ flowchart LR
     Designer --- UC17
     Designer --- UC21
     Designer --- UC22
+    Designer --- UC29
 
     Production --- UC10
     Production --- UC11
     Production --- UC16
-    Production --- UC21
     Production --- UC22
     Production --- UC23
     Production --- UC24
@@ -140,6 +143,7 @@ flowchart LR
 
     UC18 -.->|include| UC21
     UC13 -.->|include| UC17
+    UC13 -.->|include| UC29
     UC14 -.->|extend| UC13
     UC27 -.->|extend| UC26
 
@@ -158,12 +162,15 @@ flowchart LR
 
 Notes:
 
-- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only.
-- **Designer `U`** covers order changes before production (FR9) and design-status updates (FR10).
-- **Manager `Data Stok`** is branch-scoped CRUD; global material deletion remains owner-only.
-- **Owner `Data Stok`** is CRUD through material management; the reason-required adjustment workflow (FR18) is manager-scoped unless extended to the owner.
-- **Kasir `Data Stok`:** no stock access. Purchases are Owner/Branch Manager; stock visibility is Owner/Branch Manager/Production.
+- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only. Cashier customer access is search-only (`UC29`), not customer management.
+- **Designer `U`** covers order changes before production (FR9), design-status updates (FR10), and customer create/update.
+- **Manager `Data Stok`** is branch-scoped stock management; global catalog and discount configuration are Owner-only.
+- **Owner and Manager `Data Stok`** both use the reason-required adjustment workflow (FR18).
+- **Kasir `Data Stok`:** no stock access. Purchases and adjustments are Owner/Branch Manager; stock visibility is Owner/Branch Manager/Production.
 - **Production `Data Stok`** is read plus usage/waste updates.
+- **Invoice and receipt print** are denied to Production because both contain money. Production uses the queue.
+- **Machine management** is removed; machine cost is folded into material cost.
+- **Quantity discounts** are configured per product category by the Owner, not per pricing-matrix row.
 
 ## Notes
 

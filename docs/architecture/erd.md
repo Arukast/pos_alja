@@ -2,23 +2,19 @@
 
 - **Database:** PostgreSQL in production, SQLite in the automated test suite.
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
-- **Table naming:** Eloquent default pluralization, except `pricing`, `material_branch_stock`, `attribute_pricing`, and `machine_pricing`, which use singular table names.
-- **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `machines`, and `attributes`. `pricing` has a `deleted_at` column in the migration, but the model does not use `SoftDeletes`; the column is unused.
-- **Target schema:** This diagram shows the target schema. Target additions are listed in the notes below.
-- **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; all business tables remain as documented. The API and SPA read/write the same schema.
+- **Table naming:** Eloquent default pluralization, except `material_branch_stock`, which uses a singular table name.
+- **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, and `attributes`.
+- **Target schema:** This diagram shows the target schema after Sprint Review 1. Implementation progress is tracked in `docs/requirements/implementation-gaps.md`.
+- **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; business tables follow this target.
 
 ```mermaid
 erDiagram
     BRANCHES |o--o{ USERS : "assigns staff"
     BRANCHES ||--o{ MATERIAL_BRANCH_STOCK : "holds stock"
-    BRANCHES |o--o{ MACHINES : "owns"
     BRANCHES |o--o{ ATTRIBUTES : "owns"
-    BRANCHES |o--o{ PRICING : "prices"
-    BRANCHES |o--o{ ATTRIBUTE_PRICING : "scopes"
-    BRANCHES |o--o{ MACHINE_PRICING : "scopes"
     BRANCHES |o--o{ INVOICES : "issues"
     BRANCHES ||--o{ PAYMENTS : "receives"
-    BRANCHES |o--o{ EXPENSES : "incurs"
+    BRANCHES ||--o{ EXPENSES : "incurs"
     BRANCHES |o--o{ WASTED_MATERIALS : "logs"
     BRANCHES |o--o{ STOCK_LEDGERS : "records"
     BRANCHES |o--o{ ACTIVITY_LOGS : "audits"
@@ -28,24 +24,20 @@ erDiagram
 
     PRODUCT_CATEGORIES |o--o{ PRODUCTS : "groups"
     PRODUCT_CATEGORIES ||--o{ MATERIALS : "groups"
+    PRODUCT_CATEGORIES ||--o{ PRODUCT_CATEGORY_DISCOUNTS : "discounts"
 
-    PRODUCTS ||--o{ PRICING : "priced by"
-    MATERIALS ||--o{ PRICING : "priced by"
+    PRODUCTS ||--o{ ORDERS : "ordered as"
+    MATERIALS ||--o{ ORDERS : "uses"
     MATERIALS ||--o{ MATERIAL_BRANCH_STOCK : "stocked at"
     MATERIALS ||--o{ STOCK_LEDGERS : "moves"
     MATERIALS ||--o{ WASTED_MATERIALS : "wasted"
     MATERIALS ||--o{ PURCHASE_ITEMS : "purchased as"
 
-    PRICING ||--o{ ATTRIBUTE_PRICING : "modifiers"
-    PRICING ||--o{ MACHINE_PRICING : "modifiers"
-    PRICING |o--o{ ORDERS : "quoted by"
-
-    ATTRIBUTES ||--o{ ATTRIBUTE_PRICING : "priced as"
-    MACHINES ||--o{ MACHINE_PRICING : "priced as"
-    MACHINES |o--o{ WASTED_MATERIALS : "used by"
+    ATTRIBUTES ||--o{ ORDER_ATTRIBUTES : "selected as"
 
     INVOICES ||--o{ ORDERS : "contains"
     INVOICES ||--o{ PAYMENTS : "settled by"
+    ORDERS ||--o{ ORDER_ATTRIBUTES : "has"
     ORDERS ||--o{ ORDER_STATUS_LOGS : "status history"
     ORDERS |o--o{ WASTED_MATERIALS : "optional link"
     PURCHASES ||--o{ PURCHASE_ITEMS : "contains"
@@ -59,6 +51,7 @@ erDiagram
     USERS |o--o{ PURCHASES : "actor"
     USERS |o--o{ WASTED_MATERIALS : "designer"
     USERS |o--o{ WASTED_MATERIALS : "operator"
+    USERS |o--o{ EXPENSES : "records"
     USERS |o--o{ ACTIVITY_LOGS : "actor"
 
     BRANCHES {
@@ -68,6 +61,7 @@ erDiagram
         string address
         string phone
         boolean is_active
+        decimal reseller_discount_percent
         json settings
         timestamp deleted_at
     }
@@ -92,6 +86,7 @@ erDiagram
         string phone
         text address
         string email
+        string institution
         string type
         timestamp deleted_at
     }
@@ -101,6 +96,15 @@ erDiagram
         string name
         string calculation_archetype
         json allowed_attribute_types
+    }
+
+    PRODUCT_CATEGORY_DISCOUNTS {
+        uuid id PK
+        uuid product_category_id FK
+        integer min_qty
+        decimal discount_percent
+        timestamp created_at
+        timestamp updated_at
     }
 
     PRODUCTS {
@@ -117,6 +121,7 @@ erDiagram
         uuid product_category_id FK
         string name
         string type
+        string unit
         string dimensions
         decimal cost
         decimal price
@@ -131,19 +136,14 @@ erDiagram
         decimal min_stock
     }
 
-    MACHINES {
-        uuid id PK
-        uuid branch_id FK
-        string name
-        decimal cost
-        timestamp deleted_at
-    }
-
     ATTRIBUTES {
         uuid id PK
         uuid branch_id FK
         string name
         string type
+        decimal price
+        decimal cost
+        boolean is_active
         timestamp deleted_at
     }
 
@@ -151,38 +151,6 @@ erDiagram
         uuid id PK
         string name UK
         string calculation_archetype
-    }
-
-    PRICING {
-        uuid id PK
-        uuid branch_id FK
-        uuid product_id FK
-        uuid material_id FK
-        string customer_type
-        integer min_qty
-        decimal price
-        decimal cost
-        decimal profit
-    }
-
-    ATTRIBUTE_PRICING {
-        uuid id PK
-        uuid branch_id FK
-        uuid pricing_id FK
-        uuid attribute_id FK
-        decimal price
-        decimal cost
-        decimal profit
-    }
-
-    MACHINE_PRICING {
-        uuid id PK
-        uuid branch_id FK
-        uuid pricing_id FK
-        uuid machine_id FK
-        decimal price
-        decimal cost
-        decimal profit
     }
 
     INVOICES {
@@ -210,7 +178,8 @@ erDiagram
     ORDERS {
         uuid id PK
         uuid invoice_id FK
-        uuid pricing_id FK
+        uuid product_id FK
+        uuid material_id FK
         uuid operator_id FK
         string file_name
         string file_path
@@ -219,6 +188,10 @@ erDiagram
         decimal area
         decimal quantity
         decimal unit_price
+        string customer_type
+        decimal reseller_discount_percent
+        decimal quantity_discount_percent
+        decimal discount_amount
         decimal subtotal
         decimal cost
         decimal profit
@@ -231,6 +204,15 @@ erDiagram
         integer pickup_status
         timestamp pickup_date
         boolean is_manual_price
+    }
+
+    ORDER_ATTRIBUTES {
+        uuid id PK
+        uuid order_id FK
+        uuid attribute_id FK
+        string type
+        decimal price
+        decimal cost
     }
 
     PAYMENTS {
@@ -247,10 +229,11 @@ erDiagram
     EXPENSES {
         uuid id PK
         uuid branch_id FK
+        uuid user_id FK
         timestamp incurred_at
         decimal amount
         text description
-        string cashier_name
+        string recorded_by_name
         string type
         string category
     }
@@ -260,7 +243,6 @@ erDiagram
         uuid branch_id FK
         timestamp logged_at
         uuid material_id FK
-        uuid machine_id FK
         uuid order_id FK
         uuid designer_id FK
         uuid operator_id FK
@@ -333,26 +315,37 @@ erDiagram
 
 ## Relationship Notes
 
-1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores the type name (`finishing`, `cut`, `display`, or a custom type created through the category screen), and `product_categories.allowed_attribute_types` stores an array of type names. Referential integrity is by convention, not by key.
-2. **`material_branch_stock` is the only junction with a unique `(material_id, branch_id)` constraint.** `attribute_pricing` and `machine_pricing` are also junction tables, each linking a `pricing` row to one modifier and carrying price, cost, and profit.
+1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`, and `product_categories.allowed_attribute_types` stores an array of type names. Referential integrity is by convention, not by key.
+2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
-4. **`pricing` is the matrix header.** `attribute_pricing` and `machine_pricing` are additive modifiers keyed by `pricing_id`. `orders.pricing_id` records which matrix row produced the quote. Pricing deletion is a hard delete, and `orders.pricing_id` is `nullOnDelete`, so deleting a pricing row breaks that historical link.
-5. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
-6. **`invoices.designer_id`** is the user who submitted the order.
-7. **`payments.user_id`** is the cashier; `payments.cashier_name` is a denormalized audit copy.
-8. **`expenses` has no user foreign key**, only `cashier_name` and `branch_id`.
-9. **`activity_logs.model_id` is a UUID without a foreign key**, allowing the log to reference any model type.
-10. **`branch_id` is nullable on** `users`, `machines`, `attributes`, `pricing`, `attribute_pricing`, `machine_pricing`, `invoices`, `expenses`, `wasted_materials`, `stock_ledgers`, and `activity_logs`. A null value means "global" or "unassigned", depending on the table; owner accounts are the main case for a null user branch.
-11. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table. The migration defines `pricing.deleted_at`, but the model does not use `SoftDeletes`, so pricing rows are hard deleted and the column stays null.
-12. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and pricing rows when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
-13. **Target additions.** The following columns and tables are part of the target schema:
+4. **The pricing matrix is removed.** There is no `pricing`, `attribute_pricing`, or `machine_pricing` table. The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price; the customer type is read from `customers.type`, never from the client. `branches.reseller_discount_percent` is the only source of that discount: decimal `0–100`, default `0`, editable by the Owner. The invoice branch's value applies. The category quantity discount is selected from `product_category_discounts` with the highest `min_qty <= quantity`. `orders.unit_price` is after the reseller adjustment and before the quantity discount; `orders` stores the customer type, reseller percentage, and resulting prices as a snapshot so later master-data changes do not rewrite history.
+5. **`order_attributes` stores the selected finishing and display option.** The application allows at most one row per `(order_id, type)`, and the row carries a price/cost snapshot. This preserves what was printed even if the attribute master changes.
+6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
+7. **`invoices.designer_id`** is the user who submitted the order.
+8. **`payments.user_id`** is the cashier; `payments.cashier_name` is a denormalized audit copy.
+9. **`expenses.user_id`** is the Owner or Branch Manager who recorded the expense; `recorded_by_name` is the audit copy. `expenses.category` is a fixed dropdown, not free text.
+10. **`activity_logs.model_id` is a UUID without a foreign key**, allowing the log to reference any model type.
+11. **`branch_id` is nullable on** `users`, `attributes`, `invoices`, `wasted_materials`, `stock_ledgers`, and `activity_logs`. A null value means "global" or "unassigned", depending on the table; owner accounts are the main case for a null user branch.
+12. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table.
+13. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and discount tiers when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
+14. **Target additions.** The following columns and tables are part of the target schema:
+    - `branches.reseller_discount_percent` for Reseller pricing.
     - `products.is_active` for catalog filtering.
-    - `orders.design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - `product_category_discounts` for quantity discounts.
+    - `materials.unit` for `m2`, `sheet`, and `pcs`.
+    - `attributes.price` and `attributes.cost`.
+    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - `customers.institution` and `attributes.is_active`.
+    - `order_attributes` for finishing/display snapshots.
+    - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`.
     - `purchases` and `purchase_items` for raw-material purchases. `purchases.user_id` is the actor (Owner or Branch Manager).
-14. **Order priority semantics.** Higher `priority` sorts first; the queue sorts by `deadline ASC (nulls last)`, then `priority DESC`, then `created_at ASC`. Default priority is 0.
-15. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The transition is forward-only unless a manager or owner override is added.
-16. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase or order that caused the movement.
+15. **Machine removal.** `machines`, `machine_pricing`, and `wasted_materials.machine_id` are removed from the target. Machine cost is folded into material cost. Historical orders keep price/cost snapshots.
+16. **Order priority semantics.** Higher `priority` sorts first; the queue sorts by `deadline ASC (nulls last)`, then `priority DESC`, then `created_at ASC`. Default priority is 0.
+17. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The Designer may move forward; Owner and Branch Manager may override a backward transition.
+18. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase or order that caused the movement.
+19. **Invoice print is a view, not a table.** There is no ticket table and no separate work-order document. The invoice print reads `invoices`, `orders`, and `order_attributes`.
+20. **`materials.unit` is the fixed three-value select** (`m2`, `sheet`, `pcs`). `materials.type` remains an optional descriptive label; the unit drives the area/quantity calculation.
 
 ---
 
@@ -371,16 +364,29 @@ erDiagram
 | `orders.design_status` | 0 | Pending |
 | `orders.design_status` | 1 | In design (Proses Desain) |
 | `orders.design_status` | 2 | Design approved (Disetujui) |
+| `customers.type` | `Reguler` | Regular customer; no reseller discount |
+| `customers.type` | `Reseller` | Reseller customer; branch reseller discount applies |
+| `orders.customer_type` | `Reguler` / `Reseller` | Snapshot of the customer type used for the quote |
+| `branches.reseller_discount_percent` | `0–100` | Reseller discount percentage; default `0` |
 | `payments.type` | `down_payment` | Down payment |
 | `payments.type` | `settlement` | Balance settlement |
 | `payments.type` | `partial` | Reserved by schema; not written by `PaymentService` |
 | `expenses.type` | `modal` | Capital / drawer float label |
 | `expenses.type` | `laba` | Operating expense label |
+| `expenses.category` | `Bahan Baku` | Raw-material expense |
+| `expenses.category` | `Gaji` | Payroll |
+| `expenses.category` | `Sewa` | Rent |
+| `expenses.category` | `Listrik & Air` | Utilities |
+| `expenses.category` | `Maintenance` | Equipment and building maintenance |
+| `expenses.category` | `Transport` | Delivery and transport |
+| `expenses.category` | `Marketing` | Promotion |
+| `expenses.category` | `Operasional` | General operations |
+| `expenses.category` | `Lain-lain` | Other |
 | `stock_ledgers.type` | `initial` | Initial stock registration |
 | `stock_ledgers.type` | `purchase` | Raw-material purchase |
 | `stock_ledgers.type` | `usage` | Material used by an order |
 | `stock_ledgers.type` | `waste` | Failed print / waste |
-| `stock_ledgers.type` | `adjustment` | Manager stock correction with reason |
+| `stock_ledgers.type` | `adjustment` | Owner/Manager stock correction with reason |
 | `stock_ledgers.type` | `restock` | Manual stock addition |
 
 Both expense types are summed into `expenses_total` and subtracted from `net_profit`; `type` is a label, not a filter.
@@ -394,11 +400,12 @@ Both expense types are summed into `expenses_total` and subtracted from `net_pro
 | `branches` | `code` unique |
 | `users` | `username` unique |
 | `material_branch_stock` | `(material_id, branch_id)` unique |
+| `product_category_discounts` | `(product_category_id, min_qty)` unique |
 | `invoices` | `invoice_number` unique |
 | `attribute_types` | `name` unique |
-| `pricing` | No unique constraint on `(branch_id, product_id, material_id, customer_type, min_qty)`; duplicates are possible |
+| `order_attributes` | `(order_id, type)` unique; one finishing and one display per order |
 | `purchases` / `purchase_items` | Target; no unique constraint yet. Add a purchase number or idempotency key before implementation |
-| Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.pricing_id`, `users.branch_id`, `wasted_materials.machine_id`, and `wasted_materials.order_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, and `stock_ledgers.material_id` |
+| Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.design_approved_by`, `orders.operator_id`, and `wasted_materials.order_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, `stock_ledgers.material_id`, and `orders.product_id`/`material_id` |
 
 ---
 
