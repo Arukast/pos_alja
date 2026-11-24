@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/queries';
 import type { Branch, Category, Machine, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
+import { Checkbox } from '../../components/ui/Checkbox';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
@@ -143,6 +145,7 @@ export function BranchesPage() {
 
 export function OwnerMaterialsPage() {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const [lowStock, setLowStock] = useState(false);
     const categoryOptions = (categories.data?.data ?? []).map((category) => ({
         value: category.id,
         label: category.name,
@@ -170,19 +173,51 @@ export function OwnerMaterialsPage() {
             eyebrow="Administrasi"
             title="Bahan & Stok"
             description="Bahan global, stok per cabang, dan harga."
-            queryKey={['owner', 'materials']}
-            queryFn={(page) => api.materials({ page, branch_id: 'all' })}
+            pageResetKey={lowStock}
+            queryKey={['owner', 'materials', lowStock]}
+            queryFn={(page) =>
+                api.materials({
+                    page,
+                    branch_id: 'all',
+                    low_stock: lowStock ? 1 : undefined,
+                })
+            }
+            toolbar={
+                <Card>
+                    <CardBody>
+                        <Checkbox
+                            label="Hanya stok minimum"
+                            checked={lowStock}
+                            onChange={(event) => setLowStock(event.target.checked)}
+                        />
+                    </CardBody>
+                </Card>
+            }
             columns={[
                 { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
                 { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
                     cell: (material) =>
-                        material.stocks.length === 0
-                            ? '-'
-                            : material.stocks
-                                  .map((stock) => `${stock.branch_name ?? '-'}: ${stock.current_stock}`)
-                                  .join(', '),
+                        material.stocks.length === 0 ? (
+                            '-'
+                        ) : (
+                            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                                {material.stocks.map((stock) => (
+                                    <li key={stock.branch_id}>
+                                        <span>
+                                            {stock.branch_name ?? '-'}: {stock.current_stock} /{' '}
+                                            {stock.min_stock}
+                                        </span>
+                                        {stock.is_low_stock ? (
+                                            <span className="ml-1 font-semibold text-amber-700 dark:text-amber-300">
+                                                menipis
+                                            </span>
+                                        ) : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        ),
                 },
                 { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.cost) },
                 { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.price) },
@@ -191,7 +226,12 @@ export function OwnerMaterialsPage() {
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
             remove={(id) => api.admin.deleteMaterial(id)}
-            rowActions={(material) => <RestockMaterialButton material={material} />}
+            rowActions={(material) => (
+                <>
+                    <RestockMaterialButton material={material} />
+                    <AdjustMaterialModal material={material} />
+                </>
+            )}
             createLabel="Tambah bahan"
         />
     );

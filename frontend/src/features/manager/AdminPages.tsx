@@ -7,10 +7,12 @@ import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { Checkbox } from '../../components/ui/Checkbox';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
@@ -68,25 +70,9 @@ export function ManagerUsersPage() {
     );
 }
 
-function materialStatus(material: Material): { label: string; tone: 'success' | 'warning' } | null {
-    if (material.current_stock === null || material.min_stock === null) {
-        return null;
-    }
-
-    const current = Number(material.current_stock);
-    const minimum = Number(material.min_stock);
-
-    if (!Number.isFinite(current) || !Number.isFinite(minimum)) {
-        return null;
-    }
-
-    return current < minimum
-        ? { label: 'Menipis', tone: 'warning' }
-        : { label: 'Tersedia', tone: 'success' };
-}
-
 export function ManagerMaterialsPage() {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const [lowStock, setLowStock] = useState(false);
     const materialCount = useQuery({
         queryKey: ['manager', 'materials', 'count'],
         queryFn: () => api.materials({ page: 1, per_page: 1 }),
@@ -123,8 +109,9 @@ export function ManagerMaterialsPage() {
             eyebrow="Manajer Cabang"
             title="Bahan & Stok"
             description="Tingkat stok cabang, penambahan stok, dan aktivasi."
-            queryKey={['manager', 'materials']}
-            queryFn={(page) => api.materials({ page })}
+            pageResetKey={lowStock}
+            queryKey={['manager', 'materials', lowStock]}
+            queryFn={(page) => api.materials({ page, low_stock: lowStock ? 1 : undefined })}
             summary={
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <StatCard
@@ -140,6 +127,22 @@ export function ManagerMaterialsPage() {
                         value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
                     />
                 </div>
+            }
+            toolbar={
+                <Card>
+                    <CardBody>
+                        <Checkbox
+                            label="Hanya stok minimum"
+                            checked={lowStock}
+                            onChange={(event) => setLowStock(event.target.checked)}
+                        />
+                    </CardBody>
+                </Card>
+            }
+            rowClassName={(material) =>
+                material.is_low_stock === true
+                    ? 'bg-amber-50/60 dark:bg-amber-500/10'
+                    : undefined
             }
             columns={[
                 {
@@ -173,16 +176,24 @@ export function ManagerMaterialsPage() {
                 },
                 {
                     header: 'Status',
-                    cell: (material) => {
-                        const status = materialStatus(material);
-
-                        return status ? <Badge tone={status.tone}>{status.label}</Badge> : '-';
-                    },
+                    cell: (material) =>
+                        material.is_low_stock === null ? (
+                            '-'
+                        ) : material.is_low_stock ? (
+                            <Badge tone="warning">Menipis</Badge>
+                        ) : (
+                            <Badge tone="success">Tersedia</Badge>
+                        ),
                 },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
-            rowActions={(material) => <RestockMaterialButton material={material} />}
+            rowActions={(material) => (
+                <>
+                    <RestockMaterialButton material={material} />
+                    <AdjustMaterialModal material={material} />
+                </>
+            )}
             createLabel="Tambah bahan"
             footer={
                 <Card>
