@@ -65,6 +65,13 @@ class InventorySchemaTest extends TestCase
         $this->assertSame('cascade', strtolower((string) $purchaseKey['on_delete']));
     }
 
+    public function test_wasted_materials_has_no_machine_column_but_keeps_order_link(): void
+    {
+        $this->assertTrue(Schema::hasTable('wasted_materials'));
+        $this->assertTrue(Schema::hasColumn('wasted_materials', 'order_id'));
+        $this->assertFalse(Schema::hasColumn('wasted_materials', 'machine_id'));
+    }
+
     public function test_stock_ledgers_has_traceability_columns(): void
     {
         $this->assertTrue(Schema::hasColumns('stock_ledgers', [

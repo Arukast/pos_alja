@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Models\Branch;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\ProductCategory;
@@ -113,20 +112,15 @@ class InventoryServiceTest extends TestCase
             'role' => 'production',
             'branch_id' => $this->branchId,
         ]);
-        $machine = Machine::create([
-            'id' => (string) Str::uuid(),
-            'branch_id' => $this->branchId,
-            'name' => 'Roland Soljet',
-        ]);
 
         // Log waste
         $this->inventoryService->logWaste([
             'material_id' => $material->id,
             'branch_id' => $this->branchId,
             'quantity' => 12.5,
-            'machine_id' => $machine->id,
             'designer_id' => $designer->id,
             'operator_id' => $operator->id,
+            'actor' => $operator,
             'notes' => 'Tinta luntur',
         ]);
 
@@ -137,7 +131,7 @@ class InventoryServiceTest extends TestCase
         $this->assertEquals('Tinta luntur', $waste->notes);
         $this->assertEquals($designer->id, $waste->designer_id);
         $this->assertEquals($operator->id, $waste->operator_id);
-        $this->assertEquals($machine->id, $waste->machine_id);
+        $this->assertFalse(property_exists($waste, 'machine_id'));
 
         // Assert material stock counts updated in junction
         $stock = MaterialBranchStock::where('material_id', $material->id)->where('branch_id', $this->branchId)->first();
@@ -146,8 +140,33 @@ class InventoryServiceTest extends TestCase
         // Assert ledger log written
         $ledger = DB::table('stock_ledgers')->where('material_id', $material->id)->first();
         $this->assertNotNull($ledger);
+        $this->assertEquals('waste', $ledger->type);
+        $this->assertEquals($operator->id, $ledger->user_id);
         $this->assertEquals(12.5, $ledger->wasted_stock);
         $this->assertEquals(187.5, $ledger->remaining_stock);
+    }
+
+    public function test_waste_may_push_stock_negative(): void
+    {
+        $material = $this->material();
+        $this->seedStock($material, 1.0);
+        $operator = User::factory()->create(['role' => 'production', 'branch_id' => $this->branchId]);
+
+        $this->inventoryService->logWaste([
+            'material_id' => $material->id,
+            'branch_id' => $this->branchId,
+            'quantity' => 4.0,
+            'actor' => $operator,
+        ]);
+
+        $this->assertSame(-3.0, (float) $this->stockRow($material)->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'waste',
+            'user_id' => $operator->id,
+            'wasted_stock' => 4,
+            'remaining_stock' => -3,
+        ]);
     }
 
     public function test_apply_movement_creates_missing_stock_row_with_zero_minimum(): void
@@ -356,22 +375,45 @@ class InventoryServiceTest extends TestCase
         ]);
     }
 
-    public function test_print_deduction_writes_usage_ledger_with_actor(): void
+    public function test_print_deduction_writes_usage_ledger_with_order_reference_and_actor(): void
     {
         $material = $this->material();
         $this->seedStock($material, 10.0);
         $operator = User::factory()->create(['role' => 'production', 'branch_id' => $this->branchId]);
-        $this->actingAs($operator);
+        $orderId = (string) Str::uuid();
 
-        $returned = $this->inventoryService->deductStockOnPrint($material->id, 4.0, $this->branchId);
+        $returned = $this->inventoryService->deductStockOnPrint($material->id, 4.0, $this->branchId, $orderId, $operator);
 
         $this->assertInstanceOf(Material::class, $returned);
         $this->assertDatabaseHas('stock_ledgers', [
             'material_id' => $material->id,
             'type' => 'usage',
+            'reference_type' => 'order',
+            'reference_id' => $orderId,
             'user_id' => $operator->id,
             'used_stock' => 4,
             'remaining_stock' => 6,
+        ]);
+    }
+
+    public function test_print_deduction_may_push_stock_negative(): void
+    {
+        $material = $this->material();
+        $this->seedStock($material, 2.0);
+        $operator = User::factory()->create(['role' => 'production', 'branch_id' => $this->branchId]);
+        $orderId = (string) Str::uuid();
+
+        $this->inventoryService->deductStockOnPrint($material->id, 5.0, $this->branchId, $orderId, $operator);
+
+        $this->assertSame(-3.0, (float) $this->stockRow($material)->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage',
+            'reference_type' => 'order',
+            'reference_id' => $orderId,
+            'user_id' => $operator->id,
+            'used_stock' => 5,
+            'remaining_stock' => -3,
         ]);
     }
 

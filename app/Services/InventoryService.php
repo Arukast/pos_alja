@@ -243,7 +243,6 @@ class InventoryService
             return DB::transaction(function () use ($params, $branchId) {
                 $materialId = $params['material_id'];
                 $quantity = (float) $params['quantity'];
-                $machineId = ! empty($params['machine_id']) ? $params['machine_id'] : null;
                 $dimensions = $params['dimensions'] ?? null;
                 $designerId = $params['designer_id'] ?? null;
                 $operatorId = $params['operator_id'] ?? null;
@@ -256,7 +255,6 @@ class InventoryService
                     'branch_id' => $branchId,
                     'logged_at' => now()->toIso8601String(),
                     'material_id' => $materialId,
-                    'machine_id' => $machineId,
                     'order_id' => $orderId,
                     'designer_id' => $designerId,
                     'operator_id' => $operatorId,
@@ -270,6 +268,8 @@ class InventoryService
                     $branchId,
                     'waste',
                     $quantity,
+                    referenceType: $orderId !== null ? 'order' : null,
+                    referenceId: $orderId,
                     notes: "Failed Print logged: -{$quantity} ({$notes})",
                     actor: $actor,
                 );
@@ -289,13 +289,18 @@ class InventoryService
     /**
      * Deduct stock for printed layout items.
      */
-    public function deductStockOnPrint(string $materialId, float $quantity, ?string $branchId = null): Material
-    {
+    public function deductStockOnPrint(
+        string $materialId,
+        float $quantity,
+        ?string $branchId = null,
+        ?string $orderId = null,
+        ?User $operator = null,
+    ): Material {
         $userId = auth()->id();
         $branchId = $branchId ?: (auth()->user()->branch_id ?? Branch::value('id'));
 
         try {
-            return DB::transaction(function () use ($materialId, $quantity, $branchId) {
+            return DB::transaction(function () use ($materialId, $quantity, $branchId, $orderId, $operator) {
                 $material = Material::findOrFail($materialId);
 
                 $this->applyMovement(
@@ -303,7 +308,10 @@ class InventoryService
                     $branchId,
                     'usage',
                     $quantity,
+                    referenceType: $orderId !== null ? 'order' : null,
+                    referenceId: $orderId,
                     notes: "Printed order item stock deduction: -{$quantity}",
+                    actor: $operator,
                 );
 
                 return $material;
