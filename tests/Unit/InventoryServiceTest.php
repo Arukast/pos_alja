@@ -307,7 +307,7 @@ class InventoryServiceTest extends TestCase
             $this->branchId,
             'purchase',
             3.0,
-            referenceType: 'App\\Models\\Purchase',
+            referenceType: 'purchase',
             referenceId: $purchaseId,
             actor: $manager,
         );
@@ -315,7 +315,7 @@ class InventoryServiceTest extends TestCase
         $this->assertDatabaseHas('stock_ledgers', [
             'material_id' => $material->id,
             'type' => 'purchase',
-            'reference_type' => 'App\\Models\\Purchase',
+            'reference_type' => 'purchase',
             'reference_id' => $purchaseId,
             'user_id' => $manager->id,
             'added_stock' => 3,
