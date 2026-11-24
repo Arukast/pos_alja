@@ -1,6 +1,6 @@
 # Sequence Diagrams (Target)
 
-These are target flows for the API-first React SPA. Every request except login uses Sanctum cookies and CSRF; branch and record checks happen server-side. Implementation status is tracked in `docs/requirements/implementation-gaps.md`, not in this file.
+These are target flows for the API-first React SPA after Sprint Review 1. Every request except login uses Sanctum cookies and CSRF; branch and record checks happen server-side. Implementation status is tracked in `docs/requirements/implementation-gaps.md`, not in this file.
 
 ## 1. Authentication And Access
 
@@ -80,7 +80,7 @@ sequenceDiagram
     API-->>SPA: Product metadata and category
 ```
 
-### 2.2 Product, Category, And Pricing Administration
+### 2.2 Product, Category, Material, And Discount Administration
 
 ```mermaid
 sequenceDiagram
@@ -92,14 +92,14 @@ sequenceDiagram
     participant DB
     participant R as Reverb
 
-    A->>SPA: Create, edit, or delete catalog data
-    SPA->>API: POST/PUT/DELETE /api/v1/products, /categories, /pricing
+    A->>SPA: Create or edit product, category, finishing/display, discount tier, or material
+    SPA->>API: POST/PUT/DELETE /api/v1/products, /categories, /attributes, /materials
     API->>Policy: Authorize manage catalog
-    alt Not owner/manager
+    alt Not owner/manager, or manager edits material master
         Policy-->>API: Deny
         API-->>SPA: 403
     else Allowed
-        API->>DB: BEGIN, validate, write catalog row, audit, COMMIT
+        API->>DB: BEGIN, validate unit/discount, write catalog row, audit, COMMIT
         API-->>SPA: Resource
         API->>R: OrderUpdated
     end
@@ -119,21 +119,23 @@ sequenceDiagram
     participant DB
     participant R as Reverb
 
-    D->>SPA: Select customer, product, material, specs
+    D->>SPA: Search customer, then choose product, material, finishing, display, specs
+    SPA->>API: GET /api/v1/customers?search
+    API-->>SPA: Matching customers
     SPA->>API: GET /api/v1/quotes/options
     API-->>SPA: Branch catalog, no cost/profit for designer
     SPA->>API: POST /api/v1/quotes
-    API->>Pricing: Match branch tier, attributes, machine
+    API->>Pricing: Material price + finishing/display price + category discount tier
     Pricing-->>API: Unit price, area, subtotal
     API-->>SPA: Quote
     SPA->>API: POST /api/v1/invoices
     API->>DB: BEGIN, lock branch for numbering, recompute every line
-    API->>DB: Create invoice, orders, status logs, audit
+    API->>DB: Create invoice, orders, order_attributes, status logs, audit
     API->>DB: COMMIT
     API-->>SPA: 201 invoice
     API->>R: OrderUpdated on branch/owners
-    SPA->>API: GET /api/v1/invoices/{id}/ticket
-    API-->>SPA: Work-order ticket data
+    SPA->>API: GET /api/v1/invoices/{id}/print
+    API-->>SPA: Invoice print data with money
 ```
 
 ### 3.2 Update Order Before Production
@@ -155,11 +157,13 @@ sequenceDiagram
     SPA->>API: PUT /api/v1/invoices/{id}
     API->>Policy: Authorize update (designer, same branch)
     API->>DB: BEGIN, lock invoice and orders
-    API->>DB: Check every order status = 0
-    alt Any order already in production
-        API-->>SPA: 409 order cannot be changed
+    API->>DB: Require every order status = 0 and invoice status 0 or 1
+    alt Any order in production or invoice fully paid
+        API-->>SPA: 409 cannot change
+    else New total below total paid
+        API-->>SPA: 422 would create a negative receivable
     else Editable
-        API->>DB: Apply item changes, recalculate totals and receivable
+        API->>DB: Apply item changes, recalculate discount and receivable
         API->>DB: Insert audit log with before/after
         API->>DB: COMMIT
         API-->>SPA: Updated invoice
@@ -331,16 +335,16 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor M as Branch Manager
+    actor A as Owner or Branch Manager
     participant SPA
     participant API
     participant Policy
     participant DB
     participant R as Reverb
 
-    M->>SPA: Submit new quantity or delta and reason
-    SPA->>API: POST /api/v1/stock-adjustments
-    API->>Policy: Authorize manager, own branch
+    A->>SPA: Submit new quantity or delta and reason
+    SPA->>API: POST /api/v1/materials/{id}/adjustments
+    API->>Policy: Authorize owner/manager, branch scope
     API->>DB: Require reason 3-255 characters
     API->>DB: BEGIN, lock stock, validate result >= 0
     alt Negative result or missing reason
@@ -353,7 +357,7 @@ sequenceDiagram
     end
 ```
 
-### 5.4 Waste Logging
+### 5.4 Waste Logging From The Production Queue
 
 ```mermaid
 sequenceDiagram
@@ -364,12 +368,12 @@ sequenceDiagram
     participant DB
     participant R as Reverb
 
-    P->>SPA: Open waste form
+    P->>SPA: Open the production queue and choose a job
     SPA->>API: GET /api/v1/waste/options
-    API-->>SPA: Branch materials, machines, designers
-    P->>SPA: Submit failed print
+    API-->>SPA: Branch materials and designers
+    P->>SPA: Submit failed print from the queue row
     SPA->>API: POST /api/v1/waste
-    API->>DB: Validate material, machine, designer, order branch
+    API->>DB: Validate material, designer, and order branch
     API->>DB: BEGIN, lock stock, create waste, ledger type waste, audit, COMMIT
     API-->>SPA: Waste record
     API->>R: OrderUpdated/StockUpdated
@@ -388,11 +392,11 @@ sequenceDiagram
     participant Policy
     participant DB
 
-    A->>SPA: Open production queue
-    SPA->>API: GET /api/v1/production/queue?branch_id
+    A->>SPA: Open production queue and choose a status filter
+    SPA->>API: GET /api/v1/production/queue?status&branch_id
     API->>Policy: Authorize viewQueue
     Policy-->>API: All roles, owner all branches, others own branch
-    API->>DB: Query status 0/1, sort deadline ASC, priority DESC, created_at ASC
+    API->>DB: Query filtered queue, sort deadline ASC, priority DESC, created_at ASC
     API-->>SPA: Queue resource, no money for production
 ```
 
@@ -542,5 +546,6 @@ Every request shown above:
 2. Is scoped to the actor's branch unless the actor is the owner.
 3. Returns 403 for another branch and 422 for invalid business input.
 4. Omits price, cost, profit, discount, receivable, and payment fields from production responses.
-5. Uses private Reverb channels for branch events; the owner channel is separate.
-6. Runs multi-table mutations inside one database transaction with `lockForUpdate()` on invoices, orders, and stock rows.
+5. Denies invoice and receipt print to production; production uses the queue only.
+6. Uses private Reverb channels for branch events; the owner channel is separate.
+7. Runs multi-table mutations inside one database transaction with `lockForUpdate()` on invoices, orders, and stock rows.

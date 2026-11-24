@@ -19,22 +19,21 @@
 | `/owner/net-profit` | owner | Net profit detail |
 | `/owner/expenses` | owner | Expense detail |
 | `/owner/audit` | owner | Audit trail |
-| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/machines`, `/owner/materials` | owner | Administration CRUD |
+| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/materials`, `/owner/customers` | owner | Administration CRUD |
 | `/manager` | manager | Branch dashboard |
-| `/manager/materials`, `/manager/ledgers`, `/manager/finishing`, `/manager/pricing` | manager | Inventory and configuration |
-| `/manager/leaderboard`, `/manager/users`, `/manager/categories`, `/manager/machines` | manager | Performance and administration |
+| `/manager/materials`, `/manager/ledgers`, `/manager/categories`, `/manager/expenses`, `/manager/customers` | manager | Inventory, configuration, expense entry, customers |
+| `/manager/leaderboard`, `/manager/users` | manager | Performance and user administration |
 | `/cashier` | cashier | Cashier dashboard |
 | `/cashier/payments` | cashier | Payment queue and checkout |
 | `/cashier/pickup` | cashier | Pickup queue |
-| `/cashier/expenses` | cashier | Expense entry and ledger |
 | `/designer` | designer | Designer dashboard |
-| `/designer/new-order` | designer | Customer intake, quote, cart, invoice |
-| `/designer/orders` | designer | Invoice list and ticket links |
+| `/designer/new-order` | designer | Customer search, quote, cart, invoice |
+| `/designer/customers/new` | designer | Create customer on a separate page |
+| `/designer/orders` | designer | Invoice list and print links |
 | `/production` | production | Production dashboard |
-| `/production/queue` | production | Start/complete jobs |
-| `/production/waste` | production | Waste entry and ledger |
-| `/orders/:id/ticket` | authenticated | Work-order print view and three-stage production checklist |
-| `/orders/:id/receipt` | owner, manager, cashier, designer | 80 mm receipt |
+| `/production/queue` | production | Filter queue, status control, inline waste |
+| `/invoices/:id/print` | owner, manager, cashier, designer | A4 invoice print |
+| `/invoices/:id/receipt` | owner, manager, cashier, designer | 80 mm receipt |
 | `/dashboard?tab=...` | authenticated | Legacy redirect to role routes |
 
 ## 2. Structure
@@ -83,17 +82,19 @@ src/
 - A failed query renders an `EmptyState` with a `Coba lagi` retry that refetches; `ResourceTable` and the
   designer order form's `/quotes/options` selectors follow it. A successful empty result uses the empty copy,
   and errors inside a control stay inline. The states are never merged.
-- `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above; `/production/waste` shows a
-  `Sisa Bahan Hari Ini` KPI from `/production/summary`, a quantity and never money.
-- Print views have dedicated `@media print` CSS: A4 ticket at `min-h-[297mm] print:min-h-0`, 80 mm receipt,
-  `PrintHeader` with CMYK marks, white paper.
+- `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above, a status filter, and an inline waste action. It never shows money.
+- Print views have dedicated `@media print` CSS: A4 invoice at `min-h-[297mm] print:min-h-0`, 80 mm receipt,
+  `PrintHeader` with CMYK marks, white paper. Production is denied both print views.
+- The designer order form uses Product -> Material -> Finishing -> Display with single-select finishing/display controls. The customer field defaults to search; new customer creation lives on `/designer/customers/new`.
+- The material screen includes the unit dropdown (`m2`, `sheet`, `pcs`) and the reason-required stock adjustment action.
+- The category screen includes quantity discount tiers (`min_qty`, `discount_percent`). There is no pricing-matrix page and no machine page.
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
   spec (10px uppercase label, 22px/800 value). Controls are 40px tall, labels 10px uppercase.
 - `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only
   lists. `CrudPage` supports `summary` and `footer` slots, `pageResetKey` to return to page 1 when a filter
   changes, and `hideBanner` so a second section on the same page can render a labelled panel header instead of
   a second page banner.
-- Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English, with one exception: `expense.category` is free text, new rows default to `Operasional`, and existing rows may be `Office`/`Operational`, so reports group by exact string.
+- Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English, with one exception: `expense.category` is a fixed dropdown, not free text, so reports group by the selected category.
 - Shared copy lives in `roleLinks`, `admin/CrudPage`, `components/ui`, and `lib/labels.ts`.
 - Dates format with `id-ID`; money already formats with `id-ID`.
 

@@ -5,6 +5,7 @@ Folder ini berisi backlog Jira untuk tim 3 orang. Isinya diturunkan dari:
 - `docs/requirements/fr.md` — FR1–FR26.
 - `docs/requirements/nfr.md` — NFR1–NFR10.
 - `docs/requirements/product-backlog.md` — PB-01–PB-10.
+- `docs/requirements/sprint-review-1.md` — Sprint Review 1 changes.
 - `docs/planning/distribusi-kerja-3-orang.md` — pembagian kerja A/B/C.
 
 ## Isi Folder
@@ -19,9 +20,9 @@ Folder ini berisi backlog Jira untuk tim 3 orang. Isinya diturunkan dari:
 | Placeholder | Epic | Fokus | Pemilik | FR |
 | :--- | :--- | :--- | :--- | :--- |
 | `EPIC-FOUNDATION` | Fondasi: Autentikasi, RBAC, dan Branch Scope | Auth, user, policy, branch | A | FR1–FR5 |
-| `EPIC-CATALOG` | Katalog Produk, Kategori, dan Harga | Produk, kategori, pricing | A | FR6–FR7 |
-| `EPIC-SALES` | Pesanan, Pelanggan, dan Status Desain | Customer, order, design status | B | FR8–FR10 |
-| `EPIC-PAYMENTS` | Pembayaran, Nota, dan Pengeluaran | DP, settlement, nota, expense | B | FR11–FR14, FR21 |
+| `EPIC-CATALOG` | Katalog Produk, Kategori, dan Harga | Produk, kategori, bahan, finishing/display, diskon | A | FR6–FR7 |
+| `EPIC-SALES` | Pesanan, Pelanggan, dan Status Desain | Customer, order, design status, invoice | B | FR8–FR10 |
+| `EPIC-PAYMENTS` | Pembayaran, Invoice, dan Pengeluaran | DP, settlement, invoice, expense | B | FR11–FR14, FR21 |
 | `EPIC-INVENTORY` | Inventori, Pembelian, dan Penyesuaian Stok | Material, stock, purchase, adjustment | C | FR15–FR18 |
 | `EPIC-PRODUCTION` | Antrean dan Status Produksi | Queue, status, usage, waste | C | FR19–FR20 |
 | `EPIC-REPORTING` | Laporan dan Ekspor | Dashboard, report, Excel/PDF | C | FR22–FR24 |
@@ -68,17 +69,18 @@ Catatan:
 
 | Sprint | Fokus | Epic utama |
 | :--- | :--- | :--- |
-| Sprint 0 | Fondasi, auth, SPA shell, CI/CD | Foundation, Frontend |
-| Sprint 1 | Katalog, pesanan, pembayaran, inventory foundation | Catalog, Sales, Payments, Inventory |
-| Sprint 2 | Inventory, produksi, admin, audit awal | Inventory, Production, Foundation |
+| Sprint 0 | Fondasi teknis, SPA shell, CI/CD | Foundation, Frontend |
+| Sprint 1 | PB-08 auth/RBAC, katalog, pesanan, pembayaran, invoice, inventory foundation | Foundation, Catalog, Sales, Payments, Inventory |
+| Sprint 2 | Inventory, produksi, revisi Sprint Review 1, audit awal | Inventory, Production, Sales, Payments, Foundation |
 | Sprint 3 | Laporan, ekspor, audit, backup, hardening | Reporting, Audit-Backup, Frontend |
 
-Sprint 2 memiliki beban paling berat, sekitar 19 story. Jika velocity tim di bawah 30 poin per orang, pindahkan beberapa item berikut ke Sprint 3 saat sprint planning:
+Sprint 2 memiliki beban paling berat. Jika velocity tim di bawah target, pindahkan beberapa item berikut ke Sprint 3 saat sprint planning:
 
-- `CRUD cabang dan mesin`
+- `CRUD cabang`
 - `Audit log untuk aksi kritis`
 - `Responsive, accessibility, dan print layout`
 - `Lihat stok per peran dan cabang`
+- `Catat waste dan kurangi stok`
 
 ## Mapping FR ke Epic
 
@@ -96,9 +98,11 @@ Sprint 2 memiliki beban paling berat, sekitar 19 story. Jika velocity tim di baw
 
 ## Catatan Keputusan Akses
 
-- Kasir tidak memiliki akses stok.
+- Kasir tidak memiliki akses stok dan tidak dapat mencatat pengeluaran.
 - Kasir hanya boleh mengubah status pickup, bukan item pesanan.
-- Designer memiliki order update dan design status.
+- Designer memiliki order update, design status, customer search/create, dan invoice print.
 - Manager hanya mengelola staf dan stok cabangnya.
+- Owner dan Branch Manager mencatat pengeluaran; kategori pengeluaran adalah dropdown tetap.
 - Global material deletion hanya Owner.
-- Production tidak melihat price, cost, profit, atau payment fields.
+- Production tidak melihat price, cost, profit, atau payment fields; invoice dan receipt ditolak untuk Production.
+- Mesin dihapus dari target; biaya mesin menjadi bagian dari biaya bahan.
