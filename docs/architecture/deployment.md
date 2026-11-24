@@ -11,40 +11,46 @@
 
 ```mermaid
 flowchart LR
-    User([Browser<br/>React SPA])
-    Edge["TLS terminator / reverse proxy<br/>HTTPS 443 -> HTTP 80"]
-    subgraph COMPOSE["Docker Compose host"]
-        Nginx["nginx :80<br/>frontend/dist + reverse proxy"]
-        App["app :9000<br/>PHP-FPM 8.5 / Laravel API"]
-        Reverb["reverb :8080 -> host :8084<br/>WebSocket server"]
-        DB[("PostgreSQL 16<br/>volume pgdata")]
+    subgraph CLIENT["Client"]
+        Browser["Browser<br/>React SPA"]
     end
-    CI["GitHub Actions<br/>backend + frontend CI"]
-    Backup[("External backup storage<br/>FR26 target")]
+    subgraph EDGE["Public edge"]
+        TLS["TLS reverse proxy<br/>HTTPS :443"]
+    end
+    subgraph HOST["Docker Compose host"]
+        Nginx["nginx :80<br/>SPA + API proxy"]
+        App["app :9000<br/>PHP-FPM / Laravel API"]
+        Reverb["reverb :8080<br/>host :8084"]
+        DB[("PostgreSQL 16<br/>:5432 / pgdata")]
+    end
+    Backup[("Backup storage<br/>FR26 target")]
 
-    User -->|HTTPS| Edge
-    Edge -->|HTTP 80| Nginx
-    Nginx -->|HTML / JS / CSS| User
-    Nginx -->|"FastCGI /api /sanctum /broadcasting /up"| App
-    App -->|"SQL 5432"| DB
-    App -->|"HTTP 8080"| Reverb
-    User -->|"WebSocket 8084"| Reverb
-    Reverb -->|"events"| User
-    User -->|"/broadcasting/auth via Nginx"| Nginx
-    CI -.->|"tests + build"| COMPOSE
-    App -.->|"backup target"| Backup
+    Browser -->|"HTTPS"| TLS
+    TLS -->|"HTTP :80"| Nginx
+    Nginx -->|"SPA assets"| Browser
+    Nginx -->|"FastCGI /api /sanctum /broadcasting"| App
+    App -->|"SQL :5432"| DB
+    App -->|"broadcast :8080"| Reverb
+    Browser -->|"WebSocket :8084"| Reverb
+    Reverb -->|"events"| Browser
+    App -->|"backup"| Backup
 ```
 
-Notes:
+How to read the diagram:
 
-1. The browser loads the SPA and API through Nginx. WebSocket traffic goes directly to Reverb on host port `8084`.
-2. Reverb channel authorization goes through `/broadcasting/auth` via Nginx to the Laravel app.
-3. Nginx listens on HTTP `80`. In production, TLS terminates at the edge; set `APP_URL` to HTTPS, secure cookies, and exact `TRUSTED_PROXIES`.
-4. PostgreSQL is internal on `5432`, has no host port, and persists through the `pgdata` volume.
-5. Compose currently has no queue worker or scheduler service. `QUEUE_CONNECTION=database`; add a worker before relying on queued jobs, and a scheduler before FR26 scheduled backup.
-6. CI runs tests and builds only. Deployment is manual: `docker compose up -d --build`, then `docker compose exec app php artisan migrate --force`.
-7. The backup storage node is dashed because FR26 is still target, not implemented.
-8. `/up` is the health endpoint used by the reverse proxy or uptime monitor.
+1. The browser loads the React SPA from Nginx through the HTTPS edge.
+2. API, Sanctum, CSRF, and broadcasting-auth calls go through Nginx to the Laravel app on `app:9000`.
+3. The app reads and writes PostgreSQL on the internal `:5432`; the database is not exposed to the host.
+4. The app sends realtime events to Reverb. The browser connects directly to Reverb on host `:8084`, while `/broadcasting/auth` goes through Nginx to the app.
+5. The backup arrow points to FR26 target storage. It is solid because it is part of the target topology, not because backup is already implemented.
+
+Deployment notes:
+
+1. Nginx listens on HTTP `80`. In production, TLS terminates at the edge; set `APP_URL` to HTTPS, secure cookies, and exact `TRUSTED_PROXIES`.
+2. PostgreSQL persists through the `pgdata` volume.
+3. Compose currently has no queue worker or scheduler service. `QUEUE_CONNECTION=database`; add a worker before relying on queued jobs, and a scheduler before FR26 scheduled backup.
+4. CI is not part of the runtime diagram. GitHub Actions runs tests and builds only; deployment remains manual: `docker compose up -d --build`, then `docker compose exec app php artisan migrate --force`.
+5. `/up` is the health endpoint used by the reverse proxy or uptime monitor.
 
 ## 3. Required Environment
 
