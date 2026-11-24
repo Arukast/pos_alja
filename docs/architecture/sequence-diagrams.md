@@ -122,6 +122,10 @@ sequenceDiagram
     D->>SPA: Search customer, then choose product, material, finishing, display, specs
     SPA->>API: GET /api/v1/customers?search
     API-->>SPA: Matching customers
+    opt New customer
+        SPA->>API: POST /api/v1/customers
+        API-->>SPA: Created customer
+    end
     SPA->>API: GET /api/v1/quotes/options
     API-->>SPA: Branch catalog, no cost/profit for designer
     SPA->>API: POST /api/v1/quotes

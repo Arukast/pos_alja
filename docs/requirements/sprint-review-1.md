@@ -61,7 +61,7 @@ The removal is a staged migration:
 
 ## 5. Invoice Decision
 
-There is one invoice document. The separate work-order ticket is removed from the target. The invoice is printable as A4 for Owner, Branch Manager, Cashier, and Designer. Production uses the production queue and is denied the invoice and receipt because both contain money fields. If production needs a printed job sheet, print a money-free copy of the same invoice; do not create a second document type.
+There is one invoice document. The separate work-order ticket is removed from the target. The invoice is printable as A4 for Owner, Branch Manager, Cashier, and Designer. Production uses the production queue and is denied the invoice and receipt because both contain money fields. No separate ticket or money-free print mode is part of the target.
 
 ## 6. Customer And Expense Lists
 

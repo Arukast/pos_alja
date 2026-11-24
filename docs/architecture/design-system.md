@@ -135,8 +135,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
 - Invoice: A4 sheet, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The invoice is
   the single customer document and includes prices, discounts, DP history, and the remaining receivable.
 - Production has no invoice or receipt print. Its work list is the production queue, which contains no money
-  field. If a printed job sheet is needed, print a money-free copy of the same invoice; do not add a second
-  document type.
+  field. No separate ticket or money-free print mode is part of the target.
 - Receipt: 80mm wide, `@page size: 80mm auto`.
 - Paper is always white, including print output where the dark backdrop is dropped. The on-screen backdrop is
   `brand-dark`; `@media print` forces it white.
