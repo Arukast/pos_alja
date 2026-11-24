@@ -72,7 +72,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 Summary:
 
 - Sprint 0: done, except deployment verification.
-- Sprint 1: PB-08, PB-03, and PB-04 done; PB-01 and PB-02 partial. PB-08 moved from Sprint 3 to Sprint 1 after Sprint Review 1.
+- Sprint 1: PB-08 and PB-03 fully done; PB-01, PB-02, and PB-04 partial. PB-08 moved from Sprint 3 to Sprint 1 after Sprint Review 1.
 - Sprint 2: 0 of 3 done; all partial.
 - Sprint 3: 0 of 2 done; PB-09 and PB-10 partial.
 
