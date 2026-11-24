@@ -7,7 +7,91 @@
 - Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM.
 - Laravel Reverb runs on container port 8080 and host port 8084.
 
-## 2. Required Environment
+## 2. Deployment Modes
+
+There are two deployment modes. They share one codebase; only the runtime and edge differ.
+
+### 2.1 Local Development
+
+```mermaid
+flowchart LR
+    Browser["Browser"]
+    subgraph LOCAL["Developer machine"]
+        Vite["Vite :5173"]
+        PHP["php artisan serve :8000"]
+        Reverb["Reverb :8080"]
+        DB[("SQLite / local PostgreSQL")]
+    end
+
+    Browser -->|"http://localhost:5173"| Vite
+    Vite -->|"proxy /api /sanctum /broadcasting"| PHP
+    PHP -->|"SQL"| DB
+    PHP -->|"broadcast"| Reverb
+    Browser -->|"ws://localhost:8080"| Reverb
+```
+
+Use this mode for development and local demos. It runs on one machine, does not use TLS, and does not integrate two branches.
+
+### 2.2 Online Multi-Branch (Primary)
+
+```mermaid
+flowchart LR
+    subgraph BRANCH_A["Cabang A"]
+        A["Browser / SPA"]
+    end
+    subgraph BRANCH_B["Cabang B"]
+        B["Browser / SPA"]
+    end
+    subgraph EDGE["Public edge"]
+        TLS["TLS reverse proxy<br/>or Cloudflare Tunnel<br/>HTTPS/WSS :443"]
+    end
+    subgraph HOST["Central Docker Compose host"]
+        Nginx["nginx :80"]
+        App["app :9000<br/>Laravel API"]
+        Reverb["reverb :8080"]
+        DB[("PostgreSQL 16<br/>one central database")]
+    end
+    Backup[("S3-compatible object storage<br/>Cloudflare R2 recommended<br/>FR26 target")]
+
+    A -->|"HTTPS/WSS 443"| TLS
+    B -->|"HTTPS/WSS 443"| TLS
+    TLS -->|"HTTP :80"| Nginx
+    TLS -->|"WSS /app"| Reverb
+    Nginx -->|"FastCGI /api /sanctum /broadcasting"| App
+    App -->|"SQL :5432"| DB
+    App -->|"broadcast :8080"| Reverb
+    Reverb -->|"events"| TLS
+    TLS -->|"events"| A
+    TLS -->|"events"| B
+    App -->|"backup"| Backup
+```
+
+This is the primary deployment for integration between Cabang A and Cabang B:
+
+1. Both branches use only a browser; there is no application server at each branch.
+2. One central PostgreSQL stores both branches; `branch_id` isolates data.
+3. Owner sees all branches; manager, cashier, designer, and production are branch-scoped.
+4. SPA, API, and CSRF traffic go through the HTTPS edge to Nginx.
+5. Reverb events go through the same edge as WSS on `443`, not `ws://host:8084`.
+6. The backup arrow points to S3-compatible object storage, with Cloudflare R2 recommended. It is solid because it is part of the target topology; FR26 is still target.
+
+### 2.3 Optional Edge
+
+| Edge option | Public IP | Inbound ports | TLS/WSS | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| VPS + Caddy/Nginx + Let's Encrypt | Yes | 443 | Yes | Most self-contained; proxy `/api`, `/sanctum`, `/broadcasting` and `/app` WebSocket to the app/Reverb |
+| Cloudflare Tunnel | No | None | Cloudflare edge | `cloudflared` makes outbound connections; route `app.example.com` to `nginx:80` and `ws.example.com` to `reverb:8080` |
+| Local development | No | None | No | Browser, Vite, PHP, and Reverb on one machine; not for two-branch integration |
+
+Cloudflare Tunnel notes:
+
+1. Use a named tunnel, not Quick Tunnel `trycloudflare.com`, for a stable deployment.
+2. Store the tunnel token as a secret; never commit it.
+3. Set `APP_URL`, `SANCTUM_STATEFUL_DOMAINS`, `SESSION_SECURE_COOKIE`, and `TRUSTED_PROXIES` for the public hostnames.
+4. Rebuild the SPA with `VITE_REVERB_HOST=ws.example.com`, `VITE_REVERB_PORT=443`, and `VITE_REVERB_SCHEME=https`.
+5. Do not put Cloudflare Access in front of the API without testing Sanctum cookies and CSRF.
+
+## 3. Required Environment
 
 Set these in the production `.env` before starting Compose:
 
@@ -32,7 +116,7 @@ The SPA is built during the Docker image build. Rebuild the `nginx` target whene
 
 `config/app.php` defaults `locale` to `id`, but a production `.env` with `APP_LOCALE=en` overrides that default and silently re-enables English API messages even though the SPA copy stays Indonesian.
 
-## 3. Docker Compose
+## 4. Docker Compose
 
 ```bash
 docker compose up -d --build
@@ -48,7 +132,7 @@ Services:
 
 The Compose file reads `.env` through `env_file`. `DB_PASSWORD` is required; there is no default. Run `docker compose config` with your production `.env` before starting.
 
-## 4. Native Development
+## 5. Native Development
 
 ```bash
 ./init.sh
@@ -59,7 +143,7 @@ npm --prefix frontend run dev
 
 The SPA runs on `http://localhost:5173`; Vite proxies `/api`, `/sanctum`, and `/broadcasting` to `http://127.0.0.1:8000`.
 
-## 5. CI
+## 6. CI
 
 `.github/workflows/ci.yml` runs on `main`, `staging`, and pull requests:
 
@@ -68,11 +152,33 @@ The SPA runs on `http://localhost:5173`; Vite proxies `/api`, `/sanctum`, and `/
 
 CI does not auto-commit formatting changes.
 
-## 6. Backups
+## 7. Backups
 
-FR26 (scheduled database backup) is not implemented. Until that sprint, use the PostgreSQL provider's snapshot schedule or a cron job running `pg_dump` outside this repository. Do not claim backup coverage from this refactor.
+FR26 (manual and scheduled database backup) is not implemented yet. The target storage is **S3-compatible object storage**, with **Cloudflare R2 recommended** because it is S3-compatible, has no egress fee, and fits the Cloudflare Tunnel edge.
 
-## 7. Deployment Checklist
+Target flow:
+
+```text
+cron / systemd timer or Laravel scheduler
+  -> pg_dump -Fc
+  -> encrypt with age or rclone crypt
+  -> rclone copy to r2:pos-alja-backups/YYYY/MM/DD/
+  -> apply lifecycle retention
+  -> record success/failure and audit log
+```
+
+Requirements:
+
+1. Keep the bucket private and scope the R2 token to the backup bucket only.
+2. Encrypt before upload; store the encryption key outside the bucket.
+3. Retention: daily 7 days, weekly 4 weeks, monthly 12 months.
+4. Target RPO <= 24 hours and RTO <= 4 hours, per NFR6.
+5. Run a restore drill: download, decrypt, `pg_restore`, and verify invoice, payment, and stock counts.
+6. Host-level `rclone` needs no PHP dependency. An app-driven backup needs an S3 adapter dependency and explicit approval.
+7. Google Drive via `rclone` remains a fallback, but R2 is preferred for automated backups.
+8. Do not claim backup coverage until FR26 is implemented and the restore drill passes.
+
+## 8. Deployment Checklist
 
 1. Set production `.env` values, including HTTPS session and Sanctum domains.
 2. Build and start Compose.
