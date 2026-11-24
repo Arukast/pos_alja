@@ -150,6 +150,18 @@ class PurchaseApiTest extends TestCase
         $this->assertSame(['Branch Two Supplier'], collect($filtered->json('data'))->pluck('supplier')->all());
     }
 
+    public function test_owner_branch_filter_rejects_a_non_uuid_value(): void
+    {
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/purchases?branch_id=not-a-uuid')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('branch_id');
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/purchases?branch_id=all')
+            ->assertOk();
+    }
+
     public function test_manager_branch_is_forced_when_recording_a_purchase(): void
     {
         $payload = $this->payload(['branch_id' => $this->branchTwo->id]);

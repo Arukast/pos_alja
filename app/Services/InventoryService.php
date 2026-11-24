@@ -127,6 +127,12 @@ class InventoryService
         if ($type === 'usage' || $type === 'waste') {
             $newStock = round($oldStock - abs($quantity), 2);
 
+            if ($newStock < -self::MAX_STOCK) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Stok tidak boleh kurang dari -99999999.99.',
+                ]);
+            }
+
             if ($type === 'usage') {
                 $usedStock = abs($quantity);
             } else {
@@ -164,7 +170,7 @@ class InventoryService
             'user_id' => $actor->id ?? auth()->id(),
             'reference_type' => $referenceType,
             'reference_id' => $referenceId,
-            'logged_at' => now()->toIso8601String(),
+            'logged_at' => now()->toDateTimeString(),
             'initial_stock' => $oldStock,
             'added_stock' => $addedStock,
             'used_stock' => $usedStock,
@@ -253,7 +259,7 @@ class InventoryService
                 $waste = WastedMaterial::create([
                     'id' => (string) Str::uuid(),
                     'branch_id' => $branchId,
-                    'logged_at' => now()->toIso8601String(),
+                    'logged_at' => now()->toDateTimeString(),
                     'material_id' => $materialId,
                     'order_id' => $orderId,
                     'designer_id' => $designerId,

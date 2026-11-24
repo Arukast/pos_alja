@@ -6,6 +6,8 @@ namespace Tests\Feature\Api;
 
 use App\Events\OrderUpdated;
 use App\Models\Branch;
+use App\Models\Material;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -53,6 +55,37 @@ class RealtimeDispatchTest extends TestCase
                 'description' => 'Test expense',
             ])
             ->assertCreated();
+
+        Event::assertDispatched(
+            OrderUpdated::class,
+            fn (OrderUpdated $event) => $event->branchId === $branch->id
+        );
+    }
+
+    public function test_owner_stock_write_broadcasts_on_the_resolved_branch_channel(): void
+    {
+        Event::fake([OrderUpdated::class]);
+
+        $branch = Branch::create([
+            'name' => 'Branch One',
+            'code' => Str::upper(Str::random(6)),
+        ]);
+        $owner = User::factory()->create(['role' => 'owner', 'branch_id' => null]);
+        $material = Material::create([
+            'name' => 'Owner Restock',
+            'product_category_id' => ProductCategory::create([
+                'name' => 'Large Format',
+                'calculation_archetype' => 'surface_area',
+            ])->id,
+            'type' => 'roll',
+        ]);
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/materials/{$material->id}/stock", [
+                'branch_id' => $branch->id,
+                'quantity' => 5,
+            ])
+            ->assertOk();
 
         Event::assertDispatched(
             OrderUpdated::class,

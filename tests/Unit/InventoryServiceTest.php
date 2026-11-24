@@ -276,6 +276,24 @@ class InventoryServiceTest extends TestCase
         $this->assertDatabaseCount('stock_ledgers', 0);
     }
 
+    public function test_negative_movement_below_floor_is_rejected_with_quantity_key(): void
+    {
+        $material = $this->material();
+        $this->seedStock($material, 0.0);
+
+        foreach (['usage', 'waste'] as $type) {
+            try {
+                $this->inventoryService->applyMovement($material->id, $this->branchId, $type, 100000000.0);
+                $this->fail("Over-floor {$type} was accepted.");
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('quantity', $e->errors());
+            }
+        }
+
+        $this->assertSame(0.0, (float) $this->stockRow($material)->current_stock);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
     public function test_positive_movement_above_ceiling_is_rejected_with_quantity_key(): void
     {
         $material = $this->material();

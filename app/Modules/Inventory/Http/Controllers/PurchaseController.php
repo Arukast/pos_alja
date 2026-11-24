@@ -30,6 +30,10 @@ final class PurchaseController extends Controller
 
         $branchId = $request->query('branch_id');
 
+        $request->validate([
+            'branch_id' => $branchId === 'all' ? ['nullable', 'string'] : ['nullable', 'uuid'],
+        ]);
+
         return PurchaseResource::collection(
             $purchases->paginate($actor, is_string($branchId) ? $branchId : null)
         );

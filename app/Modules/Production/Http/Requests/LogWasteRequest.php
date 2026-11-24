@@ -23,7 +23,7 @@ final class LogWasteRequest extends FormRequest
             'material_id' => ['required', 'uuid', 'exists:materials,id'],
             'designer_id' => ['nullable', 'uuid', 'exists:users,id'],
             'order_id' => ['required', 'uuid', 'exists:orders,id'],
-            'quantity' => ['required', 'numeric', 'gt:0'],
+            'quantity' => ['required', 'decimal:0,2', 'gt:0', 'max:99999999.99'],
             'dimensions' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];

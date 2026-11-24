@@ -9,6 +9,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\User;
 use App\Services\InventoryService;
+use App\Support\BranchScope;
 use App\Support\Decimal;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ final class RecordPurchase
      */
     public function execute(array $data, User $actor): array
     {
-        $branchId = $this->resolveBranchId($data, $actor);
+        $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
         $key = (string) $data['idempotency_key'];
 
         $existing = $this->findExisting($branchId, $key);
@@ -59,8 +60,8 @@ final class RecordPurchase
         $totalAmount = '0.00';
 
         foreach ($data['items'] as $item) {
-            $quantity = $this->plain($item['quantity']);
-            $unitCost = $this->plain($item['unit_cost']);
+            $quantity = (string) $item['quantity'];
+            $unitCost = (string) $item['unit_cost'];
             $subtotal = Decimal::multiply($quantity, $unitCost);
 
             $lines[] = [
@@ -98,6 +99,7 @@ final class RecordPurchase
             $lines
         );
 
+        // Deterministic lock order: concurrent purchases lock stock rows by ascending material id.
         usort(
             $movements,
             fn (array $a, array $b): int => $a['material_id'] <=> $b['material_id']
@@ -134,22 +136,6 @@ final class RecordPurchase
         return $purchase->load(['branch', 'user', 'items.material']);
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function resolveBranchId(array $data, User $actor): string
-    {
-        $branchId = $actor->role === 'owner'
-            ? ($data['branch_id'] ?? null)
-            : $actor->branch_id;
-
-        if (! is_string($branchId) || $branchId === '') {
-            abort(422, 'Cabang wajib diisi.');
-        }
-
-        return $branchId;
-    }
-
     private function findExisting(string $branchId, string $key): ?Purchase
     {
         return Purchase::query()
@@ -157,10 +143,5 @@ final class RecordPurchase
             ->where('branch_id', $branchId)
             ->where('idempotency_key', $key)
             ->first();
-    }
-
-    private function plain(mixed $value): string
-    {
-        return is_string($value) ? $value : (string) $value;
     }
 }

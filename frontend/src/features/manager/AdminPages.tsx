@@ -161,12 +161,12 @@ export function ManagerMaterialsPage() {
                 { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok',
-                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    className: 'text-right tabular-nums whitespace-nowrap',
                     cell: (material) => material.current_stock ?? '-',
                 },
                 {
                     header: 'Minimum',
-                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    className: 'text-right tabular-nums whitespace-nowrap',
                     cell: (material) => material.min_stock ?? '-',
                 },
                 {

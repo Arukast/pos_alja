@@ -125,7 +125,7 @@ export function PurchaseModal({ onClose }: { onClose: () => void }) {
             void queryClient.invalidateQueries({ queryKey: ['materials'] });
             void queryClient.invalidateQueries({ queryKey: ['owner', 'materials'] });
             void queryClient.invalidateQueries({ queryKey: ['manager', 'materials'] });
-            void queryClient.invalidateQueries({ queryKey: ['stock-ledgers'] });
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'materials', 'ledgers'] });
             void queryClient.invalidateQueries({ queryKey: ['manager', 'ledgers'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             void queryClient.invalidateQueries({ queryKey: ['production'] });

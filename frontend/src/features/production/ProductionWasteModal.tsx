@@ -59,7 +59,8 @@ export function ProductionWasteModal({
             void queryClient.invalidateQueries({ queryKey: ['waste'] });
             void queryClient.invalidateQueries({ queryKey: ['materials'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            void queryClient.invalidateQueries({ queryKey: ['stock-ledgers'] });
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'ledgers'] });
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'materials', 'ledgers'] });
             onClose();
         },
         onError: (error) => {
@@ -72,16 +73,22 @@ export function ProductionWasteModal({
     const designers = optionsQuery.data?.designers ?? [];
     const canSubmit = optionsQuery.isSuccess && materials.length > 0;
 
+    const close = () => {
+        if (!create.isPending) {
+            onClose();
+        }
+    };
+
     return (
         <Modal
             open={order !== null}
-            onClose={onClose}
+            onClose={close}
             title="Catat Sisa Bahan"
             description={order?.invoice ? `Invoice ${order.invoice.invoice_number}` : undefined}
             footer={
                 canSubmit ? (
                     <>
-                        <Button variant="secondary" onClick={onClose}>
+                        <Button variant="secondary" disabled={create.isPending} onClick={close}>
                             Batal
                         </Button>
                         <Button

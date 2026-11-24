@@ -14,6 +14,7 @@ use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -317,6 +318,70 @@ class ProductionWriteApiTest extends TestCase
                 ], $extra))
                 ->assertStatus(422);
         }
+    }
+
+    public function test_waste_requires_authentication_and_a_production_role(): void
+    {
+        $payload = [
+            'material_id' => $this->material->id,
+            'order_id' => $this->order->id,
+            'quantity' => 1,
+        ];
+
+        $this->postJson('/api/v1/waste', $payload)->assertUnauthorized();
+
+        $owner = $this->user('owner', null);
+        $manager = $this->user('manager', $this->branchOne);
+
+        foreach ([$owner, $manager, $this->cashier, $this->designer] as $user) {
+            $this->actingAs($user)
+                ->postJson('/api/v1/waste', $payload)
+                ->assertForbidden();
+        }
+
+        $this->assertDatabaseCount('wasted_materials', 0);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_waste_quantity_above_the_cap_is_rejected(): void
+    {
+        foreach ([100000000, 1.005] as $quantity) {
+            $this->actingAs($this->production)
+                ->postJson('/api/v1/waste', [
+                    'material_id' => $this->material->id,
+                    'order_id' => $this->order->id,
+                    'quantity' => $quantity,
+                ])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('quantity');
+        }
+
+        $this->assertDatabaseCount('wasted_materials', 0);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+        $this->assertSame(10.0, (float) $this->material->stocks()->first()?->current_stock);
+    }
+
+    public function test_waste_logged_at_dawn_jakarta_counts_in_todays_production_kpis(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-24 05:30:00', 'Asia/Jakarta'));
+
+        $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'order_id' => $this->order->id,
+                'quantity' => 2,
+            ])
+            ->assertCreated();
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/summary')
+            ->assertOk()
+            ->assertJsonPath('waste_today', 2);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('waste_today', 2);
     }
 
     private function branch(string $name): Branch

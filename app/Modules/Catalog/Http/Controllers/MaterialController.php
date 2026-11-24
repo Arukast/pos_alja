@@ -15,6 +15,7 @@ use App\Modules\Catalog\Http\Resources\ProductionMaterialResource;
 use App\Modules\Catalog\Queries\MaterialQueries;
 use App\Modules\Inventory\Actions\AdjustStock;
 use App\Services\InventoryService;
+use App\Support\BranchScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -148,13 +149,12 @@ final class MaterialController extends Controller
         ]);
 
         $actor = $request->user();
-        $branchId = $actor instanceof User && $actor->role !== 'owner'
-            ? $actor->branch_id
-            : ($data['branch_id'] ?? null);
 
-        if ($branchId === null) {
-            abort(422, 'Cabang wajib diisi.');
+        if (! $actor instanceof User) {
+            abort(401);
         }
+
+        $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
 
         $inventory->addStock(
             $material,
@@ -204,13 +204,12 @@ final class MaterialController extends Controller
         ]);
 
         $actor = $request->user();
-        $branchId = $actor instanceof User && $actor->role !== 'owner'
-            ? $actor->branch_id
-            : ($data['branch_id'] ?? null);
 
-        if ($branchId === null) {
-            abort(422, 'Cabang wajib diisi.');
+        if (! $actor instanceof User) {
+            abort(401);
         }
+
+        $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
 
         $exists = $material->branchStocks()->where('branch_id', $branchId)->exists();
 

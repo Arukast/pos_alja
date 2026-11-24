@@ -42,6 +42,7 @@ export function AdjustMaterialModal({ material }: { material: Material }) {
             void queryClient.invalidateQueries({ queryKey: ['owner', 'materials'] });
             void queryClient.invalidateQueries({ queryKey: ['manager', 'materials'] });
             void queryClient.invalidateQueries({ queryKey: ['manager', 'materials', 'ledgers'] });
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'ledgers'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             void queryClient.invalidateQueries({ queryKey: ['production'] });
             setQuantity('');

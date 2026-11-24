@@ -8,6 +8,7 @@ use App\Models\ActivityLog;
 use App\Models\Material;
 use App\Models\User;
 use App\Services\InventoryService;
+use App\Support\BranchScope;
 use Illuminate\Support\Facades\DB;
 
 final class AdjustStock
@@ -19,7 +20,7 @@ final class AdjustStock
      */
     public function execute(Material $material, array $data, User $actor): Material
     {
-        $branchId = $this->resolveBranchId($data, $actor);
+        $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
         $reason = (string) $data['reason'];
         $absolute = ($data['new_quantity'] ?? null) !== null;
         $quantity = (float) ($absolute ? $data['new_quantity'] : $data['delta']);
@@ -54,21 +55,5 @@ final class AdjustStock
         });
 
         return $material;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function resolveBranchId(array $data, User $actor): string
-    {
-        $branchId = $actor->role === 'owner'
-            ? ($data['branch_id'] ?? null)
-            : $actor->branch_id;
-
-        if (! is_string($branchId) || $branchId === '') {
-            abort(422, 'Cabang wajib diisi.');
-        }
-
-        return $branchId;
     }
 }

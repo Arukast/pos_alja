@@ -10,6 +10,8 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { errorMessage } from '../../lib/errors';
 
+const MAX_RESTOCK = 999999.99;
+
 export function RestockMaterialButton({ material }: { material: Material }) {
     const { user } = useAuth();
     const queryClient = useQueryClient();
@@ -29,19 +31,66 @@ export function RestockMaterialButton({ material }: { material: Material }) {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['owner', 'materials'] });
             void queryClient.invalidateQueries({ queryKey: ['manager', 'materials'] });
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'materials', 'ledgers'] });
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'ledgers'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setOpen(false);
         },
         onError: (error) => setNotice(errorMessage(error)),
     });
 
+    const parsedQuantity = Number(quantity);
+    const canSubmit =
+        parsedQuantity > 0 &&
+        parsedQuantity <= MAX_RESTOCK &&
+        (!isOwner || branchId !== '');
+
+    const close = () => {
+        if (!restock.isPending) {
+            setOpen(false);
+        }
+    };
+
     return (
         <>
-            <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+            <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                    setNotice(null);
+                    setOpen(true);
+                }}
+            >
                 Tambah Stok
             </Button>
-            <Modal open={open} onClose={() => setOpen(false)} title={`Tambah Stok ${material.name}`}>
+            <Modal
+                open={open}
+                onClose={close}
+                title={`Tambah Stok ${material.name}`}
+                footer={
+                    <>
+                        <Button variant="secondary" disabled={restock.isPending} onClick={close}>
+                            Batal
+                        </Button>
+                        <Button
+                            loading={restock.isPending}
+                            disabled={!canSubmit}
+                            onClick={() => restock.mutate()}
+                        >
+                            Tambah Stok
+                        </Button>
+                    </>
+                }
+            >
                 <div className="space-y-4">
+                    {notice ? (
+                        <p
+                            role="alert"
+                            className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                        >
+                            {notice}
+                        </p>
+                    ) : null}
                     {isOwner ? (
                         <Select
                             label="Cabang"
@@ -59,25 +108,13 @@ export function RestockMaterialButton({ material }: { material: Material }) {
                     <Input
                         label="Jml"
                         type="number"
-                        min="0"
+                        min="0.01"
+                        max={String(MAX_RESTOCK)}
                         value={quantity}
                         onChange={(event) => setQuantity(event.target.value)}
                     />
-                    <div className="flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setOpen(false)}>
-                            Batal
-                        </Button>
-                        <Button
-                            loading={restock.isPending}
-                            disabled={isOwner && branchId === ''}
-                            onClick={() => restock.mutate()}
-                        >
-                            Tambah Stok
-                        </Button>
-                    </div>
                 </div>
             </Modal>
-            {notice ? <p className="text-sm text-red-600 dark:text-red-400">{notice}</p> : null}
         </>
     );
 }

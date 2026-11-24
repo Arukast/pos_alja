@@ -101,7 +101,7 @@ final class ProductionController extends Controller
 
         $wasteToday = WastedMaterial::query()
             ->where('branch_id', $branchId)
-            ->whereDate('logged_at', now()->toDateString())
+            ->whereBetween('logged_at', [now()->startOfDay(), now()->endOfDay()])
             ->sum('quantity');
 
         return response()->json([
