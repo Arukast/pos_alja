@@ -7,50 +7,89 @@
 - Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM.
 - Laravel Reverb runs on container port 8080 and host port 8084.
 
-## 2. Deployment Diagram
+## 2. Deployment Modes
+
+There are two deployment modes. They share one codebase; only the runtime and edge differ.
+
+### 2.1 Local Development
 
 ```mermaid
 flowchart LR
-    subgraph CLIENT["Client"]
-        Browser["Browser<br/>React SPA"]
+    Browser["Browser"]
+    subgraph LOCAL["Developer machine"]
+        Vite["Vite :5173"]
+        PHP["php artisan serve :8000"]
+        Reverb["Reverb :8080"]
+        DB[("SQLite / local PostgreSQL")]
+    end
+
+    Browser -->|"http://localhost:5173"| Vite
+    Vite -->|"proxy /api /sanctum /broadcasting"| PHP
+    PHP -->|"SQL"| DB
+    PHP -->|"broadcast"| Reverb
+    Browser -->|"ws://localhost:8080"| Reverb
+```
+
+Use this mode for development and local demos. It runs on one machine, does not use TLS, and does not integrate two branches.
+
+### 2.2 Online Multi-Branch (Primary)
+
+```mermaid
+flowchart LR
+    subgraph BRANCH_A["Cabang A"]
+        A["Browser / SPA"]
+    end
+    subgraph BRANCH_B["Cabang B"]
+        B["Browser / SPA"]
     end
     subgraph EDGE["Public edge"]
-        TLS["TLS reverse proxy<br/>HTTPS :443"]
+        TLS["TLS reverse proxy<br/>or Cloudflare Tunnel<br/>HTTPS/WSS :443"]
     end
-    subgraph HOST["Docker Compose host"]
-        Nginx["nginx :80<br/>SPA + API proxy"]
-        App["app :9000<br/>PHP-FPM / Laravel API"]
-        Reverb["reverb :8080<br/>host :8084"]
-        DB[("PostgreSQL 16<br/>:5432 / pgdata")]
+    subgraph HOST["Central Docker Compose host"]
+        Nginx["nginx :80"]
+        App["app :9000<br/>Laravel API"]
+        Reverb["reverb :8080"]
+        DB[("PostgreSQL 16<br/>one central database")]
     end
     Backup[("Backup storage<br/>FR26 target")]
 
-    Browser -->|"HTTPS"| TLS
+    A -->|"HTTPS/WSS 443"| TLS
+    B -->|"HTTPS/WSS 443"| TLS
     TLS -->|"HTTP :80"| Nginx
-    Nginx -->|"SPA assets"| Browser
+    TLS -->|"WSS /app"| Reverb
     Nginx -->|"FastCGI /api /sanctum /broadcasting"| App
     App -->|"SQL :5432"| DB
     App -->|"broadcast :8080"| Reverb
-    Browser -->|"WebSocket :8084"| Reverb
-    Reverb -->|"events"| Browser
+    Reverb -->|"events"| TLS
+    TLS -->|"events"| A
+    TLS -->|"events"| B
     App -->|"backup"| Backup
 ```
 
-How to read the diagram:
+This is the primary deployment for integration between Cabang A and Cabang B:
 
-1. The browser loads the React SPA from Nginx through the HTTPS edge.
-2. API, Sanctum, CSRF, and broadcasting-auth calls go through Nginx to the Laravel app on `app:9000`.
-3. The app reads and writes PostgreSQL on the internal `:5432`; the database is not exposed to the host.
-4. The app sends realtime events to Reverb. The browser connects directly to Reverb on host `:8084`, while `/broadcasting/auth` goes through Nginx to the app.
-5. The backup arrow points to FR26 target storage. It is solid because it is part of the target topology, not because backup is already implemented.
+1. Both branches use only a browser; there is no application server at each branch.
+2. One central PostgreSQL stores both branches; `branch_id` isolates data.
+3. Owner sees all branches; manager, cashier, designer, and production are branch-scoped.
+4. SPA, API, and CSRF traffic go through the HTTPS edge to Nginx.
+5. Reverb events go through the same edge as WSS on `443`, not `ws://host:8084`.
+6. The backup arrow is solid because it is part of the target topology; FR26 is still target.
 
-Deployment notes:
+### 2.3 Optional Edge
 
-1. Nginx listens on HTTP `80`. In production, TLS terminates at the edge; set `APP_URL` to HTTPS, secure cookies, and exact `TRUSTED_PROXIES`.
-2. PostgreSQL persists through the `pgdata` volume.
-3. Compose currently has no queue worker or scheduler service. `QUEUE_CONNECTION=database`; add a worker before relying on queued jobs, and a scheduler before FR26 scheduled backup.
-4. CI is not part of the runtime diagram. GitHub Actions runs tests and builds only; deployment remains manual: `docker compose up -d --build`, then `docker compose exec app php artisan migrate --force`.
-5. `/up` is the health endpoint used by the reverse proxy or uptime monitor.
+| Edge option | Public IP | Inbound ports | TLS/WSS | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| VPS + Caddy/Nginx + Let's Encrypt | Yes | 443 | Yes | Most self-contained; proxy `/api`, `/sanctum`, `/broadcasting` and `/app` WebSocket to the app/Reverb |
+| Cloudflare Tunnel | No | None | Cloudflare edge | `cloudflared` makes outbound connections; route `app.example.com` to `nginx:80` and `ws.example.com` to `reverb:8080` |
+| Local development | No | None | No | Browser, Vite, PHP, and Reverb on one machine; not for two-branch integration |
+
+Cloudflare Tunnel notes:
+
+1. Use a named tunnel, not Quick Tunnel `trycloudflare.com`, for a stable deployment.
+2. Store the tunnel token as a secret; never commit it.
+3. Set `APP_URL`, `SANCTUM_STATEFUL_DOMAINS`, `SESSION_SECURE_COOKIE`, and `TRUSTED_PROXIES` for the public hostnames.
+4. Rebuild the SPA with `VITE_REVERB_HOST=ws.example.com`, `VITE_REVERB_PORT=443`, and `VITE_REVERB_SCHEME=https`.
+5. Do not put Cloudflare Access in front of the API without testing Sanctum cookies and CSRF.
 
 ## 3. Required Environment
 
