@@ -45,6 +45,8 @@ export function CrudPage<T extends { id: string }>({
     rowActions,
     createLabel = 'Tambah data',
     summary,
+    toolbar,
+    rowClassName,
     footer,
     paginated = true,
     hideBanner = false,
@@ -63,6 +65,8 @@ export function CrudPage<T extends { id: string }>({
     rowActions?: (row: T) => ReactNode;
     createLabel?: string;
     summary?: ReactNode;
+    toolbar?: ReactNode;
+    rowClassName?: (row: T) => string | undefined;
     footer?: ReactNode;
     paginated?: boolean;
     hideBanner?: boolean;
@@ -182,6 +186,8 @@ export function CrudPage<T extends { id: string }>({
 
             {summary}
 
+            {toolbar}
+
             <Card>
                 {hideBanner ? (
                     <CardHeader>
@@ -235,7 +241,7 @@ export function CrudPage<T extends { id: string }>({
                                         </TableEmpty>
                                     ) : (
                                         (query.data?.data ?? []).map((row) => (
-                                            <TableRow key={row.id}>
+                                            <TableRow key={row.id} className={rowClassName?.(row)}>
                                                 {columns.map((column) => (
                                                     <TableCell key={column.header} className={column.className}>
                                                         {column.cell(row)}
