@@ -51,7 +51,7 @@ flowchart LR
         Reverb["reverb :8080"]
         DB[("PostgreSQL 16<br/>one central database")]
     end
-    Backup[("Backup storage<br/>FR26 target")]
+    Backup[("S3-compatible object storage<br/>Cloudflare R2 recommended<br/>FR26 target")]
 
     A -->|"HTTPS/WSS 443"| TLS
     B -->|"HTTPS/WSS 443"| TLS
@@ -73,7 +73,7 @@ This is the primary deployment for integration between Cabang A and Cabang B:
 3. Owner sees all branches; manager, cashier, designer, and production are branch-scoped.
 4. SPA, API, and CSRF traffic go through the HTTPS edge to Nginx.
 5. Reverb events go through the same edge as WSS on `443`, not `ws://host:8084`.
-6. The backup arrow is solid because it is part of the target topology; FR26 is still target.
+6. The backup arrow points to S3-compatible object storage, with Cloudflare R2 recommended. It is solid because it is part of the target topology; FR26 is still target.
 
 ### 2.3 Optional Edge
 
@@ -154,7 +154,29 @@ CI does not auto-commit formatting changes.
 
 ## 7. Backups
 
-FR26 (scheduled database backup) is not implemented. Until that sprint, use the PostgreSQL provider's snapshot schedule or a cron job running `pg_dump` outside this repository. Do not claim backup coverage from this refactor.
+FR26 (manual and scheduled database backup) is not implemented yet. The target storage is **S3-compatible object storage**, with **Cloudflare R2 recommended** because it is S3-compatible, has no egress fee, and fits the Cloudflare Tunnel edge.
+
+Target flow:
+
+```text
+cron / systemd timer or Laravel scheduler
+  -> pg_dump -Fc
+  -> encrypt with age or rclone crypt
+  -> rclone copy to r2:pos-alja-backups/YYYY/MM/DD/
+  -> apply lifecycle retention
+  -> record success/failure and audit log
+```
+
+Requirements:
+
+1. Keep the bucket private and scope the R2 token to the backup bucket only.
+2. Encrypt before upload; store the encryption key outside the bucket.
+3. Retention: daily 7 days, weekly 4 weeks, monthly 12 months.
+4. Target RPO <= 24 hours and RTO <= 4 hours, per NFR6.
+5. Run a restore drill: download, decrypt, `pg_restore`, and verify invoice, payment, and stock counts.
+6. Host-level `rclone` needs no PHP dependency. An app-driven backup needs an S3 adapter dependency and explicit approval.
+7. Google Drive via `rclone` remains a fallback, but R2 is preferred for automated backups.
+8. Do not claim backup coverage until FR26 is implemented and the restore drill passes.
 
 ## 8. Deployment Checklist
 
