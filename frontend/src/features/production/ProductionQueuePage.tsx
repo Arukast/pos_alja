@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
+import type { ProductionQueueItem } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { OrderStatusBadge } from '../../components/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +16,7 @@ import { Toast } from '../../components/ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { errorMessage } from '../../lib/errors';
 import { formatDate } from '../../lib/dates';
+import { ProductionWasteModal } from './ProductionWasteModal';
 
 interface ProductionSummary {
     queued: number;
@@ -27,6 +29,7 @@ export function ProductionQueuePage() {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
     const [notice, setNotice] = useState<string | null>(null);
+    const [wasteOrder, setWasteOrder] = useState<ProductionQueueItem | null>(null);
 
     const query = useQuery({
         queryKey: ['production', 'queue', page],
@@ -163,24 +166,35 @@ export function ProductionQueuePage() {
                                                     <OrderStatusBadge status={order.status} />
                                                 </TableCell>
                                                 <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                                    {order.status === 0 ? (
-                                                        <Button
-                                                            size="sm"
-                                                            loading={start.isPending}
-                                                            onClick={() => start.mutate(order.id)}
-                                                        >
-                                                            Mulai
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="secondary"
-                                                            loading={complete.isPending}
-                                                            onClick={() => complete.mutate(order.id)}
-                                                        >
-                                                            Selesaikan
-                                                        </Button>
-                                                    )}
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {order.status === 0 ? (
+                                                            <Button
+                                                                size="sm"
+                                                                loading={start.isPending}
+                                                                onClick={() => start.mutate(order.id)}
+                                                            >
+                                                                Mulai
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                loading={complete.isPending}
+                                                                onClick={() => complete.mutate(order.id)}
+                                                            >
+                                                                Selesaikan
+                                                            </Button>
+                                                        )}
+                                                        {order.status === 0 || order.status === 1 ? (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                onClick={() => setWasteOrder(order)}
+                                                            >
+                                                                Sisa Bahan
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -201,6 +215,9 @@ export function ProductionQueuePage() {
                 </CardBody>
             </Card>
             {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {wasteOrder ? (
+                <ProductionWasteModal order={wasteOrder} onClose={() => setWasteOrder(null)} />
+            ) : null}
         </div>
     );
 }
