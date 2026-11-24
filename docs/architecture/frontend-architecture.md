@@ -30,6 +30,7 @@
 | `/designer/new-order` | designer | Customer search, quote, cart, invoice |
 | `/designer/customers/new` | designer | Create customer on a separate page |
 | `/designer/orders` | designer | Invoice list and print links |
+| `/queue` | owner, manager, cashier, designer | Read-only production queue with status filter |
 | `/production` | production | Production dashboard |
 | `/production/queue` | production | Filter queue, status control, inline waste |
 | `/invoices/:id/print` | owner, manager, cashier, designer | A4 invoice print |

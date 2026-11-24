@@ -21,6 +21,7 @@
 | Down payments/settlements | no | no | own branch | no | no |
 | Pickup | no | no | own branch | no | no |
 | Production start/complete | no | no | no | no | own branch |
+| Production queue read | all | own branch | own branch | own branch | own branch |
 | Waste logging | no | no | no | no | own branch |
 | Stock adjustment | all | own branch | no | no | no |
 | Receipt | all | all | all | all | no |
