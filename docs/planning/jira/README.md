@@ -20,7 +20,7 @@ Folder ini berisi backlog Jira untuk tim 3 orang. Isinya diturunkan dari:
 | Placeholder | Epic | Fokus | Pemilik | FR |
 | :--- | :--- | :--- | :--- | :--- |
 | `EPIC-FOUNDATION` | Fondasi: Autentikasi, RBAC, dan Branch Scope | Auth, user, policy, branch | A | FR1–FR5 |
-| `EPIC-CATALOG` | Katalog Produk, Kategori, dan Harga | Produk, kategori, bahan, finishing/display, diskon | A (catalog) + C (material) | FR6–FR7 |
+| `EPIC-CATALOG` | Katalog Produk, Kategori, dan Harga | Produk, kategori, bahan, finishing/display, diskon reseller, diskon kategori | A (catalog) + C (material) | FR6–FR7 |
 | `EPIC-SALES` | Pesanan, Pelanggan, dan Status Desain | Customer, order, design status, invoice | B | FR8–FR10 |
 | `EPIC-PAYMENTS` | Pembayaran, Invoice, dan Pengeluaran | DP, settlement, invoice, expense | B | FR11–FR14, FR21 |
 | `EPIC-INVENTORY` | Inventori, Pembelian, dan Penyesuaian Stok | Material, stock, purchase, adjustment | C | FR15–FR18 |

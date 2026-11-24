@@ -61,6 +61,7 @@ erDiagram
         string address
         string phone
         boolean is_active
+        decimal reseller_discount_percent
         json settings
         timestamp deleted_at
     }
@@ -317,7 +318,7 @@ erDiagram
 1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`, and `product_categories.allowed_attribute_types` stores an array of type names. Referential integrity is by convention, not by key.
 2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
-4. **The pricing matrix is removed.** There is no `pricing`, `attribute_pricing`, or `machine_pricing` table. The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price; the customer type is read from `customers.type`, never from the client. The category quantity discount is selected from `product_category_discounts` with the highest `min_qty <= quantity`. `orders.unit_price` is after the reseller adjustment and before the quantity discount; `orders` stores the customer type, reseller percentage, and resulting prices as a snapshot so later master-data changes do not rewrite history.
+4. **The pricing matrix is removed.** There is no `pricing`, `attribute_pricing`, or `machine_pricing` table. The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price; the customer type is read from `customers.type`, never from the client. `branches.reseller_discount_percent` is the only source of that discount: decimal `0–100`, default `0`, editable by the Owner. The invoice branch's value applies. The category quantity discount is selected from `product_category_discounts` with the highest `min_qty <= quantity`. `orders.unit_price` is after the reseller adjustment and before the quantity discount; `orders` stores the customer type, reseller percentage, and resulting prices as a snapshot so later master-data changes do not rewrite history.
 5. **`order_attributes` stores the selected finishing and display option.** The application allows at most one row per `(order_id, type)`, and the row carries a price/cost snapshot. This preserves what was printed even if the attribute master changes.
 6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
 7. **`invoices.designer_id`** is the user who submitted the order.
@@ -328,6 +329,7 @@ erDiagram
 12. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table.
 13. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and discount tiers when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
 14. **Target additions.** The following columns and tables are part of the target schema:
+    - `branches.reseller_discount_percent` for Reseller pricing.
     - `products.is_active` for catalog filtering.
     - `product_category_discounts` for quantity discounts.
     - `materials.unit` for `m2`, `sheet`, and `pcs`.
@@ -362,6 +364,10 @@ erDiagram
 | `orders.design_status` | 0 | Pending |
 | `orders.design_status` | 1 | In design (Proses Desain) |
 | `orders.design_status` | 2 | Design approved (Disetujui) |
+| `customers.type` | `Reguler` | Regular customer; no reseller discount |
+| `customers.type` | `Reseller` | Reseller customer; branch reseller discount applies |
+| `orders.customer_type` | `Reguler` / `Reseller` | Snapshot of the customer type used for the quote |
+| `branches.reseller_discount_percent` | `0–100` | Reseller discount percentage; default `0` |
 | `payments.type` | `down_payment` | Down payment |
 | `payments.type` | `settlement` | Balance settlement |
 | `payments.type` | `partial` | Reserved by schema; not written by `PaymentService` |

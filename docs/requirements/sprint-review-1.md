@@ -35,7 +35,7 @@ The price matrix is removed. The target calculation is:
 
 ```text
 base price = material price + selected finishing price + selected display price
-reseller adjustment = branch reseller discount when the customer type is Reseller; read from customers.type, not the client
+reseller adjustment = branches.reseller_discount_percent when the customer type is Reseller; read from customers.type, not the client
 quantity discount = category tier with the highest min_qty <= quantity
 line subtotal = (base price after reseller adjustment) * quantity * area factor
 line subtotal after discount = line subtotal * (1 - discount_percent / 100)
@@ -44,7 +44,7 @@ line subtotal after discount = line subtotal * (1 - discount_percent / 100)
 - `product_categories` owns the quantity discount tiers.
 - `materials` owns the unit, base cost, and base price.
 - `attributes` owns the finishing/display price and cost.
-- `orders` stores product, material, unit price, area, quantity, discount percent, discount amount, cost, and profit.
+- `orders` stores product, material, customer type, reseller discount percent, unit price, area, quantity, quantity discount percent, discount amount, cost, and profit.
 - `order_attributes` stores the selected finishing/display option and its price/cost snapshot.
 - The invoice carries the financial roll-up; the settlement discount on the invoice remains separate from the quantity discount.
 

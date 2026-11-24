@@ -95,6 +95,7 @@
   - Material master includes name, category, unit (`m2`, `sheet`, `pcs`), type, base cost, and base price. Materials are created by the Owner in the material master and mapped to a product category.
   - Finishing and display options store `price` and `cost`. Each order item may select at most one finishing and one display option.
   - The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price before the category quantity discount. The customer type is read from the customer record, never from the client. The resulting customer type and reseller percentage are stored on the order as a snapshot.
+  - `branches.reseller_discount_percent` is the only source of the reseller discount: decimal `0–100`, default `0`, editable by the Owner. The invoice branch's value applies.
   - The category quantity discount uses the tier with the highest `min_qty` less than or equal to the item quantity.
   - The pricing matrix and machine masters are not part of the target.
   - Global catalog changes are Owner-only and written to the audit log; branch stock changes are branch-scoped.

@@ -44,7 +44,7 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 - RBAC: `owner`, `manager`, `cashier`, `designer`, `production`.
 - Branch scope: non-owner selalu terikat `branch_id`; non-owner tanpa cabang ditolak.
 - User management: owner semua user; manager hanya cashier/designer/production di cabangnya.
-- Branch management.
+- Branch management, termasuk `reseller_discount_percent`.
 - Product, category, finishing/display, dan diskon kuantitas per kategori (Owner-only). Material master dan satuannya dimiliki C.
 - Product search, filter, dan pagination.
 - Audit log untuk aksi kritis.
@@ -137,9 +137,9 @@ B boleh memakai data produk seed/mock selama API katalog A belum selesai. PB-08 
 
 | A | B | C |
 | :--- | :--- | :--- |
-| Branch/user administration, audit log, quantity discount tiers | Customer search/institution, finishing/display, invoice print, order update DP, design status, expense Owner/Manajer, pickup | Purchase, stock adjustment, low-stock, production queue/filter/status, usage/waste inline, material units |
+| Branch/user administration, audit log, quantity discount tiers, reseller discount config | Customer search/institution, finishing/display, invoice print, order update DP, design status, expense Owner/Manajer, pickup | Purchase, stock adjustment, low-stock, production queue/filter/status, usage/waste inline, material units |
 
-C dan B harus menyepakati bentuk data antrean produksi sebelum UI queue dibuat. B dan A menyepakati model harga bahan + finishing/display + diskon kategori sebelum menghapus matriks harga.
+C dan B harus menyepakati bentuk data antrean produksi sebelum UI queue dibuat. B dan A menyepakati model harga bahan + finishing/display + diskon reseller cabang + diskon kategori sebelum menghapus matriks harga.
 
 ### Sprint 3 — Laporan, Audit, Backup, Hardening
 
@@ -153,7 +153,7 @@ Sprint ini juga dipakai untuk memperbaiki temuan `implementation-gaps.md` dan me
 
 ```text
 Auth/RBAC
-  -> Catalog/Price model (material + finishing/display + category discount)
+  -> Catalog/Price model (material + finishing/display + reseller discount + category discount)
     -> Orders
       -> Payments
       -> Inventory

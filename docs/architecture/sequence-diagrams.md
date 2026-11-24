@@ -129,7 +129,7 @@ sequenceDiagram
     SPA->>API: GET /api/v1/quotes/options
     API-->>SPA: Branch catalog, no cost/profit for designer
     SPA->>API: POST /api/v1/quotes
-    API->>PriceCalc: Material + finishing/display price, customer type from customer, category discount
+    API->>PriceCalc: Material + finishing/display price, customer type, branch reseller discount, category discount
     PriceCalc-->>API: Unit price, area, subtotal
     API-->>SPA: Quote
     SPA->>API: POST /api/v1/invoices

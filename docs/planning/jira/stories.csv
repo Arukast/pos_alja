@@ -12,6 +12,7 @@
 "Story","Pencarian, filter, dan pagination produk","FR7. Search nama/kategori, filter active, minimal 20 baris per halaman.","Medium","owner-a,sprint-1,backend,frontend","Sprint 1","5","EPIC-CATALOG"
 "Story","Test API katalog dan validasi harga","FR6-FR7. Test CRUD, duplicate name, pagination, dan perhitungan harga.","High","owner-a,sprint-1,backend,test","Sprint 1","5","EPIC-CATALOG"
 "Story","Diskon kuantitas per kategori","FR6. Discount tiers min_qty/discount_percent, validasi unik, dan perhitungan harga.","High","owner-a,sprint-2,backend,frontend","Sprint 2","5","EPIC-CATALOG"
+"Story","Diskon reseller per cabang","FR6. Kolom reseller_discount_percent 0-100 default 0, form Branch Owner, dan perhitungan harga dari customer type.","High","owner-a,sprint-2,backend,frontend","Sprint 2","3","EPIC-CATALOG"
 "Story","Satuan bahan m2/sheet/pcs","FR6. Tambah unit bahan, validasi enum, dan perhitungan area/quantity.","High","owner-c,sprint-2,backend,frontend","Sprint 2","5","EPIC-CATALOG"
 "Story","CRUD pelanggan dasar","FR8. Customer name, phone, address, email, type Reguler/Reseller; create/update.","Medium","owner-b,sprint-1,backend,frontend","Sprint 1","5","EPIC-SALES"
 "Story","Buat pesanan baru core (invoice + item + kalkulasi)","FR8. Customer, item produk/bahan, quantity, deadline; harga server-side; invoice + order + status log.","High","owner-b,sprint-1,backend,frontend","Sprint 1","8","EPIC-SALES"

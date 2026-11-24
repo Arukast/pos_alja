@@ -45,7 +45,8 @@
 7. Quantity discounts are configured by the Owner per product category. Staff cannot override the tier from the client.
 8. Expense categories are a fixed dropdown. Cashier has no expense access.
 9. Global catalog and category/discount writes are Owner-only. Branch Manager reads the catalog and manages branch stock.
-10. Designer updates an invoice only before production and while it is not fully paid. Owner and Branch Manager may override a design-status transition; Designer cannot move backward.
+10. The Owner configures `branches.reseller_discount_percent` through Branch CRUD (`0–100`, default `0`). Manager has no branch write access.
+11. Designer updates an invoice only before production and while it is not fully paid. Owner and Branch Manager may override a design-status transition; Designer cannot move backward.
 
 ## Revision Note
 

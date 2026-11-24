@@ -14,7 +14,7 @@
 | FR3 | Implemented | Logout invalidates session; password change and confirm-password; `AuthTest`. |
 | FR4 | Implemented | User update, soft delete, restore; manager branch/role limits; `UserApiTest`. |
 | FR5 | Implemented | Policies, `BranchScope`, cross-branch tests, production money redaction; `FoundationTest`, `InvoiceApiTest`, `CatalogApiTest`. |
-| FR6 | Partial | Product read, search, filter, and pagination exist. Product create/update/delete routes and UI are missing; `ProductController` only has `index`. Pricing still uses the matrix and machine modifiers; category quantity discounts, material units, and attribute prices are missing. |
+| FR6 | Partial | Product read, search, filter, and pagination exist. Product create/update/delete routes and UI are missing; `ProductController` only has `index`. Pricing still uses the matrix and machine modifiers; category quantity discounts, reseller discount config, material units, and attribute prices are missing. |
 | FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 20-row pagination; `CatalogApiTest`. |
 | FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices; `CreateInvoiceApiTest`. Missing: customer search as the default UI, separate customer page, institution, finishing/display selection and persistence, one invoice print, machine removal. |
 | FR9 | Target | No invoice update route or `UpdateInvoice` action. Order items cannot be changed after submission. |
@@ -59,7 +59,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Sprint 0 | Platform foundation, SPA shell | — | Done | Auth foundation, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
 | Sprint 1 | PB-08 | FR1–FR5 | Done | Auth, RBAC, branch scope, user management | HTTPS/OWASP formal verification |
-| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product read/search/filter/pagination, category, legacy pricing matrix (transitional) | Product CRUD, material units, attribute prices, category discounts, pricing redesign, machine removal |
+| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product read/search/filter/pagination, category, legacy pricing matrix (transitional) | Product CRUD, material units, attribute prices, category discounts, reseller discount config, pricing redesign, machine removal |
 | Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer, quote, cart, legacy ticket (to be replaced) | Customer search UI, institution, finishing/display, order update, design status, invoice print |
 | Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
 | Sprint 1 | PB-04 | FR13, FR14 | Partial | Receipt, operational expenses | A4 invoice print, expense role change, category dropdown |
@@ -80,7 +80,7 @@ Summary:
 
 Priority order:
 
-1. **Pricing redesign**: material price + finishing/display price + category quantity discount; remove the pricing matrix and machine UI; migrate data.
+1. **Pricing redesign**: material price + finishing/display price + branch reseller discount + category quantity discount; remove the pricing matrix and machine UI; migrate data.
 2. **FR6** product create/update/delete and product admin UI; material unit and attribute price fields.
 3. **FR8** customer search UI, separate customer creation, institution, finishing/display selection and persistence, A4 invoice print, machine removal.
 4. **FR9** order update before production and while not fully paid; **FR10** design status.

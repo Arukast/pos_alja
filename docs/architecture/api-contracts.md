@@ -49,6 +49,8 @@
 | PATCH | `/branches/{branch}/status` | owner |
 | DELETE | `/branches/{branch}` | owner |
 
+Branch create/update responses include `reseller_discount_percent` (decimal `0–100`, default `0`). `PUT /branches/{branch}` accepts it; the invoice branch's value is used for Reseller pricing.
+
 ### Users
 
 | Method | Path | Access |
@@ -81,7 +83,7 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | POST | `/materials/{material}/restore` | owner |
 | POST | `/materials/{material}/stock` | owner, manager (manager branch forced) |
 | POST | `/materials/{material}/adjustments` | owner, manager (manager branch forced) |
-| POST | `/materials/{material}/activate` | owner, manager |
+| POST | `/materials/{material}/activate` | owner, manager (branch-stock activation) |
 | GET | `/materials/similar?name=` | owner, manager |
 | GET | `/stock-ledgers` | owner all; manager own branch |
 
@@ -108,8 +110,8 @@ Stock adjustment accepts `new_quantity` or `delta`, plus `reason` (3–255 chara
 | POST | `/invoices/{invoice}/down-payments` | cashier |
 | POST | `/invoices/{invoice}/settlements` | cashier |
 | POST | `/invoices/{invoice}/pickup` | cashier |
-| GET | `/invoices/{invoice}/receipt` | owner, manager, cashier, designer |
-| PATCH | `/orders/{order}/design-status` | designer; owner/manager override, branch-scoped |
+| GET | `/invoices/{invoice}/receipt` | owner, manager, cashier, designer; branch-scoped |
+| PATCH | `/orders/{order}/design-status` | designer own branch; owner all; manager own branch override |
 | GET | `/expenses` | owner all; manager own branch |
 | POST | `/expenses` | owner, manager |
 
