@@ -22,7 +22,7 @@ final class StorePurchaseRequest extends FormRequest
     {
         return [
             'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
-            'purchased_at' => ['nullable', 'date', 'before_or_equal:now'],
+            'purchased_at' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'supplier' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'idempotency_key' => ['required', 'uuid'],

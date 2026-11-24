@@ -4,8 +4,8 @@
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
 - **Table naming:** Eloquent default pluralization, except `material_branch_stock`, which uses a singular table name.
 - **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, and `attributes`.
-- **Target schema:** This diagram shows the target schema after Sprint Review 1. Implementation progress is tracked in `docs/requirements/implementation-gaps.md`.
-- **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; business tables follow this target.
+- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, and the waste machine-reference removal are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
+- **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; the purchase and stock-ledger tables and columns are implemented as described here, while the remaining business tables follow this target.
 
 ```mermaid
 erDiagram
@@ -18,7 +18,7 @@ erDiagram
     BRANCHES |o--o{ WASTED_MATERIALS : "logs"
     BRANCHES |o--o{ STOCK_LEDGERS : "records"
     BRANCHES |o--o{ ACTIVITY_LOGS : "audits"
-    BRANCHES |o--o{ PURCHASES : "records"
+    BRANCHES ||--o{ PURCHASES : "records"
 
     CUSTOMERS ||--o{ INVOICES : "places"
 
@@ -48,7 +48,7 @@ erDiagram
     USERS |o--o{ PAYMENTS : "cashier"
     USERS |o--o{ ORDER_STATUS_LOGS : "actor"
     USERS |o--o{ STOCK_LEDGERS : "records"
-    USERS |o--o{ PURCHASES : "actor"
+    USERS ||--o{ PURCHASES : "actor"
     USERS |o--o{ WASTED_MATERIALS : "designer"
     USERS |o--o{ WASTED_MATERIALS : "operator"
     USERS |o--o{ EXPENSES : "records"
@@ -277,6 +277,7 @@ erDiagram
         string supplier
         decimal total_amount
         text notes
+        string idempotency_key
     }
 
     PURCHASE_ITEMS {
@@ -318,7 +319,7 @@ erDiagram
 1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`, and `product_categories.allowed_attribute_types` stores an array of type names. Referential integrity is by convention, not by key.
 2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
-4. **The pricing matrix is removed.** There is no `pricing`, `attribute_pricing`, or `machine_pricing` table. The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price; the customer type is read from `customers.type`, never from the client. `branches.reseller_discount_percent` is the only source of that discount: decimal `0–100`, default `0`, editable by the Owner. The invoice branch's value applies. The category quantity discount is selected from `product_category_discounts` with the highest `min_qty <= quantity`. `orders.unit_price` is after the reseller adjustment and before the quantity discount; `orders` stores the customer type, reseller percentage, and resulting prices as a snapshot so later master-data changes do not rewrite history.
+4. **The pricing matrix is a target removal.** The current build still has the legacy `pricing` and `machine_pricing` tables and the `/pricing` endpoints; see note 15 and `docs/requirements/implementation-gaps.md`. The target has no `pricing`, `attribute_pricing`, or `machine_pricing` table. The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price; the customer type is read from `customers.type`, never from the client. `branches.reseller_discount_percent` is the only source of that discount: decimal `0–100`, default `0`, editable by the Owner. The invoice branch's value applies. The category quantity discount is selected from `product_category_discounts` with the highest `min_qty <= quantity`. `orders.unit_price` is after the reseller adjustment and before the quantity discount; `orders` stores the customer type, reseller percentage, and resulting prices as a snapshot so later master-data changes do not rewrite history.
 5. **`order_attributes` stores the selected finishing and display option.** The application allows at most one row per `(order_id, type)`, and the row carries a price/cost snapshot. This preserves what was printed even if the attribute master changes.
 6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
 7. **`invoices.designer_id`** is the user who submitted the order.
@@ -328,24 +329,24 @@ erDiagram
 11. **`branch_id` is nullable on** `users`, `attributes`, `invoices`, `wasted_materials`, `stock_ledgers`, and `activity_logs`. A null value means "global" or "unassigned", depending on the table; owner accounts are the main case for a null user branch.
 12. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table.
 13. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and discount tiers when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
-14. **Target additions.** The following columns and tables are part of the target schema:
+14. **Target and implemented additions.** The following columns and tables are part of the target schema:
     - `branches.reseller_discount_percent` for Reseller pricing.
     - `products.is_active` for catalog filtering.
     - `product_category_discounts` for quantity discounts.
-    - `materials.unit` for `m2`, `sheet`, and `pcs`.
+    - `materials.unit` for `m2`, `sheet`, and `pcs`; still target-only and not implemented (see `docs/requirements/implementation-gaps.md`).
     - `attributes.price` and `attributes.cost`.
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `customers.institution` and `attributes.is_active`.
     - `order_attributes` for finishing/display snapshots.
     - `expenses.user_id` and `recorded_by_name`.
-    - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`.
-    - `purchases` and `purchase_items` for raw-material purchases. `purchases.user_id` is the actor (Owner or Branch Manager).
-15. **Machine removal.** `machines`, `machine_pricing`, and `wasted_materials.machine_id` are removed from the target. Machine cost is folded into material cost. Historical orders keep price/cost snapshots.
+    - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`; implemented by `2026_11_24_000001_add_traceability_to_stock_ledgers_table.php`.
+    - `purchases` and `purchase_items` for raw-material purchases; implemented by `2026_11_24_000002_create_purchases_table.php` and `2026_11_24_000003_create_purchase_items_table.php`. `purchases.user_id` is the actor (Owner or Branch Manager), and `purchases.idempotency_key` is unique per branch.
+15. **Waste no longer references a machine.** `wasted_materials.machine_id` is dropped by `2026_11_24_000004_drop_machine_id_from_wasted_materials_table.php`. The machine master and machine-pricing tables and endpoints remain transitional and are not removed by this unit; the target still removes them. `wasted_materials.order_id` stays nullable for legacy rows, but the API requires it for all new waste.
 16. **Order priority semantics.** Higher `priority` sorts first; the queue sorts by `deadline ASC (nulls last)`, then `priority DESC`, then `created_at ASC`. Default priority is 0.
 17. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The Designer may move forward; Owner and Branch Manager may override a backward transition.
-18. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase or order that caused the movement.
+18. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase (`purchase`) or order (`usage`, `waste`) that caused the movement; `user_id` is the actor. Legacy rows may have a null type, actor, and reference after the best-effort backfill.
 19. **Invoice print is a view, not a table.** There is no ticket table and no separate work-order document. The invoice print reads `invoices`, `orders`, and `order_attributes`.
-20. **`materials.unit` is the fixed three-value select** (`m2`, `sheet`, `pcs`). `materials.type` remains an optional descriptive label; the unit drives the area/quantity calculation.
+20. **`materials.unit` is a target fixed three-value select** (`m2`, `sheet`, `pcs`) and is not implemented; see `docs/requirements/implementation-gaps.md`. `materials.type` remains an optional descriptive label. When implemented, the unit drives the area/quantity calculation.
 
 ---
 
@@ -404,8 +405,8 @@ Both expense types are summed into `expenses_total` and subtracted from `net_pro
 | `invoices` | `invoice_number` unique |
 | `attribute_types` | `name` unique |
 | `order_attributes` | `(order_id, type)` unique; one finishing and one display per order |
-| `purchases` / `purchase_items` | Target; no unique constraint yet. Add a purchase number or idempotency key before implementation |
-| Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.design_approved_by`, `orders.operator_id`, and `wasted_materials.order_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, `stock_ledgers.material_id`, and `orders.product_id`/`material_id` |
+| `purchases` / `purchase_items` | `purchases` has a unique `(branch_id, idempotency_key)`; `purchase_items.purchase_id` cascades and `material_id` restricts |
+| Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.design_approved_by`, `orders.operator_id`, and `wasted_materials.order_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, `stock_ledgers.material_id`, `orders.product_id`/`material_id`, `purchases.branch_id`/`user_id`, and `purchase_items.material_id` |
 
 ---
 

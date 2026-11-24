@@ -205,7 +205,7 @@ class PurchaseApiTest extends TestCase
             [['items' => [['material_id' => $this->materialA->id, 'quantity' => 1, 'unit_cost' => -1]]], 'items.0.unit_cost'],
             [['items' => [['material_id' => $this->materialA->id, 'quantity' => 1, 'unit_cost' => 10000000]]], 'items.0.unit_cost'],
             [['items' => [['material_id' => (string) Str::uuid(), 'quantity' => 1, 'unit_cost' => 1000]]], 'items.0.material_id'],
-            [['purchased_at' => now()->addDay()->toIso8601String()], 'purchased_at'],
+            [['purchased_at' => now()->addDay()->toDateString()], 'purchased_at'],
             [['supplier' => str_repeat('a', 256)], 'supplier'],
             [['notes' => str_repeat('a', 1001)], 'notes'],
             [['items' => [['material_id' => $this->materialA->id, 'quantity' => 1, 'unit_cost' => 1000.555]]], 'items.0.unit_cost'],
@@ -337,6 +337,18 @@ class PurchaseApiTest extends TestCase
             ]))
             ->assertCreated()
             ->assertJsonPath('purchase.purchased_at', '2026-11-24');
+    }
+
+    public function test_purchased_at_rejects_an_iso_timestamp(): void
+    {
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/purchases', $this->payload([
+                'purchased_at' => now()->toIso8601String(),
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['purchased_at']);
+
+        $this->assertDatabaseCount('purchases', 0);
     }
 
     public function test_line_subtotals_are_rounded_then_summed(): void
@@ -532,7 +544,7 @@ class PurchaseApiTest extends TestCase
     {
         return array_merge([
             'branch_id' => $this->branchOne->id,
-            'purchased_at' => now()->toIso8601String(),
+            'purchased_at' => now()->toDateString(),
             'supplier' => 'Supplier A',
             'notes' => 'Restock for the week',
             'idempotency_key' => (string) Str::uuid(),
