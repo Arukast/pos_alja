@@ -14,7 +14,7 @@
 | FR3 | Autentikasi | All |
 | FR4 | Pengguna | Owner, Branch Manager |
 | FR5 | Hak Akses | All |
-| FR6 | Produk | Owner, Branch Manager |
+| FR6 | Produk | Owner, Branch Manager (read) |
 | FR7 | Produk | Designer, Kasir |
 | FR8 | Pesanan | Designer |
 | FR9 | Pesanan | Designer |
@@ -88,16 +88,16 @@
 ## 2. Products
 
 ### FR6 Manage products, categories, materials, and prices
-- **Requirement:** Owner and Branch Manager SHALL manage products, product categories, materials, finishing/display options, and quantity discounts.
+- **Requirement:** Owner SHALL manage products, product categories, materials, finishing/display options, and quantity discounts. Branch Manager SHALL read the catalog and manage branch stock.
 - **Acceptance criteria:**
   - Product CRUD includes name, category, pricing type (`unit` or `area`), and active status.
   - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`).
   - Material master includes name, category, unit (`m2`, `sheet`, `pcs`), type, base cost, and base price. Materials are created by the Owner in the material master and mapped to a product category.
   - Finishing and display options store `price` and `cost`. Each order item may select at most one finishing and one display option.
-  - Branch Manager may manage products, categories, finishing/display, and discounts where the access matrix allows; material master creation and deletion remain Owner-only.
-  - The base price is the material price plus the selected finishing/display prices. The branch reseller adjustment is applied before the category quantity discount. The quantity discount uses the tier with the highest `min_qty` less than or equal to the item quantity.
+  - The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price before the category quantity discount. The customer type is read from the customer record, never from the client. The resulting customer type and reseller percentage are stored on the order as a snapshot.
+  - The category quantity discount uses the tier with the highest `min_qty` less than or equal to the item quantity.
   - The pricing matrix and machine masters are not part of the target.
-  - All changes are branch-scoped where applicable and written to the audit log.
+  - Global catalog changes are Owner-only and written to the audit log; branch stock changes are branch-scoped.
 - **Traceability:** NFR1, NFR7, PB-01.
 
 ### FR7 Search, filter, and paginate products
@@ -173,7 +173,7 @@
 - **Traceability:** NFR3, NFR9, PB-03.
 
 ### FR13 Display and print invoice and payment receipt
-- **Requirement:** Owner, Branch Manager, Cashier, and Designer SHALL display and print the invoice. Cashier SHALL display and print the payment receipt.
+- **Requirement:** Owner, Branch Manager, Cashier, and Designer SHALL display and print the invoice and the payment receipt.
 - **Acceptance criteria:**
   - The invoice includes invoice number, customer, items, finishing/display, quantity, area, price, discount, total, DP history, and remaining receivable.
   - The invoice prints on A4. The invoice is the single customer document; no separate work-order ticket is produced.

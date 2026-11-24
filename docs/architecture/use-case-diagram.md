@@ -48,6 +48,7 @@ flowchart LR
             UC15(["Perbarui Status Desain"])
             UC16(["Lihat Daftar Transaksi"])
             UC17(["Kelola Pelanggan"])
+            UC29(["Cari Pelanggan"])
         end
 
         subgraph PAY["Pembayaran & Pickup"]
@@ -100,11 +101,7 @@ flowchart LR
     Owner --- UC28
 
     Manager --- UC01
-    Manager --- UC04
-    Manager --- UC05
-    Manager --- UC06
     Manager --- UC07
-    Manager --- UC08
     Manager --- UC09
     Manager --- UC11
     Manager --- UC12
@@ -119,11 +116,11 @@ flowchart LR
 
     Cashier --- UC07
     Cashier --- UC16
-    Cashier --- UC17
     Cashier --- UC18
     Cashier --- UC20
     Cashier --- UC21
     Cashier --- UC22
+    Cashier --- UC29
 
     Designer --- UC07
     Designer --- UC13
@@ -133,6 +130,7 @@ flowchart LR
     Designer --- UC17
     Designer --- UC21
     Designer --- UC22
+    Designer --- UC29
 
     Production --- UC10
     Production --- UC11
@@ -145,6 +143,7 @@ flowchart LR
 
     UC18 -.->|include| UC21
     UC13 -.->|include| UC17
+    UC13 -.->|include| UC29
     UC14 -.->|extend| UC13
     UC27 -.->|extend| UC26
 
@@ -163,15 +162,15 @@ flowchart LR
 
 Notes:
 
-- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only.
-- **Designer `U`** covers order changes before production (FR9) and design-status updates (FR10).
-- **Manager `Data Stok`** is branch-scoped CRUD; global material deletion remains owner-only.
+- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only. Cashier customer access is search-only (`UC29`), not customer management.
+- **Designer `U`** covers order changes before production (FR9), design-status updates (FR10), and customer create/update.
+- **Manager `Data Stok`** is branch-scoped stock management; global catalog and discount configuration are Owner-only.
 - **Owner and Manager `Data Stok`** both use the reason-required adjustment workflow (FR18).
 - **Kasir `Data Stok`:** no stock access. Purchases and adjustments are Owner/Branch Manager; stock visibility is Owner/Branch Manager/Production.
 - **Production `Data Stok`** is read plus usage/waste updates.
 - **Invoice and receipt print** are denied to Production because both contain money. Production uses the queue.
 - **Machine management** is removed; machine cost is folded into material cost.
-- **Quantity discounts** are configured per product category, not per pricing-matrix row.
+- **Quantity discounts** are configured per product category by the Owner, not per pricing-matrix row.
 
 ## Notes
 

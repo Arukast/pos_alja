@@ -17,11 +17,11 @@
 | `/owner/revenue` | owner | Gross revenue detail |
 | `/owner/base-cost` | owner | Base cost detail |
 | `/owner/net-profit` | owner | Net profit detail |
-| `/owner/expenses` | owner | Expense detail |
+| `/owner/expenses` | owner | Expense entry and detail |
 | `/owner/audit` | owner | Audit trail |
-| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/materials`, `/owner/customers` | owner | Administration CRUD |
+| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/attributes`, `/owner/materials`, `/owner/customers` | owner | Administration CRUD |
 | `/manager` | manager | Branch dashboard |
-| `/manager/materials`, `/manager/ledgers`, `/manager/categories`, `/manager/expenses`, `/manager/customers` | manager | Inventory, configuration, expense entry, customers |
+| `/manager/materials`, `/manager/ledgers`, `/manager/expenses`, `/manager/customers` | manager | Inventory, expense entry, customers |
 | `/manager/leaderboard`, `/manager/users` | manager | Performance and user administration |
 | `/cashier` | cashier | Cashier dashboard |
 | `/cashier/payments` | cashier | Payment queue and checkout |
@@ -30,7 +30,7 @@
 | `/designer/new-order` | designer | Customer search, quote, cart, invoice |
 | `/designer/customers/new` | designer | Create customer on a separate page |
 | `/designer/orders` | designer | Invoice list and print links |
-| `/queue` | owner, manager, cashier, designer | Read-only production queue with status filter |
+| `/queue` | owner, manager, cashier, designer | Read-only production queue with status filter and owner branch filter |
 | `/production` | production | Production dashboard |
 | `/production/queue` | production | Filter queue, status control, inline waste |
 | `/invoices/:id/print` | owner, manager, cashier, designer | A4 invoice print |
@@ -88,7 +88,7 @@ src/
   `PrintHeader` with CMYK marks, white paper. Production is denied both print views.
 - The designer order form uses Product -> Material -> Finishing -> Display with single-select finishing/display controls. The customer field defaults to search; new customer creation lives on `/designer/customers/new`.
 - The material screen includes the unit dropdown (`m2`, `sheet`, `pcs`) and the reason-required stock adjustment action.
-- The category screen includes quantity discount tiers (`min_qty`, `discount_percent`). There is no pricing-matrix page and no machine page.
+- The category and finishing/display screens are Owner-only. The category screen includes quantity discount tiers (`min_qty`, `discount_percent`); `/owner/attributes` manages finishing/display options. There is no pricing-matrix page and no machine page.
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
   spec (10px uppercase label, 22px/800 value). Controls are 40px tall, labels 10px uppercase.
 - `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only

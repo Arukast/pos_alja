@@ -57,10 +57,10 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 
 | Sprint | Backlog | FR | Status | Done | Missing |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Sprint 0 | Foundation, SPA shell, platform | FR1–FR5 plus shell/CI | Done | Auth foundation, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
+| Sprint 0 | Platform foundation, SPA shell | — | Done | Auth foundation, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
 | Sprint 1 | PB-08 | FR1–FR5 | Done | Auth, RBAC, branch scope, user management | HTTPS/OWASP formal verification |
-| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product read/search/filter/pagination, category, pricing | Product CRUD, material units, attribute prices, category discounts, pricing redesign, machine removal |
-| Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer, quote, cart, ticket | Customer search UI, institution, finishing/display, order update, design status, invoice print |
+| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product read/search/filter/pagination, category, legacy pricing matrix (transitional) | Product CRUD, material units, attribute prices, category discounts, pricing redesign, machine removal |
+| Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer, quote, cart, legacy ticket (to be replaced) | Customer search UI, institution, finishing/display, order update, design status, invoice print |
 | Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
 | Sprint 1 | PB-04 | FR13, FR14 | Partial | Receipt, operational expenses | A4 invoice print, expense role change, category dropdown |
 | Sprint 2 | PB-05 | FR15, FR17, FR18 | Partial | Stock read, restock, stock ledger | Purchase records, reason-required adjustment, low-stock alert |

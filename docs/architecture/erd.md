@@ -187,6 +187,8 @@ erDiagram
         decimal area
         decimal quantity
         decimal unit_price
+        string customer_type
+        decimal reseller_discount_percent
         decimal quantity_discount_percent
         decimal discount_amount
         decimal subtotal
@@ -315,7 +317,7 @@ erDiagram
 1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`, and `product_categories.allowed_attribute_types` stores an array of type names. Referential integrity is by convention, not by key.
 2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
-4. **The pricing matrix is removed.** There is no `pricing`, `attribute_pricing`, or `machine_pricing` table. The base price is the material price plus the selected finishing/display prices. The category quantity discount is selected from `product_category_discounts` with the highest `min_qty <= quantity`. `orders` stores the resulting snapshot so later master-data changes do not rewrite history.
+4. **The pricing matrix is removed.** There is no `pricing`, `attribute_pricing`, or `machine_pricing` table. The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price; the customer type is read from `customers.type`, never from the client. The category quantity discount is selected from `product_category_discounts` with the highest `min_qty <= quantity`. `orders.unit_price` is after the reseller adjustment and before the quantity discount; `orders` stores the customer type, reseller percentage, and resulting prices as a snapshot so later master-data changes do not rewrite history.
 5. **`order_attributes` stores the selected finishing and display option.** The application allows at most one row per `(order_id, type)`, and the row carries a price/cost snapshot. This preserves what was printed even if the attribute master changes.
 6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
 7. **`invoices.designer_id`** is the user who submitted the order.
@@ -330,14 +332,15 @@ erDiagram
     - `product_category_discounts` for quantity discounts.
     - `materials.unit` for `m2`, `sheet`, and `pcs`.
     - `attributes.price` and `attributes.cost`.
-    - `orders.product_id`, `material_id`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - `customers.institution` and `attributes.is_active`.
     - `order_attributes` for finishing/display snapshots.
     - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`.
     - `purchases` and `purchase_items` for raw-material purchases. `purchases.user_id` is the actor (Owner or Branch Manager).
 15. **Machine removal.** `machines`, `machine_pricing`, and `wasted_materials.machine_id` are removed from the target. Machine cost is folded into material cost. Historical orders keep price/cost snapshots.
 16. **Order priority semantics.** Higher `priority` sorts first; the queue sorts by `deadline ASC (nulls last)`, then `priority DESC`, then `created_at ASC`. Default priority is 0.
-17. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The transition is forward-only unless a manager or owner override is added.
+17. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The Designer may move forward; Owner and Branch Manager may override a backward transition.
 18. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase or order that caused the movement.
 19. **Invoice print is a view, not a table.** There is no ticket table and no separate work-order document. The invoice print reads `invoices`, `orders`, and `order_attributes`.
 20. **`materials.unit` is the fixed three-value select** (`m2`, `sheet`, `pcs`). `materials.type` remains an optional descriptive label; the unit drives the area/quantity calculation.
@@ -377,7 +380,7 @@ erDiagram
 | `stock_ledgers.type` | `purchase` | Raw-material purchase |
 | `stock_ledgers.type` | `usage` | Material used by an order |
 | `stock_ledgers.type` | `waste` | Failed print / waste |
-| `stock_ledgers.type` | `adjustment` | Manager stock correction with reason |
+| `stock_ledgers.type` | `adjustment` | Owner/Manager stock correction with reason |
 | `stock_ledgers.type` | `restock` | Manual stock addition |
 
 Both expense types are summed into `expenses_total` and subtracted from `net_profit`; `type` is a label, not a filter.

@@ -85,7 +85,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor A as Owner or Manager
+    actor A as Owner
     participant SPA
     participant API
     participant Policy
@@ -95,7 +95,7 @@ sequenceDiagram
     A->>SPA: Create or edit product, category, finishing/display, discount tier, or material
     SPA->>API: POST/PUT/DELETE /api/v1/products, /categories, /attributes, /materials
     API->>Policy: Authorize manage catalog
-    alt Not owner/manager, or manager edits material master
+    alt Not owner
         Policy-->>API: Deny
         API-->>SPA: 403
     else Allowed
@@ -115,7 +115,7 @@ sequenceDiagram
     actor D as Designer
     participant SPA
     participant API
-    participant Pricing
+    participant PriceCalc
     participant DB
     participant R as Reverb
 
@@ -129,8 +129,8 @@ sequenceDiagram
     SPA->>API: GET /api/v1/quotes/options
     API-->>SPA: Branch catalog, no cost/profit for designer
     SPA->>API: POST /api/v1/quotes
-    API->>Pricing: Material price + finishing/display price + category discount tier
-    Pricing-->>API: Unit price, area, subtotal
+    API->>PriceCalc: Material + finishing/display price, customer type from customer, category discount
+    PriceCalc-->>API: Unit price, area, subtotal
     API-->>SPA: Quote
     SPA->>API: POST /api/v1/invoices
     API->>DB: BEGIN, lock branch for numbering, recompute every line
@@ -189,9 +189,9 @@ sequenceDiagram
 
     D->>SPA: Set design status
     SPA->>API: PATCH /api/v1/orders/{id}/design-status
-    API->>Policy: Authorize designer, same branch
+    API->>Policy: Authorize designer, or owner/manager override
     API->>DB: Validate transition (pending -> in_design -> approved)
-    alt Invalid transition
+    alt Designer attempts backward transition or invalid status
         API-->>SPA: 422
     else Valid
         API->>DB: BEGIN, update design_status, approver, timestamp

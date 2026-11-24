@@ -11,12 +11,14 @@
 | Delete own account | yes | yes | no | no | no |
 | Branch CRUD | all | no | no | no | no |
 | User CRUD | all | own branch staff only | no | no | no |
-| Categories, attribute types, attributes, quantity discounts | all | yes | no | no | no |
-| Products | CRUD | CRUD | read | read | no |
+| Categories, attribute types, attributes, quantity discounts | all | read | no | no | no |
+| Products | CRUD | read | read | read | no |
 | Materials master | CRUD; global delete | restock/activate/adjust own branch; no master create/edit/delete | no | no | read own branch |
-| Prices and finishing/display prices | all | own branch | no | no | no |
-| Customers | CRUD | CRUD | search | search/create/update | no |
+| Prices and finishing/display prices | all | read | no | no | no |
+| Customers | create/read/update | create/read/update | search | search/create/update | no |
 | Invoices/orders | read all | read branch | read branch | create; read branch | read branch |
+| Invoice update (pre-production, not fully paid) | no | no | no | own branch | no |
+| Design status | all | own branch override | no | own branch | no |
 | Invoice print | all | branch | branch | branch | no |
 | Down payments/settlements | no | no | own branch | no | no |
 | Pickup | no | no | own branch | no | no |
@@ -24,7 +26,7 @@
 | Production queue read | all | own branch | own branch | own branch | own branch |
 | Waste logging | no | no | no | no | own branch |
 | Stock adjustment | all | own branch | no | no | no |
-| Receipt | all | all | all | all | no |
+| Receipt | all | branch | branch | branch | no |
 | Dashboard | full | branch | branch | branch | branch |
 | Owner financial reports | all | no | no | no | no |
 | Designer leaderboard | no | own branch | no | no | no |
@@ -40,8 +42,10 @@
 4. Invoice and receipt print are denied to production because both contain money. Production uses the queue, which has no money.
 5. Customers are global and materials master data is global, matching the ERD. Stock rows are branch-scoped.
 6. Invoice and receipt payloads enforce the same branch rule as the invoice.
-7. Quantity discounts are configured by Owner/Manager per product category. Staff cannot override the tier from the client.
+7. Quantity discounts are configured by the Owner per product category. Staff cannot override the tier from the client.
 8. Expense categories are a fixed dropdown. Cashier has no expense access.
+9. Global catalog and category/discount writes are Owner-only. Branch Manager reads the catalog and manages branch stock.
+10. Designer updates an invoice only before production and while it is not fully paid. Owner and Branch Manager may override a design-status transition; Designer cannot move backward.
 
 ## Revision Note
 

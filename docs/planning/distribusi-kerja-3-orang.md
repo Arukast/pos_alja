@@ -45,7 +45,7 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 - Branch scope: non-owner selalu terikat `branch_id`; non-owner tanpa cabang ditolak.
 - User management: owner semua user; manager hanya cashier/designer/production di cabangnya.
 - Branch management.
-- Product, category, finishing/display, dan diskon kuantitas per kategori. Material master dan satuannya dimiliki C.
+- Product, category, finishing/display, dan diskon kuantitas per kategori (Owner-only). Material master dan satuannya dimiliki C.
 - Product search, filter, dan pagination.
 - Audit log untuk aksi kritis.
 - Backup manual dan terjadwal.
@@ -57,8 +57,8 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 **Output per sprint**
 
 - Sprint 0: auth, RBAC, branch scope, user CRUD, policy, API skeleton.
-- Sprint 1: PB-08 acceptance, product/category/finishing/display/discount CRUD, product search/pagination.
-- Sprint 2: branch/user administration, audit log coverage.
+- Sprint 1: PB-08 acceptance, product/category/finishing/display core, product search/pagination.
+- Sprint 2: branch/user administration, quantity discount tiers, audit log coverage.
 - Sprint 3: RBAC hardening, audit review, backup manual/terjadwal, security review.
 
 ### B — Sales dan Payments
@@ -82,8 +82,8 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 **Output per sprint**
 
 - Sprint 0: SPA shell, design token, API client, auth screens, route guard.
-- Sprint 1: customer search/create, order create, invoice print, DP, settlement, nota.
-- Sprint 2: order update, design status, multiple DP, pickup, expense Owner/Manajer, responsive/print, real-time.
+- Sprint 1: customer CRUD dasar, order create core, DP, settlement, nota.
+- Sprint 2: customer search/institution, finishing/display, invoice print, order update, design status, multiple DP, pickup, expense Owner/Manajer, responsive/print, real-time.
 - Sprint 3: UI laporan/ekspor, UX polish, aksesibilitas.
 
 ### C — Inventory, Production, Reporting
@@ -111,8 +111,8 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 **Output per sprint**
 
 - Sprint 0: ERD, migration, CI/CD, Reverb, test harness, deployment.
-- Sprint 1: inventory foundation, material unit, branch stock, stock ledger.
-- Sprint 2: purchase, adjustment, low-stock, production queue/filter/status, usage/waste inline.
+- Sprint 1: inventory foundation, material, branch stock, stock ledger.
+- Sprint 2: purchase, material units, adjustment, low-stock, production queue/filter/status, usage/waste inline.
 - Sprint 3: report query, export, backup terjadwal, integration test, deployment final.
 
 ## 5. Rencana Sprint
@@ -129,7 +129,7 @@ Semua orang menyepakati ERD dan API contract di sprint ini. Jangan mulai fitur s
 
 | A | B | C |
 | :--- | :--- | :--- |
-| PB-08 auth/RBAC, product/category/finishing/display/discount, product search/pagination | Customer search/create, order create Produk -> Bahan -> Finishing -> Display, invoice print, DP, settlement, nota | Inventory foundation: material unit, branch stock, stock ledger |
+| PB-08 auth/RBAC, product/category/finishing/display core, product search/pagination | Customer CRUD dasar, order create core (Produk -> Bahan), DP, settlement, nota | Inventory foundation: material, branch stock, stock ledger |
 
 B boleh memakai data produk seed/mock selama API katalog A belum selesai. PB-08 sekarang berada di Sprint 1 agar fondasi auth dan katalog selesai sebelum fitur transaksi.
 
@@ -137,7 +137,7 @@ B boleh memakai data produk seed/mock selama API katalog A belum selesai. PB-08 
 
 | A | B | C |
 | :--- | :--- | :--- |
-| Branch/user administration, audit log, category discount review | Order update DP, design status, expense Owner/Manajer, pickup, responsive/print, real-time | Purchase, stock adjustment, low-stock, production queue/filter/status, usage/waste inline |
+| Branch/user administration, audit log, quantity discount tiers | Customer search/institution, finishing/display, invoice print, order update DP, design status, expense Owner/Manajer, pickup | Purchase, stock adjustment, low-stock, production queue/filter/status, usage/waste inline, material units |
 
 C dan B harus menyepakati bentuk data antrean produksi sebelum UI queue dibuat. B dan A menyepakati model harga bahan + finishing/display + diskon kategori sebelum menghapus matriks harga.
 

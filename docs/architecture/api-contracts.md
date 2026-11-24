@@ -67,13 +67,13 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | Method | Path | Access |
 | :--- | :--- | :--- |
 | GET | `/categories` | owner, manager |
-| POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner, manager |
+| POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner |
 | GET | `/attribute-types` | owner, manager |
-| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner, manager |
-| GET | `/attributes` | owner all; manager own branch/global |
-| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner, manager |
+| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner |
+| GET | `/attributes` | owner, manager |
+| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner |
 | GET | `/products` | owner, manager, cashier, designer |
-| POST/PUT/DELETE | `/products`, `/products/{product}` | owner, manager |
+| POST/PUT/DELETE | `/products`, `/products/{product}` | owner |
 | GET | `/materials` | owner all; manager/production own branch |
 | POST | `/materials` | owner |
 | PUT | `/materials/{material}` | owner |
@@ -109,19 +109,20 @@ Stock adjustment accepts `new_quantity` or `delta`, plus `reason` (3–255 chara
 | POST | `/invoices/{invoice}/settlements` | cashier |
 | POST | `/invoices/{invoice}/pickup` | cashier |
 | GET | `/invoices/{invoice}/receipt` | owner, manager, cashier, designer |
-| PATCH | `/orders/{order}/design-status` | designer, branch-scoped |
+| PATCH | `/orders/{order}/design-status` | designer; owner/manager override, branch-scoped |
 | GET | `/expenses` | owner all; manager own branch |
 | POST | `/expenses` | owner, manager |
 
 ### Quote And Invoice Input
 
-`POST /quotes` accepts `product_id`, `material_id`, `finishing_id?`, `display_id?`, `quantity`, `width?`, `length?`, and `customer_type?`. It returns `unit_price`, `area`, `quantity`, and `subtotal`; cost and profit are not returned to the designer. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes; it does not return machines.
+`POST /quotes` accepts `customer_id?`, `product_id`, `material_id`, `finishing_id?`, `display_id?`, `quantity`, `width?`, `length?`. It returns `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` is after the reseller adjustment and before the category quantity discount. Cost and profit are not returned to the designer. When `customer_id` is present, the customer type is read from the customer record; otherwise it defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes; it does not return machines.
 
 `POST /invoices` and `PUT /invoices/{invoice}` accept `customer_id`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `product_id`, `material_id`, `finishing_id?`, `display_id?`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `is_manual_price`, `unit_price?`, and `cost?`.
 
 Server rules:
 
 - Base price is recomputed from material price plus finishing/display price; client prices are ignored unless `is_manual_price` is true.
+- For a Reseller customer, the branch reseller discount is applied to the base price. The customer type comes from `customer_id`, never from a client-writable `customer_type`.
 - The category quantity discount uses the tier with the highest `min_qty <= quantity`.
 - Manual lines require both `unit_price` and `cost`, must be non-negative, and `cost` must not exceed `unit_price`.
 - Only one finishing and one display option may be selected per item; the selected option and its price/cost snapshot are stored in `order_attributes`.
@@ -131,6 +132,7 @@ Server rules:
 - Creation, update, and manual-price audit entries are atomic.
 - An invoice update is rejected with 409 when any order is already in production or the invoice is fully paid.
 - An invoice update is rejected with 422 when the new total is less than the amount already paid.
+- Production may read the invoice detail only with money fields redacted; invoice and receipt print are denied.
 
 Customer input requires `name` and `institution`; `phone`, `email`, `address`, and `type` are optional. `type` defaults to `Reguler` and accepts `Reguler` or `Reseller`. Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
 
@@ -141,6 +143,13 @@ Customer input requires `name` and `institution`; `phone`, `email`, `address`, a
 - The invoice row is locked during payment and pickup.
 - A paid invoice has `status=2` and zero receivable.
 - Pickup requires a paid invoice and is branch-scoped.
+
+### Expense Rules
+
+- Only Owner and Branch Manager may create expenses. Cashier access is removed.
+- A manager writes to their own branch. An owner must send `branch_id`.
+- `category` must be one of: `Bahan Baku`, `Gaji`, `Sewa`, `Listrik & Air`, `Maintenance`, `Transport`, `Marketing`, `Operasional`, `Lain-lain`.
+- The response includes `recorded_by_name`, not a cashier name.
 
 ## 6. Production
 
@@ -160,14 +169,7 @@ Production responses omit all money fields. Quantities are numeric. The queue is
 
 ### Design Status
 
-`PATCH /orders/{order}/design-status` accepts `status` (`0`, `1`, `2`). Allowed transitions are `pending -> in_design -> approved`; a backward transition requires an owner or manager override. Approval stores `design_approved_at` and `design_approved_by`, writes the status and audit logs, and broadcasts `OrderUpdated`.
-
-### Expense Rules
-
-- Only Owner and Branch Manager may create expenses. Cashier access is removed.
-- A manager writes to their own branch. An owner must send `branch_id`.
-- `category` must be one of: `Bahan Baku`, `Gaji`, `Sewa`, `Listrik & Air`, `Maintenance`, `Transport`, `Marketing`, `Operasional`, `Lain-lain`.
-- The response includes `recorded_by_name`, not a cashier name.
+`PATCH /orders/{order}/design-status` accepts `status` (`0`, `1`, `2`). Allowed transitions are `pending -> in_design -> approved`; Designer may only move forward. Owner and Branch Manager may override a backward transition. Approval stores `design_approved_at` and `design_approved_by`, writes the status and audit logs, and broadcasts `OrderUpdated`.
 
 ## 7. Reporting And Audit
 

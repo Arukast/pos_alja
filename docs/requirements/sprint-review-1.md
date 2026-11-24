@@ -35,7 +35,7 @@ The price matrix is removed. The target calculation is:
 
 ```text
 base price = material price + selected finishing price + selected display price
-reseller adjustment = branch reseller discount, applied before quantity discount
+reseller adjustment = branch reseller discount when the customer type is Reseller; read from customers.type, not the client
 quantity discount = category tier with the highest min_qty <= quantity
 line subtotal = (base price after reseller adjustment) * quantity * area factor
 line subtotal after discount = line subtotal * (1 - discount_percent / 100)
@@ -73,6 +73,8 @@ Expense categories: `Bahan Baku`, `Gaji`, `Sewa`, `Listrik & Air`, `Maintenance`
 
 PB-08 (Authentication and Access Management) moves from Sprint 3 to Sprint 1. Sprint 1 now contains PB-08, PB-01, PB-02, PB-03, and PB-04. Sprint 2 contains PB-05, PB-06, and PB-07. Sprint 3 contains PB-09 and PB-10.
 
+PB-01, PB-02, and PB-04 remain Sprint 1 backlog items for their original scope. Their Sprint Review 1 follow-up work is scheduled in Sprint 2. PB-08 is the exception: it moves to Sprint 1. The revision table above records the follow-up sprint, not the original backlog sprint.
+
 This matches the Jira sprint board and keeps the foundation work in the first delivery sprint.
 
 ## 8. Impacted Documents
@@ -82,6 +84,7 @@ This matches the Jira sprint board and keeps the foundation work in the first de
 - `docs/requirements/access-matrix.md`
 - `docs/requirements/product-backlog.md`
 - `docs/requirements/implementation-gaps.md`
+- `docs/requirements/root-cause-mapping.md`
 - `docs/architecture/erd.md`
 - `docs/architecture/api-contracts.md`
 - `docs/architecture/sequence-diagrams.md`
@@ -90,6 +93,7 @@ This matches the Jira sprint board and keeps the foundation work in the first de
 - `docs/architecture/design-system.md`
 - `docs/planning/distribusi-kerja-3-orang.md`
 - `docs/planning/jira/`
+- `docs/superpowers/specs/2026-11-22-brand-suite-design.md` (historical note)
 
 ## 9. Deferred And Open Items
 
