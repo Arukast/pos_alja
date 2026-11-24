@@ -8,13 +8,20 @@ use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\StockLedger;
+use App\Models\User;
 use App\Models\WastedMaterial;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class InventoryService
 {
+    private const MAX_STOCK = 99999999.99;
+
+    private const MOVEMENT_TYPES = ['initial', 'purchase', 'usage', 'waste', 'adjustment', 'restock'];
+
     /**
      * Create a global material catalog entry.
      */
@@ -56,27 +63,19 @@ class InventoryService
 
         try {
             DB::transaction(function () use ($materialId, $branchId, $initialStock, $minStock) {
-                MaterialBranchStock::create([
-                    'id' => (string) Str::uuid(),
-                    'material_id' => $materialId,
-                    'branch_id' => $branchId,
-                    'current_stock' => $initialStock,
-                    'min_stock' => $minStock,
-                ]);
+                $stock = MaterialBranchStock::firstOrCreate(
+                    ['material_id' => $materialId, 'branch_id' => $branchId],
+                    ['current_stock' => 0, 'min_stock' => $minStock]
+                );
 
-                if ($initialStock > 0) {
-                    StockLedger::create([
-                        'id' => (string) Str::uuid(),
-                        'branch_id' => $branchId,
-                        'material_id' => $materialId,
-                        'logged_at' => now()->toIso8601String(),
-                        'initial_stock' => 0.0,
-                        'added_stock' => $initialStock,
-                        'used_stock' => 0.0,
-                        'wasted_stock' => 0.0,
-                        'remaining_stock' => $initialStock,
-                        'notes' => 'Initial stock registered on material creation.',
-                    ]);
+                if ($stock->wasRecentlyCreated && $initialStock > 0) {
+                    $this->applyMovement(
+                        $materialId,
+                        $branchId,
+                        'initial',
+                        $initialStock,
+                        notes: 'Initial stock registered on material creation.',
+                    );
                 }
             });
         } catch (\Throwable $e) {
@@ -88,6 +87,93 @@ class InventoryService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Apply one stock movement and write its ledger row.
+     *
+     * Callers must hold a transaction; this method never opens its own.
+     *
+     * @return array{old_stock: float, new_stock: float}
+     */
+    public function applyMovement(
+        string $materialId,
+        string $branchId,
+        string $type,
+        float $quantity,
+        ?string $reason = null,
+        ?string $referenceType = null,
+        ?string $referenceId = null,
+        ?string $notes = null,
+        ?User $actor = null,
+        bool $absolute = false,
+    ): array {
+        if (! in_array($type, self::MOVEMENT_TYPES, true)) {
+            throw new InvalidArgumentException("Unknown stock movement type [{$type}].");
+        }
+
+        $this->ensureStockRow($materialId, $branchId);
+
+        $stock = MaterialBranchStock::where('material_id', $materialId)
+            ->where('branch_id', $branchId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $oldStock = (float) $stock->current_stock;
+        $addedStock = 0.0;
+        $usedStock = 0.0;
+        $wastedStock = 0.0;
+
+        if ($type === 'usage' || $type === 'waste') {
+            $newStock = round($oldStock - abs($quantity), 2);
+
+            if ($type === 'usage') {
+                $usedStock = abs($quantity);
+            } else {
+                $wastedStock = abs($quantity);
+            }
+        } elseif ($type === 'adjustment') {
+            $newStock = round($absolute ? $quantity : $oldStock + $quantity, 2);
+
+            if ($newStock < 0 || $newStock > self::MAX_STOCK) {
+                throw ValidationException::withMessages([
+                    $absolute ? 'new_quantity' : 'delta' => 'Stok hasil penyesuaian harus antara 0 dan 99999999.99.',
+                ]);
+            }
+
+            $addedStock = round($newStock - $oldStock, 2);
+        } else {
+            $addedStock = abs($quantity);
+            $newStock = round($oldStock + $addedStock, 2);
+
+            if ($newStock > self::MAX_STOCK) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Stok melebihi batas maksimum 99999999.99.',
+                ]);
+            }
+        }
+
+        $stock->current_stock = $newStock;
+        $stock->save();
+
+        StockLedger::create([
+            'branch_id' => $branchId,
+            'material_id' => $materialId,
+            'type' => $type,
+            'reason' => $reason,
+            'user_id' => $actor->id ?? auth()->id(),
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'logged_at' => now()->toIso8601String(),
+            'initial_stock' => $oldStock,
+            'added_stock' => $addedStock,
+            'used_stock' => $usedStock,
+            'wasted_stock' => $wastedStock,
+            'remaining_stock' => $newStock,
+            'notes' => $notes,
+        ]);
+
+        return ['old_stock' => $oldStock, 'new_stock' => $newStock];
     }
 
     /**
@@ -124,32 +210,13 @@ class InventoryService
 
         try {
             return DB::transaction(function () use ($material, $quantity, $notes, $branchId) {
-                $stock = MaterialBranchStock::where('material_id', $material->id)
-                    ->where('branch_id', $branchId)
-                    ->lockForUpdate()
-                    ->firstOrCreate([
-                        'material_id' => $material->id,
-                        'branch_id' => $branchId,
-                    ]);
-
-                $oldStock = (float) $stock->current_stock;
-                $newStock = $oldStock + $quantity;
-
-                $stock->current_stock = $newStock;
-                $stock->save();
-
-                StockLedger::create([
-                    'id' => (string) Str::uuid(),
-                    'branch_id' => $branchId,
-                    'material_id' => $material->id,
-                    'logged_at' => now()->toIso8601String(),
-                    'initial_stock' => $oldStock,
-                    'added_stock' => $quantity,
-                    'used_stock' => 0.0,
-                    'wasted_stock' => 0.0,
-                    'remaining_stock' => $newStock,
-                    'notes' => $notes ?: "Manual stock addition: +{$quantity}",
-                ]);
+                $this->applyMovement(
+                    $material->id,
+                    $branchId,
+                    'restock',
+                    $quantity,
+                    notes: $notes ?: "Manual stock addition: +{$quantity}",
+                );
 
                 return $material;
             });
@@ -182,17 +249,7 @@ class InventoryService
                 $operatorId = $params['operator_id'] ?? null;
                 $orderId = $params['order_id'] ?? null;
                 $notes = $params['notes'] ?? 'Print failure';
-
-                $stock = MaterialBranchStock::where('material_id', $materialId)
-                    ->where('branch_id', $branchId)
-                    ->lockForUpdate()
-                    ->firstOrCreate([
-                        'material_id' => $materialId,
-                        'branch_id' => $branchId,
-                    ]);
-
-                $oldStock = (float) $stock->current_stock;
-                $newStock = $oldStock - $quantity;
+                $actor = ($params['actor'] ?? null) instanceof User ? $params['actor'] : null;
 
                 $waste = WastedMaterial::create([
                     'id' => (string) Str::uuid(),
@@ -208,21 +265,14 @@ class InventoryService
                     'notes' => $notes,
                 ]);
 
-                $stock->current_stock = $newStock;
-                $stock->save();
-
-                StockLedger::create([
-                    'id' => (string) Str::uuid(),
-                    'branch_id' => $branchId,
-                    'material_id' => $materialId,
-                    'logged_at' => now()->toIso8601String(),
-                    'initial_stock' => $oldStock,
-                    'added_stock' => 0.0,
-                    'used_stock' => 0.0,
-                    'wasted_stock' => $quantity,
-                    'remaining_stock' => $newStock,
-                    'notes' => "Failed Print logged: -{$quantity} ({$notes})",
-                ]);
+                $this->applyMovement(
+                    $materialId,
+                    $branchId,
+                    'waste',
+                    $quantity,
+                    notes: "Failed Print logged: -{$quantity} ({$notes})",
+                    actor: $actor,
+                );
 
                 return $waste;
             });
@@ -248,32 +298,13 @@ class InventoryService
             return DB::transaction(function () use ($materialId, $quantity, $branchId) {
                 $material = Material::findOrFail($materialId);
 
-                $stock = MaterialBranchStock::where('material_id', $materialId)
-                    ->where('branch_id', $branchId)
-                    ->lockForUpdate()
-                    ->firstOrCreate([
-                        'material_id' => $materialId,
-                        'branch_id' => $branchId,
-                    ]);
-
-                $oldStock = (float) $stock->current_stock;
-                $newStock = $oldStock - $quantity;
-
-                $stock->current_stock = $newStock;
-                $stock->save();
-
-                StockLedger::create([
-                    'id' => (string) Str::uuid(),
-                    'branch_id' => $branchId,
-                    'material_id' => $materialId,
-                    'logged_at' => now()->toIso8601String(),
-                    'initial_stock' => $oldStock,
-                    'added_stock' => 0.0,
-                    'used_stock' => $quantity,
-                    'wasted_stock' => 0.0,
-                    'remaining_stock' => $newStock,
-                    'notes' => "Printed order item stock deduction: -{$quantity}",
-                ]);
+                $this->applyMovement(
+                    $materialId,
+                    $branchId,
+                    'usage',
+                    $quantity,
+                    notes: "Printed order item stock deduction: -{$quantity}",
+                );
 
                 return $material;
             });
@@ -286,5 +317,23 @@ class InventoryService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Create the branch stock row when it is missing; callers then lock it.
+     */
+    private function ensureStockRow(string $materialId, string $branchId): void
+    {
+        $now = now();
+
+        DB::table('material_branch_stock')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'material_id' => $materialId,
+            'branch_id' => $branchId,
+            'current_stock' => 0,
+            'min_stock' => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 }
