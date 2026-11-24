@@ -19,7 +19,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { collectionAsPage } from '../../lib/pagination';
-import { archetypeLabel, attributeTypeLabel, roleLabel } from '../../lib/labels';
+import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 
@@ -263,6 +263,9 @@ export function ManagerLedgersPage() {
             columns={[
                 { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
                 { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
+                { header: 'Tipe', cell: (ledger) => ledgerTypeLabel(ledger.type) },
+                { header: 'Alasan', className: 'hidden lg:table-cell', cell: (ledger) => ledger.reason ?? '-' },
+                { header: 'Pengguna', className: 'hidden sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
                 { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.added_stock },
                 { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.used_stock },
                 { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.wasted_stock },
