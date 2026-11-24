@@ -11,7 +11,7 @@ The problem owner accepted the login and SPA visual direction, the five-role spl
 
 ## 2. Revision Decisions
 
-| No | Problem Owner Feedback | Decision | FR | Target Sprint |
+| No | Problem Owner Feedback | Decision | FR | Follow-up Sprint |
 | :---: | :--- | :--- | :--- | :--- |
 | 1 | Customer search is the default; create customer on a separate page | Adopted | FR8 | Sprint 2 |
 | 2 | Order flow is Product -> Material -> Finishing -> Display; remove machine selection | Adopted | FR6, FR8 | Sprint 2 |
