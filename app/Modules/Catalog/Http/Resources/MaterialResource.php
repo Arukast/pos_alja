@@ -29,6 +29,7 @@ final class MaterialResource extends JsonResource
         }
 
         $single = $stocks->count() === 1 ? $stocks->first() : null;
+        $resolvedBranchId = $this->resource->getAttribute('resolved_stock_branch_id');
 
         return [
             'id' => $this->id,
@@ -43,11 +44,15 @@ final class MaterialResource extends JsonResource
             ] : null,
             'current_stock' => $single?->current_stock,
             'min_stock' => $single?->min_stock,
+            'is_low_stock' => $resolvedBranchId === 'all' || $single === null
+                ? null
+                : (float) $single->current_stock <= (float) $single->min_stock,
             'stocks' => $stocks->map(fn (MaterialBranchStock $stock): array => [
                 'branch_id' => $stock->branch_id,
                 'branch_name' => $stock->branch->name,
                 'current_stock' => $stock->current_stock,
                 'min_stock' => $stock->min_stock,
+                'is_low_stock' => (float) $stock->current_stock <= (float) $stock->min_stock,
             ])->values(),
         ];
     }

@@ -98,7 +98,7 @@ final class DashboardQuery
         $stockLedgers = $branchId === null
             ? StockLedger::query()->whereRaw('1 = 0')->get()
             : StockLedger::query()
-                ->with(['material', 'branch'])
+                ->with(['material', 'branch', 'user'])
                 ->where('branch_id', $branchId)
                 ->orderByDesc('logged_at')
                 ->limit(8)

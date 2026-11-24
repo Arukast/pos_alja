@@ -41,6 +41,7 @@ final class MaterialController extends Controller
             'branch_id' => is_string($branchId) ? $branchId : null,
             'search' => $search === '' ? null : $search,
             'include_deleted' => $request->boolean('include_deleted'),
+            'low_stock' => $request->boolean('low_stock'),
         ]);
 
         if ($actor->role === 'production') {
