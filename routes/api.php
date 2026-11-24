@@ -69,6 +69,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::delete('/materials/{material}', [MaterialController::class, 'destroy']);
         Route::post('/materials/{material}/restore', [MaterialController::class, 'restore']);
         Route::post('/materials/{material}/stock', [MaterialController::class, 'stock']);
+        Route::post('/materials/{material}/adjustments', [MaterialController::class, 'adjust']);
         Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
 
         Route::get('/purchases', [PurchaseController::class, 'index']);
