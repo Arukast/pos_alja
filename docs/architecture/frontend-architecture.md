@@ -119,3 +119,6 @@ npm --prefix frontend run build
 ```
 
 Use `agent-browser` for role and viewport smoke checks. The UI is served by Vite in development and by Nginx from `frontend/dist` in production.
+# Sales UI revision
+
+The designer starts a new order by searching customers. New customer registration uses `/designer/customers/new` and returns to the order flow after save. Print navigation is labeled “Cetak Invoice”; production ticket data remains restricted to non-financial fields.

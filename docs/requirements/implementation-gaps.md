@@ -1,6 +1,6 @@
 # Implementation Gaps
 
-- **As of:** 2026-11-24, after PB-05/PB-07 inventory-stock completion.
+- **As of:** 2026-11-25, after the Stream B Sprint Review 1 revision work.
 - **Scope:** The refactor replaced Livewire/Blade with Laravel API modules and a React SPA. Sprint Review 1 changed the target for pricing, machines, customers, expenses, production, and printing; the code has not yet been updated for all of those changes.
 - **Status source:** Route, controller, policy, model, migration, frontend, and test inspection on `feat/pb05-pb07-inventory-stock` (`9d73a9d`), plus the Sprint Review 1 change record.
 - **Read this first:** A feature marked Implemented has API endpoints, policies, tests, and SPA screens. Partial means core behavior exists but part of the acceptance criteria is still missing. Target means no implementation yet.
@@ -16,12 +16,12 @@
 | FR5 | Implemented | Policies, `BranchScope`, cross-branch tests, production money redaction; `FoundationTest`, `InvoiceApiTest`, `CatalogApiTest`. |
 | FR6 | Partial | Product read, search, filter, and pagination exist. Product create/update/delete routes and UI are missing; `ProductController` only has `index`. Pricing still uses the matrix and machine modifiers; category quantity discounts, reseller discount config, material units, and attribute prices are missing. |
 | FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 20-row pagination; `CatalogApiTest`. |
-| FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices; `CreateInvoiceApiTest`. Missing: customer search as the default UI, separate customer page, institution, finishing/display selection and persistence, one invoice print, machine removal. |
-| FR9 | Target | No invoice update route or `UpdateInvoice` action. Order items cannot be changed after submission. |
+| FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices, separate customer route and institution field are present. Machine/material association is not exposed by the current quote-options contract, and finishing/display persistence remains unavailable in order rows. |
+| FR9 | Target | No invoice update route or `UpdateInvoice` action. Order items cannot be changed after submission, including the requested DP-before-paid window. |
 | FR10 | Target | No `design_status`, `design_approved_at`, or `design_approved_by` columns or actions. |
 | FR11 | Implemented | `RegisterDownPayment`, `SettleInvoice`, receivable and overpay guards; `PaymentApiTest`. |
 | FR12 | Implemented | Multiple DP accumulate; full DP marks paid; over-limit and double-settlement tests; `PaymentApiTest`. |
-| FR13 | Partial | Receipt route, `InvoiceController::receipt`, and `ReceiptPage`; production is denied. The A4 invoice print replaces the ticket and is not implemented. |
+| FR13 | Partial | Receipt route, `InvoiceController::receipt`, and detailed 80 mm `ReceiptPage`; the designer order list labels this as Cetak Invoice. A dedicated A4 invoice layout is not implemented. |
 | FR14 | Partial | `ExpenseController`, branch scope, cashier-only write; `ExpenseApiTest`. Needs Owner/Manager write, Cashier removal, fixed category dropdown, and `recorded_by_name`. |
 | FR15 | Implemented | `purchases`/`purchase_items` migrations and models, `PurchaseController` index/store, `RecordPurchase`, `PurchaseList`, `PurchasePolicy`, and `/owner/purchases` + `/manager/purchases`; `PurchaseApiTest`. Same-branch `idempotency_key` replay returns 200 without new stock or ledger rows; caps, stock increments, missing stock rows, and soft-deleted material rejection are tested. |
 | FR16 | Implemented | `InventoryService::applyMovement` writes typed ledger rows with actor and reference; production start writes one `usage` row with the order reference; waste writes `waste` with the order reference, requires a queue order, makes the designer optional, and drops the machine reference; queue waste modal plus read-only `/production/waste` history; `InventoryServiceTest`, `ProductionWriteApiTest`. |

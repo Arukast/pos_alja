@@ -37,6 +37,8 @@
 
 ## Rules
 
+Cashier expense access is removed from the SPA navigation and route tree. Expense creation remains Owner/Manager only.
+
 1. Managers cannot create or manage owner/manager accounts.
 2. Managers cannot assign a user to another branch; branch ids from the client are ignored or rejected.
 3. Production responses omit price, cost, profit, discount, receivable, and payment fields.

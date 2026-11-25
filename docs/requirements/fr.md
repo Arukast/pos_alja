@@ -7,6 +7,8 @@
 
 ## Summary
 
+Sprint Review 1 Sales acceptance: customer registration is separate from new-order search; institution is required while phone, email, and address remain optional. Designer item configuration starts with machine selection, then material and single finishing/display choices. Cashiers have no expense-entry screen; invoice print is the customer-facing print flow.
+
 | ID | Module | Roles |
 | :--- | :--- | :--- |
 | FR1 | Autentikasi | All |

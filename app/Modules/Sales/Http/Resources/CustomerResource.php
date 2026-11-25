@@ -22,6 +22,7 @@ final class CustomerResource extends JsonResource
             'phone' => $this->phone,
             'email' => $this->email,
             'address' => $this->address,
+            'institution' => $this->institution,
             'type' => $this->type,
         ];
     }

@@ -18,6 +18,7 @@ class Customer extends Model
         'address',
         'email',
         'type',
+        'institution',
     ];
 
     /**
