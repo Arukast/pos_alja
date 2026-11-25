@@ -20,22 +20,22 @@
 | `/owner/expenses` | owner | Expense entry and detail |
 | `/owner/audit` | owner | Audit trail |
 | `/owner/purchases` | owner | Purchase history and purchase entry |
-| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/products`, `/owner/attributes`, `/owner/materials`, `/owner/customers` | owner | Administration CRUD |
+| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/products`, `/owner/materials` | owner | Administration CRUD |
 | `/manager` | manager | Branch dashboard |
 | `/manager/materials`, `/manager/ledgers`, `/manager/expenses`, `/manager/customers` | manager | Inventory, expense entry, customers |
+| `/manager/finishing` | manager | Create/read/delete global attribute types; CRUD own-branch finishing/display/cut attributes |
+| `/manager/pricing` | manager | CRUD own-branch pricing matrix (`Matriks Harga`) |
 | `/manager/purchases` | manager | Purchase history and purchase entry, own branch only |
 | `/manager/leaderboard`, `/manager/users` | manager | Performance and user administration |
 | `/cashier` | cashier | Cashier dashboard |
 | `/cashier/payments` | cashier | Payment queue and checkout |
 | `/cashier/pickup` | cashier | Pickup queue |
 | `/designer` | designer | Designer dashboard |
-| `/designer/new-order` | designer | Customer search, quote, cart, invoice |
-| `/designer/customers/new` | designer | Create customer on a separate page |
+| `/designer/new-order` | designer | Customer entry, quote, cart, invoice |
 | `/designer/orders` | designer | Invoice list and print links |
-| `/queue` | owner, manager, cashier, designer | Read-only production queue with owner branch filter |
 | `/production` | production | Production dashboard |
 | `/production/materials` | production | Read-only Bahan & Stok with low-stock filter |
-| `/production/queue` | production | Status control, inline waste modal |
+| `/production/queue` | production | Start/complete/fail/reopen controls, inline waste modal |
 | `/production/waste` | production | Read-only Riwayat Sisa Bahan history |
 | `/invoices/:id/print` | owner, manager, cashier, designer | A4 invoice print |
 | `/invoices/:id/receipt` | owner, manager, cashier, designer | 80 mm receipt |
@@ -52,7 +52,7 @@ src/
   components/admin/CrudPage
   features/       owner, manager, cashier, designer, production, print
   hooks/          useBranches, useOrderUpdates
-  lib/            api, money, dates, errors, echo, pagination, cn
+  lib/            api, money, dates, errors, echo, pagination, units, cn
   routes/         router, legacy redirects
   styles/         app.css tokens
 ```
@@ -87,19 +87,19 @@ src/
 - A failed query renders an `EmptyState` with a `Coba lagi` retry that refetches; `ResourceTable` and the
   designer order form's `/quotes/options` selectors follow it. A successful empty result uses the empty copy,
   and errors inside a control stay inline. The states are never merged.
-- `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above and an inline waste modal prefilled with the order. It never shows money and has no machine field. `/production/materials` is a read-only Bahan & Stok list: no create/edit/delete or money fields, with the same low-stock filter. `/production/waste` is read-only history titled "Riwayat Sisa Bahan" with no create form and no machine column.
+- `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above with a `Gagal` badge for status `3`. Status `0` offers `Mulai`, status `1` offers `Selesaikan` and `Gagal`, and status `3` offers `Proses Ulang`; status `0`, `1`, and `3` offer `Sisa Bahan`. Failing opens the waste modal with the failed order. It never shows money. `/production/materials` is a read-only Bahan & Stok list: no create/edit/delete or money fields, with the same low-stock filter. `/production/waste` is read-only history titled "Riwayat Sisa Bahan" with no create form.
 - Print views have dedicated `@media print` CSS: A4 invoice at `min-h-[297mm] print:min-h-0`, 80 mm receipt,
   `PrintHeader` with CMYK marks, white paper. Production is denied both print views.
-- The designer order form uses Product -> Material -> Finishing -> Display with single-select finishing/display controls. The customer field defaults to search; new customer creation lives on `/designer/customers/new`.
-- The material screen includes the reason-required stock adjustment action and a low-stock filter. The owner marks low rows with a `menipis` text cue; manager and production also apply a row tint. The `unit` dropdown remains a target field and is not implemented (see `docs/requirements/implementation-gaps.md`).
-- `/owner/products` and `/owner/categories` provide Owner CRUD (including 10-per-page product pagination and category quantity discount tiers `min_qty`, `discount_percent`). `/manager/products` and `/manager/categories` render read-only views for Branch Manager. `/owner/attributes` manages finishing/display options. The pricing-matrix and machine pages remain transitional and are scheduled for removal with the pricing redesign.
+- The designer order form selects a pricing row; it does not offer finishing/display controls. Finishing/display masters exist at `/manager/finishing`, and the quote/invoice API accepts `selected_attributes[]`, but there is no `order_attributes` persistence and no designer selection UI. Customer creation is inline on `/designer/new-order`.
+- The material screen includes the `unit` dropdown with the seven values, dynamic `Biaya per {unit}` and `Harga per {unit}` labels, a reason-required stock adjustment action, and a low-stock filter. Owner, manager, and production lists render quantities through `unitLabel`/`quantityWithUnit` from `lib/units.ts`, so `m2` shows as `m²` and a null unit falls back to `pcs`. The owner marks low rows with a `menipis` text cue; manager and production also apply a row tint.
+- `/owner/products` and `/owner/categories` provide Owner CRUD (including 10-per-page product pagination and category quantity discount tiers `min_qty`, `discount_percent`). `/manager/products` and `/manager/categories` render read-only views for Branch Manager. `/manager/finishing` performs create/read/delete on global attribute types and CRUD on own-branch attributes; `/manager/pricing` (`Matriks Harga`) performs CRUD on own-branch pricing-matrix rows. The machine pages and endpoints are removed. Category discount tiers are configured but not applied to quotes or invoices.
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
   spec (10px uppercase label, 22px/800 value). Controls are 40px tall, labels 10px uppercase.
 - `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only
   lists. `CrudPage` supports `summary`, `footer`, and `toolbar` slots, `rowClassName` for row tinting, `pageResetKey` to return to page 1 when a filter
   changes, and `hideBanner` so a second section on the same page can render a labelled panel header instead of
   a second page banner.
-- `/owner/purchases` and `/manager/purchases` share `PurchasesPage`: a paginated history table plus a "Catat Pembelian" modal with date-only `purchased_at`, supplier, notes, dynamic line items, a running total, and an `idempotency_key` generated once when the modal opens. The owner selects a branch; the manager has no branch selector.
+- `/owner/purchases` and `/manager/purchases` share `PurchasesPage`: a paginated history table plus a "Catat Pembelian" modal with date-only `purchased_at`, supplier, notes, dynamic line items, a running total, and an `idempotency_key` generated once when the modal opens. Each history row expands to its line items: material name, quantity with unit, unit cost, subtotal, notes, and the recorder. `ResourceTable` takes an optional `expandedRow` renderer; existing tables are unchanged. The owner selects a branch; the manager has no branch selector. The purchase modal labels quantity with the selected material's unit.
 - `/manager/ledgers` adds type, reason, and user columns to the stock quantities.
 - Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English, with one exception: `expense.category` is a fixed dropdown, not free text, so reports group by the selected category.
 - Shared copy lives in `roleLinks`, `admin/CrudPage`, `components/ui`, and `lib/labels.ts`.
@@ -107,7 +107,7 @@ src/
 
 ## 6. Realtime
 
-`useOrderUpdates` subscribes owners to `private-owners` and branch users to `private-branch.{id}`. It requires `VITE_REVERB_APP_KEY`; without it, realtime stays disabled and the app remains usable. Stock mutations (purchase, adjustment, usage, waste) use the existing `OrderUpdated` broadcast; there is no separate `StockUpdated` event or listener.
+`useOrderUpdates` subscribes owners to `private-owners` and branch users to `private-branch.{id}`. It requires `VITE_REVERB_APP_KEY`; without it, realtime stays disabled and the app remains usable. Stock mutations (purchase, adjustment, usage, waste) and production fail/reopen use the existing `OrderUpdated` broadcast; there is no separate `StockUpdated` event or listener.
 
 ## 7. Verification
 

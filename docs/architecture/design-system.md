@@ -132,7 +132,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
 
 - `PrintHeader` renders four CMYK squares and the wordmark with `print-color-exact`, so the marks survive the
   browser's print colour handling.
-- Invoice: A4 sheet, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The invoice is
+- Invoice: A4 page, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The invoice is
   the single customer document and includes prices, discounts, DP history, and the remaining receivable.
 - Production has no invoice or receipt print. Its work list is the production queue, which contains no money
   field. No separate ticket or money-free print mode is part of the target.
