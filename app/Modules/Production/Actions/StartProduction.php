@@ -20,7 +20,7 @@ final class StartProduction
     {
         $updated = DB::transaction(function () use ($order, $operator): Order {
             $locked = Order::query()
-                ->with(['invoice', 'pricing.product.category'])
+                ->with(['invoice', 'pricing.material'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -31,17 +31,23 @@ final class StartProduction
                 ]);
             }
 
+            $pricing = $locked->pricing;
+            $unit = $pricing?->material?->unit;
+            $area = (float) $locked->area;
+
+            if ($unit === 'm2' && $area <= 0) {
+                throw ValidationException::withMessages([
+                    'area' => 'Luas pesanan harus lebih dari 0 untuk bahan bersatuan m².',
+                ]);
+            }
+
             $locked->status = 1;
             $locked->operator_id = $operator->id;
             $locked->save();
 
-            $pricing = $locked->pricing;
-
             if ($pricing !== null) {
-                $archetype = $pricing->product?->category?->calculation_archetype;
-                // shortcut: orders store area but not length, so linear jobs fall back to quantity.
-                $quantity = $archetype === 'surface_area'
-                    ? (float) $locked->area * (float) $locked->quantity
+                $quantity = $unit === 'm2'
+                    ? $area * (float) $locked->quantity
                     : (float) $locked->quantity;
 
                 $branchId = $operator->branch_id ?? $locked->invoice?->branch_id;

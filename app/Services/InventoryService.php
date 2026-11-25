@@ -20,7 +20,7 @@ class InventoryService
 {
     private const MAX_STOCK = 99999999.99;
 
-    private const MOVEMENT_TYPES = ['initial', 'purchase', 'usage', 'waste', 'adjustment', 'restock'];
+    private const MOVEMENT_TYPES = ['initial', 'purchase', 'usage', 'usage_reversal', 'waste', 'adjustment', 'restock'];
 
     /**
      * Create a global material catalog entry.
