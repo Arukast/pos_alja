@@ -59,8 +59,20 @@ export function TableHeaderCell({
     );
 }
 
-export function TableCell({ className, children }: { className?: string; children: ReactNode }) {
-    return <td className={cn('px-2 py-2 align-middle sm:px-3', className)}>{children}</td>;
+export function TableCell({
+    className,
+    children,
+    colSpan,
+}: {
+    className?: string;
+    children: ReactNode;
+    colSpan?: number;
+}) {
+    return (
+        <td colSpan={colSpan} className={cn('px-2 py-2 align-middle sm:px-3', className)}>
+            {children}
+        </td>
+    );
 }
 
 export function TableEmpty({ colSpan, children }: { colSpan: number; children: ReactNode }) {
