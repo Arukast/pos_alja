@@ -25,4 +25,18 @@ final class BranchScope
 
         return $query->where($column, $actor->branch_id);
     }
+
+    /**
+     * Resolve the branch a write targets: owners must name one, staff are forced to theirs.
+     */
+    public static function writeBranchId(User $actor, ?string $requested): string
+    {
+        $branchId = $actor->role === 'owner' ? $requested : $actor->branch_id;
+
+        if (! is_string($branchId) || $branchId === '') {
+            abort(422, 'Cabang wajib diisi.');
+        }
+
+        return $branchId;
+    }
 }

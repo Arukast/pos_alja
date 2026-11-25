@@ -29,6 +29,9 @@ final class ProductionMaterialResource extends JsonResource
             ] : null,
             'current_stock' => $stock?->current_stock,
             'min_stock' => $stock?->min_stock,
+            'is_low_stock' => $stock !== null
+                ? (float) $stock->current_stock <= (float) $stock->min_stock
+                : null,
         ];
     }
 }

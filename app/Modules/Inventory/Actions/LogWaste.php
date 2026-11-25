@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Actions;
 
-use App\Models\Machine;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\User;
@@ -41,19 +40,6 @@ final class LogWaste
             ]);
         }
 
-        if (isset($data['machine_id'])) {
-            $machineInBranch = Machine::query()
-                ->whereKey($data['machine_id'])
-                ->where('branch_id', $branchId)
-                ->exists();
-
-            if (! $machineInBranch) {
-                throw ValidationException::withMessages([
-                    'machine_id' => 'Mesin ini milik cabang lain.',
-                ]);
-            }
-        }
-
         if (isset($data['designer_id'])) {
             $designerInBranch = User::query()
                 ->whereKey($data['designer_id'])
@@ -68,36 +54,40 @@ final class LogWaste
             }
         }
 
-        if (isset($data['order_id'])) {
-            $orderInBranch = Order::query()
-                ->whereKey($data['order_id'])
-                ->whereHas(
-                    'invoice',
-                    fn ($query) => $query->where('branch_id', $branchId)
-                )
-                ->exists();
+        $order = Order::query()
+            ->whereKey($data['order_id'])
+            ->whereHas(
+                'invoice',
+                fn ($query) => $query->where('branch_id', $branchId)
+            )
+            ->first();
 
-            if (! $orderInBranch) {
-                throw ValidationException::withMessages([
-                    'order_id' => 'Pesanan ini milik cabang lain.',
-                ]);
-            }
+        if ($order === null) {
+            throw ValidationException::withMessages([
+                'order_id' => 'Pesanan ini milik cabang lain.',
+            ]);
+        }
+
+        if (! in_array($order->status, [0, 1], true)) {
+            throw ValidationException::withMessages([
+                'order_id' => 'Pesanan yang sudah selesai tidak dapat dicatat sisa bahannya.',
+            ]);
         }
 
         $waste = $this->inventory->logWaste([
             'branch_id' => $branchId,
             'material_id' => $data['material_id'],
-            'machine_id' => $data['machine_id'] ?? null,
             'designer_id' => $data['designer_id'] ?? null,
             'operator_id' => $operator->id,
-            'order_id' => $data['order_id'] ?? null,
+            'order_id' => $order->id,
             'quantity' => $data['quantity'],
             'dimensions' => $data['dimensions'] ?? null,
             'notes' => $data['notes'] ?? 'Print failure',
+            'actor' => $operator,
         ]);
 
         SafeBroadcast::orderUpdated($branchId, $operator);
 
-        return $waste->load(['material', 'machine', 'designer', 'operator', 'branch']);
+        return $waste->load(['material', 'designer', 'operator', 'branch']);
     }
 }

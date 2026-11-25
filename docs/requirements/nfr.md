@@ -34,7 +34,7 @@ npm --prefix frontend run build
 
 - NFR1/NFR2 require a representative dataset; the current test suite does not benchmark production-scale rows.
 - NFR6 backup is not implemented by this refactor. Do not claim RPO/RTO coverage until FR26 lands.
-- NFR9 locking is implemented with `lockForUpdate()` in payments and production; SQLite makes it a no-op, so run the check against PostgreSQL before delivery.
+- NFR9 locking is implemented with `lockForUpdate()` for payments, production, and stock movements inside the same transaction; SQLite makes it a no-op, so run the check against PostgreSQL before delivery. PostgreSQL concurrency remains unverified.
 - NFR8 records PHP 8.5 as the tested runtime while `composer.json` keeps the `^8.3` compatibility floor.
 - User-facing copy and API messages are Indonesian; dates format with `id-ID`; production requires `APP_LOCALE=id`.
 - Sprint Review 1 changed FR6, FR8, FR9, FR13, FR14, FR16, FR18, FR19, FR20, and FR25. NFR targets are unchanged. NFR3, NFR4, NFR5, and NFR9 verification scope expanded to cover quantity discounts, invoice print, expense access, customer PII, and order-update locking.

@@ -198,6 +198,7 @@
 
 ### FR15 Record raw-material purchases
 - **Requirement:** Owner and Branch Manager SHALL record raw-material purchases that add stock to the branch.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
   - Purchase header: branch, actor, purchase date, optional supplier, notes.
   - Line items: material, quantity, unit cost, subtotal.
@@ -208,6 +209,7 @@
 
 ### FR16 Record material usage on an order
 - **Requirement:** Production SHALL record material usage on an order, and stock SHALL decrease automatically. Failed prints SHALL be recorded from the production queue.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
   - Usage references the order, material, quantity, and operator.
   - A failed print is recorded from the queue row, not from a separate page. It references the order, material, quantity, operator, optional designer, and notes.
@@ -218,6 +220,7 @@
 
 ### FR17 View branch stock and low-stock warnings
 - **Requirement:** Owner, Branch Manager, and Production SHALL view raw-material stock per branch and receive a warning when stock is below the minimum.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
   - Stock is shown per branch with current stock and minimum stock.
   - Low-stock items are highlighted or listed separately.
@@ -227,6 +230,7 @@
 
 ### FR18 Adjust stock with a reason
 - **Requirement:** Owner and Branch Manager SHALL correct branch stock with a mandatory reason.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
   - The adjustment is available in the materials/stock screen.
   - Adjustment can set a new quantity or apply a signed delta.

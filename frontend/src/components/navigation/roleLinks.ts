@@ -55,6 +55,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
                 { to: '/owner/categories', label: 'Kategori Produk', icon: Tags },
                 { to: '/owner/machines', label: 'Mesin Cetak', icon: Printer },
                 { to: '/owner/materials', label: 'Bahan & Stok', icon: Package },
+                { to: '/owner/purchases', label: 'Pembelian', icon: ShoppingCart },
             ],
         },
     ],
@@ -70,6 +71,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             label: 'Inventaris',
             links: [
                 { to: '/manager/materials', label: 'Bahan & Stok', icon: Package },
+                { to: '/manager/purchases', label: 'Pembelian', icon: ShoppingCart },
                 { to: '/manager/ledgers', label: 'Buku Stok', icon: ListOrdered },
             ],
         },
@@ -122,8 +124,9 @@ export const roleLinks: Record<string, NavGroup[]> = {
         {
             label: 'Operasional',
             links: [
+                { to: '/production/materials', label: 'Bahan & Stok', icon: Package },
                 { to: '/production/queue', label: 'Antrean Cetak', icon: Printer },
-                { to: '/production/waste', label: 'Catat Sisa Bahan', icon: Recycle },
+                { to: '/production/waste', label: 'Riwayat Sisa Bahan', icon: Recycle },
             ],
         },
     ],

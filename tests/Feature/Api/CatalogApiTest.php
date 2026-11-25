@@ -165,13 +165,18 @@ class CatalogApiTest extends TestCase
         $this->ledgerOne = StockLedger::create([
             'branch_id' => $this->branchOne->id,
             'material_id' => $this->material->id,
+            'type' => 'purchase',
+            'reason' => 'Pembelian bahan baku',
+            'user_id' => $this->manager->id,
+            'reference_type' => 'purchase',
+            'reference_id' => (string) Str::uuid(),
             'logged_at' => now(),
             'initial_stock' => 0,
             'added_stock' => 10,
             'used_stock' => 0,
             'wasted_stock' => 0,
             'remaining_stock' => 10,
-            'notes' => 'Initial stock',
+            'notes' => 'Pembelian bahan baku',
         ]);
 
         $this->ledgerTwo = StockLedger::create([
@@ -321,6 +326,20 @@ class CatalogApiTest extends TestCase
 
         $this->assertContains($this->ledgerOne->id, $ids);
         $this->assertContains($this->ledgerTwo->id, $ids);
+    }
+
+    public function test_stock_ledgers_carry_traceability_fields(): void
+    {
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/stock-ledgers')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $this->ledgerOne->id)
+            ->assertJsonPath('data.0.type', 'purchase')
+            ->assertJsonPath('data.0.reason', 'Pembelian bahan baku')
+            ->assertJsonPath('data.0.user.id', $this->manager->id)
+            ->assertJsonPath('data.0.user.name', $this->manager->name)
+            ->assertJsonPath('data.0.reference_type', 'purchase')
+            ->assertJsonPath('data.0.reference_id', $this->ledgerOne->reference_id);
     }
 
     private function branch(string $name): Branch

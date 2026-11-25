@@ -136,7 +136,7 @@ final class CatalogQueries
      */
     public function stockLedgers(User $actor, array $filters): LengthAwarePaginator
     {
-        $query = StockLedger::query()->with(['material', 'branch']);
+        $query = StockLedger::query()->with(['material', 'branch', 'user']);
 
         if ($actor->role === 'owner') {
             $branchId = $filters['branch_id'] ?? null;

@@ -304,15 +304,20 @@ sequenceDiagram
     A->>SPA: Submit purchase header and items
     SPA->>API: POST /api/v1/purchases
     API->>Policy: Authorize owner/manager, branch scope
-    API->>DB: BEGIN
-    API->>DB: Create purchase and purchase items
-    loop Each item
-        API->>DB: Lock branch stock, increment current_stock
-        API->>DB: Insert stock ledger type purchase
+    API->>DB: Look up purchase by resolved branch + idempotency_key
+    alt Key already exists
+        API-->>SPA: 200 stored purchase, no write
+    else New key
+        API->>DB: BEGIN
+        API->>DB: Create purchase and purchase items
+        loop Each item
+            API->>DB: Lock branch stock, increment current_stock
+            API->>DB: Insert stock ledger type purchase
+        end
+        API->>DB: Insert audit log, COMMIT
+        API-->>SPA: Purchase 201
     end
-    API->>DB: Insert audit log, COMMIT
-    API-->>SPA: Purchase
-    API->>R: StockUpdated on branch
+    API->>R: OrderUpdated on branch/owners
 ```
 
 ### 5.2 Stock View And Low-Stock Warning
@@ -326,12 +331,15 @@ sequenceDiagram
     participant Policy
     participant DB
 
-    A->>SPA: Open stock page
+    A->>SPA: Open stock page and toggle low stock
     SPA->>API: GET /api/v1/materials?branch_id&low_stock=1
     API->>Policy: Authorize viewAny
-    Policy-->>API: Owner all, manager/production own branch
-    API->>DB: Query current_stock and min_stock
-    API-->>SPA: Materials, current_stock <= min_stock flagged
+    Policy-->>API: Owner all or selected, manager/production own branch
+    API->>DB: Query current_stock and min_stock; filter current_stock <= min_stock
+    opt Owner with branch_id=all
+        API->>DB: Keep a material low in at least one branch (OR)
+    end
+    API-->>SPA: Materials, top-level is_low_stock (null for owner/all) and per-stock flags
 ```
 
 ### 5.3 Stock Adjustment With Reason
@@ -346,18 +354,18 @@ sequenceDiagram
     participant DB
     participant R as Reverb
 
-    A->>SPA: Submit new quantity or delta and reason
+    A->>SPA: Submit new quantity or signed delta and a reason
     SPA->>API: POST /api/v1/materials/{id}/adjustments
     API->>Policy: Authorize owner/manager, branch scope
-    API->>DB: Require reason 3-255 characters
-    API->>DB: BEGIN, lock stock, validate result >= 0
-    alt Negative result or missing reason
+    API->>DB: Validate exactly one mode and reason 3-255 characters
+    API->>DB: BEGIN, applyMovement locks stock and computes the target
+    alt Invalid mode, reason, zero delta, negative target, or cap
         API-->>SPA: 422
     else Valid
-        API->>DB: Update stock, insert ledger type adjustment
+        API->>DB: Update stock, insert ledger type adjustment with reason and actor
         API->>DB: Insert audit log, COMMIT
-        API-->>SPA: Stock ledger
-        API->>R: StockUpdated
+        API-->>SPA: Material with updated stock
+        API->>R: OrderUpdated
     end
 ```
 
@@ -374,13 +382,14 @@ sequenceDiagram
 
     P->>SPA: Open the production queue and choose a job
     SPA->>API: GET /api/v1/waste/options
-    API-->>SPA: Branch materials and designers
+    API-->>SPA: Branch materials and designers, no machines
     P->>SPA: Submit failed print from the queue row
     SPA->>API: POST /api/v1/waste
-    API->>DB: Validate material, designer, and order branch
-    API->>DB: BEGIN, lock stock, create waste, ledger type waste, audit, COMMIT
-    API-->>SPA: Waste record
-    API->>R: OrderUpdated/StockUpdated
+    API->>DB: Require order (status 0/1, same branch); designer optional; machine ignored
+    API->>DB: Require material branch stock
+    API->>DB: BEGIN, applyMovement locks stock, create waste, ledger type waste with order reference and actor, COMMIT
+    API-->>SPA: Waste record, no machine
+    API->>R: OrderUpdated
 ```
 
 ## 6. Production
@@ -448,7 +457,7 @@ sequenceDiagram
 
     Writer->>API: Successful non-GET mutation
     API->>DB: Commit transaction
-    API->>R: OrderUpdated or StockUpdated
+    API->>R: OrderUpdated
     R-->>SPA: Private branch/owner channel event
     SPA->>API: Refetch affected queries
 ```

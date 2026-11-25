@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\SafeBroadcast;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 final class BroadcastApiChange
@@ -22,7 +23,10 @@ final class BroadcastApiChange
             && ! in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true)
             && $response->getStatusCode() < 400
         ) {
-            SafeBroadcast::orderUpdated($actor->branch_id, $actor);
+            $branchId = $actor->branch_id ?? $request->input('branch_id');
+            $branchId = is_string($branchId) && Str::isUuid($branchId) ? $branchId : null;
+
+            SafeBroadcast::orderUpdated($branchId, $actor);
         }
 
         return $response;

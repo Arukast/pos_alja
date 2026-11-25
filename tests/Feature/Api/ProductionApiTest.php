@@ -7,7 +7,6 @@ namespace Tests\Feature\Api;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
@@ -42,10 +41,6 @@ class ProductionApiTest extends TestCase
 
     private Material $materialTwo;
 
-    private Machine $machineOne;
-
-    private Machine $machineTwo;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -65,10 +60,10 @@ class ProductionApiTest extends TestCase
         $invoiceOne = $this->invoice($this->branchOne, $customer, 'INV-B1-001');
         $invoiceTwo = $this->invoice($this->branchTwo, $customer, 'INV-B2-001');
 
-        $this->order($invoiceOne, 0);
+        $branchOneOrder = $this->order($invoiceOne, 0);
         $this->order($invoiceOne, 1);
         $this->order($invoiceOne, 2);
-        $this->order($invoiceTwo, 0);
+        $branchTwoOrder = $this->order($invoiceTwo, 0);
 
         $this->materialOne = Material::create([
             'name' => 'Vinyl Roll',
@@ -103,23 +98,11 @@ class ProductionApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        $this->machineOne = Machine::create([
-            'branch_id' => $this->branchOne->id,
-            'name' => 'Printer A',
-            'cost' => 1000,
-        ]);
-
-        $this->machineTwo = Machine::create([
-            'branch_id' => $this->branchTwo->id,
-            'name' => 'Printer B',
-            'cost' => 2000,
-        ]);
-
         WastedMaterial::create([
             'branch_id' => $this->branchOne->id,
             'logged_at' => now(),
             'material_id' => $this->materialOne->id,
-            'machine_id' => $this->machineOne->id,
+            'order_id' => $branchOneOrder->id,
             'designer_id' => $this->designer->id,
             'operator_id' => $this->production->id,
             'quantity' => 2,
@@ -131,7 +114,7 @@ class ProductionApiTest extends TestCase
             'branch_id' => $this->branchTwo->id,
             'logged_at' => now(),
             'material_id' => $this->materialTwo->id,
-            'machine_id' => $this->machineTwo->id,
+            'order_id' => $branchTwoOrder->id,
             'designer_id' => $this->otherProduction->id,
             'operator_id' => $this->otherProduction->id,
             'quantity' => 5,
@@ -191,10 +174,12 @@ class ProductionApiTest extends TestCase
         $response = $this->actingAs($this->production)
             ->getJson('/api/v1/waste')
             ->assertOk()
-            ->assertJsonMissingPath('data.0.cost');
+            ->assertJsonMissingPath('data.0.cost')
+            ->assertJsonMissingPath('data.0.machine');
 
         $this->assertCount(1, $response->json('data'));
         $this->assertSame($this->materialOne->id, $response->json('data.0.material.id'));
+        $this->assertNotNull($response->json('data.0.order_id'));
 
         foreach ([$this->owner, $this->manager, $this->cashier, $this->designer] as $user) {
             $this->actingAs($user)->getJson('/api/v1/waste')->assertForbidden();
@@ -207,14 +192,13 @@ class ProductionApiTest extends TestCase
             ->getJson('/api/v1/waste/options?branch_id='.$this->branchTwo->id)
             ->assertOk()
             ->assertJsonMissingPath('materials.0.cost')
-            ->assertJsonMissingPath('materials.0.price');
+            ->assertJsonMissingPath('materials.0.price')
+            ->assertJsonMissingPath('machines');
 
         $materialIds = collect($response->json('materials'))->pluck('id')->all();
-        $machineIds = collect($response->json('machines'))->pluck('id')->all();
         $designerIds = collect($response->json('designers'))->pluck('id')->all();
 
         $this->assertSame([$this->materialOne->id], $materialIds);
-        $this->assertSame([$this->machineOne->id], $machineIds);
         $this->assertSame([$this->designer->id], $designerIds);
     }
 

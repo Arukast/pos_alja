@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { archetypeLabel, attributeTypeLabel, expenseTypeLabel, paymentMethodLabel, roleLabel } from './labels';
+import {
+    archetypeLabel,
+    attributeTypeLabel,
+    expenseTypeLabel,
+    ledgerTypeLabel,
+    paymentMethodLabel,
+    roleLabel,
+} from './labels';
 
 describe('roleLabel', () => {
     it('labels every stored role', () => {
@@ -61,5 +68,26 @@ describe('attributeTypeLabel', () => {
 
     it('falls back to the input for an unknown type', () => {
         expect(attributeTypeLabel('packaging')).toBe('packaging');
+    });
+});
+
+describe('ledgerTypeLabel', () => {
+    it('labels every stored ledger type', () => {
+        expect(ledgerTypeLabel('initial')).toBe('Stok Awal');
+        expect(ledgerTypeLabel('purchase')).toBe('Pembelian');
+        expect(ledgerTypeLabel('usage')).toBe('Pemakaian');
+        expect(ledgerTypeLabel('waste')).toBe('Sisa Bahan');
+        expect(ledgerTypeLabel('adjustment')).toBe('Koreksi');
+        expect(ledgerTypeLabel('restock')).toBe('Tambah Stok');
+    });
+
+    it('falls back to the input for an unknown type', () => {
+        expect(ledgerTypeLabel('transfer')).toBe('transfer');
+    });
+
+    it('renders a dash for a missing type', () => {
+        expect(ledgerTypeLabel(null)).toBe('-');
+        expect(ledgerTypeLabel(undefined)).toBe('-');
+        expect(ledgerTypeLabel('')).toBe('-');
     });
 });

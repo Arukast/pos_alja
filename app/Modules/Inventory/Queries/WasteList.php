@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Queries;
 
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\User;
 use App\Models\WastedMaterial;
@@ -17,7 +16,7 @@ final class WasteList
     public function paginate(User $actor, array $filters = []): LengthAwarePaginator
     {
         $query = WastedMaterial::query()
-            ->with(['material', 'machine', 'designer', 'operator', 'branch']);
+            ->with(['material', 'designer', 'operator', 'branch']);
 
         BranchScope::apply($query, $actor);
 
@@ -25,14 +24,14 @@ final class WasteList
     }
 
     /**
-     * @return array{materials: array<int, array<string, mixed>>, machines: array<int, array<string, mixed>>, designers: array<int, array<string, mixed>>}
+     * @return array{materials: array<int, array<string, mixed>>, designers: array<int, array<string, mixed>>}
      */
     public function options(User $actor): array
     {
         $branchId = $actor->branch_id;
 
         if ($branchId === null) {
-            return ['materials' => [], 'machines' => [], 'designers' => []];
+            return ['materials' => [], 'designers' => []];
         }
 
         $materials = Material::query()
@@ -51,17 +50,6 @@ final class WasteList
             ->values()
             ->all();
 
-        $machines = Machine::query()
-            ->where('branch_id', $branchId)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Machine $machine): array => [
-                'id' => $machine->id,
-                'name' => $machine->name,
-            ])
-            ->values()
-            ->all();
-
         $designers = User::query()
             ->where('role', 'designer')
             ->where('branch_id', $branchId)
@@ -76,7 +64,6 @@ final class WasteList
 
         return [
             'materials' => $materials,
-            'machines' => $machines,
             'designers' => $designers,
         ];
     }

@@ -8,11 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\User;
+use App\Modules\Catalog\Http\Requests\AdjustStockRequest;
 use App\Modules\Catalog\Http\Requests\StoreMaterialRequest;
 use App\Modules\Catalog\Http\Resources\MaterialResource;
 use App\Modules\Catalog\Http\Resources\ProductionMaterialResource;
 use App\Modules\Catalog\Queries\MaterialQueries;
+use App\Modules\Inventory\Actions\AdjustStock;
 use App\Services\InventoryService;
+use App\Support\BranchScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -39,6 +42,7 @@ final class MaterialController extends Controller
             'branch_id' => is_string($branchId) ? $branchId : null,
             'search' => $search === '' ? null : $search,
             'include_deleted' => $request->boolean('include_deleted'),
+            'low_stock' => $request->boolean('low_stock'),
         ]);
 
         if ($actor->role === 'production') {
@@ -145,13 +149,12 @@ final class MaterialController extends Controller
         ]);
 
         $actor = $request->user();
-        $branchId = $actor instanceof User && $actor->role !== 'owner'
-            ? $actor->branch_id
-            : ($data['branch_id'] ?? null);
 
-        if ($branchId === null) {
-            abort(422, 'Cabang wajib diisi.');
+        if (! $actor instanceof User) {
+            abort(401);
         }
+
+        $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
 
         $inventory->addStock(
             $material,
@@ -159,6 +162,26 @@ final class MaterialController extends Controller
             $data['notes'] ?? null,
             $branchId
         );
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function adjust(
+        AdjustStockRequest $request,
+        Material $material,
+        AdjustStock $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $action->execute($material, $request->validated(), $actor);
 
         return response()->json([
             'material' => new MaterialResource(
@@ -181,13 +204,12 @@ final class MaterialController extends Controller
         ]);
 
         $actor = $request->user();
-        $branchId = $actor instanceof User && $actor->role !== 'owner'
-            ? $actor->branch_id
-            : ($data['branch_id'] ?? null);
 
-        if ($branchId === null) {
-            abort(422, 'Cabang wajib diisi.');
+        if (! $actor instanceof User) {
+            abort(401);
         }
+
+        $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
 
         $exists = $material->branchStocks()->where('branch_id', $branchId)->exists();
 
