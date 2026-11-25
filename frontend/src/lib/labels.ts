@@ -30,6 +30,10 @@ const expenseTypes: Record<string, string> = {
     modal: 'Modal',
 };
 
+const pricingTypes: Record<string, string> = {
+    unit: 'Per Satuan',
+    area: 'Per Area (m²)',
+};
 const ledgerTypes: Record<string, string> = {
     initial: 'Stok Awal',
     purchase: 'Pembelian',
@@ -59,6 +63,9 @@ export function expenseTypeLabel(type: string): string {
     return expenseTypes[type] ?? type;
 }
 
+export function pricingTypeLabel(type: string): string {
+    return pricingTypes[type] ?? type;
+}
 export function ledgerTypeLabel(type: string | null | undefined): string {
     if (!type) {
         return '-';

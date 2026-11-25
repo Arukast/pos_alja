@@ -258,6 +258,14 @@ export const api = {
             mutate<{ category: Category }>(`/categories/${id}`, 'PUT', data),
         deleteCategory: (id: string) => mutate<void>(`/categories/${id}`, 'DELETE'),
 
+        createProduct: (data: MutationBody) =>
+            mutate<{ product: Product }>('/products', 'POST', data),
+        updateProduct: (id: string, data: MutationBody) =>
+            mutate<{ product: Product }>(`/products/${id}`, 'PUT', data),
+        deleteProduct: (id: string) => mutate<void>(`/products/${id}`, 'DELETE'),
+        restoreProduct: (id: string) =>
+            mutate<{ product: Product }>(`/products/${id}/restore`, 'POST'),
+
         createAttributeType: (data: MutationBody) =>
             mutate<{ attribute_type: AttributeType }>('/attribute-types', 'POST', data),
         deleteAttributeType: (id: string) =>

@@ -76,6 +76,7 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner |
 | GET | `/products` | owner, manager, cashier, designer |
 | POST/PUT/DELETE | `/products`, `/products/{product}` | owner |
+| POST | `/products/{product}/restore` | owner |
 | GET | `/materials` | owner all; manager/production own branch |
 | POST | `/materials` | owner; manager creates for own branch |
 | PUT | `/materials/{material}` | owner |
@@ -113,6 +114,8 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 - `GET /stock-ledgers` is owner all; manager own branch.
 - `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
 - `type` is one of `initial`, `purchase`, `usage`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference.
+
+`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) only. `GET /categories` includes `discount_tiers[]` (`id`, `min_qty`, and 2-decimal `discount_percent`, ordered by `min_qty`).
 
 ## 5. Sales
 

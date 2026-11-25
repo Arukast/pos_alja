@@ -49,11 +49,18 @@ export interface Customer {
     type: string | null;
 }
 
+export interface CategoryDiscountTier {
+    id?: string;
+    min_qty: number;
+    discount_percent: string;
+}
+
 export interface Category {
     id: string;
     name: string;
     calculation_archetype: string;
     allowed_attribute_types: string[];
+    discount_tiers: CategoryDiscountTier[];
 }
 
 export interface AttributeType {
@@ -74,6 +81,8 @@ export interface Product {
     id: string;
     name: string;
     pricing_type: string;
+    is_active: boolean;
+    deleted_at?: string | null;
     category: { id: string; name: string; calculation_archetype: string } | null;
 }
 

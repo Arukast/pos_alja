@@ -20,7 +20,7 @@
 | `/owner/expenses` | owner | Expense entry and detail |
 | `/owner/audit` | owner | Audit trail |
 | `/owner/purchases` | owner | Purchase history and purchase entry |
-| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/attributes`, `/owner/materials`, `/owner/customers` | owner | Administration CRUD |
+| `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/products`, `/owner/attributes`, `/owner/materials`, `/owner/customers` | owner | Administration CRUD |
 | `/manager` | manager | Branch dashboard |
 | `/manager/materials`, `/manager/ledgers`, `/manager/expenses`, `/manager/customers` | manager | Inventory, expense entry, customers |
 | `/manager/purchases` | manager | Purchase history and purchase entry, own branch only |
@@ -92,7 +92,7 @@ src/
   `PrintHeader` with CMYK marks, white paper. Production is denied both print views.
 - The designer order form uses Product -> Material -> Finishing -> Display with single-select finishing/display controls. The customer field defaults to search; new customer creation lives on `/designer/customers/new`.
 - The material screen includes the reason-required stock adjustment action and a low-stock filter. The owner marks low rows with a `menipis` text cue; manager and production also apply a row tint. The `unit` dropdown remains a target field and is not implemented (see `docs/requirements/implementation-gaps.md`).
-- The category and finishing/display screens are Owner-only. The category screen includes quantity discount tiers (`min_qty`, `discount_percent`); `/owner/attributes` manages finishing/display options. The pricing-matrix and machine pages remain transitional and are scheduled for removal with the pricing redesign.
+- `/owner/products` and `/owner/categories` provide Owner CRUD (including 10-per-page product pagination and category quantity discount tiers `min_qty`, `discount_percent`). `/manager/products` and `/manager/categories` render read-only views for Branch Manager. `/owner/attributes` manages finishing/display options. The pricing-matrix and machine pages remain transitional and are scheduled for removal with the pricing redesign.
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
   spec (10px uppercase label, 22px/800 value). Controls are 40px tall, labels 10px uppercase.
 - `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only

@@ -24,7 +24,7 @@ final class CatalogQueries
      */
     public function categories(): Collection
     {
-        return ProductCategory::query()->orderBy('name')->get();
+        return ProductCategory::query()->with('discountTiers')->orderBy('name')->get();
     }
 
     /**
@@ -57,12 +57,23 @@ final class CatalogQueries
     }
 
     /**
-     * @param  array{search?: string|null, category_id?: string|null}  $filters
+     * @param  array{search?: string|null, category_id?: string|null, is_active?: bool|null, include_deleted?: bool}  $filters
      */
     public function products(array $filters): LengthAwarePaginator
     {
-        return Product::query()
-            ->with('category')
+        $query = Product::query()->with('category');
+
+        if (($filters['include_deleted'] ?? false) === true) {
+            $query->withTrashed();
+        }
+
+        $isActive = $filters['is_active'] ?? null;
+
+        if (is_bool($isActive)) {
+            $query->where('is_active', $isActive);
+        }
+
+        return $query
             ->when(
                 $filters['category_id'] ?? null,
                 fn (Builder $query, string $categoryId) => $query->where(
@@ -73,13 +84,18 @@ final class CatalogQueries
             ->when(
                 $filters['search'] ?? null,
                 fn (Builder $query, string $search) => $query->where(
-                    'name',
-                    'like',
-                    "%{$search}%"
+                    function (Builder $nested) use ($search): void {
+                        $nested->whereLike('name', "%{$search}%", false)
+                            ->orWhereHas(
+                                'category',
+                                fn (Builder $categoryQuery) => $categoryQuery->whereLike('name', "%{$search}%", false)
+                            );
+                    }
                 )
             )
             ->orderBy('name')
-            ->paginate(20)
+            ->orderBy('id')
+            ->paginate(10)
             ->withQueryString();
     }
 

@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Attribute, AttributeType, Category, Machine, Material, Pricing, UserRecord } from '../../api/types';
+import type { Attribute, AttributeType, Machine, Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { CategoriesPage } from '../catalog/CategoriesPage';
+import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
@@ -313,62 +315,7 @@ export function ManagerMachinesPage() {
 }
 
 export function ManagerCategoriesPage() {
-    const fields: Array<CrudField<Category>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'calculation_archetype',
-            label: 'Arketipe',
-            type: 'select',
-            options: [
-                { value: 'per_piece', label: archetypeLabel('per_piece') },
-                { value: 'surface_area', label: archetypeLabel('surface_area') },
-                { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
-                { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
-            ],
-            getValue: (category) => category.calculation_archetype,
-        },
-        {
-            key: 'allowed_attribute_types',
-            label: 'Jenis atribut yang diizinkan (pisahkan dengan koma)',
-            getValue: (category) => category.allowed_attribute_types.join(','),
-        },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Konfigurasi"
-            title="Kategori Produk"
-            description="Arketipe kategori dan jenis atribut yang diizinkan."
-            queryKey={['manager', 'categories']}
-            queryFn={() => api.categories().then((response) => collectionAsPage(response.data))}
-            columns={[
-                { header: 'Nama', cell: (category) => <span className="font-medium">{category.name}</span> },
-                { header: 'Arketipe', cell: (category) => archetypeLabel(category.calculation_archetype) },
-            ]}
-            fields={fields}
-            create={(values) =>
-                api.admin.createCategory({
-                    ...values,
-                    allowed_attribute_types: String(values.allowed_attribute_types ?? '')
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                })
-            }
-            update={(id, values) =>
-                api.admin.updateCategory(id, {
-                    ...values,
-                    allowed_attribute_types: String(values.allowed_attribute_types ?? '')
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                })
-            }
-            remove={(id) => api.admin.deleteCategory(id)}
-            createLabel="Tambah kategori"
-            paginated={false}
-        />
-    );
+    return <CategoriesPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
 }
 
 export function ManagerFinishingPage() {
@@ -442,8 +389,15 @@ export function ManagerFinishingPage() {
     );
 }
 
+export function ManagerProductsPage() {
+    return <ProductsPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
+}
+
 export function ManagerPricingPage() {
-    const products = useQuery({ queryKey: ['products', 'options'], queryFn: () => api.products() });
+    const products = useQuery({
+        queryKey: ['products', 'options'],
+        queryFn: () => api.products({ is_active: 1 }),
+    });
     const materials = useQuery({ queryKey: ['materials', 'options'], queryFn: () => api.materials() });
 
     const productOptions = (products.data?.data ?? []).map((product) => ({

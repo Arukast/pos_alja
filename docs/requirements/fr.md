@@ -105,7 +105,7 @@
 - **Requirement:** Designer and Cashier SHALL search, filter, and browse products with pagination.
 - **Acceptance criteria:**
   - Search by name and category; filter by category and active status.
-  - At least 20 products per page with previous/next navigation.
+  - Server-side pagination at 10 products per page with previous/next navigation.
   - Results load within the NFR1 target.
   - Selecting a product feeds the order calculator or checkout.
 - **Traceability:** NFR1, PB-01.

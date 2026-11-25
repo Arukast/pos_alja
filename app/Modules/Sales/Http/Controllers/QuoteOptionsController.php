@@ -75,7 +75,7 @@ final class QuoteOptionsController extends Controller
                 ProductCategory::query()->orderBy('name')->get()
             ),
             'products' => ProductResource::collection(
-                Product::query()->with('category')->orderBy('name')->get()
+                Product::query()->where('is_active', true)->with('category')->orderBy('name')->get()
             ),
             'materials' => $materials,
             'machines' => $machines,

@@ -6,9 +6,14 @@ namespace App\Modules\Catalog\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductCategory;
+use App\Models\User;
+use App\Modules\Catalog\Actions\CreateCategory;
+use App\Modules\Catalog\Actions\DeleteCategory;
+use App\Modules\Catalog\Actions\UpdateCategory;
+use App\Modules\Catalog\Http\Requests\StoreCategoryRequest;
+use App\Modules\Catalog\Http\Requests\UpdateCategoryRequest;
 use App\Modules\Catalog\Http\Resources\CategoryResource;
 use App\Modules\Catalog\Queries\CatalogQueries;
-use App\Services\ProductCategoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -24,49 +29,54 @@ final class CategoryController extends Controller
         return CategoryResource::collection($queries->categories());
     }
 
-    public function store(Request $request, ProductCategoryService $service): JsonResponse
+    public function store(StoreCategoryRequest $request, CreateCategory $action): JsonResponse
     {
-        Gate::authorize('manageCategories', ProductCategory::class);
+        $actor = $request->user();
 
-        $category = $service->createCategory($this->validated($request));
+        if (! $actor instanceof User) {
+            abort(401);
+        }
 
-        return response()->json(['category' => new CategoryResource($category)], 201);
+        $category = $action->execute($request->validated(), $actor);
+
+        return response()->json([
+            'category' => new CategoryResource($category),
+        ], 201);
     }
 
     public function update(
+        UpdateCategoryRequest $request,
+        ProductCategory $category,
+        UpdateCategory $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $updated = $action->execute($category, $request->validated(), $actor);
+
+        return response()->json([
+            'category' => new CategoryResource($updated),
+        ]);
+    }
+
+    public function destroy(
         Request $request,
         ProductCategory $category,
-        ProductCategoryService $service
-    ): JsonResponse {
+        DeleteCategory $action
+    ): Response {
         Gate::authorize('manageCategories', ProductCategory::class);
 
-        $category = $service->updateCategory($category->id, $this->validated($request));
+        $actor = $request->user();
 
-        return response()->json(['category' => new CategoryResource($category)]);
-    }
+        if (! $actor instanceof User) {
+            abort(401);
+        }
 
-    public function destroy(ProductCategory $category, ProductCategoryService $service): Response
-    {
-        Gate::authorize('manageCategories', ProductCategory::class);
-        $service->deleteCategory($category->id);
+        $action->execute($category, $actor);
 
         return response()->noContent();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validated(Request $request): array
-    {
-        return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'calculation_archetype' => [
-                'required',
-                'string',
-                'in:per_piece,surface_area,linear_dimension,tiered_volume',
-            ],
-            'allowed_attribute_types' => ['nullable', 'array'],
-            'allowed_attribute_types.*' => ['string', 'max:50'],
-        ]);
     }
 }
