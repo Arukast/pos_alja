@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $address
  * @property string|null $phone
  * @property bool $is_active
+ * @property string|float $reseller_discount_percent
  * @property array<string, mixed>|null $settings
  */
 class Branch extends Model
@@ -28,11 +29,13 @@ class Branch extends Model
         'address',
         'phone',
         'is_active',
+        'reseller_discount_percent',
         'settings',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'reseller_discount_percent' => 'decimal:2',
         'settings' => 'array',
     ];
 
@@ -41,6 +44,6 @@ class Branch extends Model
      */
     public function getResellerDiscountPercent(): float
     {
-        return (float) ($this->settings['reseller_discount_percent'] ?? 0.0);
+        return (float) $this->reseller_discount_percent;
     }
 }
