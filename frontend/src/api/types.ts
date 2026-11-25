@@ -84,6 +84,7 @@ export interface MaterialStock {
     branch_name: string | null;
     current_stock: string;
     min_stock: string;
+    is_low_stock: boolean;
 }
 
 export interface Material {
@@ -96,7 +97,19 @@ export interface Material {
     category: { id: string; name: string } | null;
     current_stock: string | null;
     min_stock: string | null;
+    is_low_stock: boolean | null;
     stocks: MaterialStock[];
+}
+
+export interface ProductionMaterial {
+    id: string;
+    name: string;
+    type: string | null;
+    dimensions: string | null;
+    category: { id: string; name: string } | null;
+    current_stock: string | null;
+    min_stock: string | null;
+    is_low_stock: boolean | null;
 }
 
 export interface Machine {
@@ -124,6 +137,11 @@ export interface StockLedger {
     branch_id: string | null;
     branch: { id: string; name: string } | null;
     material: { id: string; name: string } | null;
+    type: string | null;
+    reason: string | null;
+    user: { id: string; name: string } | null;
+    reference_type: string | null;
+    reference_id: string | null;
     logged_at: string;
     initial_stock: string;
     added_stock: string;
@@ -131,6 +149,26 @@ export interface StockLedger {
     wasted_stock: string;
     remaining_stock: string;
     notes: string | null;
+}
+
+export interface PurchaseItem {
+    id: string;
+    material: { id: string; name: string } | null;
+    quantity: string;
+    unit_cost: string;
+    subtotal: string;
+}
+
+export interface Purchase {
+    id: string;
+    branch: { id: string; name: string } | null;
+    user: { id: string; name: string } | null;
+    purchased_at: string;
+    supplier: string | null;
+    total_amount: string;
+    notes: string | null;
+    items: PurchaseItem[];
+    created_at: string;
 }
 
 export interface Order {
@@ -224,7 +262,6 @@ export interface Waste {
     id: string;
     branch: { id: string; name: string } | null;
     material: { id: string; name: string } | null;
-    machine: { id: string; name: string } | null;
     order_id: string | null;
     designer: { id: string; name: string } | null;
     operator: { id: string; name: string } | null;

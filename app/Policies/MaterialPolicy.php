@@ -29,6 +29,11 @@ final class MaterialPolicy
         return in_array($user->role, ['owner', 'manager'], true);
     }
 
+    public function adjust(User $user, Material $material): bool
+    {
+        return in_array($user->role, ['owner', 'manager'], true);
+    }
+
     public function activate(User $user, Material $material): bool
     {
         return in_array($user->role, ['owner', 'manager'], true);

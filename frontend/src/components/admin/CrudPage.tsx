@@ -45,6 +45,8 @@ export function CrudPage<T extends { id: string }>({
     rowActions,
     createLabel = 'Tambah data',
     summary,
+    toolbar,
+    rowClassName,
     footer,
     paginated = true,
     hideBanner = false,
@@ -63,6 +65,8 @@ export function CrudPage<T extends { id: string }>({
     rowActions?: (row: T) => ReactNode;
     createLabel?: string;
     summary?: ReactNode;
+    toolbar?: ReactNode;
+    rowClassName?: (row: T) => string | undefined;
     footer?: ReactNode;
     paginated?: boolean;
     hideBanner?: boolean;
@@ -182,6 +186,8 @@ export function CrudPage<T extends { id: string }>({
 
             {summary}
 
+            {toolbar}
+
             <Card>
                 {hideBanner ? (
                     <CardHeader>
@@ -215,7 +221,7 @@ export function CrudPage<T extends { id: string }>({
                         />
                     ) : (
                         <>
-                            <Table>
+                            <Table ariaLabel={title}>
                                 <TableHead>
                                     <TableRow>
                                         {columns.map((column) => (
@@ -223,7 +229,7 @@ export function CrudPage<T extends { id: string }>({
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
-                                        <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
                                     </TableRow>
@@ -235,14 +241,14 @@ export function CrudPage<T extends { id: string }>({
                                         </TableEmpty>
                                     ) : (
                                         (query.data?.data ?? []).map((row) => (
-                                            <TableRow key={row.id}>
+                                            <TableRow key={row.id} className={rowClassName?.(row)}>
                                                 {columns.map((column) => (
                                                     <TableCell key={column.header} className={column.className}>
                                                         {column.cell(row)}
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="border-light-border lg:sticky lg:right-0 border-l bg-light-surface dark:border-surface-300 dark:bg-surface-700">
-                                                    <div className="flex flex-wrap gap-2">
+                                                <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
+                                                    <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
                                                         {rowActions?.(row)}
                                                         {update ? (
                                                             <Button

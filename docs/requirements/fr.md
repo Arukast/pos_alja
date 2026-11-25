@@ -1,7 +1,7 @@
 # Functional Requirements (Target Specification)
 
 - **System:** Print Shop POS (Alja Digital Printing)
-- **Source of truth:** Capstone proposal FR1–FR26.
+- **Source of truth:** Capstone proposal FR1–FR26, revised by Sprint Review 1 on 2026-11-24. The proposal mapping is retained; changes are recorded in `docs/requirements/sprint-review-1.md`.
 - **Document type:** Target requirements. Implementation progress is tracked in `docs/requirements/implementation-gaps.md`.
 - **Role mapping:** Pemilik = `owner`, Branch Manager = `manager`, Kasir = `cashier`, Designer = `designer`, Produksi = `production`.
 
@@ -14,19 +14,19 @@
 | FR3 | Autentikasi | All |
 | FR4 | Pengguna | Owner, Branch Manager |
 | FR5 | Hak Akses | All |
-| FR6 | Produk | Owner, Branch Manager |
+| FR6 | Produk | Owner, Branch Manager (read) |
 | FR7 | Produk | Designer, Kasir |
 | FR8 | Pesanan | Designer |
 | FR9 | Pesanan | Designer |
 | FR10 | Pesanan | Designer |
 | FR11 | Pembayaran | Kasir |
 | FR12 | Pembayaran | Kasir |
-| FR13 | Pembayaran | Kasir |
-| FR14 | Pengeluaran | Kasir |
+| FR13 | Pembayaran | Kasir, Owner, Branch Manager, Designer |
+| FR14 | Pengeluaran | Owner, Branch Manager |
 | FR15 | Inventaris | Owner, Branch Manager |
 | FR16 | Inventaris | Produksi |
 | FR17 | Inventaris | Owner, Branch Manager, Produksi |
-| FR18 | Inventaris | Branch Manager |
+| FR18 | Inventaris | Owner, Branch Manager |
 | FR19 | Produksi | All |
 | FR20 | Produksi | Produksi |
 | FR21 | Produksi | Kasir |
@@ -87,14 +87,18 @@
 
 ## 2. Products
 
-### FR6 Manage products, categories, and prices
-- **Requirement:** Owner and Branch Manager SHALL manage products, product categories, and prices.
+### FR6 Manage products, categories, materials, and prices
+- **Requirement:** Owner SHALL manage products, product categories, materials, finishing/display options, and quantity discounts. Branch Manager SHALL read the catalog and manage branch stock.
 - **Acceptance criteria:**
   - Product CRUD includes name, category, pricing type (`unit` or `area`), and active status.
-  - Product listing uses server-side pagination at 10 products per page.
-  - Category CRUD includes name, calculation archetype, and allowed attribute types.
-  - Price management includes the pricing matrix, customer type, tiered quantity, and machine/attribute modifiers.
-  - All changes are branch-scoped where applicable and written to the audit log.
+  - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`).
+  - Material master includes name, category, unit (`m2`, `sheet`, `pcs`), type, base cost, and base price. Materials are created by the Owner in the material master and mapped to a product category.
+  - Finishing and display options store `price` and `cost`. Each order item may select at most one finishing and one display option.
+  - The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price before the category quantity discount. The customer type is read from the customer record, never from the client. The resulting customer type and reseller percentage are stored on the order as a snapshot.
+  - `branches.reseller_discount_percent` is the only source of the reseller discount: decimal `0–100`, default `0`, editable by the Owner. The invoice branch's value applies.
+  - The category quantity discount uses the tier with the highest `min_qty` less than or equal to the item quantity.
+  - The pricing matrix and machine masters are not part of the target.
+  - Global catalog changes are Owner-only and written to the audit log; branch stock changes are branch-scoped.
 - **Traceability:** NFR1, NFR7, PB-01.
 
 ### FR7 Search, filter, and paginate products
@@ -113,23 +117,27 @@
 ### FR8 Create order
 - **Requirement:** Designer SHALL record a new order with customer, items, specifications, quantity, and target completion date.
 - **Acceptance criteria:**
-  - Customer is selected or created.
-  - Each item stores product, material, machine, attributes, quantity, dimensions, price, cost, profit, and file reference.
-  - Submission creates one invoice, its orders, initial status logs, and an activity log in one transaction.
+  - Customer search is the default. A new customer is created on a separate screen.
+  - Customer master requires name and institution; phone, email, and address are optional.
+  - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
+  - Each item stores product, material, finishing (one), display (one), quantity, dimensions, price, cost, profit, and file reference.
+  - Item entry follows Product -> Material -> Finishing -> Display. There is no machine selection.
+  - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
+  - Submission creates one invoice, its orders, order attribute selections, initial status logs, and an activity log in one transaction.
   - Invoice number follows `INV-{branch prefix}-{YYYYMMDD}-{NNNN}`.
-  - A printable work-order ticket is available.
+  - A printable A4 invoice is available. The invoice is the single customer document; the production queue is the production work list and never exposes money.
 - **Traceability:** NFR3, NFR9, PB-02.
 
 ### FR9 Update order before production
-- **Requirement:** Designer SHALL update an order that has not entered production, including orders that are already paid or have a down payment, with a change trail.
+- **Requirement:** Designer SHALL update an order that has not entered production and is not fully paid, including orders that have a down payment, with a change trail.
 - **Acceptance criteria:**
-  - Allowed only while every order on the invoice has `status = 0`.
+  - Allowed only while every order on the invoice has `status = 0` and the invoice status is `0` or `1`.
+  - A request on a fully paid invoice (`status = 2`) or after production starts is rejected with HTTP 409.
   - The Designer may add, remove, or change items, quantities, specifications, and the deadline.
-  - Invoice `grand_total`, `total_cost`, `total_profit`, and `accounts_receivable` are recalculated; existing payments are preserved.
+  - Invoice `grand_total`, `total_cost`, `total_profit`, quantity discounts, and `accounts_receivable` are recalculated; existing payments are preserved.
   - Invoice status is recalculated: `2` when the receivable is zero, `1` when a receivable remains after a payment.
-  - The remaining receivable cannot become negative.
+  - The remaining receivable cannot become negative. If the new total is less than the total already paid, the request is rejected with HTTP 422.
   - Before/after values are written to the audit log with the actor and branch.
-  - A request after production starts is rejected with HTTP 409.
   - `OrderUpdated` is dispatched after commit.
 - **Traceability:** NFR3, NFR9, NFR10, PB-02.
 
@@ -165,18 +173,23 @@
   - Duplicate or over-limit payments are rejected.
 - **Traceability:** NFR3, NFR9, PB-03.
 
-### FR13 Display and print payment receipt
-- **Requirement:** Cashier SHALL display and print a receipt or proof of payment.
+### FR13 Display and print invoice and payment receipt
+- **Requirement:** Owner, Branch Manager, Cashier, and Designer SHALL display and print the invoice and the payment receipt.
 - **Acceptance criteria:**
-  - Receipt includes invoice number, customer, items, total, DP history, settlement, total paid, and remaining receivable.
-  - Receipt prints on 80 mm paper.
+  - The invoice includes invoice number, customer, items, finishing/display, quantity, area, price, discount, total, DP history, and remaining receivable.
+  - The invoice prints on A4. The invoice is the single customer document; no separate work-order ticket is produced.
+  - The payment receipt prints on 80 mm paper and includes invoice number, customer, items, total, DP history, settlement, total paid, and remaining receivable.
+  - Production is denied both print views because they contain money fields. Production uses the queue without money.
 - **Traceability:** NFR4, PB-04.
 
 ### FR14 Record operational expenses
-- **Requirement:** Cashier SHALL record branch operational expenses.
+- **Requirement:** Owner and Branch Manager SHALL record branch operational expenses. Cashier SHALL NOT create expenses.
 - **Acceptance criteria:**
   - Fields: amount, type (`modal` or `laba`), incurred date, category, description.
-  - Expense inherits the cashier's branch and caches the cashier name.
+  - Category is a dropdown: `Bahan Baku`, `Gaji`, `Sewa`, `Listrik & Air`, `Maintenance`, `Transport`, `Marketing`, `Operasional`, `Lain-lain`.
+  - A manager writes to their own branch. An owner selects the branch.
+  - The expense stores the actor user id and a name snapshot.
+  - The write is audited.
 - **Traceability:** NFR3, PB-04.
 
 ---
@@ -185,6 +198,7 @@
 
 ### FR15 Record raw-material purchases
 - **Requirement:** Owner and Branch Manager SHALL record raw-material purchases that add stock to the branch.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
   - Purchase header: branch, actor, purchase date, optional supplier, notes.
   - Line items: material, quantity, unit cost, subtotal.
@@ -194,16 +208,19 @@
 - **Traceability:** NFR9, PB-05.
 
 ### FR16 Record material usage on an order
-- **Requirement:** Production SHALL record material usage on an order, and stock SHALL decrease automatically.
+- **Requirement:** Production SHALL record material usage on an order, and stock SHALL decrease automatically. Failed prints SHALL be recorded from the production queue.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
   - Usage references the order, material, quantity, and operator.
+  - A failed print is recorded from the queue row, not from a separate page. It references the order, material, quantity, operator, optional designer, and notes.
+  - Machine references are removed; machine cost is part of material cost.
   - Stock decrement and ledger entry happen in one transaction.
-  - A failed print is recorded separately in `wasted_materials`.
   - Ledger type is `usage` or `waste`, with an order reference.
 - **Traceability:** NFR9, PB-07.
 
 ### FR17 View branch stock and low-stock warnings
 - **Requirement:** Owner, Branch Manager, and Production SHALL view raw-material stock per branch and receive a warning when stock is below the minimum.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
   - Stock is shown per branch with current stock and minimum stock.
   - Low-stock items are highlighted or listed separately.
@@ -212,8 +229,10 @@
 - **Traceability:** NFR4, NFR9, PB-05.
 
 ### FR18 Adjust stock with a reason
-- **Requirement:** Branch Manager SHALL correct branch stock with a mandatory reason.
+- **Requirement:** Owner and Branch Manager SHALL correct branch stock with a mandatory reason.
+- **Status:** Built (PB-05/PB-07, 2026-11-24).
 - **Acceptance criteria:**
+  - The adjustment is available in the materials/stock screen.
   - Adjustment can set a new quantity or apply a signed delta.
   - Reason is required (3–255 characters).
   - New stock cannot be negative.
@@ -226,16 +245,18 @@
 ## 6. Production
 
 ### FR19 Production queue sorted by deadline and priority
-- **Requirement:** Owner, Branch Manager, Cashier, Designer, and Production SHALL view a production queue ordered by target completion date and priority.
+- **Requirement:** Owner, Branch Manager, Cashier, Designer, and Production SHALL view a production queue ordered by target completion date and priority, with a status filter.
 - **Acceptance criteria:**
   - Sort: `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`.
+  - Filter by status (`queued`, `processing`, `completed`); owner may also filter by branch.
   - Each row shows order, customer, deadline, priority, status, designer, and operator.
   - Branch-bound users see only their branch; owner may view all or one branch.
   - Statuses: `queued` (Antre Produksi), `processing` (Diproses), `completed` (Selesai).
+  - The queue is the production work list and contains no money fields.
 - **Traceability:** NFR1, NFR4, PB-06.
 
 ### FR20 Update production status
-- **Requirement:** Production SHALL update the order status through the production stages.
+- **Requirement:** Production SHALL update the order status through the production stages from an explicit status control.
 - **Acceptance criteria:**
   - Transitions: `queued -> processing -> completed`.
   - Each transition writes `order_status_logs` with actor and timestamp.
@@ -292,7 +313,7 @@
 - **Requirement:** The system SHALL record an audit trail for important changes, including payments, order changes, and stock adjustments.
 - **Acceptance criteria:**
   - Log fields: actor, role, branch, action, model type, model ID, before/after payload, timestamp.
-  - Covered actions: payment create/settle, order create/update, design status, stock purchase/usage/adjustment, user/branch/product changes.
+  - Covered actions: payment create/settle, order create/update, design status, stock purchase/usage/adjustment, expense create, customer create/update, user/branch/product/category/material/discount changes.
   - Owner can view and filter the audit trail.
   - Audit rows are append-only from the application.
 - **Traceability:** NFR5, NFR9, PB-10.
@@ -313,7 +334,7 @@
 
 | FR | Backlog | Sprint |
 | :--- | :--- | :--- |
-| FR1, FR2, FR3, FR4, FR5 | PB-08 | Sprint 3 |
+| FR1, FR2, FR3, FR4, FR5 | PB-08 | Sprint 1 |
 | FR6, FR7 | PB-01 | Sprint 1 |
 | FR8, FR9, FR10 | PB-02 | Sprint 1 |
 | FR11, FR12 | PB-03 | Sprint 1 |
@@ -323,3 +344,9 @@
 | FR19, FR20, FR21 | PB-06 | Sprint 2 |
 | FR22, FR23, FR24 | PB-09 | Sprint 3 |
 | FR25, FR26 | PB-10 | Sprint 3 |
+
+## Revision History
+
+| Date | Source | Changes |
+| :--- | :--- | :--- |
+| 2026-11-24 | Sprint Review 1 | FR6, FR8, FR9, FR13, FR14, FR16, FR18, FR19, FR20, and FR25 revised. PB-08 moved to Sprint 1. Details: `docs/requirements/sprint-review-1.md`. |

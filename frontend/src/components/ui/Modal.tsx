@@ -31,6 +31,7 @@ export function Modal({
 }) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const titleId = useId();
+    const descriptionId = useId();
 
     useEffect(() => {
         const dialog = dialogRef.current;
@@ -69,6 +70,7 @@ export function Modal({
         <dialog
             ref={dialogRef}
             aria-labelledby={titleId}
+            aria-describedby={description ? descriptionId : undefined}
             onClick={(event) => {
                 if (event.target === event.currentTarget) {
                     onClose();
@@ -85,7 +87,7 @@ export function Modal({
                         {title}
                     </h2>
                     {description ? (
-                        <p className="mt-0.5 text-sm text-light-muted dark:text-gray-400">
+                        <p id={descriptionId} className="mt-0.5 text-sm text-light-muted dark:text-gray-400">
                             {description}
                         </p>
                     ) : null}

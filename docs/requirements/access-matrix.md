@@ -11,24 +11,28 @@
 | Delete own account | yes | yes | no | no | no |
 | Branch CRUD | all | no | no | no | no |
 | User CRUD | all | own branch staff only | no | no | no |
-| Categories, attribute types, attributes | all | yes | no | no | no |
-| Products | CRUD | CRUD | read | read | no |
-| Materials master | CRUD; global delete | create; restock/activate own branch; no master edit/delete | no | no | read own branch |
-| Machines | all | own branch | no | no | no |
-| Pricing | all | own branch | no | no | no |
-| Customers | read | read | search | search/create | no |
+| Categories, attribute types, attributes, quantity discounts | all | read | no | no | no |
+| Products | CRUD | read | read | read | no |
+| Materials master | CRUD; read all branches including low stock; global delete | create (own-branch stock only); restock/activate/adjust own branch; read own branch including low stock; no master edit/delete | no | no | read own branch including low stock |
+| Prices and finishing/display prices | all | read | no | no | no |
+| Customers | create/read/update | create/read/update | search | search/create/update | no |
 | Invoices/orders | read all | read branch | read branch | create; read branch | read branch |
+| Invoice update (pre-production, not fully paid) | no | no | no | own branch | no |
+| Design status | all | own branch override | no | own branch | no |
+| Invoice print | all | branch | branch | branch | no |
 | Down payments/settlements | no | no | own branch | no | no |
 | Pickup | no | no | own branch | no | no |
 | Production start/complete | no | no | no | no | own branch |
+| Production queue read | all | own branch | own branch | own branch | own branch |
 | Waste logging | no | no | no | no | own branch |
-| Ticket | all | all | all | all | all, no money |
-| Receipt | all | all | all | all | no |
+| Purchases | create/read all | create/read own branch | no | no | no |
+| Stock adjustment | all | own branch | no | no | no |
+| Receipt | all | branch | branch | branch | no |
 | Dashboard | full | branch | branch | branch | branch |
 | Owner financial reports | all | no | no | no | no |
 | Designer leaderboard | no | own branch | no | no | no |
 | Audit trail | all | no | no | no | no |
-| Expenses | read all | read own branch | create/read own branch | no | no |
+| Expenses | create/read all | create/read own branch | no | no | no |
 | Real-time channels | owners + any branch | own branch | own branch | own branch | own branch |
 
 ## Rules
@@ -36,6 +40,16 @@
 1. Managers cannot create or manage owner/manager accounts.
 2. Managers cannot assign a user to another branch; branch ids from the client are ignored or rejected.
 3. Production responses omit price, cost, profit, discount, receivable, and payment fields.
-4. Receipt is denied to production because a receipt is entirely money; ticket remains available.
+4. Invoice and receipt print are denied to production because both contain money. Production uses the queue, which has no money.
 5. Customers are global and materials master data is global, matching the ERD. Stock rows are branch-scoped.
-6. Ticket and receipt payloads enforce the same branch rule as the invoice.
+6. Invoice and receipt payloads enforce the same branch rule as the invoice.
+7. Quantity discounts are configured by the Owner per product category. Staff cannot override the tier from the client.
+8. Expense categories are a fixed dropdown. Cashier has no expense access.
+9. Global catalog and category/discount writes are Owner-only, except materials, which a manager may create. Manager-created materials initialize branch stock only for the manager's own branch. Branch Manager reads the catalog and manages branch stock.
+10. The Owner configures `branches.reseller_discount_percent` through Branch CRUD (`0–100`, default `0`). Manager has no branch write access.
+11. Designer updates an invoice only before production and while it is not fully paid. Owner and Branch Manager may override a design-status transition; Designer cannot move backward.
+12. A non-owner without a branch is never treated as global. Purchase requests return 403, branch-scoped lists return no rows, and actions that need a branch fail; a null branch is not `all`.
+
+## Revision Note
+
+Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, removed the machine and pricing-matrix rows, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`.

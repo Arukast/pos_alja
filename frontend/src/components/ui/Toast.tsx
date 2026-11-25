@@ -42,7 +42,7 @@ export function Toast({
                     <button
                         type="button"
                         aria-label="Tutup notifikasi"
-                        className="rounded p-0.5 opacity-70 transition hover:opacity-100"
+                        className="focus-visible:ring-brand-fill focus-visible:ring-offset-light-surface dark:focus-visible:ring-offset-surface-700 -m-1.5 rounded-lg p-1.5 opacity-70 transition hover:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                         onClick={onClose}
                     >
                         <X className="h-4 w-4" />

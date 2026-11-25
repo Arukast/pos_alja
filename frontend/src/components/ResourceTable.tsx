@@ -67,7 +67,7 @@ export function ResourceTable<T extends { id: string }>({
 
                     {query.data ? (
                         <>
-                            <Table>
+                            <Table ariaLabel={title}>
                                 <TableHead>
                                     <TableRow>
                                         {columns.map((column) => (

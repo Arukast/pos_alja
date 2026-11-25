@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatMoney } from './money';
+import { formatMoney, formatQuantity } from './money';
 
 describe('formatMoney', () => {
     it('formats whole rupiah values', () => {
@@ -18,5 +18,32 @@ describe('formatMoney', () => {
 
     it('falls back to zero for invalid input', () => {
         expect(formatMoney('not-a-number')).toBe('Rp 0');
+    });
+});
+
+describe('formatQuantity', () => {
+    it('formats numeric strings with id-ID grouping', () => {
+        expect(formatQuantity('2')).toBe('2');
+        expect(formatQuantity('1250.5')).toBe('1.250,5');
+        expect(formatQuantity('0.00')).toBe('0');
+    });
+
+    it('keeps at most two decimals', () => {
+        expect(formatQuantity('12.345')).toBe('12,35');
+    });
+
+    it('formats numbers', () => {
+        expect(formatQuantity(0)).toBe('0');
+        expect(formatQuantity(1500)).toBe('1.500');
+    });
+
+    it('falls back to a dash for empty or invalid input', () => {
+        expect(formatQuantity(null)).toBe('-');
+        expect(formatQuantity(undefined)).toBe('-');
+        expect(formatQuantity('')).toBe('-');
+        expect(formatQuantity('   ')).toBe('-');
+        expect(formatQuantity('not-a-number')).toBe('-');
+        expect(formatQuantity(Number.NaN)).toBe('-');
+        expect(formatQuantity(Number.POSITIVE_INFINITY)).toBe('-');
     });
 });

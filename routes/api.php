@@ -13,6 +13,7 @@ use App\Modules\Catalog\Http\Controllers\StockLedgerController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\BranchController;
 use App\Modules\Identity\Http\Controllers\UserController;
+use App\Modules\Inventory\Http\Controllers\PurchaseController;
 use App\Modules\Production\Http\Controllers\ProductionController;
 use App\Modules\Production\Http\Controllers\WasteController;
 use App\Modules\Reporting\Http\Controllers\AuditController;
@@ -72,7 +73,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::delete('/materials/{material}', [MaterialController::class, 'destroy']);
         Route::post('/materials/{material}/restore', [MaterialController::class, 'restore']);
         Route::post('/materials/{material}/stock', [MaterialController::class, 'stock']);
+        Route::post('/materials/{material}/adjustments', [MaterialController::class, 'adjust']);
         Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
+
+        Route::get('/purchases', [PurchaseController::class, 'index']);
+        Route::post('/purchases', [PurchaseController::class, 'store']);
 
         Route::post('/machines', [MachineController::class, 'store']);
         Route::put('/machines/{machine}', [MachineController::class, 'update']);

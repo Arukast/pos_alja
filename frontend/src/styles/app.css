@@ -131,7 +131,12 @@
 }
 
 ::selection {
-    background: color-mix(in srgb, var(--color-brand-primary) 30%, transparent);
+    background: color-mix(in srgb, var(--color-brand-primary) 22%, transparent);
+    color: var(--color-light-text);
+}
+
+.dark ::selection {
+    background: color-mix(in srgb, var(--color-brand-primary) 40%, transparent);
     color: #fff;
 }
 

@@ -17,7 +17,6 @@ class WastedMaterial extends Model
         'branch_id',
         'logged_at',
         'material_id',
-        'machine_id',
         'order_id',
         'designer_id',
         'operator_id',
@@ -32,14 +31,6 @@ class WastedMaterial extends Model
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);
-    }
-
-    /**
-     * @return BelongsTo<Machine, $this>
-     */
-    public function machine(): BelongsTo
-    {
-        return $this->belongsTo(Machine::class);
     }
 
     /**
