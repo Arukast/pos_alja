@@ -99,6 +99,7 @@ export interface Material {
     name: string;
     type: string | null;
     dimensions: string | null;
+    unit: string;
     cost: string;
     price: string;
     category: { id: string; name: string } | null;
@@ -113,6 +114,7 @@ export interface ProductionMaterial {
     name: string;
     type: string | null;
     dimensions: string | null;
+    unit: string;
     category: { id: string; name: string } | null;
     current_stock: string | null;
     min_stock: string | null;
@@ -143,7 +145,7 @@ export interface StockLedger {
     id: string;
     branch_id: string | null;
     branch: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     type: string | null;
     reason: string | null;
     user: { id: string; name: string } | null;
@@ -160,7 +162,7 @@ export interface StockLedger {
 
 export interface PurchaseItem {
     id: string;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     quantity: string;
     unit_cost: string;
     subtotal: string;
@@ -268,7 +270,7 @@ export interface ProductionQueueItem {
 export interface Waste {
     id: string;
     branch: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     order_id: string | null;
     designer: { id: string; name: string } | null;
     operator: { id: string; name: string } | null;
@@ -352,12 +354,18 @@ export interface DesignerDashboard {
     recent_invoices: Invoice[];
 }
 
+export interface WasteByUnit {
+    unit: string;
+    quantity: number;
+}
+
 export interface ProductionDashboard {
     role: 'production';
     queued: number;
     processing: number;
     completed_today: number;
     waste_today: number;
+    waste_today_by_unit?: WasteByUnit[];
     queue: ProductionQueueItem[];
 }
 

@@ -91,6 +91,7 @@ describe('ledgerTypeLabel', () => {
         expect(ledgerTypeLabel('waste')).toBe('Sisa Bahan');
         expect(ledgerTypeLabel('adjustment')).toBe('Koreksi');
         expect(ledgerTypeLabel('restock')).toBe('Tambah Stok');
+        expect(ledgerTypeLabel('usage_reversal')).toBe('Pengembalian Pemakaian');
     });
 
     it('falls back to the input for an unknown type', () => {
