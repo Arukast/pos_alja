@@ -26,6 +26,13 @@ const roleOptions = ['owner', 'manager', 'cashier', 'designer', 'production'].ma
     label: roleLabel(role),
 }));
 
+const unitOptions = ['m2', 'pcs', 'lembar', 'roll', 'kg', 'liter', 'batang'].map((unit) => ({
+    value: unit,
+    label: unitLabel(unit),
+}));
+
+const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
+
 export function OwnerUsersPage() {
     const branches = useBranches();
     const options = branchOptions(branches.data?.data ?? []);
@@ -164,8 +171,19 @@ export function OwnerMaterialsPage() {
         },
         { key: 'type', label: 'Jenis' },
         { key: 'dimensions', label: 'Dimensi' },
-        { key: 'cost', label: 'Biaya', type: 'number' },
-        { key: 'price', label: 'Harga', type: 'number' },
+        { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
+        {
+            key: 'cost',
+            label: 'Biaya',
+            type: 'number',
+            labelFor: (values) => `Biaya per ${unitLabelFor(values)}`,
+        },
+        {
+            key: 'price',
+            label: 'Harga',
+            type: 'number',
+            labelFor: (values) => `Harga per ${unitLabelFor(values)}`,
+        },
         { key: 'initial_stock', label: 'Stok awal', type: 'number', hideOnEdit: true },
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];

@@ -25,6 +25,7 @@ export interface CrudField<T> {
     required?: boolean;
     defaultValue?: string | number | boolean;
     getValue?: (row: T) => string | number | boolean | null | undefined;
+    labelFor?: (values: Record<string, unknown>) => string;
     hideOnEdit?: boolean;
 }
 
@@ -323,12 +324,13 @@ export function CrudPage<T extends { id: string }>({
 
                         const value = values[field.key] ?? '';
                         const error = errors[field.key];
+                        const label = field.labelFor?.(values) ?? field.label;
 
                         if (field.type === 'checkbox') {
                             return (
                                 <Checkbox
                                     key={field.key}
-                                    label={field.label}
+                                    label={label}
                                     checked={Boolean(value)}
                                     error={error}
                                     onChange={(event) =>
@@ -345,7 +347,7 @@ export function CrudPage<T extends { id: string }>({
                             return (
                                 <Select
                                     key={field.key}
-                                    label={field.label}
+                                    label={label}
                                     value={String(value)}
                                     error={error}
                                     onChange={(event) =>
@@ -365,7 +367,7 @@ export function CrudPage<T extends { id: string }>({
                         return (
                             <Input
                                 key={field.key}
-                                label={field.label}
+                                label={label}
                                 type={field.type ?? 'text'}
                                 value={String(value)}
                                 error={error}

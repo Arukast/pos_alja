@@ -26,6 +26,13 @@ import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 import { quantityWithUnit, unitLabel } from '../../lib/units';
 
+const unitOptions = ['m2', 'pcs', 'lembar', 'roll', 'kg', 'liter', 'batang'].map((unit) => ({
+    value: unit,
+    label: unitLabel(unit),
+}));
+
+const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
+
 export function ManagerUsersPage() {
     const { user } = useAuth();
     const fields: Array<CrudField<UserRecord>> = [
@@ -95,8 +102,19 @@ export function ManagerMaterialsPage() {
         { key: 'product_category_id', label: 'Kategori', type: 'select', options, getValue: (material) => material.category?.id ?? '' },
         { key: 'type', label: 'Jenis' },
         { key: 'dimensions', label: 'Dimensi' },
-        { key: 'cost', label: 'Biaya', type: 'number' },
-        { key: 'price', label: 'Harga', type: 'number' },
+        { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
+        {
+            key: 'cost',
+            label: 'Biaya',
+            type: 'number',
+            labelFor: (values) => `Biaya per ${unitLabelFor(values)}`,
+        },
+        {
+            key: 'price',
+            label: 'Harga',
+            type: 'number',
+            labelFor: (values) => `Harga per ${unitLabelFor(values)}`,
+        },
         { key: 'initial_stock', label: 'Stok awal', type: 'number', hideOnEdit: true },
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
