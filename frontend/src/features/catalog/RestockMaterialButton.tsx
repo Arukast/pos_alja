@@ -56,6 +56,7 @@ export function RestockMaterialButton({ material }: { material: Material }) {
             <Button
                 size="sm"
                 variant="secondary"
+                aria-label={`Tambah stok ${material.name}`}
                 onClick={() => {
                     setNotice(null);
                     setOpen(true);

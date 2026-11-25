@@ -14,7 +14,7 @@ import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
 import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, roleLabel } from '../../lib/labels';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, formatQuantity } from '../../lib/money';
 
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
     branches.map((branch) => ({ value: branch.id, label: branch.name }));
@@ -206,8 +206,9 @@ export function OwnerMaterialsPage() {
                                 {material.stocks.map((stock) => (
                                     <li key={stock.branch_id}>
                                         <span>
-                                            {stock.branch_name ?? '-'}: {stock.current_stock} /{' '}
-                                            {stock.min_stock}
+                                            {stock.branch_name ?? '-'}:{' '}
+                                            {formatQuantity(stock.current_stock)} /{' '}
+                                            {formatQuantity(stock.min_stock)}
                                         </span>
                                         {stock.is_low_stock ? (
                                             <span className="ml-1 font-semibold text-amber-700 dark:text-amber-300">

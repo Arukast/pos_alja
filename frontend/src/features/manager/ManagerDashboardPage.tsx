@@ -10,7 +10,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, formatQuantity } from '../../lib/money';
 
 const panelLink =
     'text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none';
@@ -68,7 +68,7 @@ export function ManagerDashboardPage() {
                                 </Link>
                             </CardHeader>
                             <CardBody>
-                                <Table>
+                                <Table ariaLabel="Pergerakan stok terbaru">
                                     <TableHead>
                                         <TableRow>
                                             <TableHeaderCell>Tanggal</TableHeaderCell>
@@ -84,16 +84,18 @@ export function ManagerDashboardPage() {
                                         ) : (
                                             data.stock_ledgers.map((ledger) => (
                                                 <TableRow key={ledger.id}>
-                                                    <TableCell>{formatDate(ledger.logged_at)}</TableCell>
+                                                    <TableCell className="whitespace-nowrap">
+                                                        {formatDate(ledger.logged_at)}
+                                                    </TableCell>
                                                     <TableCell>{ledger.material?.name ?? '-'}</TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {ledger.added_stock}
+                                                        {formatQuantity(ledger.added_stock)}
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {ledger.used_stock}
+                                                        {formatQuantity(ledger.used_stock)}
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {ledger.remaining_stock}
+                                                        {formatQuantity(ledger.remaining_stock)}
                                                     </TableCell>
                                                 </TableRow>
                                             ))

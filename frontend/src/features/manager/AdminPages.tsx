@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, formatQuantity } from '../../lib/money';
 
 export function ManagerUsersPage() {
     const { user } = useAuth();
@@ -162,12 +162,12 @@ export function ManagerMaterialsPage() {
                 {
                     header: 'Stok',
                     className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => material.current_stock ?? '-',
+                    cell: (material) => formatQuantity(material.current_stock),
                 },
                 {
                     header: 'Minimum',
                     className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => material.min_stock ?? '-',
+                    cell: (material) => formatQuantity(material.min_stock),
                 },
                 {
                     header: 'Biaya',
@@ -176,6 +176,7 @@ export function ManagerMaterialsPage() {
                 },
                 {
                     header: 'Status',
+                    className: 'hidden sm:table-cell',
                     cell: (material) =>
                         material.is_low_stock === null ? (
                             '-'
@@ -216,7 +217,7 @@ export function ManagerMaterialsPage() {
                                 }
                             />
                         ) : (
-                            <Table>
+                            <Table ariaLabel="Pergerakan stok terbaru">
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
@@ -234,11 +235,13 @@ export function ManagerMaterialsPage() {
                                     ) : (
                                         ledgerRows.map((ledger) => (
                                             <TableRow key={ledger.id}>
-                                                <TableCell>{formatDate(ledger.logged_at)}</TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {formatDate(ledger.logged_at)}
+                                                </TableCell>
                                                 <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                <TableCell>{ledger.added_stock}</TableCell>
-                                                <TableCell>{ledger.used_stock}</TableCell>
-                                                <TableCell>{ledger.remaining_stock}</TableCell>
+                                                <TableCell>{formatQuantity(ledger.added_stock)}</TableCell>
+                                                <TableCell>{formatQuantity(ledger.used_stock)}</TableCell>
+                                                <TableCell>{formatQuantity(ledger.remaining_stock)}</TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -264,12 +267,20 @@ export function ManagerLedgersPage() {
                 { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
                 { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
                 { header: 'Tipe', cell: (ledger) => ledgerTypeLabel(ledger.type) },
-                { header: 'Alasan', className: 'hidden lg:table-cell', cell: (ledger) => ledger.reason ?? '-' },
+                {
+                    header: 'Alasan',
+                    className: 'hidden lg:table-cell',
+                    cell: (ledger) => (
+                        <span className="block max-w-[18rem] truncate" title={ledger.reason ?? undefined}>
+                            {ledger.reason ?? '-'}
+                        </span>
+                    ),
+                },
                 { header: 'Pengguna', className: 'hidden sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
-                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.added_stock },
-                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.used_stock },
-                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.wasted_stock },
-                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.remaining_stock },
+                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.added_stock) },
+                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.used_stock) },
+                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.wasted_stock) },
+                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.remaining_stock) },
             ]}
         />
     );

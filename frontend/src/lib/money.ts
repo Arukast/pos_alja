@@ -1,3 +1,21 @@
+export function formatQuantity(value: string | number | null | undefined): string {
+    if (value === null || value === undefined) {
+        return '-';
+    }
+
+    if (typeof value === 'string' && value.trim() === '') {
+        return '-';
+    }
+
+    const numeric = typeof value === 'number' ? value : Number.parseFloat(value);
+
+    if (!Number.isFinite(numeric)) {
+        return '-';
+    }
+
+    return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(numeric);
+}
+
 export function formatMoney(value: string | number): string {
     const numeric = typeof value === 'number' ? value : Number.parseFloat(value);
 

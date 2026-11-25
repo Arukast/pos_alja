@@ -12,6 +12,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
+import { formatQuantity } from '../../lib/money';
 
 export function ProductionMaterialsPage() {
     const [page, setPage] = useState(1);
@@ -61,7 +62,7 @@ export function ProductionMaterialsPage() {
                         />
                     ) : (
                         <>
-                            <Table>
+                            <Table ariaLabel="Bahan & Stok">
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
@@ -108,10 +109,10 @@ export function ProductionMaterialsPage() {
                                                     {material.category?.name ?? '-'}
                                                 </TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {material.current_stock ?? '-'}
+                                                    {formatQuantity(material.current_stock)}
                                                 </TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {material.min_stock ?? '-'}
+                                                    {formatQuantity(material.min_stock)}
                                                 </TableCell>
                                                 <TableCell>
                                                     {material.is_low_stock === true ? (

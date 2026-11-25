@@ -31,12 +31,13 @@ export function PurchasesPage() {
         { header: 'Pemasok', cell: (purchase) => purchase.supplier ?? '-' },
         {
             header: 'Jumlah Item',
-            className: 'text-right tabular-nums whitespace-nowrap',
+            className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
             cell: (purchase) => purchase.items.length,
         },
         {
             header: 'Total',
-            className: 'text-right tabular-nums whitespace-nowrap',
+            className:
+                'text-right tabular-nums whitespace-nowrap max-lg:sticky max-lg:right-0 max-lg:border-l max-lg:border-light-border max-lg:bg-light-surface max-lg:shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:max-lg:border-surface-300 dark:max-lg:bg-surface-700',
             cell: (purchase) => formatMoney(purchase.total_amount),
         },
     ];

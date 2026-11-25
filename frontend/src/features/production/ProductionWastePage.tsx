@@ -12,6 +12,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { apiFetch } from '../../lib/api';
 import { formatDate } from '../../lib/dates';
+import { formatQuantity } from '../../lib/money';
 
 export function ProductionWastePage() {
     const [page, setPage] = useState(1);
@@ -79,7 +80,7 @@ export function ProductionWastePage() {
                         />
                     ) : (
                         <>
-                            <Table>
+                            <Table ariaLabel="Riwayat sisa bahan">
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
@@ -103,14 +104,17 @@ export function ProductionWastePage() {
                                                         {waste.material?.name ?? '-'}
                                                     </span>
                                                     {waste.notes ? (
-                                                        <p className="text-light-muted text-xs dark:text-gray-400">
+                                                        <p
+                                                            className="text-light-muted max-w-[16rem] truncate text-xs dark:text-gray-400"
+                                                            title={waste.notes}
+                                                        >
                                                             {waste.notes}
                                                         </p>
                                                     ) : null}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.designer?.name ?? '-'}</TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {waste.quantity}
+                                                    {formatQuantity(waste.quantity)}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.dimensions ?? '-'}</TableCell>
                                             </TableRow>

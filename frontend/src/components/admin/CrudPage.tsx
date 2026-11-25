@@ -221,7 +221,7 @@ export function CrudPage<T extends { id: string }>({
                         />
                     ) : (
                         <>
-                            <Table>
+                            <Table ariaLabel={title}>
                                 <TableHead>
                                     <TableRow>
                                         {columns.map((column) => (
@@ -229,7 +229,7 @@ export function CrudPage<T extends { id: string }>({
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
-                                        <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                        <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
                                     </TableRow>
@@ -247,8 +247,8 @@ export function CrudPage<T extends { id: string }>({
                                                         {column.cell(row)}
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="border-light-border lg:sticky lg:right-0 border-l bg-light-surface dark:border-surface-300 dark:bg-surface-700">
-                                                    <div className="flex flex-wrap gap-2">
+                                                <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
+                                                    <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
                                                         {rowActions?.(row)}
                                                         {update ? (
                                                             <Button

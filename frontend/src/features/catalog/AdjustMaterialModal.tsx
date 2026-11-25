@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { formatQuantity } from '../../lib/money';
 
 type AdjustMode = 'new_quantity' | 'delta';
 
@@ -54,6 +55,12 @@ export function AdjustMaterialModal({ material }: { material: Material }) {
             setNotice(errorMessage(error));
         },
     });
+
+    const resolvedStock = isOwner
+        ? (material.stocks.find((stock) => stock.branch_id === branchId) ?? null)
+        : material.stocks.length === 1
+          ? material.stocks[0]
+          : null;
 
     const canSubmit =
         quantity.trim() !== '' &&
@@ -112,11 +119,34 @@ export function AdjustMaterialModal({ material }: { material: Material }) {
                         </p>
                     ) : null}
 
+                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-light-border bg-light-surface-2/60 px-3 py-2 dark:border-surface-300 dark:bg-surface-600/60">
+                        <div>
+                            <p className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                Stok saat ini
+                            </p>
+                            <p className="font-semibold tabular-nums">
+                                {formatQuantity(resolvedStock?.current_stock)}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                Minimum
+                            </p>
+                            <p className="font-semibold tabular-nums">
+                                {formatQuantity(resolvedStock?.min_stock)}
+                            </p>
+                        </div>
+                    </div>
+
                     <Select
                         label="Jenis koreksi"
+                        hint="Selisih positif menambah stok, negatif mengurangi."
                         value={mode}
                         disabled={adjust.isPending}
-                        onChange={(event) => setMode(event.target.value as AdjustMode)}
+                        onChange={(event) => {
+                            setQuantity('');
+                            setMode(event.target.value as AdjustMode);
+                        }}
                     >
                         <option value="new_quantity">Jumlah baru</option>
                         <option value="delta">Selisih</option>

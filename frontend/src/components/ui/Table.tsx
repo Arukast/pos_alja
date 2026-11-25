@@ -2,10 +2,23 @@ import type { ReactNode, ThHTMLAttributes } from 'react';
 
 import { cn } from '../../lib/cn';
 
-export function Table({ className, children }: { className?: string; children: ReactNode }) {
+export function Table({
+    className,
+    children,
+    ariaLabel,
+}: {
+    className?: string;
+    children: ReactNode;
+    ariaLabel?: string;
+}) {
     return (
         <div className="overflow-x-auto">
-            <table className={cn('w-full min-w-full text-left text-sm tabular-nums', className)}>{children}</table>
+            <table
+                aria-label={ariaLabel}
+                className={cn('w-full min-w-full text-left text-sm tabular-nums', className)}
+            >
+                {children}
+            </table>
         </div>
     );
 }
