@@ -22,7 +22,6 @@ interface ProductionSummary {
     queued: number;
     processing: number;
     completed_today: number;
-    waste_today: number;
 }
 
 export function ProductionQueuePage() {

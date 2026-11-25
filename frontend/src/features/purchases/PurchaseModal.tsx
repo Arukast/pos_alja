@@ -16,6 +16,7 @@ import { todayIso } from '../../lib/dates';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { purchaseLineSubtotal, purchaseTotal } from '../../lib/purchase';
+import { unitLabel } from '../../lib/units';
 
 const MAX_LINES = 50;
 
@@ -278,6 +279,9 @@ export function PurchaseModal({ onClose }: { onClose: () => void }) {
 
                             {lines.map((line, index) => {
                                 const subtotal = lineSubtotal(line);
+                                const material = materials.find(
+                                    (option) => option.id === line.material_id
+                                );
 
                                 return (
                                     <div
@@ -321,7 +325,7 @@ export function PurchaseModal({ onClose }: { onClose: () => void }) {
                                                 </Select>
                                             </div>
                                             <Input
-                                                label="Jumlah"
+                                                label={material ? `Jumlah (${unitLabel(material.unit)})` : 'Jumlah'}
                                                 type="number"
                                                 min="0.01"
                                                 max="999999.99"

@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
-import { formatQuantity } from '../../lib/money';
+import { quantityWithUnit, unitLabel } from '../../lib/units';
 
 type AdjustMode = 'new_quantity' | 'delta';
 
@@ -125,7 +125,7 @@ export function AdjustMaterialModal({ material }: { material: Material }) {
                                 Stok saat ini
                             </p>
                             <p className="font-semibold tabular-nums">
-                                {formatQuantity(resolvedStock?.current_stock)}
+                                {quantityWithUnit(resolvedStock?.current_stock, material.unit)}
                             </p>
                         </div>
                         <div>
@@ -133,7 +133,7 @@ export function AdjustMaterialModal({ material }: { material: Material }) {
                                 Minimum
                             </p>
                             <p className="font-semibold tabular-nums">
-                                {formatQuantity(resolvedStock?.min_stock)}
+                                {quantityWithUnit(resolvedStock?.min_stock, material.unit)}
                             </p>
                         </div>
                     </div>
@@ -181,7 +181,11 @@ export function AdjustMaterialModal({ material }: { material: Material }) {
                     ) : null}
 
                     <Input
-                        label={mode === 'new_quantity' ? 'Jumlah baru' : 'Selisih (+/-)'}
+                        label={
+                            mode === 'new_quantity'
+                                ? `Jumlah baru (${unitLabel(material.unit)})`
+                                : `Selisih (+/- ${unitLabel(material.unit)})`
+                        }
                         type="number"
                         step="0.01"
                         min={mode === 'new_quantity' ? '0' : undefined}

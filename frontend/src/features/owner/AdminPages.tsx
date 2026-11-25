@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Branch, Machine, Material, UserRecord } from '../../api/types';
+import type { Branch, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
@@ -15,7 +15,8 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
 import { roleLabel } from '../../lib/labels';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney } from '../../lib/money';
+import { quantityWithUnit, unitLabel } from '../../lib/units';
 
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
     branches.map((branch) => ({ value: branch.id, label: branch.name }));
@@ -195,7 +196,16 @@ export function OwnerMaterialsPage() {
                 </Card>
             }
             columns={[
-                { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
+                { header: 'Bahan', cell: (material) => (
+                    <div>
+                        <span className="font-medium">{material.name}</span>
+                        <p className="text-light-muted text-xs dark:text-gray-400">
+                            {[material.type, material.dimensions, unitLabel(material.unit)]
+                                .filter(Boolean)
+                                .join(' · ')}
+                        </p>
+                    </div>
+                ) },
                 { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
@@ -208,8 +218,8 @@ export function OwnerMaterialsPage() {
                                     <li key={stock.branch_id}>
                                         <span>
                                             {stock.branch_name ?? '-'}:{' '}
-                                            {formatQuantity(stock.current_stock)} /{' '}
-                                            {formatQuantity(stock.min_stock)}
+                                            {quantityWithUnit(stock.current_stock, material.unit)} /{' '}
+                                            {quantityWithUnit(stock.min_stock, material.unit)}
                                         </span>
                                         {stock.is_low_stock ? (
                                             <span className="ml-1 font-semibold text-amber-700 dark:text-amber-300">
@@ -241,37 +251,6 @@ export function OwnerMaterialsPage() {
 
 export function OwnerCategoriesPage() {
     return <CategoriesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
-}
-
-export function OwnerMachinesPage() {
-    const branches = useBranches();
-    const options = branchOptions(branches.data?.data ?? []);
-
-    const fields: Array<CrudField<Machine>> = [
-        { key: 'name', label: 'Nama', required: true },
-        { key: 'branch_id', label: 'Cabang', type: 'select', options, getValue: (machine) => machine.branch?.id ?? '' },
-        { key: 'cost', label: 'Biaya Dasar', type: 'number' },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Mesin Cetak"
-            description="Data mesin dan biaya dasar."
-            queryKey={['owner', 'machines']}
-            queryFn={(page) => api.machines({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Cabang', cell: (machine) => machine.branch?.name ?? 'Global' },
-                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createMachine(values)}
-            update={(id, values) => api.admin.updateMachine(id, values)}
-            remove={(id) => api.admin.deleteMachine(id)}
-            createLabel="Tambah mesin"
-        />
-    );
 }
 
 export function OwnerProductsPage() {

@@ -13,7 +13,6 @@ import { NotFoundPage } from '../features/errors/NotFoundPage';
 import {
     BranchesPage,
     OwnerCategoriesPage,
-    OwnerMachinesPage,
     OwnerMaterialsPage,
     OwnerProductsPage,
     OwnerUsersPage,
@@ -29,7 +28,6 @@ import {
     ManagerFinishingPage,
     ManagerLeaderboardPage,
     ManagerLedgersPage,
-    ManagerMachinesPage,
     ManagerMaterialsPage,
     ManagerPricingPage,
     ManagerProductsPage,
@@ -78,7 +76,6 @@ export const router = createBrowserRouter([
                             { path: 'branches', element: <BranchesPage /> },
                             { path: 'categories', element: <OwnerCategoriesPage /> },
                             { path: 'products', element: <OwnerProductsPage /> },
-                            { path: 'machines', element: <OwnerMachinesPage /> },
                             { path: 'materials', element: <OwnerMaterialsPage /> },
                             { path: 'purchases', element: <PurchasesPage /> },
                         ],
@@ -97,7 +94,6 @@ export const router = createBrowserRouter([
                             { path: 'users', element: <ManagerUsersPage /> },
                             { path: 'categories', element: <ManagerCategoriesPage /> },
                             { path: 'products', element: <ManagerProductsPage /> },
-                            { path: 'machines', element: <ManagerMachinesPage /> },
                         ],
                     },
                     {

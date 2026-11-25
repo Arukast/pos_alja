@@ -10,7 +10,8 @@ import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney } from '../../lib/money';
+import { quantityWithUnit } from '../../lib/units';
 
 const panelLink =
     'text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none';
@@ -52,9 +53,8 @@ export function ManagerDashboardPage() {
 
             {data ? (
                 <>
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                         <StatCard label="Bahan Tersedia" value={String(data.counts.materials)} />
-                        <StatCard label="Mesin Cetak" value={String(data.counts.machines)} />
                         <StatCard label="Staf Aktif" value={String(data.counts.staff)} />
                         <StatCard label="Baris Harga" value={String(data.counts.pricing)} />
                     </div>
@@ -89,13 +89,13 @@ export function ManagerDashboardPage() {
                                                     </TableCell>
                                                     <TableCell>{ledger.material?.name ?? '-'}</TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {formatQuantity(ledger.added_stock)}
+                                                        {quantityWithUnit(ledger.added_stock, ledger.material?.unit)}
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {formatQuantity(ledger.used_stock)}
+                                                        {quantityWithUnit(ledger.used_stock, ledger.material?.unit)}
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {formatQuantity(ledger.remaining_stock)}
+                                                        {quantityWithUnit(ledger.remaining_stock, ledger.material?.unit)}
                                                     </TableCell>
                                                 </TableRow>
                                             ))

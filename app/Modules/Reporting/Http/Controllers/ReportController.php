@@ -156,6 +156,7 @@ final class ReportController extends Controller
             'material' => $waste->material ? [
                 'id' => $waste->material->id,
                 'name' => $waste->material->name,
+                'unit' => $waste->material->unit,
                 'cost' => Decimal::money($waste->material->cost),
             ] : null,
             'quantity' => $waste->quantity,

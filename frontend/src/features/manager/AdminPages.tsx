@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Attribute, AttributeType, Machine, Material, Pricing, UserRecord } from '../../api/types';
+import type { Attribute, AttributeType, Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
@@ -23,7 +23,8 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney } from '../../lib/money';
+import { quantityWithUnit, unitLabel } from '../../lib/units';
 
 export function ManagerUsersPage() {
     const { user } = useAuth();
@@ -79,10 +80,6 @@ export function ManagerMaterialsPage() {
         queryKey: ['manager', 'materials', 'count'],
         queryFn: () => api.materials({ page: 1, per_page: 1 }),
     });
-    const machineCount = useQuery({
-        queryKey: ['manager', 'machines', 'count'],
-        queryFn: () => api.machines({ page: 1, per_page: 1 }),
-    });
     const ledgers = useQuery({
         queryKey: ['manager', 'materials', 'ledgers'],
         queryFn: () => api.stockLedgers({ page: 1 }),
@@ -115,7 +112,7 @@ export function ManagerMaterialsPage() {
             queryKey={['manager', 'materials', lowStock]}
             queryFn={(page) => api.materials({ page, low_stock: lowStock ? 1 : undefined })}
             summary={
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <StatCard
                         label="Bahan Aktif"
                         value={materialCount.isSuccess ? String(materialCount.data.meta.total) : '—'}
@@ -123,10 +120,6 @@ export function ManagerMaterialsPage() {
                     <StatCard
                         label="Kategori"
                         value={categories.isSuccess ? String(categories.data.data.length) : '—'}
-                    />
-                    <StatCard
-                        label="Mesin Aktif"
-                        value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
                     />
                 </div>
             }
@@ -152,11 +145,11 @@ export function ManagerMaterialsPage() {
                     cell: (material) => (
                         <div>
                             <span className="font-medium">{material.name}</span>
-                            {material.type || material.dimensions ? (
-                                <p className="text-light-muted text-xs dark:text-gray-400">
-                                    {[material.type, material.dimensions].filter(Boolean).join(' · ')}
-                                </p>
-                            ) : null}
+                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                {[material.type, material.dimensions, unitLabel(material.unit)]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </p>
                         </div>
                     ),
                 },
@@ -164,12 +157,12 @@ export function ManagerMaterialsPage() {
                 {
                     header: 'Stok',
                     className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => formatQuantity(material.current_stock),
+                    cell: (material) => quantityWithUnit(material.current_stock, material.unit),
                 },
                 {
                     header: 'Minimum',
                     className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => formatQuantity(material.min_stock),
+                    cell: (material) => quantityWithUnit(material.min_stock, material.unit),
                 },
                 {
                     header: 'Biaya',
@@ -241,9 +234,9 @@ export function ManagerMaterialsPage() {
                                                     {formatDate(ledger.logged_at)}
                                                 </TableCell>
                                                 <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.added_stock)}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.used_stock)}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.remaining_stock)}</TableCell>
+                                                <TableCell>{quantityWithUnit(ledger.added_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell>{quantityWithUnit(ledger.used_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell>{quantityWithUnit(ledger.remaining_stock, ledger.material?.unit)}</TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -279,37 +272,11 @@ export function ManagerLedgersPage() {
                     ),
                 },
                 { header: 'Pengguna', className: 'hidden sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
-                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.added_stock) },
-                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.used_stock) },
-                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.wasted_stock) },
-                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.remaining_stock) },
+                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.added_stock, ledger.material?.unit) },
+                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.used_stock, ledger.material?.unit) },
+                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.wasted_stock, ledger.material?.unit) },
+                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.remaining_stock, ledger.material?.unit) },
             ]}
-        />
-    );
-}
-
-export function ManagerMachinesPage() {
-    const fields: Array<CrudField<Machine>> = [
-        { key: 'name', label: 'Nama', required: true },
-        { key: 'cost', label: 'Biaya Dasar', type: 'number' },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Konfigurasi"
-            title="Mesin Cetak"
-            description="Data mesin dan biaya dasar untuk cabang Anda."
-            queryKey={['manager', 'machines']}
-            queryFn={(page) => api.machines({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createMachine(values)}
-            update={(id, values) => api.admin.updateMachine(id, values)}
-            remove={(id) => api.admin.deleteMachine(id)}
-            createLabel="Tambah mesin"
         />
     );
 }

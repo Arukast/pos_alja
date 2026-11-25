@@ -72,6 +72,7 @@ class ReportApiTest extends TestCase
             'name' => 'Vinyl Roll',
             'product_category_id' => $category->id,
             'type' => 'roll',
+            'unit' => 'm2',
             'cost' => 10000,
             'price' => 15000,
         ]);
@@ -185,7 +186,8 @@ class ReportApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('total_hpp', '80000.00')
             ->assertJsonPath('invoice_cost_total', '60000.00')
-            ->assertJsonPath('wasted_cost_total', '20000.00');
+            ->assertJsonPath('wasted_cost_total', '20000.00')
+            ->assertJsonPath('wasted_materials.0.material.unit', 'm2');
 
         $this->actingAs($this->owner)
             ->getJson('/api/v1/reports/expenses?branch_id='.$this->branchOne->id.'&start_date='.now()->toDateString().'&end_date='.now()->toDateString())

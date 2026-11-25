@@ -121,14 +121,6 @@ export interface ProductionMaterial {
     is_low_stock: boolean | null;
 }
 
-export interface Machine {
-    id: string;
-    name: string;
-    cost: string;
-    branch_id: string | null;
-    branch: { id: string; name: string } | null;
-}
-
 export interface Pricing {
     id: string;
     branch_id: string | null;
@@ -323,7 +315,6 @@ export interface ManagerDashboard {
     role: 'manager';
     counts: {
         materials: number;
-        machines: number;
         staff: number;
         pricing: number;
     };
@@ -364,8 +355,7 @@ export interface ProductionDashboard {
     queued: number;
     processing: number;
     completed_today: number;
-    waste_today: number;
-    waste_today_by_unit?: WasteByUnit[];
+    waste_today_by_unit: WasteByUnit[];
     queue: ProductionQueueItem[];
 }
 
@@ -399,7 +389,7 @@ export interface BaseCostReport {
     invoices: Invoice[];
     wasted_materials: Array<{
         id: string;
-        material: { id: string; name: string; cost: string } | null;
+        material: { id: string; name: string; unit: string; cost: string } | null;
         quantity: string;
         wasted_cost: string;
         logged_at: string;
