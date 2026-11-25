@@ -331,8 +331,8 @@ erDiagram
 13. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and discount tiers when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
 14. **Target and implemented additions.** The following columns and tables are part of the target schema:
     - `branches.reseller_discount_percent` for Reseller pricing.
-    - `products.is_active` for catalog filtering.
-    - `product_category_discounts` for quantity discounts.
+    - `products.is_active` for catalog filtering; implemented by `2026_11_23_000000_add_is_active_and_indexes_to_products_table.php`.
+    - `product_category_discounts` for quantity discounts; implemented by `2026_11_25_000000_create_product_category_discounts_table.php`.
     - `materials.unit` for `m2`, `sheet`, and `pcs`; still target-only and not implemented (see `docs/requirements/implementation-gaps.md`).
     - `attributes.price` and `attributes.cost`.
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
