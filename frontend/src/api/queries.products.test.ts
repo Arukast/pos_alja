@@ -99,4 +99,52 @@ describe('api.products and admin product mutations', () => {
             body: undefined,
         });
     });
+
+    it('calls attribute and branch admin endpoints with pricing, active status, and reseller discount', async () => {
+        const attributeBody = {
+            name: 'Laminasi Glossy',
+            type: 'finishing',
+            branch_id: null,
+            price: 5000,
+            cost: 2000,
+            is_active: true,
+        };
+        await api.admin.createAttribute(attributeBody);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attributes', {
+            method: 'POST',
+            body: JSON.stringify(attributeBody),
+        });
+
+        const attributeUpdate = { ...attributeBody, is_active: false };
+        await api.admin.updateAttribute('attr-1', attributeUpdate);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attributes/attr-1', {
+            method: 'PUT',
+            body: JSON.stringify(attributeUpdate),
+        });
+
+        await api.admin.deleteAttribute('attr-1');
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attributes/attr-1', {
+            method: 'DELETE',
+            body: undefined,
+        });
+
+        const branchBody = {
+            name: 'Cabang Pusat',
+            code: 'PST',
+            is_active: true,
+            reseller_discount_percent: 12.5,
+        };
+        await api.admin.createBranch(branchBody);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/branches', {
+            method: 'POST',
+            body: JSON.stringify(branchBody),
+        });
+
+        const branchUpdate = { ...branchBody, reseller_discount_percent: 15 };
+        await api.admin.updateBranch('br-1', branchUpdate);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/branches/br-1', {
+            method: 'PUT',
+            body: JSON.stringify(branchUpdate),
+        });
+    });
 });

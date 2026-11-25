@@ -321,7 +321,7 @@ class CatalogWriteApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('category.name', 'Indoor Updated');
 
-        $attributeType = $this->actingAs($this->manager)
+        $attributeType = $this->actingAs($this->owner)
             ->postJson('/api/v1/attribute-types', [
                 'name' => 'Lamination',
                 'calculation_archetype' => 'per_piece',
@@ -329,18 +329,36 @@ class CatalogWriteApiTest extends TestCase
             ->assertCreated()
             ->json('attribute_type');
 
-        $this->actingAs($this->manager)
+        $attribute = $this->actingAs($this->owner)
             ->postJson('/api/v1/attributes', [
                 'name' => 'Glossy',
                 'type' => 'finishing',
                 'branch_id' => $this->branchTwo->id,
+                'price' => 5000,
+                'cost' => 2000,
+                'is_active' => true,
             ])
             ->assertCreated()
-            ->assertJsonPath('attribute.branch_id', $this->branchOne->id);
+            ->assertJsonPath('attribute.branch_id', $this->branchTwo->id)
+            ->assertJsonPath('attribute.price', '5000.00')
+            ->assertJsonPath('attribute.cost', '2000.00')
+            ->assertJsonPath('attribute.is_active', true)
+            ->json('attribute');
 
-        $this->actingAs($this->manager)
-            ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
-            ->assertNoContent();
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/attributes/{$attribute['id']}", [
+                'name' => 'Glossy Matte',
+                'type' => 'display',
+                'branch_id' => $this->branchOne->id,
+                'price' => 6000,
+                'cost' => 2500,
+                'is_active' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('attribute.type', 'display')
+            ->assertJsonPath('attribute.price', '6000.00')
+            ->assertJsonPath('attribute.cost', '2500.00')
+            ->assertJsonPath('attribute.is_active', false);
 
         foreach ([$this->manager, $this->cashier] as $actor) {
             $this->actingAs($actor)
@@ -349,7 +367,48 @@ class CatalogWriteApiTest extends TestCase
                     'calculation_archetype' => 'per_piece',
                 ])
                 ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->postJson('/api/v1/attribute-types', [
+                    'name' => 'Nope Type',
+                    'calculation_archetype' => 'per_piece',
+                ])
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->postJson('/api/v1/attributes', [
+                    'name' => 'Nope Attr',
+                    'type' => 'finishing',
+                    'price' => 1000,
+                    'cost' => 500,
+                ])
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->putJson("/api/v1/attributes/{$attribute['id']}", [
+                    'name' => 'Nope Attr Update',
+                    'type' => 'finishing',
+                    'price' => 1000,
+                    'cost' => 500,
+                ])
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->deleteJson("/api/v1/attributes/{$attribute['id']}")
+                ->assertForbidden();
         }
+
+        $this->actingAs($this->owner)
+            ->deleteJson("/api/v1/attributes/{$attribute['id']}")
+            ->assertNoContent();
+
+        $this->actingAs($this->owner)
+            ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
+            ->assertNoContent();
     }
 
     public function test_pricing_crud_and_clone_tiers(): void
@@ -409,7 +468,7 @@ class CatalogWriteApiTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('calculation_archetype');
 
-        $this->actingAs($actor)
+        $this->actingAs($this->owner)
             ->postJson('/api/v1/attribute-types', [
                 'name' => 'Invalid',
                 'calculation_archetype' => 'not-real',
@@ -417,13 +476,34 @@ class CatalogWriteApiTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('calculation_archetype');
 
-        $this->actingAs($actor)
+        $this->actingAs($this->owner)
             ->postJson('/api/v1/attributes', [
                 'name' => 'Invalid',
                 'type' => 'not-real',
+                'price' => 1000,
+                'cost' => 500,
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('type');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Negative Price',
+                'type' => 'finishing',
+                'price' => -1,
+                'cost' => 500,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('price');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Missing Cost',
+                'type' => 'display',
+                'price' => 1000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('cost');
 
         $this->actingAs($actor)
             ->postJson('/api/v1/pricing', [

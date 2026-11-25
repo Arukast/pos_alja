@@ -491,6 +491,40 @@ class CatalogApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_manager_reads_attribute_pricing_and_branchless_manager_is_denied(): void
+    {
+        $this->attributeOne->update([
+            'price' => 3500,
+            'cost' => 1500,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/attributes')
+            ->assertOk();
+
+        $attribute = collect($response->json('data'))->firstWhere('id', $this->attributeOne->id);
+
+        $this->assertNotNull($attribute);
+        $this->assertSame('3500.00', $attribute['price']);
+        $this->assertSame('1500.00', $attribute['cost']);
+        $this->assertTrue($attribute['is_active']);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/attribute-types')
+            ->assertOk();
+
+        $branchlessManager = $this->user('manager', null);
+
+        $this->actingAs($branchlessManager)
+            ->getJson('/api/v1/attributes')
+            ->assertForbidden();
+
+        $this->actingAs($branchlessManager)
+            ->getJson('/api/v1/attribute-types')
+            ->assertForbidden();
+    }
+
     public function test_stock_ledgers_carry_traceability_fields(): void
     {
         $this->actingAs($this->manager)

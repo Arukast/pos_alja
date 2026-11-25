@@ -149,6 +149,27 @@ class QuoteApiTest extends TestCase
         $this->assertNotContains($inactive->id, $ids);
     }
 
+    public function test_quote_options_excludes_inactive_attributes(): void
+    {
+        $inactive = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Matte',
+            'type' => 'finishing',
+            'price' => 1000,
+            'cost' => 500,
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk();
+
+        $ids = collect($response->json('attributes'))->pluck('id')->all();
+
+        $this->assertContains($this->attribute->id, $ids);
+        $this->assertNotContains($inactive->id, $ids);
+    }
+
     public function test_cashier_cannot_fetch_quote_options(): void
     {
         $this->actingAs($this->cashier)
