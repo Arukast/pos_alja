@@ -13,6 +13,7 @@ use App\Models\MaterialBranchStock;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductCategoryDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -437,7 +438,7 @@ class CatalogApiTest extends TestCase
         }
     }
 
-    public function test_include_deleted_products_is_restricted_to_owner_and_manager(): void
+    public function test_include_deleted_products_is_restricted_to_owner(): void
     {
         $deleted = Product::create([
             'name' => 'Deleted Banner',
@@ -456,17 +457,38 @@ class CatalogApiTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['id' => $deleted->id]);
 
-        $this->actingAs($this->manager)
-            ->getJson('/api/v1/products?include_deleted=1')
-            ->assertOk()
-            ->assertJsonFragment(['id' => $deleted->id]);
-
-        foreach ([$this->cashier, $this->designer] as $user) {
+        foreach ([$this->manager, $this->cashier, $this->designer] as $user) {
             $this->actingAs($user)
                 ->getJson('/api/v1/products?include_deleted=1')
                 ->assertOk()
                 ->assertJsonMissing(['id' => $deleted->id]);
         }
+    }
+
+    public function test_manager_reads_categories_with_discount_tiers_and_branchless_manager_is_denied(): void
+    {
+        ProductCategoryDiscount::create([
+            'product_category_id' => $this->category->id,
+            'min_qty' => 10,
+            'discount_percent' => 5,
+        ]);
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/categories')
+            ->assertOk();
+
+        $category = collect($response->json('data'))->firstWhere('id', $this->category->id);
+
+        $this->assertNotNull($category);
+        $this->assertCount(1, $category['discount_tiers']);
+        $this->assertSame(10, $category['discount_tiers'][0]['min_qty']);
+        $this->assertSame('5.00', $category['discount_tiers'][0]['discount_percent']);
+
+        $branchlessManager = $this->user('manager', null);
+
+        $this->actingAs($branchlessManager)
+            ->getJson('/api/v1/categories')
+            ->assertForbidden();
     }
 
     public function test_stock_ledgers_carry_traceability_fields(): void

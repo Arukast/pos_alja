@@ -66,4 +66,37 @@ describe('api.products and admin product mutations', () => {
             body: undefined,
         });
     });
+
+    it('calls create, update, and delete category endpoints with discount_tiers payloads', async () => {
+        const createCategoryBody = {
+            name: 'Print Lembaran',
+            calculation_archetype: 'per_piece',
+            allowed_attribute_types: ['finishing'],
+            discount_tiers: [
+                { min_qty: 10, discount_percent: 5 },
+                { min_qty: 50, discount_percent: 10 },
+            ],
+        };
+        await api.admin.createCategory(createCategoryBody);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/categories', {
+            method: 'POST',
+            body: JSON.stringify(createCategoryBody),
+        });
+
+        const updateCategoryBody = {
+            ...createCategoryBody,
+            discount_tiers: [{ min_qty: 20, discount_percent: 7.5 }],
+        };
+        await api.admin.updateCategory('cat-1', updateCategoryBody);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/categories/cat-1', {
+            method: 'PUT',
+            body: JSON.stringify(updateCategoryBody),
+        });
+
+        await api.admin.deleteCategory('cat-1');
+        expect(mockedApiFetch).toHaveBeenCalledWith('/categories/cat-1', {
+            method: 'DELETE',
+            body: undefined,
+        });
+    });
 });
