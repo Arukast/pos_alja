@@ -63,7 +63,9 @@ class ProductionApiTest extends TestCase
         $branchOneOrder = $this->order($invoiceOne, 0);
         $this->order($invoiceOne, 1);
         $this->order($invoiceOne, 2);
+        $this->order($invoiceOne, 3);
         $branchTwoOrder = $this->order($invoiceTwo, 0);
+        $this->order($invoiceTwo, 3);
 
         $this->materialOne = Material::create([
             'name' => 'Vinyl Roll',
@@ -133,13 +135,15 @@ class ProductionApiTest extends TestCase
             ->assertJsonMissingPath('data.0.profit')
             ->assertJsonMissingPath('data.0.invoice.grand_total');
 
-        $this->assertCount(2, $profileResponse->json('data'));
+        $this->assertCount(3, $profileResponse->json('data'));
+        $this->assertContains(3, collect($profileResponse->json('data'))->pluck('status')->all());
+        $this->assertMoneyFree($profileResponse->json('data'));
 
         $ownerResponse = $this->actingAs($this->owner)
             ->getJson('/api/v1/production/queue')
             ->assertOk();
 
-        $this->assertCount(3, $ownerResponse->json('data'));
+        $this->assertCount(5, $ownerResponse->json('data'));
 
         $this->actingAs($this->cashier)
             ->getJson('/api/v1/production/queue')
@@ -154,11 +158,20 @@ class ProductionApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('queued', 1)
             ->assertJsonPath('processing', 1)
-            ->assertJsonPath('completed_today', 1);
+            ->assertJsonPath('completed_today', 1)
+            ->assertJsonPath('failed', 1);
 
         $this->assertEquals(2, (float) $this->actingAs($this->production)
             ->getJson('/api/v1/production/summary')
             ->json('waste_today'));
+
+        $this->actingAs($this->otherProduction)
+            ->getJson('/api/v1/production/summary')
+            ->assertOk()
+            ->assertJsonPath('queued', 1)
+            ->assertJsonPath('processing', 0)
+            ->assertJsonPath('completed_today', 0)
+            ->assertJsonPath('failed', 1);
 
         $this->actingAs($this->owner)
             ->getJson('/api/v1/production/summary')
@@ -200,6 +213,24 @@ class ProductionApiTest extends TestCase
 
         $this->assertSame([$this->materialOne->id], $materialIds);
         $this->assertSame([$this->designer->id], $designerIds);
+    }
+
+    private function assertMoneyFree(mixed $payload): void
+    {
+        if (! is_array($payload)) {
+            return;
+        }
+
+        foreach ($payload as $key => $value) {
+            if (is_string($key)) {
+                $this->assertDoesNotMatchRegularExpression(
+                    '/price|cost|profit|discount|receivable|payment|total|subtotal|dp_amount|grand_total/i',
+                    $key
+                );
+            }
+
+            $this->assertMoneyFree($value);
+        }
     }
 
     private function branch(string $name): Branch

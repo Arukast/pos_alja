@@ -68,7 +68,7 @@ final class LogWaste
             ]);
         }
 
-        if (! in_array($order->status, [0, 1], true)) {
+        if (! in_array($order->status, [0, 1, 3], true)) {
             throw ValidationException::withMessages([
                 'order_id' => 'Pesanan yang sudah selesai tidak dapat dicatat sisa bahannya.',
             ]);

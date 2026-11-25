@@ -9,7 +9,10 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\WastedMaterial;
 use App\Modules\Production\Actions\CompleteProduction;
+use App\Modules\Production\Actions\FailProduction;
+use App\Modules\Production\Actions\ReopenProduction;
 use App\Modules\Production\Actions\StartProduction;
+use App\Modules\Production\Http\Requests\FailProductionRequest;
 use App\Modules\Production\Http\Resources\ProductionQueueResource;
 use App\Modules\Production\Queries\ProductionQueue;
 use Illuminate\Database\Eloquent\Builder;
@@ -75,6 +78,42 @@ final class ProductionController extends Controller
         ]);
     }
 
+    public function fail(
+        FailProductionRequest $request,
+        Order $order,
+        FailProduction $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        return response()->json([
+            'order' => new ProductionQueueResource(
+                $action->execute($order, $actor, (string) $request->validated('note'))
+            ),
+        ]);
+    }
+
+    public function reopen(
+        Request $request,
+        Order $order,
+        ReopenProduction $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        Gate::authorize('reopen', $order);
+
+        return response()->json([
+            'order' => new ProductionQueueResource($action->execute($order, $actor)),
+        ]);
+    }
+
     public function summary(Request $request): JsonResponse
     {
         $actor = $request->user();
@@ -98,6 +137,7 @@ final class ProductionController extends Controller
             ->where('status', 2)
             ->whereDate('updated_at', now()->toDateString())
             ->count();
+        $failed = (clone $orders)->where('status', 3)->count();
 
         $wasteToday = WastedMaterial::query()
             ->where('branch_id', $branchId)
@@ -108,6 +148,7 @@ final class ProductionController extends Controller
             'queued' => $queued,
             'processing' => $processing,
             'completed_today' => $completedToday,
+            'failed' => $failed,
             'waste_today' => (float) $wasteToday,
         ]);
     }
