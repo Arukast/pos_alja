@@ -23,6 +23,7 @@ class BranchService
                 'address' => $data['address'] ?? null,
                 'phone' => $data['phone'] ?? null,
                 'is_active' => $data['is_active'] ?? true,
+                'reseller_discount_percent' => $data['reseller_discount_percent'] ?? 0,
                 'settings' => $data['settings'] ?? [],
             ]);
 
@@ -56,6 +57,9 @@ class BranchService
                 'address' => $data['address'] ?? null,
                 'phone' => $data['phone'] ?? null,
                 'is_active' => $data['is_active'] ?? $branch->is_active,
+                'reseller_discount_percent' => array_key_exists('reseller_discount_percent', $data)
+                    ? $data['reseller_discount_percent']
+                    : $branch->reseller_discount_percent,
                 'settings' => $data['settings'] ?? $branch->settings ?? [],
             ]);
 

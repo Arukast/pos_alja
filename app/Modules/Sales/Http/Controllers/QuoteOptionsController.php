@@ -64,6 +64,7 @@ final class QuoteOptionsController extends Controller
             ->values();
 
         $attributes = Attribute::query()
+            ->where('is_active', true)
             ->where(function (Builder $query) use ($branchId): void {
                 $query->where('branch_id', $branchId)->orWhereNull('branch_id');
             })

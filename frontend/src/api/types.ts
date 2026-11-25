@@ -25,6 +25,7 @@ export interface Branch {
     address: string | null;
     phone: string | null;
     is_active: boolean;
+    reseller_discount_percent: string;
     settings: Record<string, unknown> | null;
 }
 
@@ -73,6 +74,9 @@ export interface Attribute {
     id: string;
     name: string;
     type: string;
+    price: string;
+    cost: string;
+    is_active: boolean;
     branch_id: string | null;
     branch: { id: string; name: string } | null;
 }

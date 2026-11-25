@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Attribute, AttributeType, Machine, Material, Pricing, UserRecord } from '../../api/types';
+import type { Machine, Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
@@ -20,8 +21,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { collectionAsPage } from '../../lib/pagination';
-import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
+import { ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
 import { formatMoney, formatQuantity } from '../../lib/money';
 
@@ -319,74 +319,7 @@ export function ManagerCategoriesPage() {
 }
 
 export function ManagerFinishingPage() {
-    const typeFields: Array<CrudField<AttributeType>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'calculation_archetype',
-            label: 'Arketipe',
-            type: 'select',
-            options: [
-                { value: 'per_piece', label: archetypeLabel('per_piece') },
-                { value: 'surface_area', label: archetypeLabel('surface_area') },
-                { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
-                { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
-            ],
-        },
-    ];
-
-    const attributeFields: Array<CrudField<Attribute>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'type',
-            label: 'Tipe',
-            type: 'select',
-            options: [
-                { value: 'finishing', label: attributeTypeLabel('finishing') },
-                { value: 'cut', label: attributeTypeLabel('cut') },
-                { value: 'display', label: attributeTypeLabel('display') },
-            ],
-        },
-    ];
-
-    return (
-        <div className="space-y-8">
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Display & Finishing"
-                description="Kelola atribut finishing, potong, dan display."
-                queryKey={['manager', 'attributes']}
-                queryFn={() => api.attributes().then((response) => collectionAsPage(response.data))}
-                columns={[
-                    { header: 'Nama', cell: (attribute) => <span className="font-medium">{attribute.name}</span> },
-                    { header: 'Tipe', cell: (attribute) => attributeTypeLabel(attribute.type) },
-                ]}
-                fields={attributeFields}
-                create={(values) => api.admin.createAttribute(values)}
-                update={(id, values) => api.admin.updateAttribute(id, values)}
-                remove={(id) => api.admin.deleteAttribute(id)}
-                createLabel="Tambah atribut"
-                paginated={false}
-            />
-
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Tipe Atribut"
-                description="Tipe yang digunakan oleh perhitungan harga."
-                queryKey={['manager', 'attribute-types']}
-                queryFn={() => api.attributeTypes().then((response) => collectionAsPage(response.data))}
-                columns={[
-                    { header: 'Nama', cell: (type) => <span className="font-medium">{type.name}</span> },
-                    { header: 'Arketipe', cell: (type) => archetypeLabel(type.calculation_archetype) },
-                ]}
-                fields={typeFields}
-                create={(values) => api.admin.createAttributeType(values)}
-                remove={(id) => api.admin.deleteAttributeType(id)}
-                createLabel="Tambah tipe atribut"
-                paginated={false}
-                hideBanner
-            />
-        </div>
-    );
+    return <AttributesPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
 }
 
 export function ManagerProductsPage() {

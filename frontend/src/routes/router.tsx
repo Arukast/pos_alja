@@ -12,6 +12,7 @@ import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import {
     BranchesPage,
+    OwnerAttributesPage,
     OwnerCategoriesPage,
     OwnerMachinesPage,
     OwnerMaterialsPage,
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
                             { path: 'branches', element: <BranchesPage /> },
                             { path: 'categories', element: <OwnerCategoriesPage /> },
                             { path: 'products', element: <OwnerProductsPage /> },
+                            { path: 'attributes', element: <OwnerAttributesPage /> },
                             { path: 'machines', element: <OwnerMachinesPage /> },
                             { path: 'materials', element: <OwnerMaterialsPage /> },
                             { path: 'purchases', element: <PurchasesPage /> },

@@ -19,12 +19,20 @@ final class CatalogPolicy
 
     public function viewAttributeTypes(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        if ($user->role === 'owner') {
+            return true;
+        }
+
+        return $user->role === 'manager' && $user->branch_id !== null;
     }
 
     public function viewAttributes(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        if ($user->role === 'owner') {
+            return true;
+        }
+
+        return $user->role === 'manager' && $user->branch_id !== null;
     }
 
     public function viewProducts(User $user): bool
@@ -59,12 +67,12 @@ final class CatalogPolicy
 
     public function manageAttributeTypes(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner';
     }
 
     public function manageAttributes(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner';
     }
 
     public function managePricing(User $user): bool
