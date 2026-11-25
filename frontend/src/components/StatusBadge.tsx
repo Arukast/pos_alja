@@ -24,6 +24,7 @@ export function OrderStatusBadge({ status }: { status: number }) {
         0: { label: 'Antrean', tone: 'warning' },
         1: { label: 'Diproses', tone: 'info' },
         2: { label: 'Selesai', tone: 'success' },
+        3: { label: 'Gagal', tone: 'danger' },
     };
     const value = map[status] ?? { label: 'Tidak Diketahui', tone: 'neutral' as BadgeTone };
 

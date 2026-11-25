@@ -16,12 +16,14 @@ import { Toast } from '../../components/ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { errorMessage } from '../../lib/errors';
 import { formatDate } from '../../lib/dates';
+import { FailProductionModal } from './FailProductionModal';
 import { ProductionWasteModal } from './ProductionWasteModal';
 
 interface ProductionSummary {
     queued: number;
     processing: number;
     completed_today: number;
+    failed: number;
 }
 
 export function ProductionQueuePage() {
@@ -29,6 +31,7 @@ export function ProductionQueuePage() {
     const [page, setPage] = useState(1);
     const [notice, setNotice] = useState<string | null>(null);
     const [wasteOrder, setWasteOrder] = useState<ProductionQueueItem | null>(null);
+    const [failOrder, setFailOrder] = useState<ProductionQueueItem | null>(null);
 
     const query = useQuery({
         queryKey: ['production', 'queue', page],
@@ -63,6 +66,15 @@ export function ProductionQueuePage() {
         onError: (error) => setNotice(errorMessage(error)),
     });
 
+    const reopen = useMutation({
+        mutationFn: (id: string) => api.reopenOrder(id),
+        onSuccess: () => {
+            refresh();
+            setNotice('Pesanan dikembalikan ke antrean.');
+        },
+        onError: (error) => setNotice(errorMessage(error)),
+    });
+
     return (
         <div className="space-y-6">
             <PageBanner
@@ -71,7 +83,7 @@ export function ProductionQueuePage() {
                 description="Antrean pekerjaan cetak diurutkan berdasarkan tenggat."
             />
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                     label="Antrean"
                     value={summary.isSuccess ? String(summary.data.queued) : '—'}
@@ -83,6 +95,10 @@ export function ProductionQueuePage() {
                 <StatCard
                     label="Selesai Hari Ini"
                     value={summary.isSuccess ? String(summary.data.completed_today) : '—'}
+                />
+                <StatCard
+                    label="Gagal"
+                    value={summary.isSuccess ? String(summary.data.failed) : '—'}
                 />
             </div>
 
@@ -179,7 +195,8 @@ export function ProductionQueuePage() {
                                                                 >
                                                                     Mulai
                                                                 </Button>
-                                                            ) : (
+                                                            ) : null}
+                                                            {order.status === 1 ? (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="secondary"
@@ -189,8 +206,28 @@ export function ProductionQueuePage() {
                                                                 >
                                                                     Selesaikan
                                                                 </Button>
-                                                            )}
-                                                            {order.status === 0 || order.status === 1 ? (
+                                                            ) : null}
+                                                            {order.status === 1 ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="danger"
+                                                                    aria-label={`Gagal ${invoiceNumber}`}
+                                                                    onClick={() => setFailOrder(order)}
+                                                                >
+                                                                    Gagal
+                                                                </Button>
+                                                            ) : null}
+                                                            {order.status === 3 ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    aria-label={`Proses Ulang ${invoiceNumber}`}
+                                                                    loading={reopen.isPending}
+                                                                    onClick={() => reopen.mutate(order.id)}
+                                                                >
+                                                                    Proses Ulang
+                                                                </Button>
+                                                            ) : null}
+                                                            {order.status === 0 || order.status === 1 || order.status === 3 ? (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="secondary"
@@ -222,6 +259,16 @@ export function ProductionQueuePage() {
                 </CardBody>
             </Card>
             {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {failOrder ? (
+                <FailProductionModal
+                    order={failOrder}
+                    onClose={() => setFailOrder(null)}
+                    onFailed={(failed) => {
+                        setFailOrder(null);
+                        setWasteOrder(failed);
+                    }}
+                />
+            ) : null}
             {wasteOrder ? (
                 <ProductionWasteModal order={wasteOrder} onClose={() => setWasteOrder(null)} />
             ) : null}

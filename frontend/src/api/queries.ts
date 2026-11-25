@@ -197,6 +197,12 @@ export const api = {
     completeOrder: (orderId: string) =>
         mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/complete`, 'POST'),
 
+    failOrder: (orderId: string, data: { note: string }) =>
+        mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/fail`, 'POST', data),
+
+    reopenOrder: (orderId: string) =>
+        mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/reopen`, 'POST'),
+
     wasteOptions: () =>
         apiFetch<{
             materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null; unit: string }>;
