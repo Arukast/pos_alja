@@ -37,7 +37,7 @@ final class ProductController extends Controller
             default => null,
         };
         $includeDeleted = $actor instanceof User
-            && in_array($actor->role, ['owner', 'manager'], true)
+            && $actor->role === 'owner'
             && $request->boolean('include_deleted');
 
         return ProductResource::collection($queries->products([

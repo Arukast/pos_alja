@@ -167,6 +167,8 @@ export function CrudPage<T extends { id: string }>({
         setOpen(true);
     };
 
+    const hasActions = Boolean(update || remove || rowActions);
+
     return (
         <div className="space-y-6">
             {hideBanner ? null : (
@@ -229,14 +231,16 @@ export function CrudPage<T extends { id: string }>({
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
-                                        <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
-                                            Aksi
-                                        </TableHeaderCell>
+                                        {hasActions ? (
+                                            <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
+                                                Aksi
+                                            </TableHeaderCell>
+                                        ) : null}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(query.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={columns.length + 1}>
+                                        <TableEmpty colSpan={columns.length + (hasActions ? 1 : 0)}>
                                             Belum ada data.
                                         </TableEmpty>
                                     ) : (
@@ -247,37 +251,39 @@ export function CrudPage<T extends { id: string }>({
                                                         {column.cell(row)}
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
-                                                    <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
-                                                        {rowActions?.(row)}
-                                                        {update ? (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="secondary"
-                                                                onClick={() => openEdit(row)}
-                                                            >
-                                                                Ubah
-                                                            </Button>
-                                                        ) : null}
-                                                        {remove ? (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="danger"
-                                                                onClick={() => {
-                                                                    if (
-                                                                        window.confirm(
-                                                                            'Hapus data ini?'
-                                                                        )
-                                                                    ) {
-                                                                        destroy.mutate(row.id);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                Hapus
-                                                            </Button>
-                                                        ) : null}
-                                                    </div>
-                                                </TableCell>
+                                                {hasActions ? (
+                                                    <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
+                                                        <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
+                                                            {rowActions?.(row)}
+                                                            {update ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    onClick={() => openEdit(row)}
+                                                                >
+                                                                    Ubah
+                                                                </Button>
+                                                            ) : null}
+                                                            {remove ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="danger"
+                                                                    onClick={() => {
+                                                                        if (
+                                                                            window.confirm(
+                                                                                'Hapus data ini?'
+                                                                            )
+                                                                        ) {
+                                                                            destroy.mutate(row.id);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Hapus
+                                                                </Button>
+                                                            ) : null}
+                                                        </div>
+                                                    </TableCell>
+                                                ) : null}
                                             </TableRow>
                                         ))
                                     )}

@@ -80,6 +80,9 @@ describe('pricingTypeLabel', () => {
 
     it('falls back to the input for an unknown pricing type', () => {
         expect(pricingTypeLabel('custom')).toBe('custom');
+    });
+});
+
 describe('ledgerTypeLabel', () => {
     it('labels every stored ledger type', () => {
         expect(ledgerTypeLabel('initial')).toBe('Stok Awal');

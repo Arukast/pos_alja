@@ -24,7 +24,7 @@ final class CatalogQueries
      */
     public function categories(): Collection
     {
-        return ProductCategory::query()->orderBy('name')->get();
+        return ProductCategory::query()->with('discountTiers')->orderBy('name')->get();
     }
 
     /**

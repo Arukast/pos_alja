@@ -13,9 +13,11 @@ import { pricingTypeLabel } from '../../lib/labels';
 export function ProductsPage({
     eyebrow,
     queryKeyPrefix,
+    readOnly = false,
 }: {
     eyebrow: string;
     queryKeyPrefix: 'owner' | 'manager';
+    readOnly?: boolean;
 }) {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
     const [searchInput, setSearchInput] = useState('');
@@ -147,13 +149,22 @@ export function ProductsPage({
                 },
             ]}
             fields={fields}
-            create={(values) =>
-                api.admin.createProduct({ ...values, is_active: Boolean(values.is_active) })
+            create={
+                readOnly
+                    ? undefined
+                    : (values) =>
+                          api.admin.createProduct({ ...values, is_active: Boolean(values.is_active) })
             }
-            update={(id, values) =>
-                api.admin.updateProduct(id, { ...values, is_active: Boolean(values.is_active) })
+            update={
+                readOnly
+                    ? undefined
+                    : (id, values) =>
+                          api.admin.updateProduct(id, {
+                              ...values,
+                              is_active: Boolean(values.is_active),
+                          })
             }
-            remove={(id) => api.admin.deleteProduct(id)}
+            remove={readOnly ? undefined : (id) => api.admin.deleteProduct(id)}
             createLabel="Tambah produk"
         />
     );

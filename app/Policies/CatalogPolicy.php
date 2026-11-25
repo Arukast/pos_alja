@@ -10,7 +10,11 @@ final class CatalogPolicy
 {
     public function viewCategories(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        if ($user->role === 'owner') {
+            return true;
+        }
+
+        return $user->role === 'manager' && $user->branch_id !== null;
     }
 
     public function viewAttributeTypes(User $user): bool
@@ -35,11 +39,7 @@ final class CatalogPolicy
 
     public function manageProducts(User $user): bool
     {
-        if ($user->role === 'owner') {
-            return true;
-        }
-
-        return $user->role === 'manager' && $user->branch_id !== null;
+        return $user->role === 'owner';
     }
 
     public function viewPricing(User $user): bool
@@ -54,7 +54,7 @@ final class CatalogPolicy
 
     public function manageCategories(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner';
     }
 
     public function manageAttributeTypes(User $user): bool
