@@ -463,12 +463,25 @@ class CatalogApiTest extends TestCase
             ->getJson('/api/v1/stock-ledgers')
             ->assertOk()
             ->assertJsonPath('data.0.id', $this->ledgerOne->id)
+            ->assertJsonPath('data.0.material.unit', 'm2')
             ->assertJsonPath('data.0.type', 'purchase')
             ->assertJsonPath('data.0.reason', 'Pembelian bahan baku')
             ->assertJsonPath('data.0.user.id', $this->manager->id)
             ->assertJsonPath('data.0.user.name', $this->manager->name)
             ->assertJsonPath('data.0.reference_type', 'purchase')
             ->assertJsonPath('data.0.reference_id', $this->ledgerOne->reference_id);
+    }
+
+    public function test_stock_ledger_returns_a_null_material_when_it_is_soft_deleted(): void
+    {
+        $this->material->delete();
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/stock-ledgers')
+            ->assertOk();
+
+        $this->assertCount(1, $response->json('data'));
+        $this->assertNull($response->json('data.0.material'));
     }
 
     private function branch(string $name): Branch

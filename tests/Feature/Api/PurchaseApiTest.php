@@ -62,6 +62,7 @@ class PurchaseApiTest extends TestCase
             'name' => 'Material A',
             'product_category_id' => $category->id,
             'type' => 'roll',
+            'unit' => 'lembar',
             'cost' => 1000,
             'price' => 2000,
         ]);
@@ -70,6 +71,7 @@ class PurchaseApiTest extends TestCase
             'name' => 'Material B',
             'product_category_id' => $category->id,
             'type' => 'roll',
+            'unit' => 'kg',
             'cost' => 2000,
             'price' => 4000,
         ]);
@@ -287,10 +289,12 @@ class PurchaseApiTest extends TestCase
             ->assertJsonPath('purchase.supplier', 'Supplier A')
             ->assertJsonPath('purchase.user.id', $this->manager->id)
             ->assertJsonPath('purchase.items.0.material.id', $this->materialA->id)
+            ->assertJsonPath('purchase.items.0.material.unit', 'lembar')
             ->assertJsonPath('purchase.items.0.quantity', '3.00')
             ->assertJsonPath('purchase.items.0.unit_cost', '1000.00')
             ->assertJsonPath('purchase.items.0.subtotal', '3000.00')
             ->assertJsonPath('purchase.items.1.material.id', $this->materialB->id)
+            ->assertJsonPath('purchase.items.1.material.unit', 'kg')
             ->assertJsonPath('purchase.items.1.quantity', '1.50')
             ->assertJsonPath('purchase.items.1.unit_cost', '2000.50')
             ->assertJsonPath('purchase.items.1.subtotal', '3000.75');
@@ -534,7 +538,7 @@ class PurchaseApiTest extends TestCase
         $this->assertDatabaseCount('stock_ledgers', 2);
     }
 
-    public function test_purchase_history_keeps_a_soft_deleted_material_name(): void
+    public function test_purchase_history_keeps_a_soft_deleted_material_name_and_unit(): void
     {
         $this->actingAs($this->manager)
             ->postJson('/api/v1/purchases', $this->payload())
@@ -545,7 +549,8 @@ class PurchaseApiTest extends TestCase
         $this->actingAs($this->manager)
             ->getJson('/api/v1/purchases')
             ->assertOk()
-            ->assertJsonPath('data.0.items.0.material.name', 'Material A');
+            ->assertJsonPath('data.0.items.0.material.name', 'Material A')
+            ->assertJsonPath('data.0.items.0.material.unit', 'lembar');
     }
 
     /**

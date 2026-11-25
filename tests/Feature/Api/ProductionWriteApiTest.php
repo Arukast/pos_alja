@@ -434,12 +434,14 @@ class ProductionWriteApiTest extends TestCase
         $this->actingAs($this->production)
             ->getJson('/api/v1/production/summary')
             ->assertOk()
-            ->assertJsonPath('waste_today', 2);
+            ->assertJsonPath('waste_today_by_unit.0', ['unit' => 'm2', 'quantity' => 2])
+            ->assertJsonMissingPath('waste_today');
 
         $this->actingAs($this->production)
             ->getJson('/api/v1/dashboard')
             ->assertOk()
-            ->assertJsonPath('waste_today', 2);
+            ->assertJsonPath('waste_today_by_unit.0', ['unit' => 'm2', 'quantity' => 2])
+            ->assertJsonMissingPath('waste_today');
     }
 
     /**

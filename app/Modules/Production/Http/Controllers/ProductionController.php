@@ -7,7 +7,6 @@ namespace App\Modules\Production\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
-use App\Models\WastedMaterial;
 use App\Modules\Production\Actions\CompleteProduction;
 use App\Modules\Production\Actions\FailProduction;
 use App\Modules\Production\Actions\ReopenProduction;
@@ -15,6 +14,7 @@ use App\Modules\Production\Actions\StartProduction;
 use App\Modules\Production\Http\Requests\FailProductionRequest;
 use App\Modules\Production\Http\Resources\ProductionQueueResource;
 use App\Modules\Production\Queries\ProductionQueue;
+use App\Modules\Production\Queries\WasteByUnit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -114,7 +114,7 @@ final class ProductionController extends Controller
         ]);
     }
 
-    public function summary(Request $request): JsonResponse
+    public function summary(Request $request, WasteByUnit $wasteByUnit): JsonResponse
     {
         $actor = $request->user();
 
@@ -139,17 +139,12 @@ final class ProductionController extends Controller
             ->count();
         $failed = (clone $orders)->where('status', 3)->count();
 
-        $wasteToday = WastedMaterial::query()
-            ->where('branch_id', $branchId)
-            ->whereBetween('logged_at', [now()->startOfDay(), now()->endOfDay()])
-            ->sum('quantity');
-
         return response()->json([
             'queued' => $queued,
             'processing' => $processing,
             'completed_today' => $completedToday,
             'failed' => $failed,
-            'waste_today' => (float) $wasteToday,
+            'waste_today_by_unit' => $wasteByUnit->forBranch($branchId),
         ]);
     }
 }

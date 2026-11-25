@@ -137,7 +137,7 @@ class ReportApiTest extends TestCase
             ->getJson('/api/v1/dashboard')
             ->assertOk()
             ->assertJsonPath('role', 'production')
-            ->assertJsonStructure(['queued', 'processing', 'completed_today', 'waste_today', 'queue'])
+            ->assertJsonStructure(['queued', 'processing', 'completed_today', 'waste_today_by_unit', 'queue'])
             ->assertJsonMissingPath('finance')
             ->assertJsonMissingPath('queue.data.0.unit_price')
             ->assertJsonMissingPath('queue.data.0.invoice.grand_total');
