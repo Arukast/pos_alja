@@ -47,7 +47,6 @@ final class CalculateQuote
         return $this->execute([
             'product_id' => $pricing->product_id,
             'material_id' => $pricing->material_id,
-            'machine_id' => $item['machine_id'] ?? null,
             'selected_attributes' => $item['selected_attributes'] ?? [],
             'quantity' => $item['quantity'] ?? 1,
             'width' => $item['width'] ?? 0,

@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Modules\Catalog\Http\Controllers\AttributeController;
 use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
-use App\Modules\Catalog\Http\Controllers\MachineController;
 use App\Modules\Catalog\Http\Controllers\MaterialController;
 use App\Modules\Catalog\Http\Controllers\PricingController;
 use App\Modules\Catalog\Http\Controllers\ProductController;
@@ -63,7 +62,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::delete('/products/{product}', [ProductController::class, 'destroy']);
         Route::post('/products/{product}/restore', [ProductController::class, 'restore']);
         Route::get('/materials', [MaterialController::class, 'index']);
-        Route::get('/machines', [MachineController::class, 'index']);
         Route::get('/pricing', [PricingController::class, 'index']);
         Route::get('/stock-ledgers', [StockLedgerController::class, 'index']);
 
@@ -78,11 +76,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::post('/purchases', [PurchaseController::class, 'store']);
-
-        Route::post('/machines', [MachineController::class, 'store']);
-        Route::put('/machines/{machine}', [MachineController::class, 'update']);
-        Route::delete('/machines/{machine}', [MachineController::class, 'destroy']);
-        Route::post('/machines/{machine}/restore', [MachineController::class, 'restore']);
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/{category}', [CategoryController::class, 'update']);

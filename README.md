@@ -12,7 +12,7 @@ API-first point-of-sale for a digital printing shop. The Laravel backend owns th
 
 - Username/password session login, profile, password, and CSRF protection.
 - Owner, manager, cashier, designer, and production dashboards.
-- Branches, users, customers, products, materials, machines, attributes, and pricing matrices.
+- Branches, users, customers, products, materials, attributes, and pricing matrices.
 - Designer quotes, invoices, work-order tickets, and receipt printing.
 - Cashier down payments, settlements, pickup queue, and expenses.
 - Production queue, start/complete transitions, waste logging, and stock ledgers.

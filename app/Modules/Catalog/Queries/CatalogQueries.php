@@ -6,7 +6,6 @@ namespace App\Modules\Catalog\Queries;
 
 use App\Models\Attribute;
 use App\Models\AttributeType;
-use App\Models\Machine;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -97,34 +96,6 @@ final class CatalogQueries
             ->orderBy('id')
             ->paginate(10)
             ->withQueryString();
-    }
-
-    /**
-     * @param  array{branch_id?: string|null, search?: string|null, include_deleted?: bool}  $filters
-     */
-    public function machines(User $actor, array $filters): LengthAwarePaginator
-    {
-        $query = Machine::query()->with('branch');
-
-        if ($actor->role === 'owner') {
-            $branchId = $filters['branch_id'] ?? null;
-
-            if (is_string($branchId) && $branchId !== '' && $branchId !== 'all') {
-                $query->where('branch_id', $branchId);
-            }
-        } else {
-            BranchScope::apply($query, $actor);
-        }
-
-        if ($filters['include_deleted'] ?? false) {
-            $query->withTrashed();
-        }
-
-        if ($filters['search'] ?? null) {
-            $query->where('name', 'like', '%'.$filters['search'].'%');
-        }
-
-        return $query->orderBy('name')->paginate(15)->withQueryString();
     }
 
     /**

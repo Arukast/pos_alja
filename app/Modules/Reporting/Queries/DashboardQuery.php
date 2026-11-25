@@ -6,7 +6,6 @@ namespace App\Modules\Reporting\Queries;
 
 use App\Models\Expense;
 use App\Models\Invoice;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\Payment;
@@ -82,9 +81,6 @@ final class DashboardQuery
         $counts = [
             'materials' => $branchId === null ? 0 : Material::query()
                 ->whereHas('branchStocks', fn ($query) => $query->where('branch_id', $branchId))
-                ->count(),
-            'machines' => $branchId === null ? 0 : Machine::query()
-                ->where('branch_id', $branchId)
                 ->count(),
             'staff' => $branchId === null ? 0 : User::query()
                 ->where('branch_id', $branchId)

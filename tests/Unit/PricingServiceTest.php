@@ -8,8 +8,6 @@ use App\Exceptions\PricingNotFoundException;
 use App\Models\Attribute;
 use App\Models\AttributePricing;
 use App\Models\Branch;
-use App\Models\Machine;
-use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\Pricing;
 use App\Models\Product;
@@ -62,11 +60,6 @@ class PricingServiceTest extends TestCase
             'type' => 'Merchandise',
         ]);
 
-        $machine = Machine::create([
-            'branch_id' => $this->branch->id,
-            'name' => 'Mug Press Machine',
-        ]);
-
         $finishing = Attribute::create([
             'branch_id' => $this->branch->id,
             'name' => 'No Finishing',
@@ -84,15 +77,6 @@ class PricingServiceTest extends TestCase
             'customer_type' => 'Reguler',
         ]);
 
-        MachinePricing::create([
-            'branch_id' => $this->branch->id,
-            'pricing_id' => $pricing->id,
-            'machine_id' => $machine->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
         AttributePricing::create([
             'branch_id' => $this->branch->id,
             'pricing_id' => $pricing->id,
@@ -105,7 +89,6 @@ class PricingServiceTest extends TestCase
         $result = $this->pricingService->calculateQuote([
             'product_id' => $product->id,
             'material_id' => $material->id,
-            'machine_id' => $machine->id,
             'finishing_id' => $finishing->id,
             'sides' => 1,
             'finishing_sides' => 0,
@@ -143,11 +126,6 @@ class PricingServiceTest extends TestCase
             'type' => 'outdoor',
         ]);
 
-        $machine = Machine::create([
-            'branch_id' => $this->branch->id,
-            'name' => 'Flora Outdoor',
-        ]);
-
         $finishing = Attribute::create([
             'branch_id' => $this->branch->id,
             'name' => 'Mata Ayam',
@@ -165,15 +143,6 @@ class PricingServiceTest extends TestCase
             'customer_type' => 'Reguler',
         ]);
 
-        MachinePricing::create([
-            'branch_id' => $this->branch->id,
-            'pricing_id' => $pricing->id,
-            'machine_id' => $machine->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
         AttributePricing::create([
             'branch_id' => $this->branch->id,
             'pricing_id' => $pricing->id,
@@ -187,7 +156,6 @@ class PricingServiceTest extends TestCase
         $result = $this->pricingService->calculateQuote([
             'product_id' => $product->id,
             'material_id' => $material->id,
-            'machine_id' => $machine->id,
             'finishing_id' => $finishing->id,
             'quantity' => 3,
             'width' => 1.5,

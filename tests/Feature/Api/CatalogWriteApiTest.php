@@ -352,44 +352,6 @@ class CatalogWriteApiTest extends TestCase
         $this->assertCount(2, $ownerRow['stocks']);
     }
 
-    public function test_machine_crud_is_branch_scoped_for_managers(): void
-    {
-        $ownerMachine = $this->actingAs($this->owner)
-            ->postJson('/api/v1/machines', [
-                'name' => 'Branch Two Printer',
-                'branch_id' => $this->branchTwo->id,
-                'cost' => 1000,
-            ])
-            ->assertCreated()
-            ->json('machine');
-
-        $managerMachine = $this->actingAs($this->manager)
-            ->postJson('/api/v1/machines', [
-                'name' => 'Branch One Printer',
-                'branch_id' => $this->branchTwo->id,
-                'cost' => 2000,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('machine.branch_id', $this->branchOne->id)
-            ->json('machine');
-
-        $this->actingAs($this->manager)
-            ->putJson("/api/v1/machines/{$ownerMachine['id']}", [
-                'name' => 'Nope',
-                'branch_id' => $this->branchTwo->id,
-                'cost' => 1,
-            ])
-            ->assertForbidden();
-
-        $this->actingAs($this->manager)
-            ->deleteJson("/api/v1/machines/{$managerMachine['id']}")
-            ->assertNoContent();
-
-        $this->actingAs($this->manager)
-            ->postJson("/api/v1/machines/{$managerMachine['id']}/restore")
-            ->assertOk();
-    }
-
     public function test_category_attribute_type_and_attribute_crud(): void
     {
         $category = $this->actingAs($this->owner)
@@ -481,7 +443,7 @@ class CatalogWriteApiTest extends TestCase
 
     public function test_catalog_write_endpoints_require_authentication(): void
     {
-        foreach (['/materials', '/machines', '/categories', '/attribute-types', '/attributes', '/pricing'] as $path) {
+        foreach (['/materials', '/categories', '/attribute-types', '/attributes', '/pricing'] as $path) {
             $this->postJson('/api/v1'.$path, [])->assertUnauthorized();
         }
     }

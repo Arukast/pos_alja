@@ -46,11 +46,6 @@ class Pricing extends Model
         return $this->hasMany(AttributePricing::class);
     }
 
-    public function machinePricings(): HasMany
-    {
-        return $this->hasMany(MachinePricing::class);
-    }
-
     /**
      * @return BelongsTo<Branch, $this>
      */
