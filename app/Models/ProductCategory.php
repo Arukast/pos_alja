@@ -52,4 +52,13 @@ class ProductCategory extends Model
     {
         return $this->hasMany(Material::class, 'product_category_id');
     }
+
+    /**
+     * @return HasMany<ProductCategoryDiscount, $this>
+     */
+    public function discountTiers(): HasMany
+    {
+        return $this->hasMany(ProductCategoryDiscount::class, 'product_category_id')
+            ->orderBy('min_qty');
+    }
 }

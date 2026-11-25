@@ -467,6 +467,8 @@ class CatalogApiTest extends TestCase
                 ->assertOk()
                 ->assertJsonMissing(['id' => $deleted->id]);
         }
+    }
+
     public function test_stock_ledgers_carry_traceability_fields(): void
     {
         $this->actingAs($this->manager)
