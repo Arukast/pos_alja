@@ -16,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
-
+/** Manajemen pemesanan dan pembuatan invoice pelanggan (PB-02 / SCRUM-21). */
 final class InvoiceController extends Controller
 {
     public function index(Request $request, InvoiceList $invoices): AnonymousResourceCollection
