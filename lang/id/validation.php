@@ -214,6 +214,7 @@ return [
         'product_category_id' => 'kategori produk',
         'type' => 'tipe',
         'dimensions' => 'dimensi',
+        'unit' => 'satuan',
         'cost' => 'biaya',
         'price' => 'harga',
         'initial_stock' => 'stok awal',

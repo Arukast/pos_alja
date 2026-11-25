@@ -36,6 +36,7 @@ final class MaterialResource extends JsonResource
             'name' => $this->name,
             'type' => $this->type,
             'dimensions' => $this->dimensions,
+            'unit' => $this->unit,
             'cost' => Decimal::money($this->cost),
             'price' => Decimal::money($this->price),
             'category' => $this->category ? [

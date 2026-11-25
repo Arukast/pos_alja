@@ -94,6 +94,7 @@ class CatalogApiTest extends TestCase
             'product_category_id' => $this->category->id,
             'type' => 'roll',
             'dimensions' => '1.2m',
+            'unit' => 'm2',
             'cost' => 10000,
             'price' => 15000,
         ]);
@@ -264,6 +265,7 @@ class CatalogApiTest extends TestCase
 
         $this->assertEquals(10, (float) $response->json('data.0.current_stock'));
         $this->assertSame($this->material->id, $response->json('data.0.id'));
+        $this->assertSame('m2', $response->json('data.0.unit'));
     }
 
     public function test_manager_material_list_is_scoped_to_own_branch(): void

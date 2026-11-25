@@ -16,12 +16,14 @@ use App\Modules\Catalog\Queries\MaterialQueries;
 use App\Modules\Inventory\Actions\AdjustStock;
 use App\Services\InventoryService;
 use App\Support\BranchScope;
+use App\Support\MaterialUnit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 final class MaterialController extends Controller
 {
@@ -101,6 +103,7 @@ final class MaterialController extends Controller
             'product_category_id' => ['required', 'uuid', 'exists:product_categories,id'],
             'type' => ['nullable', 'string', 'max:50'],
             'dimensions' => ['nullable', 'string', 'max:100'],
+            'unit' => ['sometimes', 'string', Rule::in(MaterialUnit::VALUES)],
             'cost' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
         ]);

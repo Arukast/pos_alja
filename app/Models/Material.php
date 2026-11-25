@@ -20,6 +20,7 @@ class Material extends Model
         'product_category_id',
         'type',
         'dimensions',
+        'unit',
         'cost',
         'price',
     ];

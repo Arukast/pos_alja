@@ -119,10 +119,10 @@ class DatabaseSeeder extends Seeder
 
         // 4. Materials
         $materials = [
-            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000],
-            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000],
-            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500],
-            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500],
+            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 8000, 'price' => 15000],
+            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 15000, 'price' => 30000],
+            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'unit' => 'lembar', 'cost' => 1200, 'price' => 3500],
+            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'unit' => 'lembar', 'cost' => 150, 'price' => 500],
         ];
 
         $stocksMap = [
