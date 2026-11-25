@@ -155,7 +155,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
   there is no panel to replace.
 - Production screens never show price, cost, profit, discount, receivable, or payment fields. Invoice and
   receipt print are denied to production; production uses the queue.
-- The production queue table shows `Area` (m²), `Operator`, and a status filter. Failed print (waste) is
+- The production queue table shows `Area` (m²) and `Operator`. Failed print (waste) is
   recorded from the queue row and shows a quantity, never money.
 - Money is transported as decimal strings with two places and displayed through `formatMoney`; the SPA never
   submits authoritative line prices.

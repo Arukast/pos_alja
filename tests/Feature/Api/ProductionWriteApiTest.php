@@ -175,6 +175,24 @@ class ProductionWriteApiTest extends TestCase
         $this->assertDatabaseCount('stock_ledgers', 0);
     }
 
+    public function test_start_returns_a_validation_error_when_the_priced_material_is_soft_deleted(): void
+    {
+        $this->material->delete();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/start")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $this->order->id,
+            'status' => 0,
+            'operator_id' => null,
+        ]);
+        $this->assertDatabaseCount('order_status_logs', 0);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
     public function test_start_falls_back_to_quantity_for_materials_with_the_default_unit(): void
     {
         // Only m2 materials require an area; this order has none.

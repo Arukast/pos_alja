@@ -29,7 +29,10 @@ interface ProductionSummary {
 export function ProductionQueuePage() {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
-    const [notice, setNotice] = useState<string | null>(null);
+    const [notice, setNotice] = useState<{
+        message: string;
+        tone: 'success' | 'error';
+    } | null>(null);
     const [wasteOrder, setWasteOrder] = useState<ProductionQueueItem | null>(null);
     const [failOrder, setFailOrder] = useState<ProductionQueueItem | null>(null);
 
@@ -45,34 +48,33 @@ export function ProductionQueuePage() {
     const refresh = () => {
         void queryClient.invalidateQueries({ queryKey: ['production'] });
         void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        void queryClient.invalidateQueries({ queryKey: ['waste'] });
     };
 
     const start = useMutation({
         mutationFn: (id: string) => api.startOrder(id),
         onSuccess: () => {
             refresh();
-            setNotice('Produksi dimulai dan stok telah dikurangi.');
+            setNotice({ message: 'Produksi dimulai dan stok telah dikurangi.', tone: 'success' });
         },
-        onError: (error) => setNotice(errorMessage(error)),
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const complete = useMutation({
         mutationFn: (id: string) => api.completeOrder(id),
         onSuccess: () => {
             refresh();
-            setNotice('Pesanan ditandai selesai.');
+            setNotice({ message: 'Pesanan ditandai selesai.', tone: 'success' });
         },
-        onError: (error) => setNotice(errorMessage(error)),
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const reopen = useMutation({
         mutationFn: (id: string) => api.reopenOrder(id),
         onSuccess: () => {
             refresh();
-            setNotice('Pesanan dikembalikan ke antrean.');
+            setNotice({ message: 'Pesanan dikembalikan ke antrean.', tone: 'success' });
         },
-        onError: (error) => setNotice(errorMessage(error)),
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     return (
@@ -80,7 +82,7 @@ export function ProductionQueuePage() {
             <PageBanner
                 eyebrow="Produksi"
                 title="Antrean Cetak"
-                description="Antrean pekerjaan cetak diurutkan berdasarkan tenggat."
+                description="Antrean pekerjaan cetak diurutkan berdasarkan waktu masuk."
             />
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -132,15 +134,15 @@ export function ProductionQueuePage() {
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell className="hidden sm:table-cell">Pelanggan</TableHeaderCell>
+                                        <TableHeaderCell className="hidden lg:table-cell">Pelanggan</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Item</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Jml</TableHeaderCell>
                                         <TableHeaderCell className="hidden lg:table-cell">Area</TableHeaderCell>
                                         <TableHeaderCell className="hidden lg:table-cell">Operator</TableHeaderCell>
                                         <TableHeaderCell className="hidden xl:table-cell">Diterima</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Tenggat</TableHeaderCell>
-                                        <TableHeaderCell>Status</TableHeaderCell>
-                                        <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                        <TableHeaderCell className="hidden sm:table-cell">Status</TableHeaderCell>
+                                        <TableHeaderCell className="bg-light-surface border-light-border max-lg:sticky max-lg:right-0 max-lg:shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
                                     </TableRow>
@@ -152,17 +154,28 @@ export function ProductionQueuePage() {
                                         (query.data?.data ?? []).map((order) => {
                                             const invoiceNumber =
                                                 order.invoice?.invoice_number ?? '-';
+                                            const itemLabel = order.file_name
+                                                ? `${invoiceNumber} ${order.file_name}`
+                                                : invoiceNumber;
 
                                             return (
                                                 <TableRow key={order.id}>
-                                                    <TableCell className="font-medium whitespace-nowrap">
+                                                    <TableCell className="font-medium break-all sm:whitespace-nowrap">
                                                         {invoiceNumber}
+                                                        <span className="mt-1 block sm:hidden">
+                                                            <OrderStatusBadge status={order.status} />
+                                                        </span>
                                                     </TableCell>
-                                                    <TableCell className="hidden sm:table-cell">
+                                                    <TableCell className="hidden lg:table-cell">
                                                         {order.invoice?.customer?.name ?? '-'}
                                                     </TableCell>
                                                     <TableCell className="hidden sm:table-cell">
-                                                        {order.file_name ?? '-'}
+                                                        <span
+                                                            className="block max-w-[8rem] truncate lg:max-w-none"
+                                                            title={order.file_name ?? undefined}
+                                                        >
+                                                            {order.file_name ?? '-'}
+                                                        </span>
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                         {order.quantity}
@@ -181,15 +194,15 @@ export function ProductionQueuePage() {
                                                             ? formatDate(order.invoice.deadline)
                                                             : '-'}
                                                     </TableCell>
-                                                    <TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
                                                         <OrderStatusBadge status={order.status} />
                                                     </TableCell>
-                                                    <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                                        <div className="flex flex-wrap gap-2">
+                                                    <TableCell className="bg-light-surface border-light-border max-lg:sticky max-lg:right-0 max-lg:shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] border-l dark:border-surface-300 dark:bg-surface-700">
+                                                        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
                                                             {order.status === 0 ? (
                                                                 <Button
                                                                     size="sm"
-                                                                    aria-label={`Mulai ${invoiceNumber}`}
+                                                                    aria-label={`Mulai ${itemLabel}`}
                                                                     loading={start.isPending}
                                                                     onClick={() => start.mutate(order.id)}
                                                                 >
@@ -200,7 +213,7 @@ export function ProductionQueuePage() {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="secondary"
-                                                                    aria-label={`Selesaikan ${invoiceNumber}`}
+                                                                    aria-label={`Selesaikan ${itemLabel}`}
                                                                     loading={complete.isPending}
                                                                     onClick={() => complete.mutate(order.id)}
                                                                 >
@@ -211,7 +224,7 @@ export function ProductionQueuePage() {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="danger"
-                                                                    aria-label={`Gagal ${invoiceNumber}`}
+                                                                    aria-label={`Gagal ${itemLabel}`}
                                                                     onClick={() => setFailOrder(order)}
                                                                 >
                                                                     Gagal
@@ -220,23 +233,22 @@ export function ProductionQueuePage() {
                                                             {order.status === 3 ? (
                                                                 <Button
                                                                     size="sm"
-                                                                    aria-label={`Proses Ulang ${invoiceNumber}`}
+                                                                    variant="secondary"
+                                                                    aria-label={`Proses Ulang ${itemLabel}`}
                                                                     loading={reopen.isPending}
                                                                     onClick={() => reopen.mutate(order.id)}
                                                                 >
                                                                     Proses Ulang
                                                                 </Button>
                                                             ) : null}
-                                                            {order.status === 0 || order.status === 1 || order.status === 3 ? (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="secondary"
-                                                                    aria-label={`Sisa Bahan ${invoiceNumber}`}
-                                                                    onClick={() => setWasteOrder(order)}
-                                                                >
-                                                                    Sisa Bahan
-                                                                </Button>
-                                                            ) : null}
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                aria-label={`Sisa Bahan ${itemLabel}`}
+                                                                onClick={() => setWasteOrder(order)}
+                                                            >
+                                                                Sisa Bahan
+                                                            </Button>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -258,7 +270,9 @@ export function ProductionQueuePage() {
                     )}
                 </CardBody>
             </Card>
-            {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
             {failOrder ? (
                 <FailProductionModal
                     order={failOrder}

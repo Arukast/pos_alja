@@ -34,7 +34,7 @@ final class BaseCostQuery
 
         $wastedMaterials = $wasteQuery->orderByDesc('logged_at')->get();
         $wastedCost = $wastedMaterials->sum(
-            fn (WastedMaterial $waste): float => (float) $waste->quantity * (float) $waste->material->cost
+            fn (WastedMaterial $waste): float => (float) $waste->quantity * (float) ($waste->material ? $waste->material->cost : 0)
         );
 
         return [

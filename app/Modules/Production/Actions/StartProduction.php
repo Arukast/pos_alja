@@ -32,6 +32,13 @@ final class StartProduction
             }
 
             $pricing = $locked->pricing;
+
+            if ($pricing !== null && $pricing->material === null) {
+                throw ValidationException::withMessages([
+                    'material' => 'Bahan untuk pesanan ini tidak ditemukan.',
+                ]);
+            }
+
             $unit = $pricing?->material?->unit;
             $area = (float) $locked->area;
 

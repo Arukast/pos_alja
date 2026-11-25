@@ -41,6 +41,8 @@ final class FailProduction
                     ."SUM(CASE WHEN type = 'usage_reversal' THEN added_stock ELSE 0 END) AS net_usage"
                 )
                 ->groupBy('branch_id', 'material_id')
+                ->orderBy('material_id')
+                ->orderBy('branch_id')
                 ->get();
 
             foreach ($netUsages as $usage) {
@@ -78,6 +80,6 @@ final class FailProduction
 
         SafeBroadcast::orderUpdated($updated->invoice?->branch_id, $operator);
 
-        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'pricing']);
+        return $updated->load(['invoice.customer', 'invoice.designer', 'operator']);
     }
 }

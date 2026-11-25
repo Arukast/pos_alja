@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { quantityWithUnit, unitLabel, wasteByUnitLabel } from './units';
+import { quantityWithUnit, unitLabel, unitOptions, wasteByUnitLabel } from './units';
+
+describe('unitOptions', () => {
+    it('lists the seven stored units in a fixed order', () => {
+        expect(unitOptions.map((option) => option.value)).toEqual([
+            'm2',
+            'pcs',
+            'lembar',
+            'roll',
+            'kg',
+            'liter',
+            'batang',
+        ]);
+    });
+});
 
 describe('unitLabel', () => {
     it('renders square metres with a superscript', () => {

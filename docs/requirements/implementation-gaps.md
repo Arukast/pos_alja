@@ -2,7 +2,7 @@
 
 - **As of:** 2026-11-25, after the PB-05/PB-07 follow-up (material units, machine removal, production failure).
 - **Scope:** The refactor replaced Livewire/Blade with Laravel API modules and a React SPA. Sprint Review 1 changed the target for pricing, machines, customers, expenses, production, and printing. The machine drop, material units, and production failure/reopen are now implemented; pricing, finishing/display persistence, and the remaining FR sprints are not.
-- **Status source:** Route, controller, policy, model, migration, frontend, and test inspection on `feat/pb05-pb07-followup` (`49bf710`), plus the Sprint Review 1 change record.
+- **Status source:** Route, controller, policy, model, migration, frontend, and test inspection on `feat/pb05-pb07-followup` at the final commit of the follow-up unit, plus the Sprint Review 1 change record.
 - **Read this first:** A feature marked Implemented has API endpoints, policies, tests, and SPA screens. Partial means core behavior exists but part of the acceptance criteria is still missing. Target means no implementation yet.
 
 ## Functional Requirements

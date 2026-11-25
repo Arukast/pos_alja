@@ -44,7 +44,7 @@ final class NetProfitQuery
 
         $wastedMaterials = $wasteQuery->orderByDesc('logged_at')->get();
         $wasteCost = $wastedMaterials->sum(
-            fn (WastedMaterial $waste): float => (float) $waste->quantity * (float) $waste->material->cost
+            fn (WastedMaterial $waste): float => (float) $waste->quantity * (float) ($waste->material ? $waste->material->cost : 0)
         );
 
         $expenseQuery = Expense::query()

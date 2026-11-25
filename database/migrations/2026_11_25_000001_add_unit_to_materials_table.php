@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('unit', 16)->default('pcs');
         });
 
+        // Do not remove or move App\Support\MaterialUnit: this migration's backfill depends on it.
         MaterialUnit::backfill();
     }
 

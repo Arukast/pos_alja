@@ -102,7 +102,7 @@ src/
 - `/owner/purchases` and `/manager/purchases` share `PurchasesPage`: a paginated history table plus a "Catat Pembelian" modal with date-only `purchased_at`, supplier, notes, dynamic line items, a running total, and an `idempotency_key` generated once when the modal opens. Each history row expands to its line items: material name, quantity with unit, unit cost, subtotal, notes, and the recorder. `ResourceTable` takes an optional `expandedRow` renderer; existing tables are unchanged. The owner selects a branch; the manager has no branch selector. The purchase modal labels quantity with the selected material's unit.
 - `/manager/ledgers` adds type, reason, and user columns to the stock quantities.
 - Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English, with one exception: `expense.category` is a fixed dropdown, not free text, so reports group by the selected category.
-- Shared copy lives in `roleLinks`, `admin/CrudPage`, `components/ui`, and `lib/labels.ts`.
+- Shared copy lives in `roleLinks`, `admin/CrudPage`, `components/ui`, `lib/labels.ts`, and `lib/units.ts`.
 - Dates format with `id-ID`; money already formats with `id-ID`.
 
 ## 6. Realtime

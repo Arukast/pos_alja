@@ -24,12 +24,7 @@ import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
-import { quantityWithUnit, unitLabel } from '../../lib/units';
-
-const unitOptions = ['m2', 'pcs', 'lembar', 'roll', 'kg', 'liter', 'batang'].map((unit) => ({
-    value: unit,
-    label: unitLabel(unit),
-}));
+import { quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
 const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
@@ -162,12 +157,20 @@ export function ManagerMaterialsPage() {
                     header: 'Bahan',
                     cell: (material) => (
                         <div>
-                            <span className="font-medium">{material.name}</span>
+                            <span className="block font-medium">{material.name}</span>
                             <p className="text-light-muted text-xs dark:text-gray-400">
                                 {[material.type, material.dimensions, unitLabel(material.unit)]
                                     .filter(Boolean)
                                     .join(' · ')}
+                                <span className="sm:hidden">
+                                    {' · '}Min {quantityWithUnit(material.min_stock, material.unit)}
+                                </span>
                             </p>
+                            {material.is_low_stock === true ? (
+                                <span className="mt-1 block sm:hidden">
+                                    <Badge tone="warning">Menipis</Badge>
+                                </span>
+                            ) : null}
                         </div>
                     ),
                 },
@@ -179,7 +182,7 @@ export function ManagerMaterialsPage() {
                 },
                 {
                     header: 'Minimum',
-                    className: 'text-right tabular-nums whitespace-nowrap',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
                     cell: (material) => quantityWithUnit(material.min_stock, material.unit),
                 },
                 {
@@ -235,7 +238,7 @@ export function ManagerMaterialsPage() {
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
-                                        <TableHeaderCell>Ditambahkan</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Ditambahkan</TableHeaderCell>
                                         <TableHeaderCell>Digunakan</TableHeaderCell>
                                         <TableHeaderCell>Tersisa</TableHeaderCell>
                                     </TableRow>
@@ -252,7 +255,7 @@ export function ManagerMaterialsPage() {
                                                     {formatDate(ledger.logged_at)}
                                                 </TableCell>
                                                 <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                <TableCell>{quantityWithUnit(ledger.added_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{quantityWithUnit(ledger.added_stock, ledger.material?.unit)}</TableCell>
                                                 <TableCell>{quantityWithUnit(ledger.used_stock, ledger.material?.unit)}</TableCell>
                                                 <TableCell>{quantityWithUnit(ledger.remaining_stock, ledger.material?.unit)}</TableCell>
                                             </TableRow>
@@ -277,23 +280,38 @@ export function ManagerLedgersPage() {
             queryKey={['manager', 'ledgers']}
             queryFn={(page) => api.stockLedgers({ page })}
             columns={[
-                { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
-                { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
+                { header: 'Tanggal', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => formatDate(ledger.logged_at) },
+                {
+                    header: 'Bahan',
+                    cell: (ledger) => (
+                        <div>
+                            <span
+                                className="block max-w-[7rem] truncate font-medium sm:max-w-none"
+                                title={ledger.material?.name ?? undefined}
+                            >
+                                {ledger.material?.name ?? '-'}
+                            </span>
+                            <span className="text-light-muted text-xs whitespace-nowrap sm:hidden">
+                                {formatDate(ledger.logged_at)}
+                            </span>
+                        </div>
+                    ),
+                },
                 { header: 'Tipe', cell: (ledger) => ledgerTypeLabel(ledger.type) },
                 {
                     header: 'Alasan',
-                    className: 'hidden lg:table-cell',
+                    className: 'hidden md:table-cell',
                     cell: (ledger) => (
-                        <span className="block max-w-[18rem] truncate" title={ledger.reason ?? undefined}>
+                        <span className="block max-w-[9rem] truncate" title={ledger.reason ?? undefined}>
                             {ledger.reason ?? '-'}
                         </span>
                     ),
                 },
-                { header: 'Pengguna', className: 'hidden sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
-                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.added_stock, ledger.material?.unit) },
-                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.used_stock, ledger.material?.unit) },
-                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.wasted_stock, ledger.material?.unit) },
-                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.remaining_stock, ledger.material?.unit) },
+                { header: 'Pengguna', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
+                { header: 'Ditambahkan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => quantityWithUnit(ledger.added_stock, ledger.material?.unit) },
+                { header: 'Digunakan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => quantityWithUnit(ledger.used_stock, ledger.material?.unit) },
+                { header: 'Sisa Bahan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => quantityWithUnit(ledger.wasted_stock, ledger.material?.unit) },
+                { header: 'Tersisa', className: 'text-right tabular-nums sm:whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.remaining_stock, ledger.material?.unit) },
             ]}
         />
     );

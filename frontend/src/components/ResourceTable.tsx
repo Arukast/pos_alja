@@ -126,9 +126,9 @@ export function ResourceTable<T extends { id: string }>({
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>
-                                                    {isExpanded ? (
+                                                    {expandedRow && isExpanded ? (
                                                         <tr className="bg-light-surface-2/40 dark:bg-surface-600/30">
-                                                            <TableCell colSpan={columns.length + 1}>
+                                                            <TableCell colSpan={columnCount}>
                                                                 {expandedRow ? expandedRow(row) : null}
                                                             </TableCell>
                                                         </tr>

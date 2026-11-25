@@ -16,7 +16,7 @@ import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
 import { roleLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
-import { quantityWithUnit, unitLabel } from '../../lib/units';
+import { quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
     branches.map((branch) => ({ value: branch.id, label: branch.name }));
@@ -24,11 +24,6 @@ const branchOptions = (branches: Array<{ id: string; name: string }>) =>
 const roleOptions = ['owner', 'manager', 'cashier', 'designer', 'production'].map((role) => ({
     value: role,
     label: roleLabel(role),
-}));
-
-const unitOptions = ['m2', 'pcs', 'lembar', 'roll', 'kg', 'liter', 'batang'].map((unit) => ({
-    value: unit,
-    label: unitLabel(unit),
 }));
 
 const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
@@ -216,7 +211,12 @@ export function OwnerMaterialsPage() {
             columns={[
                 { header: 'Bahan', cell: (material) => (
                     <div>
-                        <span className="font-medium">{material.name}</span>
+                        <span
+                            className="block max-w-[6rem] truncate font-medium sm:max-w-none"
+                            title={material.name}
+                        >
+                            {material.name}
+                        </span>
                         <p className="text-light-muted text-xs dark:text-gray-400">
                             {[material.type, material.dimensions, unitLabel(material.unit)]
                                 .filter(Boolean)
@@ -224,23 +224,27 @@ export function OwnerMaterialsPage() {
                         </p>
                     </div>
                 ) },
-                { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
+                { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
                     cell: (material) =>
                         material.stocks.length === 0 ? (
                             '-'
                         ) : (
-                            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                            <ul className="space-y-2">
                                 {material.stocks.map((stock) => (
-                                    <li key={stock.branch_id}>
-                                        <span>
-                                            {stock.branch_name ?? '-'}:{' '}
-                                            {quantityWithUnit(stock.current_stock, material.unit)} /{' '}
-                                            {quantityWithUnit(stock.min_stock, material.unit)}
+                                    <li key={stock.branch_id} className="break-words">
+                                        <span className="block font-medium">
+                                            {stock.branch_name ?? '-'}
+                                        </span>
+                                        <span className="block">
+                                            {quantityWithUnit(stock.current_stock, material.unit)}
+                                        </span>
+                                        <span className="text-light-muted block text-xs dark:text-gray-400">
+                                            min {quantityWithUnit(stock.min_stock, material.unit)}
                                         </span>
                                         {stock.is_low_stock ? (
-                                            <span className="ml-1 font-semibold text-amber-700 dark:text-amber-300">
+                                            <span className="block font-semibold text-amber-700 dark:text-amber-300">
                                                 menipis
                                             </span>
                                         ) : null}
@@ -249,8 +253,8 @@ export function OwnerMaterialsPage() {
                             </ul>
                         ),
                 },
-                { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.cost) },
-                { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.price) },
+                { header: 'Biaya', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.cost) },
+                { header: 'Harga', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.price) },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}

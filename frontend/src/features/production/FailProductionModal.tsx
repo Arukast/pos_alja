@@ -61,6 +61,7 @@ export function FailProductionModal({
             onClose={close}
             title="Tandai Pesanan Gagal"
             description={order?.invoice ? `Invoice ${order.invoice.invoice_number}` : undefined}
+            initialFocusSelector="textarea"
             footer={
                 <>
                     <Button variant="secondary" disabled={fail.isPending} onClick={close}>

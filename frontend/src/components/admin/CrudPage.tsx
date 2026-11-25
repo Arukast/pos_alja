@@ -170,6 +170,15 @@ export function CrudPage<T extends { id: string }>({
 
     const hasActions = Boolean(update || remove || rowActions);
 
+    const closeModal = () => {
+        if (save.isPending) {
+            return;
+        }
+
+        setOpen(false);
+        setEditing(null);
+    };
+
     return (
         <div className="space-y-6">
             {hideBanner ? null : (
@@ -310,10 +319,7 @@ export function CrudPage<T extends { id: string }>({
 
             <Modal
                 open={open}
-                onClose={() => {
-                    setOpen(false);
-                    setEditing(null);
-                }}
+                onClose={closeModal}
                 title={editing ? 'Ubah data' : createLabel}
             >
                 <div className="space-y-4">
@@ -379,13 +385,7 @@ export function CrudPage<T extends { id: string }>({
                     })}
 
                     <div className="flex justify-end gap-2">
-                        <Button
-                            variant="secondary"
-                            onClick={() => {
-                                setOpen(false);
-                                setEditing(null);
-                            }}
-                        >
+                        <Button variant="secondary" disabled={save.isPending} onClick={closeModal}>
                             Batal
                         </Button>
                         <Button loading={save.isPending} onClick={() => save.mutate()}>

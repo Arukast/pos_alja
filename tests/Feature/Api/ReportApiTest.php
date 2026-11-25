@@ -196,6 +196,25 @@ class ReportApiTest extends TestCase
             ->assertJsonPath('by_category.Supplies', '10000.00');
     }
 
+    public function test_owner_reports_tolerate_waste_from_a_soft_deleted_material(): void
+    {
+        $this->material->delete();
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/base-cost?branch_id='.$this->branchOne->id.'&start_date='.now()->toDateString().'&end_date='.now()->toDateString())
+            ->assertOk()
+            ->assertJsonPath('total_hpp', '60000.00')
+            ->assertJsonPath('wasted_cost_total', '0.00')
+            ->assertJsonPath('wasted_materials.0.material', null);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/net-profit?branch_id='.$this->branchOne->id.'&start_date='.now()->toDateString().'&end_date='.now()->toDateString())
+            ->assertOk()
+            ->assertJsonPath('total_hpp', '60000.00')
+            ->assertJsonPath('net_profit', '30000.00')
+            ->assertJsonPath('wasted_materials.0.material', null);
+    }
+
     public function test_sparkline_returns_period_shapes(): void
     {
         $this->actingAs($this->owner)

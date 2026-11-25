@@ -45,6 +45,6 @@ final class ReopenProduction
 
         SafeBroadcast::orderUpdated($updated->invoice?->branch_id, $operator);
 
-        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'pricing']);
+        return $updated->load(['invoice.customer', 'invoice.designer', 'operator']);
     }
 }

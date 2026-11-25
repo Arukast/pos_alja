@@ -16,6 +16,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockLedger;
 use App\Models\User;
+use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -371,6 +372,53 @@ class ProductionFailApiTest extends TestCase
             ->count());
     }
 
+    public function test_fail_reverses_usage_groups_in_ascending_material_order(): void
+    {
+        $secondMaterial = Material::create([
+            'name' => 'Sticker Roll',
+            'product_category_id' => $this->material->product_category_id,
+            'type' => 'roll',
+            'unit' => 'lembar',
+        ]);
+
+        $materials = [$this->material, $secondMaterial];
+        usort($materials, fn (Material $a, Material $b): int => $a->id <=> $b->id);
+
+        $branches = [$this->branchOne, $this->branchTwo];
+        usort($branches, fn (Branch $a, Branch $b): int => $a->id <=> $b->id);
+
+        $order = $this->order($this->invoice, 1, $this->production->id);
+
+        // Interleaved: the material order opposes the branch order, so the
+        // grouped-but-unordered query would reverse the expected sequence.
+        $this->ledger($order, 'usage', used: 6, remaining: 4, material: $materials[0], branch: $branches[1]);
+        $this->ledger($order, 'usage', used: 3, remaining: 7, material: $materials[1], branch: $branches[0]);
+
+        $inventory = new class extends InventoryService
+        {
+            /** @var list<array{0: string, 1: string}> */
+            public array $movements = [];
+
+            public function applyMovement(string $materialId, string $branchId, string $type, float $quantity, ?string $reason = null, ?string $referenceType = null, ?string $referenceId = null, ?string $notes = null, ?User $actor = null, bool $absolute = false): array
+            {
+                $this->movements[] = [$materialId, $branchId];
+
+                return ['old_stock' => 0.0, 'new_stock' => 0.0];
+            }
+        };
+
+        $this->app->instance(InventoryService::class, $inventory);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/fail", ['note' => 'Bahan rusak'])
+            ->assertOk();
+
+        $this->assertSame([
+            [$materials[0]->id, $branches[1]->id],
+            [$materials[1]->id, $branches[0]->id],
+        ], $inventory->movements);
+    }
+
     public function test_fail_ignores_waste_ledger_rows_when_reversing(): void
     {
         $order = $this->order($this->invoice, 1, $this->production->id);
@@ -530,10 +578,10 @@ class ProductionFailApiTest extends TestCase
             ->value('current_stock');
     }
 
-    private function ledger(Order $order, string $type, float $used = 0, float $added = 0, float $remaining = 0, ?Material $material = null): void
+    private function ledger(Order $order, string $type, float $used = 0, float $added = 0, float $remaining = 0, ?Material $material = null, ?Branch $branch = null): void
     {
         StockLedger::create([
-            'branch_id' => $this->branchOne->id,
+            'branch_id' => ($branch ?? $this->branchOne)->id,
             'material_id' => ($material ?? $this->material)->id,
             'type' => $type,
             'user_id' => $this->production->id,

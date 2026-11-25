@@ -87,7 +87,7 @@ export function ProductionWastePage() {
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Desainer</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Jml</TableHeaderCell>
+                                        <TableHeaderCell className="text-right whitespace-nowrap">Jml</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Dimensi</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
@@ -101,12 +101,15 @@ export function ProductionWastePage() {
                                                     {formatDate(waste.logged_at)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="font-medium">
+                                                    <span
+                                                        className="block max-w-[9rem] truncate font-medium sm:max-w-none"
+                                                        title={waste.material?.name ?? undefined}
+                                                    >
                                                         {waste.material?.name ?? '-'}
                                                     </span>
                                                     {waste.notes ? (
                                                         <p
-                                                            className="text-light-muted max-w-[16rem] truncate text-xs dark:text-gray-400"
+                                                            className="text-light-muted max-w-[9rem] truncate text-xs sm:max-w-[16rem] dark:text-gray-400"
                                                             title={waste.notes}
                                                         >
                                                             {waste.notes}
@@ -114,7 +117,7 @@ export function ProductionWastePage() {
                                                     ) : null}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.designer?.name ?? '-'}</TableCell>
-                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                <TableCell className="text-right tabular-nums whitespace-normal sm:whitespace-nowrap">
                                                     {quantityWithUnit(waste.quantity, waste.material?.unit)}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.dimensions ?? '-'}</TableCell>

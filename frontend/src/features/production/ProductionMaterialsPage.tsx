@@ -72,10 +72,10 @@ export function ProductionMaterialsPage() {
                                         <TableHeaderCell className="text-right whitespace-nowrap">
                                             Stok
                                         </TableHeaderCell>
-                                        <TableHeaderCell className="text-right whitespace-nowrap">
+                                        <TableHeaderCell className="hidden text-right whitespace-nowrap sm:table-cell">
                                             Minimum
                                         </TableHeaderCell>
-                                        <TableHeaderCell>Status</TableHeaderCell>
+                                        <TableHeaderCell className="whitespace-nowrap">Status</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -96,11 +96,15 @@ export function ProductionMaterialsPage() {
                                                 }
                                             >
                                                 <TableCell>
-                                                    <span className="font-medium">{material.name}</span>
+                                                    <span className="font-medium break-words">{material.name}</span>
                                                     <p className="text-light-muted text-xs dark:text-gray-400">
                                                         {[material.type, material.dimensions, unitLabel(material.unit)]
                                                             .filter(Boolean)
                                                             .join(' · ')}
+                                                        <span className="sm:hidden">
+                                                            {' · '}Min{' '}
+                                                            {quantityWithUnit(material.min_stock, material.unit)}
+                                                        </span>
                                                     </p>
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">
@@ -109,11 +113,13 @@ export function ProductionMaterialsPage() {
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                     {quantityWithUnit(material.current_stock, material.unit)}
                                                 </TableCell>
-                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                <TableCell className="hidden text-right tabular-nums whitespace-nowrap sm:table-cell">
                                                     {quantityWithUnit(material.min_stock, material.unit)}
                                                 </TableCell>
-                                                <TableCell>
-                                                    {material.is_low_stock === true ? (
+                                                <TableCell className="whitespace-nowrap">
+                                                    {material.is_low_stock === null ? (
+                                                        '-'
+                                                    ) : material.is_low_stock ? (
                                                         <Badge tone="warning">Menipis</Badge>
                                                     ) : (
                                                         <Badge tone="success">Tersedia</Badge>

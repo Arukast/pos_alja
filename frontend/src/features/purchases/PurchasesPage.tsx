@@ -50,18 +50,18 @@ export function PurchasesPage() {
                 actions={<Button onClick={() => setOpen(true)}>Catat Pembelian</Button>}
                 emptyMessage="Belum ada pembelian."
                 expandedRow={(purchase) => (
-                    <div className="space-y-2 py-1">
+                    <div className="max-sm:max-w-[18rem] space-y-2 py-1">
                         {purchase.items.length === 0 ? (
-                            <p className="text-light-muted dark:text-gray-400">Tidak ada rincian item.</p>
+                            <p className="text-light-muted break-words dark:text-gray-400">Tidak ada rincian item.</p>
                         ) : (
                             <ul className="space-y-1">
                                 {purchase.items.map((item) => (
                                     <li
                                         key={item.id}
-                                        className="flex flex-wrap items-baseline justify-between gap-x-4"
+                                        className="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-4"
                                     >
-                                        <span className="font-medium">{item.material?.name ?? '-'}</span>
-                                        <span className="text-light-muted tabular-nums dark:text-gray-400">
+                                        <span className="font-medium break-words">{item.material?.name ?? '-'}</span>
+                                        <span className="text-light-muted max-sm:max-w-[16rem] tabular-nums break-words dark:text-gray-400">
                                             {quantityWithUnit(item.quantity, item.material?.unit)} ×{' '}
                                             {formatMoney(item.unit_cost)} = {formatMoney(item.subtotal)}
                                         </span>
@@ -69,7 +69,7 @@ export function PurchasesPage() {
                                 ))}
                             </ul>
                         )}
-                        <p className="text-light-muted text-xs dark:text-gray-400">
+                        <p className="text-light-muted text-xs break-words dark:text-gray-400">
                             Catatan: {purchase.notes ?? '-'} · Dicatat oleh {purchase.user?.name ?? '-'}
                         </p>
                     </div>

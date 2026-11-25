@@ -20,6 +20,7 @@ export function Modal({
     children,
     footer,
     size = 'md',
+    initialFocusSelector,
 }: {
     open: boolean;
     onClose: () => void;
@@ -28,6 +29,7 @@ export function Modal({
     children: ReactNode;
     footer?: ReactNode;
     size?: ModalSize;
+    initialFocusSelector?: string;
 }) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const titleId = useId();
@@ -41,13 +43,18 @@ export function Modal({
         }
 
         if (open && !dialog.open) {
+            if (initialFocusSelector) {
+                // showModal() focuses this element instead of the close button.
+                dialog.querySelector<HTMLElement>(initialFocusSelector)?.setAttribute('autofocus', '');
+            }
+
             dialog.showModal();
         }
 
         if (!open && dialog.open) {
             dialog.close();
         }
-    }, [open]);
+    }, [open, initialFocusSelector]);
 
     useEffect(() => {
         const dialog = dialogRef.current;

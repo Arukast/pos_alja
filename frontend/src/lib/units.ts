@@ -1,15 +1,19 @@
 import type { WasteByUnit } from '../api/types';
 import { formatQuantity } from './money';
 
-const unitLabels: Record<string, string> = {
-    m2: 'm²',
-    pcs: 'pcs',
-    lembar: 'lembar',
-    roll: 'roll',
-    kg: 'kg',
-    liter: 'liter',
-    batang: 'batang',
-};
+const units = [
+    ['m2', 'm²'],
+    ['pcs', 'pcs'],
+    ['lembar', 'lembar'],
+    ['roll', 'roll'],
+    ['kg', 'kg'],
+    ['liter', 'liter'],
+    ['batang', 'batang'],
+] as const;
+
+const unitLabels: Record<string, string> = Object.fromEntries(units);
+
+export const unitOptions = units.map(([value, label]) => ({ value, label }));
 
 export function unitLabel(unit: string | null | undefined): string {
     return unit && Object.hasOwn(unitLabels, unit) ? unitLabels[unit] : 'pcs';
