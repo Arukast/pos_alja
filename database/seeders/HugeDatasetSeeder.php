@@ -318,7 +318,7 @@ class HugeDatasetSeeder extends Seeder
         $fileNames = ['banner_promo.pdf', 'brosur_flyer.pdf', 'sticker_label.tiff', 'kartu_nama_final.cdr', 'spanduk_warung.jpg', 'baliho_perumahan.png', 'id_card_karyawan.pdf'];
 
         // We will seed in a transaction block for speed
-        DB::transaction(function () use ($branches, $designersByBranch, $cashiersByBranch, $operatorsByBranch, $pricingsByBranch, $machinesByBranch, $customers, $startDate, $fileNames, &$totalInvoices, $productModels) {
+        DB::transaction(function () use ($branches, $designersByBranch, $cashiersByBranch, $operatorsByBranch, $pricingsByBranch, $customers, $startDate, $fileNames, &$totalInvoices, $productModels) {
             for ($day = 0; $day <= 90; $day++) {
                 $currentSimulatedDate = (clone $startDate)->addDays($day);
 
@@ -430,7 +430,6 @@ class HugeDatasetSeeder extends Seeder
                                     'branch_id' => $branch->id,
                                     'logged_at' => $createdTime->toIso8601String(),
                                     'material_id' => $pricing->material_id,
-                                    'machine_id' => $machinesByBranch[$branch->id]['Challenger FY-3208R']->id ?? null,
                                     'order_id' => $order->id,
                                     'designer_id' => $designer->id,
                                     'operator_id' => $operator?->id,

@@ -1,4 +1,5 @@
 import {
+    Box,
     Building2,
     CircleDollarSign,
     ClipboardList,
@@ -53,8 +54,10 @@ export const roleLinks: Record<string, NavGroup[]> = {
                 { to: '/owner/users', label: 'Manajemen Pengguna', icon: Users },
                 { to: '/owner/branches', label: 'Manajemen Cabang', icon: Building2 },
                 { to: '/owner/categories', label: 'Kategori Produk', icon: Tags },
+                { to: '/owner/products', label: 'Produk', icon: Box },
                 { to: '/owner/machines', label: 'Mesin Cetak', icon: Printer },
                 { to: '/owner/materials', label: 'Bahan & Stok', icon: Package },
+                { to: '/owner/purchases', label: 'Pembelian', icon: ShoppingCart },
             ],
         },
     ],
@@ -70,6 +73,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             label: 'Inventaris',
             links: [
                 { to: '/manager/materials', label: 'Bahan & Stok', icon: Package },
+                { to: '/manager/purchases', label: 'Pembelian', icon: ShoppingCart },
                 { to: '/manager/ledgers', label: 'Buku Stok', icon: ListOrdered },
             ],
         },
@@ -78,6 +82,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             links: [
                 { to: '/manager/finishing', label: 'Display & Finishing', icon: Tags },
                 { to: '/manager/categories', label: 'Kategori Produk', icon: Tags },
+                { to: '/manager/products', label: 'Produk', icon: Box },
                 { to: '/manager/machines', label: 'Mesin Cetak', icon: Printer },
                 { to: '/manager/pricing', label: 'Matriks Harga', icon: CircleDollarSign },
             ],
@@ -122,8 +127,9 @@ export const roleLinks: Record<string, NavGroup[]> = {
         {
             label: 'Operasional',
             links: [
+                { to: '/production/materials', label: 'Bahan & Stok', icon: Package },
                 { to: '/production/queue', label: 'Antrean Cetak', icon: Printer },
-                { to: '/production/waste', label: 'Catat Sisa Bahan', icon: Recycle },
+                { to: '/production/waste', label: 'Riwayat Sisa Bahan', icon: Recycle },
             ],
         },
     ],

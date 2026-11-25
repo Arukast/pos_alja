@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
+import type { ProductionQueueItem } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { OrderStatusBadge } from '../../components/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +16,7 @@ import { Toast } from '../../components/ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { errorMessage } from '../../lib/errors';
 import { formatDate } from '../../lib/dates';
+import { ProductionWasteModal } from './ProductionWasteModal';
 
 interface ProductionSummary {
     queued: number;
@@ -27,6 +29,7 @@ export function ProductionQueuePage() {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
     const [notice, setNotice] = useState<string | null>(null);
+    const [wasteOrder, setWasteOrder] = useState<ProductionQueueItem | null>(null);
 
     const query = useQuery({
         queryKey: ['production', 'queue', page],
@@ -110,7 +113,7 @@ export function ProductionQueuePage() {
                         />
                     ) : (
                         <>
-                            <Table>
+                            <Table ariaLabel="Antrean Cetak">
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
@@ -131,59 +134,78 @@ export function ProductionQueuePage() {
                                     {(query.data?.data ?? []).length === 0 ? (
                                         <TableEmpty colSpan={10}>Belum ada pekerjaan dalam antrean.</TableEmpty>
                                     ) : (
-                                        (query.data?.data ?? []).map((order) => (
-                                            <TableRow key={order.id}>
-                                                <TableCell className="font-medium">
-                                                    {order.invoice?.invoice_number ?? '-'}
-                                                </TableCell>
-                                                <TableCell className="hidden sm:table-cell">
-                                                    {order.invoice?.customer?.name ?? '-'}
-                                                </TableCell>
-                                                <TableCell className="hidden sm:table-cell">
-                                                    {order.file_name ?? '-'}
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {order.quantity}
-                                                </TableCell>
-                                                <TableCell className="hidden tabular-nums whitespace-nowrap lg:table-cell">
-                                                    {Number(order.area) > 0 ? `${Number(order.area)} m²` : '-'}
-                                                </TableCell>
-                                                <TableCell className="hidden lg:table-cell">
-                                                    {order.operator?.name ?? '-'}
-                                                </TableCell>
-                                                <TableCell className="hidden xl:table-cell">
-                                                    {formatDate(order.ordered_at)}
-                                                </TableCell>
-                                                <TableCell className="hidden sm:table-cell">
-                                                    {order.invoice?.deadline
-                                                        ? formatDate(order.invoice.deadline)
-                                                        : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <OrderStatusBadge status={order.status} />
-                                                </TableCell>
-                                                <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                                    {order.status === 0 ? (
-                                                        <Button
-                                                            size="sm"
-                                                            loading={start.isPending}
-                                                            onClick={() => start.mutate(order.id)}
-                                                        >
-                                                            Mulai
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="secondary"
-                                                            loading={complete.isPending}
-                                                            onClick={() => complete.mutate(order.id)}
-                                                        >
-                                                            Selesaikan
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                        (query.data?.data ?? []).map((order) => {
+                                            const invoiceNumber =
+                                                order.invoice?.invoice_number ?? '-';
+
+                                            return (
+                                                <TableRow key={order.id}>
+                                                    <TableCell className="font-medium whitespace-nowrap">
+                                                        {invoiceNumber}
+                                                    </TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        {order.invoice?.customer?.name ?? '-'}
+                                                    </TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        {order.file_name ?? '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                                        {order.quantity}
+                                                    </TableCell>
+                                                    <TableCell className="hidden tabular-nums whitespace-nowrap lg:table-cell">
+                                                        {Number(order.area) > 0 ? `${Number(order.area)} m²` : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="hidden lg:table-cell">
+                                                        {order.operator?.name ?? '-'}
+                                                    </TableCell>
+                                                    <TableCell className="hidden whitespace-nowrap xl:table-cell">
+                                                        {formatDate(order.ordered_at)}
+                                                    </TableCell>
+                                                    <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                                                        {order.invoice?.deadline
+                                                            ? formatDate(order.invoice.deadline)
+                                                            : '-'}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <OrderStatusBadge status={order.status} />
+                                                    </TableCell>
+                                                    <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {order.status === 0 ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    aria-label={`Mulai ${invoiceNumber}`}
+                                                                    loading={start.isPending}
+                                                                    onClick={() => start.mutate(order.id)}
+                                                                >
+                                                                    Mulai
+                                                                </Button>
+                                                            ) : (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    aria-label={`Selesaikan ${invoiceNumber}`}
+                                                                    loading={complete.isPending}
+                                                                    onClick={() => complete.mutate(order.id)}
+                                                                >
+                                                                    Selesaikan
+                                                                </Button>
+                                                            )}
+                                                            {order.status === 0 || order.status === 1 ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    aria-label={`Sisa Bahan ${invoiceNumber}`}
+                                                                    onClick={() => setWasteOrder(order)}
+                                                                >
+                                                                    Sisa Bahan
+                                                                </Button>
+                                                            ) : null}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
@@ -201,6 +223,9 @@ export function ProductionQueuePage() {
                 </CardBody>
             </Card>
             {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {wasteOrder ? (
+                <ProductionWasteModal order={wasteOrder} onClose={() => setWasteOrder(null)} />
+            ) : null}
         </div>
     );
 }

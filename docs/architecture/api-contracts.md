@@ -1,6 +1,6 @@
 # API Contracts
 
-- **Status:** Implemented external API consumed by the React SPA.
+- **Status:** Target contract after Sprint Review 1. Implemented endpoints are tracked in `docs/requirements/implementation-gaps.md`.
 - **Base path:** `/api/v1`.
 - **Authentication:** Laravel Sanctum stateful cookie plus CSRF. No bearer tokens are issued by the SPA.
 - **Format:** JSON only. Keys are `snake_case`.
@@ -49,6 +49,8 @@
 | PATCH | `/branches/{branch}/status` | owner |
 | DELETE | `/branches/{branch}` | owner |
 
+Branch create/update responses include `reseller_discount_percent` (decimal `0–100`, default `0`). `PUT /branches/{branch}` accepts it; the invoice branch's value is used for Reseller pricing.
+
 ### Users
 
 | Method | Path | Access |
@@ -67,63 +69,98 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | Method | Path | Access |
 | :--- | :--- | :--- |
 | GET | `/categories` | owner, manager |
-| POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner, manager |
+| POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner |
 | GET | `/attribute-types` | owner, manager |
-| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner, manager |
-| GET | `/attributes` | owner all; manager own branch/global |
-| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner, manager |
+| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner |
+| GET | `/attributes` | owner, manager |
+| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner |
 | GET | `/products` | owner, manager, cashier, designer |
+| POST/PUT/DELETE | `/products`, `/products/{product}` | owner |
+| POST | `/products/{product}/restore` | owner |
 | GET | `/materials` | owner all; manager/production own branch |
-| POST | `/materials` | owner; manager (own branch stock only) |
+| POST | `/materials` | owner; manager creates for own branch |
 | PUT | `/materials/{material}` | owner |
 | DELETE | `/materials/{material}` | owner |
 | POST | `/materials/{material}/restore` | owner |
 | POST | `/materials/{material}/stock` | owner, manager (manager branch forced) |
-| POST | `/materials/{material}/activate` | owner, manager |
+| POST | `/materials/{material}/adjustments` | owner, manager (manager branch forced) |
+| POST | `/materials/{material}/activate` | owner, manager (branch-stock activation) |
 | GET | `/materials/similar?name=` | owner, manager |
-| GET | `/machines` | owner all; manager own branch |
-| POST/PUT/DELETE | `/machines`, `/machines/{machine}` | owner; manager own branch |
-| POST | `/machines/{machine}/restore` | owner; manager own branch |
-| GET | `/pricing` | owner all; manager own branch |
-| POST/PUT/DELETE | `/pricing`, `/pricing/{pricing}` | owner; manager own branch |
-| POST | `/pricing/clone-tiers` | owner; manager own branch |
 | GET | `/stock-ledgers` | owner all; manager own branch |
+| GET | `/purchases` | owner all; manager own branch |
+| POST | `/purchases` | owner, manager (manager branch forced) |
 
-Material responses include `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data.
+Categories accept `discount_tiers[]` with `min_qty` and `discount_percent`. Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), and `is_active`. Materials accept `type`, `cost`, and `price`; the target `unit` field (`m2`, `sheet`, `pcs`) is not implemented (see `docs/requirements/implementation-gaps.md`). Attributes accept `type` (`finishing` or `display`), `price`, and `cost`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
+
+Material responses include `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data, but include `current_stock`, `min_stock`, and `is_low_stock`. Machine endpoints and pricing-matrix endpoints remain transitional; machine-master removal is not part of the PB-05/PB-07 build (see `docs/requirements/implementation-gaps.md`).
+
+`GET /materials?low_stock=1` returns only materials whose resolved branch stock has `current_stock <= min_stock`. For an owner with `branch_id=all`, the filter uses OR semantics: a material is returned when at least one branch is low. In that case the top-level `is_low_stock` is always null, even when the response loads one stock row, and each `stocks[]` row carries its own boolean `is_low_stock`. For a single resolved branch the top-level `is_low_stock` is a boolean. Each `stocks[]` row always carries its own boolean. Manager and production are forced to their own branch. The filtered list is paginated like the normal list.
+
+Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta` (non-zero signed value, -99999999.99 to 99999999.99), plus `reason` (3-255 characters). `branch_id` is required for an owner and forced from the manager's account. It writes a `stock_ledgers` row of type `adjustment` with the reason and actor, and an activity log entry. The resulting stock must stay between 0 and 99999999.99; a negative result, a zero delta, both or neither mode, or a value over the cap is 422. The response is `{ material: MaterialResource }` with the updated stock, not the ledger row. For an owner adjusting one branch, the updated value appears in `stocks[]`; the top-level `is_low_stock` may be null when several branch rows are loaded. `POST /materials/{material}/stock` remains for a quick positive restock and writes ledger type `restock`.
+
+### Purchase Rules
+
+- `GET /purchases` is paginated (15 rows) and ordered by `purchased_at` descending, then `created_at` descending. An owner omitting `branch_id` (or sending `all`) gets all branches. A manager is forced to their own branch. Cashier, designer, and production get 403; a manager with no branch also gets 403.
+- `POST /purchases` requires `idempotency_key` (UUID) and `items` (1-50 lines). `branch_id` is required for an owner and forced for a manager. `purchased_at` is date-only (`Y-m-d`), optional and not after today; any other format, including an ISO timestamp, returns 422. `supplier` is optional max 255; `notes` optional max 1000. Each line has `material_id` (active, non-deleted material), `quantity` 0.01-999999.99, and `unit_cost` 0-9999999.99.
+- The server computes each line `subtotal` with integer-cent arithmetic, rounds every line to two decimals, and sums the rounded lines into `total_amount`. Client subtotals and totals are ignored.
+- One transaction creates the purchase and items, increments branch stock, writes one `stock_ledgers` row per line (`type=purchase`, `reference_type=purchase`, `reference_id`, actor), and writes an activity log entry. A missing branch stock row is created with `min_stock=0`. Duplicate material lines are allowed as separate lines and each increments stock.
+- The unique key is `(branch_id, idempotency_key)`. A replay in the resolved branch returns the stored purchase with 200 and no stock or ledger change, even when the payload differs, provided the new payload still validates; an invalid payload returns 422 before the replay lookup. A new purchase returns 201. The replay lookup is branch-scoped, so a manager cannot read another branch's key.
+- The response is `{ purchase: PurchaseResource }`. Fields: `id`, `branch {id,name}`, `user {id,name}`, `purchased_at` (`Y-m-d`), `supplier`, `total_amount`, `notes`, `items[]` (`id`, `material {id,name}`, `quantity`, `unit_cost`, `subtotal`), and `created_at`. Purchase history keeps the name of a soft-deleted material.
+- There is no purchase detail, update, or delete route. Purchases are immutable after creation and there is no reversal flow.
+- Over-cap values, a soft-deleted material, or an invalid payload return 422.
+
+### Stock Ledger Rules
+
+- `GET /stock-ledgers` is owner all; manager own branch.
+- `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
+- `type` is one of `initial`, `purchase`, `usage`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference.
+
+`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) only. `GET /categories` includes `discount_tiers[]` (`id`, `min_qty`, and 2-decimal `discount_percent`, ordered by `min_qty`).
 
 ## 5. Sales
 
 | Method | Path | Access |
 | :--- | :--- | :--- |
 | GET | `/customers?search=` | owner, manager, cashier, designer |
-| POST | `/customers` | designer |
+| POST | `/customers` | owner, manager, designer |
+| PUT | `/customers/{customer}` | owner, manager, designer |
 | GET | `/quotes/options` | designer |
 | POST | `/quotes` | designer |
 | POST | `/invoices` | designer with a branch |
+| PUT | `/invoices/{invoice}` | designer, branch-scoped; only before production and not fully paid |
 | GET | `/invoices` | all roles, branch-scoped |
 | GET | `/invoices/{invoice}` | all roles, branch-scoped |
+| GET | `/invoices/{invoice}/print` | owner, manager, cashier, designer; branch-scoped |
 | POST | `/invoices/{invoice}/down-payments` | cashier |
 | POST | `/invoices/{invoice}/settlements` | cashier |
 | POST | `/invoices/{invoice}/pickup` | cashier |
-| GET | `/invoices/{invoice}/ticket` | all roles, branch-scoped; no money |
-| GET | `/invoices/{invoice}/receipt` | owner, manager, cashier, designer |
-| GET | `/expenses` | owner all; manager/cashier own branch |
-| POST | `/expenses` | cashier |
+| GET | `/invoices/{invoice}/receipt` | owner, manager, cashier, designer; branch-scoped |
+| PATCH | `/orders/{order}/design-status` | designer own branch; owner all; manager own branch override |
+| GET | `/expenses` | owner all; manager own branch |
+| POST | `/expenses` | owner, manager |
 
 ### Quote And Invoice Input
 
-`POST /quotes` accepts `product_id`, `material_id`, `machine_id?`, `selected_attributes?`, `quantity`, `width?`, `length?`, and `customer_type?`. It returns `pricing_id`, `unit_price`, `area`, `quantity`, and `subtotal`; cost and profit are not returned to the designer.
+`POST /quotes` accepts `customer_id?`, `product_id`, `material_id`, `finishing_id?`, `display_id?`, `quantity`, `width?`, `length?`. It returns `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` is after the reseller adjustment and before the category quantity discount. Cost and profit are not returned to the designer. When `customer_id` is present, the customer type is read from the customer record; otherwise it defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes; it does not return machines.
 
-`POST /invoices` accepts `customer_id`, `discount?`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `machine_id?`, `selected_attributes?`, `is_manual_price`, `unit_price?`, and `cost?`.
+`POST /invoices` and `PUT /invoices/{invoice}` accept `customer_id`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `product_id`, `material_id`, `finishing_id?`, `display_id?`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `is_manual_price`, `unit_price?`, and `cost?`.
 
 Server rules:
 
-- Line prices are recomputed from the pricing matrix; client prices are ignored unless `is_manual_price` is true.
+- Base price is recomputed from material price plus finishing/display price; client prices are ignored unless `is_manual_price` is true.
+- For a Reseller customer, the branch reseller discount is applied to the base price. The customer type comes from `customer_id`, never from a client-writable `customer_type`.
+- The category quantity discount uses the tier with the highest `min_qty <= quantity`.
 - Manual lines require both `unit_price` and `cost`, must be non-negative, and `cost` must not exceed `unit_price`.
-- Machine ids must belong to the designer branch.
+- Only one finishing and one display option may be selected per item; the selected option and its price/cost snapshot are stored in `order_attributes`.
+- Machine ids are no longer accepted.
 - Discount cannot exceed the computed subtotal.
 - Invoice numbers use the unique branch code and a per-branch daily sequence.
-- Creation and manual-price audit entries are atomic.
+- Creation, update, and manual-price audit entries are atomic.
+- An invoice update is rejected with 409 when any order is already in production or the invoice is fully paid.
+- An invoice update is rejected with 422 when the new total is less than the amount already paid.
+- Production may read the invoice detail only with money fields redacted; invoice and receipt print are denied.
+
+Customer input requires `name` and `institution`; `phone`, `email`, `address`, and `type` are optional. `type` defaults to `Reguler` and accepts `Reguler` or `Reseller`. Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
 
 ### Payment Rules
 
@@ -133,11 +170,18 @@ Server rules:
 - A paid invoice has `status=2` and zero receivable.
 - Pickup requires a paid invoice and is branch-scoped.
 
+### Expense Rules
+
+- Only Owner and Branch Manager may create expenses. Cashier access is removed.
+- A manager writes to their own branch. An owner must send `branch_id`.
+- `category` must be one of: `Bahan Baku`, `Gaji`, `Sewa`, `Listrik & Air`, `Maintenance`, `Transport`, `Marketing`, `Operasional`, `Lain-lain`.
+- The response includes `recorded_by_name`, not a cashier name.
+
 ## 6. Production
 
 | Method | Path | Access |
 | :--- | :--- | :--- |
-| GET | `/production/queue` | all roles, branch-scoped |
+| GET | `/production/queue?status=&branch_id=` | all roles, branch-scoped |
 | GET | `/production/summary` | production |
 | POST | `/orders/{order}/start` | production, branch-scoped |
 | POST | `/orders/{order}/complete` | production, branch-scoped |
@@ -145,9 +189,15 @@ Server rules:
 | POST | `/waste` | production, branch-scoped |
 | GET | `/waste/options` | production, branch-scoped |
 
-Starting an order deducts material stock once, sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2. Waste requires a material with stock in the branch; optional machine, designer, and order must belong to the branch.
+The queue filters by `status` (`0`, `1`, `2`) and, for owner, by `branch_id`. It sorts by deadline, priority, and creation time. Starting an order deducts material stock once, sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
 
-Production responses omit all money fields. Quantities are numeric.
+Waste is recorded from the queue row and requires `order_id`; the order must belong to the operator's branch and have status 0 or 1. `material_id` must have a branch stock row, `quantity` must be positive, at most two decimals, and at most 99999999.99, `dimensions` and `notes` are optional, and `designer_id` is optional (a designer in the same branch). `machine_id` is not accepted and is ignored if sent. Waste writes a `stock_ledgers` row of type `waste` with the order reference and actor, and may push stock negative but not below -99999999.99. `GET /waste` returns paginated history; `WasteResource` has `id`, `branch`, `material`, `order_id`, `designer`, `operator`, `quantity`, `dimensions`, `notes`, and `logged_at`, with no machine. `GET /waste/options` returns branch materials and branch designers only. The SPA records waste from the queue row; `/production/waste` is read-only history.
+
+Production responses omit all money fields. Quantities are numeric. The queue is the production work list; there is no separate ticket endpoint.
+
+### Design Status
+
+`PATCH /orders/{order}/design-status` accepts `status` (`0`, `1`, `2`). Allowed transitions are `pending -> in_design -> approved`; Designer may only move forward. Owner and Branch Manager may override a backward transition. Approval stores `design_approved_at` and `design_approved_by`, writes the status and audit logs, and broadcasts `OrderUpdated`.
 
 ## 7. Reporting And Audit
 

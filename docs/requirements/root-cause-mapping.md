@@ -40,3 +40,4 @@
 2. The production tracking root cause lists **FR10** because design approval is part of the order-status trail, even though FR10 is design status rather than production status.
 3. The environment root cause maps to **NFR5, NFR6, and NFR8**; it does not add a new functional requirement.
 4. Every root cause in this table must have at least one backlog item and one measurable NFR. If a future root cause has no measurable NFR, add one before implementation.
+5. **"Machine" in this table is hardware and backup risk, not the printing-machine master data.** Sprint Review 1 removed the printing-machine module (FR6/FR8) and folded its cost into materials; it did not remove the backup root cause (FR26/NFR6).

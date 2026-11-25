@@ -20,6 +20,8 @@ final class ProductResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'pricing_type' => $this->pricing_type,
+            'is_active' => (bool) $this->is_active,
+            'deleted_at' => $this->deleted_at?->toIso8601String(),
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,

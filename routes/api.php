@@ -13,6 +13,7 @@ use App\Modules\Catalog\Http\Controllers\StockLedgerController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\BranchController;
 use App\Modules\Identity\Http\Controllers\UserController;
+use App\Modules\Inventory\Http\Controllers\PurchaseController;
 use App\Modules\Production\Http\Controllers\ProductionController;
 use App\Modules\Production\Http\Controllers\WasteController;
 use App\Modules\Reporting\Http\Controllers\AuditController;
@@ -57,6 +58,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/attribute-types', [AttributeTypeController::class, 'index']);
         Route::get('/attributes', [AttributeController::class, 'index']);
         Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::put('/products/{product}', [ProductController::class, 'update']);
+        Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+        Route::post('/products/{product}/restore', [ProductController::class, 'restore']);
         Route::get('/materials', [MaterialController::class, 'index']);
         Route::get('/machines', [MachineController::class, 'index']);
         Route::get('/pricing', [PricingController::class, 'index']);
@@ -68,7 +73,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::delete('/materials/{material}', [MaterialController::class, 'destroy']);
         Route::post('/materials/{material}/restore', [MaterialController::class, 'restore']);
         Route::post('/materials/{material}/stock', [MaterialController::class, 'stock']);
+        Route::post('/materials/{material}/adjustments', [MaterialController::class, 'adjust']);
         Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
+
+        Route::get('/purchases', [PurchaseController::class, 'index']);
+        Route::post('/purchases', [PurchaseController::class, 'store']);
 
         Route::post('/machines', [MachineController::class, 'store']);
         Route::put('/machines/{machine}', [MachineController::class, 'update']);

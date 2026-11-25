@@ -1,6 +1,6 @@
 # ALJA POS — Brand Suite UI Revision
 
-Status: approved 2026-11-22
+Status: approved 2026-11-22. Historical design spec; for current requirements see `docs/requirements/sprint-review-1.md`. The A4 ticket references below were later replaced by the single A4 invoice, and the machine/pricing-matrix screens were removed.
 Source: Google Stitch project `15712871753929045706` ("POS Alja — Brand Suite v2"), 13 design screens + DESIGN.md
 
 ## Intent

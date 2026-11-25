@@ -130,6 +130,25 @@ class QuoteApiTest extends TestCase
         $this->assertSame($this->machine->id, $response->json('machines.0.id'));
     }
 
+    public function test_quote_options_excludes_inactive_products(): void
+    {
+        $inactive = Product::create([
+            'name' => 'Inactive Banner',
+            'pricing_type' => 'area',
+            'product_category_id' => $this->product->product_category_id,
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk();
+
+        $ids = collect($response->json('products'))->pluck('id')->all();
+
+        $this->assertContains($this->product->id, $ids);
+        $this->assertNotContains($inactive->id, $ids);
+    }
+
     public function test_cashier_cannot_fetch_quote_options(): void
     {
         $this->actingAs($this->cashier)

@@ -10,12 +10,14 @@ use App\Models\Material;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Purchase;
 use App\Models\StockLedger;
 use App\Models\WastedMaterial;
 use App\Policies\AuditPolicy;
 use App\Policies\CatalogPolicy;
 use App\Policies\MachinePolicy;
 use App\Policies\MaterialPolicy;
+use App\Policies\PurchasePolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\WastePolicy;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -57,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Material::class, MaterialPolicy::class);
         Gate::policy(Machine::class, MachinePolicy::class);
         Gate::policy(WastedMaterial::class, WastePolicy::class);
+        Gate::policy(Purchase::class, PurchasePolicy::class);
         Gate::policy(ActivityLog::class, AuditPolicy::class);
 
         Gate::define('viewDashboard', [ReportPolicy::class, 'viewDashboard']);

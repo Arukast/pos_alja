@@ -2,17 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Branch, Category, Machine, Material, UserRecord } from '../../api/types';
+import type { Branch, Machine, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { CategoriesPage } from '../catalog/CategoriesPage';
+import { ProductsPage } from '../catalog/ProductsPage';
+import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
+import { Checkbox } from '../../components/ui/Checkbox';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
-import { collectionAsPage } from '../../lib/pagination';
-import { archetypeLabel, roleLabel } from '../../lib/labels';
-import { formatMoney } from '../../lib/money';
+import { roleLabel } from '../../lib/labels';
+import { formatMoney, formatQuantity } from '../../lib/money';
 
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
     branches.map((branch) => ({ value: branch.id, label: branch.name }));
@@ -143,6 +146,7 @@ export function BranchesPage() {
 
 export function OwnerMaterialsPage() {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const [lowStock, setLowStock] = useState(false);
     const categoryOptions = (categories.data?.data ?? []).map((category) => ({
         value: category.id,
         label: category.name,
@@ -170,19 +174,52 @@ export function OwnerMaterialsPage() {
             eyebrow="Administrasi"
             title="Bahan & Stok"
             description="Bahan global, stok per cabang, dan harga."
-            queryKey={['owner', 'materials']}
-            queryFn={(page) => api.materials({ page, branch_id: 'all' })}
+            pageResetKey={lowStock}
+            queryKey={['owner', 'materials', lowStock]}
+            queryFn={(page) =>
+                api.materials({
+                    page,
+                    branch_id: 'all',
+                    low_stock: lowStock ? 1 : undefined,
+                })
+            }
+            toolbar={
+                <Card>
+                    <CardBody>
+                        <Checkbox
+                            label="Hanya stok minimum"
+                            checked={lowStock}
+                            onChange={(event) => setLowStock(event.target.checked)}
+                        />
+                    </CardBody>
+                </Card>
+            }
             columns={[
                 { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
                 { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
                     cell: (material) =>
-                        material.stocks.length === 0
-                            ? '-'
-                            : material.stocks
-                                  .map((stock) => `${stock.branch_name ?? '-'}: ${stock.current_stock}`)
-                                  .join(', '),
+                        material.stocks.length === 0 ? (
+                            '-'
+                        ) : (
+                            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                                {material.stocks.map((stock) => (
+                                    <li key={stock.branch_id}>
+                                        <span>
+                                            {stock.branch_name ?? '-'}:{' '}
+                                            {formatQuantity(stock.current_stock)} /{' '}
+                                            {formatQuantity(stock.min_stock)}
+                                        </span>
+                                        {stock.is_low_stock ? (
+                                            <span className="ml-1 font-semibold text-amber-700 dark:text-amber-300">
+                                                menipis
+                                            </span>
+                                        ) : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        ),
                 },
                 { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.cost) },
                 { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.price) },
@@ -191,76 +228,19 @@ export function OwnerMaterialsPage() {
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
             remove={(id) => api.admin.deleteMaterial(id)}
-            rowActions={(material) => <RestockMaterialButton material={material} />}
+            rowActions={(material) => (
+                <>
+                    <RestockMaterialButton material={material} />
+                    <AdjustMaterialModal material={material} />
+                </>
+            )}
             createLabel="Tambah bahan"
         />
     );
 }
 
 export function OwnerCategoriesPage() {
-    const fields: Array<CrudField<Category>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'calculation_archetype',
-            label: 'Arketipe',
-            type: 'select',
-            options: [
-                { value: 'per_piece', label: archetypeLabel('per_piece') },
-                { value: 'surface_area', label: archetypeLabel('surface_area') },
-                { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
-                { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
-            ],
-            getValue: (category) => category.calculation_archetype,
-        },
-        {
-            key: 'allowed_attribute_types',
-            label: 'Jenis atribut yang diizinkan (pisahkan dengan koma)',
-            getValue: (category) => category.allowed_attribute_types.join(','),
-        },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Kategori Produk"
-            description="Arketipe kategori dan jenis atribut yang diizinkan."
-            queryKey={['owner', 'categories']}
-            queryFn={() => api.categories().then((response) => collectionAsPage(response.data))}
-            columns={[
-                { header: 'Nama', cell: (category) => <span className="font-medium">{category.name}</span> },
-                { header: 'Arketipe', cell: (category) => archetypeLabel(category.calculation_archetype) },
-                {
-                    header: 'Atribut yang diizinkan',
-                    cell: (category) =>
-                        category.allowed_attribute_types.length === 0
-                            ? 'Semua'
-                            : category.allowed_attribute_types.join(', '),
-                },
-            ]}
-            fields={fields}
-            create={(values) =>
-                api.admin.createCategory({
-                    ...values,
-                    allowed_attribute_types: String(values.allowed_attribute_types ?? '')
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                })
-            }
-            update={(id, values) =>
-                api.admin.updateCategory(id, {
-                    ...values,
-                    allowed_attribute_types: String(values.allowed_attribute_types ?? '')
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                })
-            }
-            remove={(id) => api.admin.deleteCategory(id)}
-            createLabel="Tambah kategori"
-            paginated={false}
-        />
-    );
+    return <CategoriesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }
 
 export function OwnerMachinesPage() {
@@ -292,4 +272,8 @@ export function OwnerMachinesPage() {
             createLabel="Tambah mesin"
         />
     );
+}
+
+export function OwnerProductsPage() {
+    return <ProductsPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }

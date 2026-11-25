@@ -50,7 +50,9 @@ final class StartProduction
                     $this->inventory->deductStockOnPrint(
                         $pricing->material_id,
                         $quantity,
-                        $branchId
+                        $branchId,
+                        $locked->id,
+                        $operator,
                     );
                 }
             }

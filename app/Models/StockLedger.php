@@ -16,6 +16,11 @@ class StockLedger extends Model
     protected $fillable = [
         'branch_id',
         'material_id',
+        'type',
+        'reason',
+        'user_id',
+        'reference_type',
+        'reference_id',
         'logged_at',
         'initial_stock',
         'added_stock',
@@ -24,6 +29,14 @@ class StockLedger extends Model
         'remaining_stock',
         'notes',
     ];
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /**
      * @return BelongsTo<Material, $this>

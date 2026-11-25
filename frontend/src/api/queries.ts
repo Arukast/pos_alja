@@ -21,6 +21,7 @@ import type {
     Pricing,
     Product,
     ProductionQueueItem,
+    Purchase,
     StockLedger,
     UserRecord,
     Waste,
@@ -99,8 +100,8 @@ export const api = {
     products: (params: QueryParams = {}) =>
         apiFetch<Paginated<Product>>(`/products${queryString(params)}`),
 
-    materials: (params: QueryParams = {}) =>
-        apiFetch<Paginated<Material>>(`/materials${queryString(params)}`),
+    materials: <T = Material>(params: QueryParams = {}) =>
+        apiFetch<Paginated<T>>(`/materials${queryString(params)}`),
 
     machines: (params: QueryParams = {}) =>
         apiFetch<Paginated<Machine>>(`/machines${queryString(params)}`),
@@ -110,6 +111,9 @@ export const api = {
 
     stockLedgers: (params: QueryParams = {}) =>
         apiFetch<Paginated<StockLedger>>(`/stock-ledgers${queryString(params)}`),
+
+    purchases: (params: QueryParams = {}) =>
+        apiFetch<Paginated<Purchase>>(`/purchases${queryString(params)}`),
 
     invoices: (params: QueryParams = {}) =>
         apiFetch<Paginated<Invoice>>(`/invoices${queryString(params)}`),
@@ -186,6 +190,12 @@ export const api = {
     createExpense: (data: MutationBody) =>
         mutate<{ expense: Expense }>('/expenses', 'POST', data),
 
+    createPurchase: (data: MutationBody) =>
+        mutate<{ purchase: Purchase }>('/purchases', 'POST', data),
+
+    adjustMaterialStock: (id: string, data: MutationBody) =>
+        mutate<{ material: Material }>(`/materials/${id}/adjustments`, 'POST', data),
+
     startOrder: (orderId: string) =>
         mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/start`, 'POST'),
 
@@ -195,7 +205,6 @@ export const api = {
     wasteOptions: () =>
         apiFetch<{
             materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null }>;
-            machines: Array<{ id: string; name: string }>;
             designers: Array<{ id: string; name: string }>;
         }>('/waste/options'),
 
@@ -248,6 +257,14 @@ export const api = {
         updateCategory: (id: string, data: MutationBody) =>
             mutate<{ category: Category }>(`/categories/${id}`, 'PUT', data),
         deleteCategory: (id: string) => mutate<void>(`/categories/${id}`, 'DELETE'),
+
+        createProduct: (data: MutationBody) =>
+            mutate<{ product: Product }>('/products', 'POST', data),
+        updateProduct: (id: string, data: MutationBody) =>
+            mutate<{ product: Product }>(`/products/${id}`, 'PUT', data),
+        deleteProduct: (id: string) => mutate<void>(`/products/${id}`, 'DELETE'),
+        restoreProduct: (id: string) =>
+            mutate<{ product: Product }>(`/products/${id}/restore`, 'POST'),
 
         createAttributeType: (data: MutationBody) =>
             mutate<{ attribute_type: AttributeType }>('/attribute-types', 'POST', data),

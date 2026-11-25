@@ -15,7 +15,14 @@ class Product extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
 
-    protected $fillable = ['name', 'pricing_type', 'product_category_id'];
+    protected $fillable = ['name', 'pricing_type', 'product_category_id', 'is_active'];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 
     public function pricings(): HasMany
     {

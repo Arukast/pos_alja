@@ -98,7 +98,7 @@ final class DashboardQuery
         $stockLedgers = $branchId === null
             ? StockLedger::query()->whereRaw('1 = 0')->get()
             : StockLedger::query()
-                ->with(['material', 'branch'])
+                ->with(['material', 'branch', 'user'])
                 ->where('branch_id', $branchId)
                 ->orderByDesc('logged_at')
                 ->limit(8)
@@ -241,7 +241,7 @@ final class DashboardQuery
 
         $wasteToday = WastedMaterial::query()
             ->where('branch_id', $branchId)
-            ->whereDate('logged_at', now()->toDateString())
+            ->whereBetween('logged_at', [now()->startOfDay(), now()->endOfDay()])
             ->sum('quantity');
 
         return [

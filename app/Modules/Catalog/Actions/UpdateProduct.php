@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Catalog\Actions;
+
+use App\Models\ActivityLog;
+use App\Models\Product;
+use App\Models\User;
+use App\Support\SafeBroadcast;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+final class UpdateProduct
+{
+    /**
+     * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool}  $data
+     */
+    public function execute(Product $product, array $data, User $actor): Product
+    {
+        try {
+            $updated = DB::transaction(function () use ($product, $data, $actor): Product {
+                $before = $product->toArray();
+
+                $product->update([
+                    'name' => $data['name'],
+                    'product_category_id' => $data['product_category_id'],
+                    'pricing_type' => $data['pricing_type'],
+                    'is_active' => array_key_exists('is_active', $data)
+                        ? (bool) $data['is_active']
+                        : (bool) $product->is_active,
+                ]);
+
+                $after = $product->fresh()?->toArray() ?? $product->toArray();
+
+                ActivityLog::create([
+                    'branch_id' => $actor->branch_id,
+                    'user_id' => $actor->id,
+                    'username' => $actor->username,
+                    'role' => $actor->role,
+                    'action' => 'UPDATE',
+                    'description' => "Memperbarui produk: {$product->name}",
+                    'model_type' => Product::class,
+                    'model_id' => $product->id,
+                    'payload' => [
+                        'before' => $before,
+                        'after' => $after,
+                    ],
+                ]);
+
+                return $product;
+            });
+        } catch (Throwable $exception) {
+            Log::error('Product update failed.', [
+                'user_id' => $actor->id,
+                'branch_id' => $actor->branch_id,
+                'product_id' => $product->id,
+                'exception' => $exception->getMessage(),
+            ]);
+            throw $exception;
+        }
+
+        SafeBroadcast::orderUpdated($actor->branch_id, $actor);
+
+        return $updated->load('category');
+    }
+}

@@ -44,8 +44,8 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 - RBAC: `owner`, `manager`, `cashier`, `designer`, `production`.
 - Branch scope: non-owner selalu terikat `branch_id`; non-owner tanpa cabang ditolak.
 - User management: owner semua user; manager hanya cashier/designer/production di cabangnya.
-- Branch management dan machine management.
-- Product, category, dan pricing matrix.
+- Branch management, termasuk `reseller_discount_percent`.
+- Product, category, finishing/display, dan diskon kuantitas per kategori (Owner-only). Material master dan satuannya dimiliki C.
 - Product search, filter, dan pagination.
 - Audit log untuk aksi kritis.
 - Backup manual dan terjadwal.
@@ -57,24 +57,23 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 **Output per sprint**
 
 - Sprint 0: auth, RBAC, branch scope, user CRUD, policy, API skeleton.
-- Sprint 1: product/category/pricing CRUD, product search/pagination.
-- Sprint 2: branch/machine management, audit log coverage.
+- Sprint 1: PB-08 acceptance, product/category/finishing/display core, product search/pagination.
+- Sprint 2: branch/user administration, quantity discount tiers, audit log coverage.
 - Sprint 3: RBAC hardening, audit review, backup manual/terjadwal, security review.
 
 ### B — Sales dan Payments
 
 **Fokus fitur**
 
-- Customer: pencarian, pembuatan, dan edit data pelanggan.
-- Order: pembuatan invoice, item, kalkulasi harga, target selesai.
-- Order update sebelum produksi.
+- Customer: pencarian, pembuatan di halaman terpisah, edit data, institusi dan alamat.
+- Order: pembuatan invoice, item produk/bahan/finishing/display, kalkulasi harga, target selesai.
+- Order update sebelum produksi dan selama belum lunas.
 - Design status: pending, in design, approved.
 - Down payment, settlement, diskon, dan validasi sisa tagihan.
 - Multiple DP sampai lunas.
-- Nota 80 mm.
-- Pengeluaran operasional kasir.
+- Invoice A4 dan nota 80 mm.
+- Pengeluaran operasional Owner/Manajer dengan kategori tetap.
 - Pickup pesanan.
-- Tiket Work Order.
 
 **FR yang dimiliki:** FR8–FR14, FR21.
 **Backlog:** PB-02, PB-03, PB-04, PB-06.
@@ -83,23 +82,23 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 **Output per sprint**
 
 - Sprint 0: SPA shell, design token, API client, auth screens, route guard.
-- Sprint 1: customer, order create, order list, tiket, DP, settlement, nota, pengeluaran.
-- Sprint 2: order update, design status, multiple DP, pickup, responsive/print, real-time.
+- Sprint 1: customer CRUD dasar, order create core, DP, settlement, nota.
+- Sprint 2: customer search/institution, finishing/display, invoice print, order update, design status, multiple DP, pickup, expense Owner/Manajer, responsive/print, real-time.
 - Sprint 3: UI laporan/ekspor, UX polish, aksesibilitas.
 
 ### C — Inventory, Production, Reporting
 
 **Fokus fitur**
 
-- Material master dan stok per cabang.
+- Material master dengan satuan `m2`, `sheet`, dan `pcs`, serta stok per cabang.
 - Pembelian bahan baku: purchase header, purchase item, unit cost.
 - Stock ledger.
 - Penyesuaian stok dengan alasan.
 - Peringatan stok minimum.
-- Production queue: semua peran bisa membaca, produksi mengubah status.
+- Production queue: semua peran bisa membaca, filter status, produksi mengubah status.
 - Status produksi: queued, processing, completed.
 - Pemakaian bahan per pesanan.
-- Waste logging.
+- Waste logging dari baris antrean.
 - Laporan keuangan periodik.
 - Export Excel/PDF.
 - Backup terjadwal dan restore drill, bersama A.
@@ -113,7 +112,7 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 
 - Sprint 0: ERD, migration, CI/CD, Reverb, test harness, deployment.
 - Sprint 1: inventory foundation, material, branch stock, stock ledger.
-- Sprint 2: purchase, adjustment, low-stock, production queue/status, usage/waste.
+- Sprint 2: purchase, material units, adjustment, low-stock, production queue/filter/status, usage/waste inline.
 - Sprint 3: report query, export, backup terjadwal, integration test, deployment final.
 
 ## 5. Rencana Sprint
@@ -126,21 +125,21 @@ Pembagian ini memberi setiap orang fitur yang bisa didemokan di akhir sprint, bu
 
 Semua orang menyepakati ERD dan API contract di sprint ini. Jangan mulai fitur sebelum auth dan branch scope stabil.
 
-### Sprint 1 — Katalog, Pesanan, Pembayaran
+### Sprint 1 — Fondasi, Katalog, Pesanan, Pembayaran
 
 | A | B | C |
 | :--- | :--- | :--- |
-| Product, category, pricing, product search/pagination | Customer, order create, order list, tiket, DP, settlement, nota, pengeluaran | Inventory foundation: material, branch stock, stock ledger |
+| PB-08 auth/RBAC, product/category/finishing/display core, product search/pagination | Customer CRUD dasar, order create core (Produk -> Bahan), DP, settlement, nota | Inventory foundation: material, branch stock, stock ledger |
 
-B boleh memakai data produk seed/mock selama API katalog A belum selesai.
+B boleh memakai data produk seed/mock selama API katalog A belum selesai. PB-08 sekarang berada di Sprint 1 agar fondasi auth dan katalog selesai sebelum fitur transaksi.
 
-### Sprint 2 — Inventori dan Produksi
+### Sprint 2 — Inventori, Produksi, dan Revisi Sprint Review 1
 
 | A | B | C |
 | :--- | :--- | :--- |
-| Branch/machine management, audit log, user admin | Order update, design status, multiple DP, pickup, responsive/print, real-time | Purchase, stock adjustment, low-stock, production queue/status, usage/waste |
+| Branch/user administration, audit log, quantity discount tiers, reseller discount config | Customer search/institution, finishing/display, invoice print, order update DP, design status, expense Owner/Manajer, pickup | Purchase, stock adjustment, low-stock, production queue/filter/status, usage/waste inline, material units |
 
-C dan B harus menyepakati bentuk data antrean produksi sebelum UI queue dibuat.
+C dan B harus menyepakati bentuk data antrean produksi sebelum UI queue dibuat. B dan A menyepakati model harga bahan + finishing/display + diskon reseller cabang + diskon kategori sebelum menghapus matriks harga.
 
 ### Sprint 3 — Laporan, Audit, Backup, Hardening
 
@@ -154,7 +153,7 @@ Sprint ini juga dipakai untuk memperbaiki temuan `implementation-gaps.md` dan me
 
 ```text
 Auth/RBAC
-  -> Catalog/Pricing
+  -> Catalog/Price model (material + finishing/display + reseller discount + category discount)
     -> Orders
       -> Payments
       -> Inventory
@@ -164,12 +163,13 @@ Auth/RBAC
 
 Aturan dependency:
 
-1. A menyelesaikan auth/RBAC sebelum B dan C membuat endpoint terlindungi.
-2. A menyelesaikan katalog/pricing sebelum B menyelesaikan order create. B boleh mulai dengan mock produk.
+1. A menyelesaikan auth/RBAC dan PB-08 sebelum B dan C membuat endpoint terlindungi.
+2. A menyelesaikan katalog dan model harga bahan/finishing/display/diskon kategori sebelum B menyelesaikan order create. B boleh mulai dengan mock produk.
 3. B menyelesaikan order sebelum C membuat production queue dan laporan.
-4. C menyelesaikan inventory sebelum B menambahkan validasi stok pada order.
+4. C menyelesaikan inventory dan satuan bahan sebelum B menambahkan validasi stok pada order.
 5. C mulai reporting setelah data order, payment, dan stock tersedia. Gunakan seed/fixture selama menunggu.
 6. Audit tidak dikerjakan di akhir. A menambahkan instrumentasi audit saat setiap aksi selesai.
+7. Penghapusan tabel mesin dan matriks harga dilakukan setelah migrasi data dan backup, bukan bersamaan dengan perubahan UI.
 
 ## 7. Cross-Cutting Ownership
 
@@ -229,7 +229,7 @@ Sebuah task dianggap selesai jika:
 | :--- | :--- | :--- |
 | Requirement dan ruang lingkup | A | FR1–FR26, NFR1–NFR10, access matrix, root cause |
 | Arsitektur dan keamanan | A | API-first, RBAC, branch scope, audit |
-| Demo alur utama | B | Catalog, order, payment, receipt, pickup |
+| Demo alur utama | B | Catalog, order, payment, invoice, pickup |
 | UI/UX dan responsive | B | Design system, dark mode, 390/768/1440 px |
 | Inventori dan produksi | C | Stock, purchase, adjustment, production queue, waste |
 | Laporan dan ekspor | C | Dashboard, report, Excel/PDF |
@@ -255,6 +255,7 @@ Sebuah task dianggap selesai jika:
 - `docs/requirements/access-matrix.md`
 - `docs/requirements/product-backlog.md`
 - `docs/requirements/implementation-gaps.md`
+- `docs/requirements/sprint-review-1.md`
 - `docs/architecture/erd.md`
 - `docs/architecture/sequence-diagrams.md`
 - `docs/architecture/api-contracts.md`

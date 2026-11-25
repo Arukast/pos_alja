@@ -2,24 +2,28 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Attribute, AttributeType, Category, Machine, Material, Pricing, UserRecord } from '../../api/types';
+import type { Attribute, AttributeType, Machine, Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { CategoriesPage } from '../catalog/CategoriesPage';
+import { ProductsPage } from '../catalog/ProductsPage';
+import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { Checkbox } from '../../components/ui/Checkbox';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { collectionAsPage } from '../../lib/pagination';
-import { archetypeLabel, attributeTypeLabel, roleLabel } from '../../lib/labels';
+import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, formatQuantity } from '../../lib/money';
 
 export function ManagerUsersPage() {
     const { user } = useAuth();
@@ -68,25 +72,9 @@ export function ManagerUsersPage() {
     );
 }
 
-function materialStatus(material: Material): { label: string; tone: 'success' | 'warning' } | null {
-    if (material.current_stock === null || material.min_stock === null) {
-        return null;
-    }
-
-    const current = Number(material.current_stock);
-    const minimum = Number(material.min_stock);
-
-    if (!Number.isFinite(current) || !Number.isFinite(minimum)) {
-        return null;
-    }
-
-    return current < minimum
-        ? { label: 'Menipis', tone: 'warning' }
-        : { label: 'Tersedia', tone: 'success' };
-}
-
 export function ManagerMaterialsPage() {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const [lowStock, setLowStock] = useState(false);
     const materialCount = useQuery({
         queryKey: ['manager', 'materials', 'count'],
         queryFn: () => api.materials({ page: 1, per_page: 1 }),
@@ -123,8 +111,9 @@ export function ManagerMaterialsPage() {
             eyebrow="Manajer Cabang"
             title="Bahan & Stok"
             description="Tingkat stok cabang, penambahan stok, dan aktivasi."
-            queryKey={['manager', 'materials']}
-            queryFn={(page) => api.materials({ page })}
+            pageResetKey={lowStock}
+            queryKey={['manager', 'materials', lowStock]}
+            queryFn={(page) => api.materials({ page, low_stock: lowStock ? 1 : undefined })}
             summary={
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <StatCard
@@ -140,6 +129,22 @@ export function ManagerMaterialsPage() {
                         value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
                     />
                 </div>
+            }
+            toolbar={
+                <Card>
+                    <CardBody>
+                        <Checkbox
+                            label="Hanya stok minimum"
+                            checked={lowStock}
+                            onChange={(event) => setLowStock(event.target.checked)}
+                        />
+                    </CardBody>
+                </Card>
+            }
+            rowClassName={(material) =>
+                material.is_low_stock === true
+                    ? 'bg-amber-50/60 dark:bg-amber-500/10'
+                    : undefined
             }
             columns={[
                 {
@@ -158,13 +163,13 @@ export function ManagerMaterialsPage() {
                 { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok',
-                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
-                    cell: (material) => material.current_stock ?? '-',
+                    className: 'text-right tabular-nums whitespace-nowrap',
+                    cell: (material) => formatQuantity(material.current_stock),
                 },
                 {
                     header: 'Minimum',
-                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
-                    cell: (material) => material.min_stock ?? '-',
+                    className: 'text-right tabular-nums whitespace-nowrap',
+                    cell: (material) => formatQuantity(material.min_stock),
                 },
                 {
                     header: 'Biaya',
@@ -173,16 +178,25 @@ export function ManagerMaterialsPage() {
                 },
                 {
                     header: 'Status',
-                    cell: (material) => {
-                        const status = materialStatus(material);
-
-                        return status ? <Badge tone={status.tone}>{status.label}</Badge> : '-';
-                    },
+                    className: 'hidden sm:table-cell',
+                    cell: (material) =>
+                        material.is_low_stock === null ? (
+                            '-'
+                        ) : material.is_low_stock ? (
+                            <Badge tone="warning">Menipis</Badge>
+                        ) : (
+                            <Badge tone="success">Tersedia</Badge>
+                        ),
                 },
             ]}
             fields={fields}
             create={(values) => api.admin.createMaterial(values)}
-            rowActions={(material) => <RestockMaterialButton material={material} />}
+            rowActions={(material) => (
+                <>
+                    <RestockMaterialButton material={material} />
+                    <AdjustMaterialModal material={material} />
+                </>
+            )}
             createLabel="Tambah bahan"
             footer={
                 <Card>
@@ -205,7 +219,7 @@ export function ManagerMaterialsPage() {
                                 }
                             />
                         ) : (
-                            <Table>
+                            <Table ariaLabel="Pergerakan stok terbaru">
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
@@ -223,11 +237,13 @@ export function ManagerMaterialsPage() {
                                     ) : (
                                         ledgerRows.map((ledger) => (
                                             <TableRow key={ledger.id}>
-                                                <TableCell>{formatDate(ledger.logged_at)}</TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {formatDate(ledger.logged_at)}
+                                                </TableCell>
                                                 <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                <TableCell>{ledger.added_stock}</TableCell>
-                                                <TableCell>{ledger.used_stock}</TableCell>
-                                                <TableCell>{ledger.remaining_stock}</TableCell>
+                                                <TableCell>{formatQuantity(ledger.added_stock)}</TableCell>
+                                                <TableCell>{formatQuantity(ledger.used_stock)}</TableCell>
+                                                <TableCell>{formatQuantity(ledger.remaining_stock)}</TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -252,10 +268,21 @@ export function ManagerLedgersPage() {
             columns={[
                 { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
                 { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
-                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.added_stock },
-                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.used_stock },
-                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.wasted_stock },
-                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => ledger.remaining_stock },
+                { header: 'Tipe', cell: (ledger) => ledgerTypeLabel(ledger.type) },
+                {
+                    header: 'Alasan',
+                    className: 'hidden lg:table-cell',
+                    cell: (ledger) => (
+                        <span className="block max-w-[18rem] truncate" title={ledger.reason ?? undefined}>
+                            {ledger.reason ?? '-'}
+                        </span>
+                    ),
+                },
+                { header: 'Pengguna', className: 'hidden sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
+                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.added_stock) },
+                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.used_stock) },
+                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.wasted_stock) },
+                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.remaining_stock) },
             ]}
         />
     );
@@ -288,62 +315,7 @@ export function ManagerMachinesPage() {
 }
 
 export function ManagerCategoriesPage() {
-    const fields: Array<CrudField<Category>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'calculation_archetype',
-            label: 'Arketipe',
-            type: 'select',
-            options: [
-                { value: 'per_piece', label: archetypeLabel('per_piece') },
-                { value: 'surface_area', label: archetypeLabel('surface_area') },
-                { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
-                { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
-            ],
-            getValue: (category) => category.calculation_archetype,
-        },
-        {
-            key: 'allowed_attribute_types',
-            label: 'Jenis atribut yang diizinkan (pisahkan dengan koma)',
-            getValue: (category) => category.allowed_attribute_types.join(','),
-        },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Konfigurasi"
-            title="Kategori Produk"
-            description="Arketipe kategori dan jenis atribut yang diizinkan."
-            queryKey={['manager', 'categories']}
-            queryFn={() => api.categories().then((response) => collectionAsPage(response.data))}
-            columns={[
-                { header: 'Nama', cell: (category) => <span className="font-medium">{category.name}</span> },
-                { header: 'Arketipe', cell: (category) => archetypeLabel(category.calculation_archetype) },
-            ]}
-            fields={fields}
-            create={(values) =>
-                api.admin.createCategory({
-                    ...values,
-                    allowed_attribute_types: String(values.allowed_attribute_types ?? '')
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                })
-            }
-            update={(id, values) =>
-                api.admin.updateCategory(id, {
-                    ...values,
-                    allowed_attribute_types: String(values.allowed_attribute_types ?? '')
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                })
-            }
-            remove={(id) => api.admin.deleteCategory(id)}
-            createLabel="Tambah kategori"
-            paginated={false}
-        />
-    );
+    return <CategoriesPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
 }
 
 export function ManagerFinishingPage() {
@@ -417,8 +389,15 @@ export function ManagerFinishingPage() {
     );
 }
 
+export function ManagerProductsPage() {
+    return <ProductsPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
+}
+
 export function ManagerPricingPage() {
-    const products = useQuery({ queryKey: ['products', 'options'], queryFn: () => api.products() });
+    const products = useQuery({
+        queryKey: ['products', 'options'],
+        queryFn: () => api.products({ is_active: 1 }),
+    });
     const materials = useQuery({ queryKey: ['materials', 'options'], queryFn: () => api.materials() });
 
     const productOptions = (products.data?.data ?? []).map((product) => ({

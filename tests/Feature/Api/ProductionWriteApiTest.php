@@ -7,7 +7,6 @@ namespace Tests\Feature\Api;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
@@ -15,7 +14,9 @@ use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -38,8 +39,6 @@ class ProductionWriteApiTest extends TestCase
     private Invoice $otherInvoice;
 
     private Material $material;
-
-    private Machine $machine;
 
     private Pricing $pricing;
 
@@ -89,12 +88,6 @@ class ProductionWriteApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        $this->machine = Machine::create([
-            'branch_id' => $this->branchOne->id,
-            'name' => 'Printer A',
-            'cost' => 1000,
-        ]);
-
         $this->pricing = Pricing::create([
             'branch_id' => $this->branchOne->id,
             'product_id' => $product->id,
@@ -123,7 +116,12 @@ class ProductionWriteApiTest extends TestCase
         $this->assertSame(4.0, (float) $this->material->stocks()->first()?->current_stock);
         $this->assertDatabaseHas('stock_ledgers', [
             'material_id' => $this->material->id,
+            'type' => 'usage',
+            'reference_type' => 'order',
+            'reference_id' => $this->order->id,
+            'user_id' => $this->production->id,
             'used_stock' => 6,
+            'remaining_stock' => 4,
         ]);
 
         $this->actingAs($this->production)
@@ -131,6 +129,11 @@ class ProductionWriteApiTest extends TestCase
             ->assertStatus(422);
 
         $this->assertSame(4.0, (float) $this->material->stocks()->first()?->current_stock);
+        $this->assertSame(1, DB::table('stock_ledgers')
+            ->where('material_id', $this->material->id)
+            ->where('type', 'usage')
+            ->where('reference_id', $this->order->id)
+            ->count());
     }
 
     public function test_complete_requires_processing_and_sets_completed(): void
@@ -168,14 +171,18 @@ class ProductionWriteApiTest extends TestCase
         $response = $this->actingAs($this->production)
             ->postJson('/api/v1/waste', [
                 'material_id' => $this->material->id,
-                'machine_id' => $this->machine->id,
+                'order_id' => $this->order->id,
                 'designer_id' => $this->designer->id,
                 'quantity' => 2,
                 'dimensions' => '1.2m',
                 'notes' => 'Failed print',
             ])
             ->assertCreated()
-            ->assertJsonMissingPath('waste.cost');
+            ->assertJsonMissingPath('waste.cost')
+            ->assertJsonMissingPath('waste.machine')
+            ->assertJsonPath('waste.order_id', $this->order->id)
+            ->assertJsonPath('waste.designer.id', $this->designer->id)
+            ->assertJsonPath('waste.operator.id', $this->production->id);
 
         $this->assertEquals(2, (float) $response->json('waste.quantity'));
 
@@ -183,11 +190,64 @@ class ProductionWriteApiTest extends TestCase
         $this->assertDatabaseHas('wasted_materials', [
             'id' => $response->json('waste.id'),
             'branch_id' => $this->branchOne->id,
+            'order_id' => $this->order->id,
         ]);
         $this->assertDatabaseHas('stock_ledgers', [
             'material_id' => $this->material->id,
+            'type' => 'waste',
+            'reference_type' => 'order',
+            'reference_id' => $this->order->id,
+            'user_id' => $this->production->id,
             'wasted_stock' => 2,
+            'remaining_stock' => 8,
         ]);
+    }
+
+    public function test_waste_allows_missing_designer_and_ignores_machine_id(): void
+    {
+        $this->order->update(['status' => 1]);
+
+        $response = $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'order_id' => $this->order->id,
+                'machine_id' => (string) Str::uuid(),
+                'quantity' => 1,
+            ])
+            ->assertCreated()
+            ->assertJsonMissingPath('waste.machine')
+            ->assertJsonPath('waste.designer', null);
+
+        $this->assertDatabaseHas('wasted_materials', [
+            'id' => $response->json('waste.id'),
+            'designer_id' => null,
+        ]);
+    }
+
+    public function test_waste_requires_an_order(): void
+    {
+        $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'quantity' => 1,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('order_id');
+    }
+
+    public function test_waste_rejects_completed_order(): void
+    {
+        $completed = $this->order($this->invoice, $this->pricing, 1, 1);
+        $completed->update(['status' => 2]);
+
+        $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'order_id' => $completed->id,
+                'quantity' => 1,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('order_id');
     }
 
     public function test_waste_rejects_material_without_branch_stock(): void
@@ -201,6 +261,7 @@ class ProductionWriteApiTest extends TestCase
         $this->actingAs($this->production)
             ->postJson('/api/v1/waste', [
                 'material_id' => $otherMaterial->id,
+                'order_id' => $this->order->id,
                 'quantity' => 1,
             ])
             ->assertStatus(422)
@@ -212,33 +273,115 @@ class ProductionWriteApiTest extends TestCase
         $this->actingAs($this->production)
             ->postJson('/api/v1/waste', [
                 'material_id' => $this->material->id,
+                'order_id' => $this->order->id,
                 'quantity' => 0,
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('quantity');
     }
 
+    public function test_waste_may_push_stock_negative(): void
+    {
+        $this->material->stocks()->first()?->update(['current_stock' => 1]);
+
+        $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'order_id' => $this->order->id,
+                'quantity' => 3,
+            ])
+            ->assertCreated();
+
+        $this->assertSame(-2.0, (float) $this->material->stocks()->first()?->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $this->material->id,
+            'type' => 'waste',
+            'reference_id' => $this->order->id,
+            'wasted_stock' => 3,
+            'remaining_stock' => -2,
+        ]);
+    }
+
     public function test_waste_rejects_cross_branch_associations(): void
     {
-        $otherMachine = Machine::create([
-            'branch_id' => $this->branchTwo->id,
-            'name' => 'Other Printer',
-            'cost' => 1000,
-        ]);
         $otherDesigner = $this->user('designer', $this->branchTwo);
 
         foreach ([
-            ['machine_id' => $otherMachine->id],
             ['designer_id' => $otherDesigner->id],
             ['order_id' => $this->otherOrder->id],
         ] as $extra) {
             $this->actingAs($this->production)
                 ->postJson('/api/v1/waste', array_merge([
                     'material_id' => $this->material->id,
+                    'order_id' => $this->order->id,
                     'quantity' => 1,
                 ], $extra))
                 ->assertStatus(422);
         }
+    }
+
+    public function test_waste_requires_authentication_and_a_production_role(): void
+    {
+        $payload = [
+            'material_id' => $this->material->id,
+            'order_id' => $this->order->id,
+            'quantity' => 1,
+        ];
+
+        $this->postJson('/api/v1/waste', $payload)->assertUnauthorized();
+
+        $owner = $this->user('owner', null);
+        $manager = $this->user('manager', $this->branchOne);
+
+        foreach ([$owner, $manager, $this->cashier, $this->designer] as $user) {
+            $this->actingAs($user)
+                ->postJson('/api/v1/waste', $payload)
+                ->assertForbidden();
+        }
+
+        $this->assertDatabaseCount('wasted_materials', 0);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_waste_quantity_above_the_cap_is_rejected(): void
+    {
+        foreach ([100000000, 1.005] as $quantity) {
+            $this->actingAs($this->production)
+                ->postJson('/api/v1/waste', [
+                    'material_id' => $this->material->id,
+                    'order_id' => $this->order->id,
+                    'quantity' => $quantity,
+                ])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('quantity');
+        }
+
+        $this->assertDatabaseCount('wasted_materials', 0);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+        $this->assertSame(10.0, (float) $this->material->stocks()->first()?->current_stock);
+    }
+
+    public function test_waste_logged_at_dawn_jakarta_counts_in_todays_production_kpis(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-24 05:30:00', 'Asia/Jakarta'));
+
+        $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'order_id' => $this->order->id,
+                'quantity' => 2,
+            ])
+            ->assertCreated();
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/summary')
+            ->assertOk()
+            ->assertJsonPath('waste_today', 2);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('waste_today', 2);
     }
 
     private function branch(string $name): Branch
