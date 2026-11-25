@@ -330,13 +330,13 @@ erDiagram
 12. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table.
 13. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and discount tiers when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
 14. **Target and implemented additions.** The following columns and tables are part of the target schema:
-    - `branches.reseller_discount_percent` for Reseller pricing.
+    - `branches.reseller_discount_percent` for Reseller pricing; implemented by `2026_11_25_000002_add_reseller_discount_percent_to_branches_table.php`.
     - `products.is_active` for catalog filtering; implemented by `2026_11_23_000000_add_is_active_and_indexes_to_products_table.php`.
     - `product_category_discounts` for quantity discounts; implemented by `2026_11_25_000000_create_product_category_discounts_table.php`.
     - `materials.unit` for `m2`, `sheet`, and `pcs`; still target-only and not implemented (see `docs/requirements/implementation-gaps.md`).
-    - `attributes.price` and `attributes.cost`.
+    - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
-    - `customers.institution` and `attributes.is_active`.
+    - `customers.institution`.
     - `order_attributes` for finishing/display snapshots.
     - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`; implemented by `2026_11_24_000001_add_traceability_to_stock_ledgers_table.php`.

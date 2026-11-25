@@ -90,7 +90,7 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | GET | `/purchases` | owner all; manager own branch |
 | POST | `/purchases` | owner, manager (manager branch forced) |
 
-Categories accept `discount_tiers[]` with `min_qty` and `discount_percent`. Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), and `is_active`. Materials accept `type`, `cost`, and `price`; the target `unit` field (`m2`, `sheet`, `pcs`) is not implemented (see `docs/requirements/implementation-gaps.md`). Attributes accept `type` (`finishing` or `display`), `price`, and `cost`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
+Categories accept `discount_tiers[]` with `min_qty` and `discount_percent`. Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), and `is_active`. Materials accept `type`, `cost`, and `price`; the target `unit` field (`m2`, `sheet`, `pcs`) is not implemented (see `docs/requirements/implementation-gaps.md`). Attributes accept `type` (`finishing` or `display`), `price`, `cost`, and `is_active`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
 
 Material responses include `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data, but include `current_stock`, `min_stock`, and `is_low_stock`. Machine endpoints and pricing-matrix endpoints remain transitional; machine-master removal is not part of the PB-05/PB-07 build (see `docs/requirements/implementation-gaps.md`).
 
@@ -115,7 +115,7 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 - `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
 - `type` is one of `initial`, `purchase`, `usage`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference.
 
-`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) only. `GET /categories` includes `discount_tiers[]` (`id`, `min_qty`, and 2-decimal `discount_percent`, ordered by `min_qty`).
+`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) and active attributes (`is_active = true`) only. `GET /categories` includes `discount_tiers[]` (`id`, `min_qty`, and 2-decimal `discount_percent`, ordered by `min_qty`).
 
 ## 5. Sales
 

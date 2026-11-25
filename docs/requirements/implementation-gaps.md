@@ -14,7 +14,7 @@
 | FR3 | Implemented | Logout invalidates session; password change and confirm-password; `AuthTest`. |
 | FR4 | Implemented | User update, soft delete, restore; manager branch/role limits; `UserApiTest`. |
 | FR5 | Implemented | Policies, `BranchScope`, cross-branch tests, production money redaction; `FoundationTest`, `InvoiceApiTest`, `CatalogApiTest`. |
-| FR6 | Partial | Owner-only Product CRUD + restore (`ProductController`, FormRequests, Actions, `products.is_active`, 10-row server-side pagination, `/owner/products`, read-only `/manager/products`) and Category quantity discount tiers (`product_category_discounts`, Owner-only `CategoryController` FormRequests/Actions, `/owner/categories`, read-only `/manager/categories`) are implemented (`CatalogApiTest`, `CatalogWriteApiTest`). Remaining gaps: `materials.unit`, `attributes.price/cost/is_active`, `branches.reseller_discount_percent`, pricing redesign, and machine removal. |
+| FR6 | Partial | Owner-only Product CRUD + restore (`ProductController`, FormRequests, Actions, `products.is_active`, 10-row server-side pagination, `/owner/products`, read-only `/manager/products`), Category quantity discount tiers (`product_category_discounts`, Owner-only `CategoryController` FormRequests/Actions, `/owner/categories`, read-only `/manager/categories`), Finishing/Display attributes (`attributes.price`, `attributes.cost`, `attributes.is_active`, Owner-only `AttributeController` and `AttributeTypeController` FormRequests/Actions, `/owner/attributes`, read-only `/manager/finishing`, active-only filter in `/quotes/options`), and Branch reseller discount config (`branches.reseller_discount_percent`, `BranchController`, `BranchService`, `/owner/branches`, `BranchApiTest`) are implemented (`CatalogApiTest`, `CatalogWriteApiTest`, `QuoteApiTest`). Remaining gaps: `materials.unit`, pricing redesign, and machine removal. |
 | FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 10-row pagination, case-insensitive search, category and active-status filters; `CatalogApiTest`. |
 | FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices; `CreateInvoiceApiTest`. Missing: customer search as the default UI, separate customer page, institution, finishing/display selection and persistence, one invoice print, machine removal. |
 | FR9 | Target | No invoice update route or `UpdateInvoice` action. Order items cannot be changed after submission. |
@@ -59,7 +59,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Sprint 0 | Platform foundation, SPA shell | — | Done | Auth foundation, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
 | Sprint 1 | PB-08 | FR1–FR5 | Done | Auth, RBAC, branch scope, user management | HTTPS/OWASP formal verification |
-| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product CRUD/restore, 10-row pagination, Owner-only product/category writes, category quantity discount tiers, legacy pricing matrix (transitional) | Material units, attribute prices, reseller discount config, pricing redesign, machine removal |
+| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product CRUD/restore, 10-row pagination, Owner-only product/category writes, category quantity discount tiers, Owner-only finishing/display attribute & attribute-type CRUD (price, cost, is_active), branch reseller discount config, legacy pricing matrix (transitional) | Material units, pricing redesign, machine removal |
 | Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer, quote, cart, legacy ticket (to be replaced) | Customer search UI, institution, finishing/display, order update, design status, invoice print |
 | Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
 | Sprint 1 | PB-04 | FR13, FR14 | Partial | Receipt, operational expenses | A4 invoice print, expense role change, category dropdown |
@@ -81,7 +81,7 @@ Summary:
 Priority order:
 
 1. **Pricing redesign**: material price + finishing/display price + branch reseller discount + category quantity discount; remove the pricing matrix and machine UI; migrate data.
-2. **FR6** material unit, attribute price/cost/is_active, and branch reseller discount config.
+2. **FR6** material unit (`m2`, `sheet`, `pcs`).
 3. **FR8** customer search UI, separate customer creation, institution, finishing/display selection and persistence, A4 invoice print, machine removal.
 4. **FR9** order update before production and while not fully paid; **FR10** design status.
 5. **FR14** expense Owner/Manager access and fixed category dropdown.
@@ -97,7 +97,7 @@ Priority order:
 
 ## Convention Debt
 
-- Some Catalog controllers still use inline `$request->validate()` and direct model writes (materials update, attributes, attribute types, pricing). Sales and Identity use FormRequests plus Actions. Extract Catalog FormRequests/Actions in the next cleanup.
+- Some Catalog controllers still use inline `$request->validate()` and direct model writes (materials update, pricing). Sales and Identity use FormRequests plus Actions. Extract Catalog FormRequests/Actions in the next cleanup.
 - Catalog price/cost mutations are not fully written to `activity_logs`; FR25 remains partial.
 - `ProductionController::summary` builds its aggregate query in the controller; extract a `ProductionSummaryQuery` when FR19/FR21 work starts.
 - Existing audit descriptions and stock-ledger notes stay stored in English; new audit rows are Indonesian. Stock-ledger notes such as `Manual stock addition: +N` are persisted through the API but not displayed by the SPA, so they are left as-is.
