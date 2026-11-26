@@ -5,6 +5,7 @@ import { api } from '../../api/queries';
 import type { ProductionQueueItem } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { OrderStatusBadge } from '../../components/StatusBadge';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -19,6 +20,7 @@ import { formatDate } from '../../lib/dates';
 import { formatQuantity } from '../../lib/money';
 import { FailProductionModal } from './FailProductionModal';
 import { ProductionWasteModal } from './ProductionWasteModal';
+import { needsWasteReminder } from './wasteReminder';
 
 interface ProductionSummary {
     queued: number;
@@ -175,6 +177,13 @@ export function ProductionQueuePage() {
                                                 <TableRow key={order.id}>
                                                     <TableCell className="font-medium break-all sm:whitespace-nowrap">
                                                         {invoiceNumber}
+                                                        {needsWasteReminder(order) ? (
+                                                            <span className="mt-1 block">
+                                                                <Badge tone="warning">
+                                                                    Belum ada sisa bahan
+                                                                </Badge>
+                                                            </span>
+                                                        ) : null}
                                                         <span className="mt-1 block sm:hidden">
                                                             <OrderStatusBadge status={order.status} />
                                                         </span>

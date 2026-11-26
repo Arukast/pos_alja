@@ -248,6 +248,7 @@ export interface ProductionQueueItem {
     ordered_at: string;
     status: number;
     pickup_status: number;
+    has_waste: boolean;
     invoice: {
         id: string;
         invoice_number: string;

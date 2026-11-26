@@ -64,4 +64,12 @@ class Order extends Model
     {
         return $this->hasMany(OrderStatusLog::class);
     }
+
+    /**
+     * @return HasMany<WastedMaterial, $this>
+     */
+    public function wastedMaterials(): HasMany
+    {
+        return $this->hasMany(WastedMaterial::class);
+    }
 }

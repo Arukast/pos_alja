@@ -194,7 +194,7 @@ Customer input requires `name` and `institution`; `phone`, `email`, `address`, a
 | POST | `/waste` | production, branch-scoped |
 | GET | `/waste/options` | production, branch-scoped |
 
-The queue returns statuses `0`, `1`, and `3` (Gagal), and for owner filters by `branch_id`. It currently orders by `created_at`, then `id`; deadline/priority sorting and a status filter are not implemented. Starting an order requires status 0 and deducts material stock once by unit: `m2` deducts `area * quantity` and 422s when `area <= 0`; every other unit deducts `quantity`. It sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
+The queue returns statuses `0`, `1`, and `3` (Gagal), and for owner filters by `branch_id`. Each item includes `has_waste`, which is `true` when at least one `wasted_materials` row references the order and is eager-loaded so the queue does not run per-row queries. It currently orders by `created_at`, then `id`; deadline/priority sorting and a status filter are not implemented. Starting an order requires status 0 and deducts material stock once by unit: `m2` deducts `area * quantity` and 422s when `area <= 0`; every other unit deducts `quantity`. It sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
 
 `GET /production/summary` is production-only and branch-scoped. It returns `queued`, `processing`, `completed_today`, `failed` (orders currently in status `3`), and `waste_today_by_unit`, an array of `{ unit, quantity }` for today grouped by material unit, including soft-deleted materials. The old flat waste number no longer exists.
 
