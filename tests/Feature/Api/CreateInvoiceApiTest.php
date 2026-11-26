@@ -10,6 +10,7 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Material;
+use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\Pricing;
 use App\Models\Product;
@@ -76,6 +77,13 @@ class CreateInvoiceApiTest extends TestCase
             'type' => 'roll',
             'cost' => 20000,
             'price' => 25000,
+        ]);
+
+        MaterialBranchStock::create([
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 100,
+            'min_stock' => 1,
         ]);
 
         $this->pricing = Pricing::create([
@@ -196,6 +204,13 @@ class CreateInvoiceApiTest extends TestCase
             'type' => 'roll',
             'cost' => 20000,
             'price' => 25000,
+        ]);
+
+        MaterialBranchStock::create([
+            'material_id' => $otherMaterial->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 100,
+            'min_stock' => 1,
         ]);
 
         $pricing = Pricing::create([

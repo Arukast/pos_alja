@@ -366,6 +366,13 @@ class QuoteApiTest extends TestCase
             'type' => 'roll',
         ]);
 
+        MaterialBranchStock::create([
+            'material_id' => $unpriced->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 10,
+            'min_stock' => 1,
+        ]);
+
         $this->actingAs($this->designer)
             ->postJson('/api/v1/quotes', [
                 'product_id' => $this->product->id,
