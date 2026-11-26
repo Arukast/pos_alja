@@ -132,5 +132,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::get('/backups', [BackupController::class, 'index']);
         Route::post('/backups', [BackupController::class, 'store']);
+        Route::get('/backups/{backup}/download', [BackupController::class, 'download']);
+        Route::patch('/backups/{backup}/pin', [BackupController::class, 'pin']);
     });
 });
