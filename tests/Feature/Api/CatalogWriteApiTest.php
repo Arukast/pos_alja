@@ -353,7 +353,7 @@ class CatalogWriteApiTest extends TestCase
         $this->assertCount(2, $ownerRow['stocks']);
     }
 
-    public function test_category_attribute_type_and_attribute_crud(): void
+    public function test_category_and_attribute_crud(): void
     {
         $category = $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
@@ -372,14 +372,6 @@ class CatalogWriteApiTest extends TestCase
             ->assertJsonPath('category.name', 'Indoor Updated')
             ->assertJsonMissingPath('category.calculation_archetype')
             ->assertJsonMissingPath('category.allowed_attribute_types');
-
-        $attributeType = $this->actingAs($this->owner)
-            ->postJson('/api/v1/attribute-types', [
-                'name' => 'Lamination',
-                'calculation_archetype' => 'per_piece',
-            ])
-            ->assertCreated()
-            ->json('attribute_type');
 
         $attribute = $this->actingAs($this->owner)
             ->postJson('/api/v1/attributes', [
@@ -421,17 +413,6 @@ class CatalogWriteApiTest extends TestCase
                 ->assertForbidden();
 
             $this->actingAs($actor)
-                ->postJson('/api/v1/attribute-types', [
-                    'name' => 'Nope Type',
-                    'calculation_archetype' => 'per_piece',
-                ])
-                ->assertForbidden();
-
-            $this->actingAs($actor)
-                ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
-                ->assertForbidden();
-
-            $this->actingAs($actor)
                 ->postJson('/api/v1/attributes', [
                     'name' => 'Nope Attr',
                     'type' => 'finishing',
@@ -456,10 +437,6 @@ class CatalogWriteApiTest extends TestCase
 
         $this->actingAs($this->owner)
             ->deleteJson("/api/v1/attributes/{$attribute['id']}")
-            ->assertNoContent();
-
-        $this->actingAs($this->owner)
-            ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
             ->assertNoContent();
     }
 
@@ -503,7 +480,7 @@ class CatalogWriteApiTest extends TestCase
 
     public function test_catalog_write_endpoints_require_authentication(): void
     {
-        foreach (['/materials', '/categories', '/attribute-types', '/attributes', '/pricing'] as $path) {
+        foreach (['/materials', '/categories', '/attributes', '/pricing'] as $path) {
             $this->postJson('/api/v1'.$path, [])->assertUnauthorized();
         }
 
@@ -526,14 +503,6 @@ class CatalogWriteApiTest extends TestCase
             ->assertJsonPath('category.name', 'Ignored Legacy Fields')
             ->assertJsonMissingPath('category.calculation_archetype')
             ->assertJsonMissingPath('category.allowed_attribute_types');
-
-        $this->actingAs($this->owner)
-            ->postJson('/api/v1/attribute-types', [
-                'name' => 'Invalid',
-                'calculation_archetype' => 'not-real',
-            ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('calculation_archetype');
 
         $this->actingAs($this->owner)
             ->postJson('/api/v1/attributes', [

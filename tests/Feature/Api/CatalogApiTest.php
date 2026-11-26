@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\Attribute;
-use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
@@ -15,6 +14,7 @@ use App\Models\ProductCategory;
 use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -109,11 +109,6 @@ class CatalogApiTest extends TestCase
             'min_stock' => 5,
         ]);
 
-        AttributeType::firstOrCreate(
-            ['name' => 'finishing'],
-            ['calculation_archetype' => 'per_piece']
-        );
-
         $this->attributeOne = Attribute::create([
             'branch_id' => $this->branchOne->id,
             'name' => 'Glossy',
@@ -178,11 +173,10 @@ class CatalogApiTest extends TestCase
         ]);
     }
 
-    public function test_owner_can_read_categories_attribute_types_attributes_products_and_pricing(): void
+    public function test_owner_can_read_categories_attributes_products_and_pricing(): void
     {
         foreach ([
             '/api/v1/categories',
-            '/api/v1/attribute-types',
             '/api/v1/attributes',
             '/api/v1/products',
             '/api/v1/materials',
@@ -202,6 +196,15 @@ class CatalogApiTest extends TestCase
         $this->actingAs($this->owner)
             ->postJson('/api/v1/machines', [])
             ->assertNotFound();
+    }
+
+    public function test_attribute_type_endpoints_and_table_are_removed(): void
+    {
+        $this->getJson('/api/v1/attribute-types')->assertNotFound();
+        $this->actingAs($this->owner)->getJson('/api/v1/attribute-types')->assertNotFound();
+        $this->actingAs($this->owner)->postJson('/api/v1/attribute-types', [])->assertNotFound();
+        $this->actingAs($this->owner)->deleteJson('/api/v1/attribute-types/00000000-0000-0000-0000-000000000000')->assertNotFound();
+        $this->assertFalse(Schema::hasTable('attribute_types'));
     }
 
     public function test_manager_reads_own_branch_catalog_scope(): void
@@ -232,7 +235,6 @@ class CatalogApiTest extends TestCase
         foreach ([$this->cashier, $this->designer] as $user) {
             $this->actingAs($user)->getJson('/api/v1/products')->assertOk();
             $this->actingAs($user)->getJson('/api/v1/categories')->assertForbidden();
-            $this->actingAs($user)->getJson('/api/v1/attribute-types')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/attributes')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/materials')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/pricing')->assertForbidden();
@@ -508,18 +510,10 @@ class CatalogApiTest extends TestCase
         $this->assertSame('1500.00', $attribute['cost']);
         $this->assertTrue($attribute['is_active']);
 
-        $this->actingAs($this->manager)
-            ->getJson('/api/v1/attribute-types')
-            ->assertOk();
-
         $branchlessManager = $this->user('manager', null);
 
         $this->actingAs($branchlessManager)
             ->getJson('/api/v1/attributes')
-            ->assertForbidden();
-
-        $this->actingAs($branchlessManager)
-            ->getJson('/api/v1/attribute-types')
             ->assertForbidden();
     }
 

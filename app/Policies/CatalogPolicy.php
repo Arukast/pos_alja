@@ -17,15 +17,6 @@ final class CatalogPolicy
         return $user->role === 'manager' && $user->branch_id !== null;
     }
 
-    public function viewAttributeTypes(User $user): bool
-    {
-        if ($user->role === 'owner') {
-            return true;
-        }
-
-        return $user->role === 'manager' && $user->branch_id !== null;
-    }
-
     public function viewAttributes(User $user): bool
     {
         if ($user->role === 'owner') {
@@ -61,11 +52,6 @@ final class CatalogPolicy
     }
 
     public function manageCategories(User $user): bool
-    {
-        return $user->role === 'owner';
-    }
-
-    public function manageAttributeTypes(User $user): bool
     {
         return $user->role === 'owner';
     }

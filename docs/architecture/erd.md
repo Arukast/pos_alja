@@ -179,12 +179,6 @@ erDiagram
         timestamp deleted_at
     }
 
-    ATTRIBUTE_TYPES {
-        uuid id PK
-        string name UK
-        string calculation_archetype
-    }
-
     INVOICES {
         uuid id PK
         string invoice_number UK
@@ -349,7 +343,7 @@ erDiagram
 
 ## Relationship Notes
 
-1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`. Referential integrity is by convention, not by key.
+1. **`attributes.type` has no reference table.** It stores `finishing` or `display`; legacy `cut` rows remain. Referential integrity is by request validation, not by key.
 2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `material_product` has a composite primary key `(product_id, material_id)`.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
 4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the finishing/display modifiers. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) is the reseller discount source. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount.
@@ -440,7 +434,6 @@ Both expense types are summed into `expenses_total` and subtracted from `net_pro
 | `users` | `username` unique |
 | `material_branch_stock` | `(material_id, branch_id)` unique |
 | `invoices` | `invoice_number` unique |
-| `attribute_types` | `name` unique |
 | `order_attributes` | `(order_id, type)` unique; one finishing and one display per order |
 | `purchases` / `purchase_items` | `purchases` has a unique `(branch_id, idempotency_key)`; `purchase_items.purchase_id` cascades and `material_id` restricts |
 | Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.design_approved_by`, `orders.operator_id`, and `wasted_materials.order_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, `stock_ledgers.material_id`, `orders.product_id`/`material_id`, `purchases.branch_id`/`user_id`, and `purchase_items.material_id` |

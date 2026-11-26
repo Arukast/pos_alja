@@ -70,8 +70,6 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | :--- | :--- | :--- |
 | GET | `/categories` | owner, manager |
 | POST/PUT | `/categories`, `/categories/{category}` | owner |
-| GET | `/attribute-types` | owner, manager |
-| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner |
 | GET | `/attributes` | owner, manager |
 | POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner |
 | GET | `/products` | owner, manager, cashier, designer |

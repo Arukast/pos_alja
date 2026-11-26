@@ -90,7 +90,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 ## 2. Products
 
 ### FR6 Manage products, categories, materials, and prices
-- **Requirement:** Owner SHALL manage products, product categories, materials, and finishing/display options. Branch Manager SHALL read products and categories, manage global attribute types and own-branch attributes and pricing rows, create materials, and manage branch stock.
+- **Requirement:** Owner SHALL manage products, product categories, materials, and finishing/display options. Branch Manager SHALL read products and categories, manage own-branch attributes and pricing rows, create materials, and manage branch stock.
 - **Acceptance criteria:**
   - Product CRUD includes name, category, pricing type (`unit` or `area`), compatible material mapping (`material_ids[]`), and active status. `products.pricing_type` drives area (`width * length`) vs per-unit price calculations.
   - Category CRUD includes name, description, active status, and the derived product count; categories are never deleted, so `is_active` is the retire mechanism. Legacy `calculation_archetype` and `allowed_attribute_types` remain dead columns but are removed from the category form and API. Quantity discount tiers are removed.
@@ -101,7 +101,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.settings.reseller_discount_percent` and applied when a Reseller quote falls back to the Reguler pricing row.
   - `branches.settings.reseller_discount_percent` is the current source of the reseller discount. It is API-only, has no SPA field, and is currently uncapped. The target `branches.reseller_discount_percent` column is not implemented. The invoice branch's value applies.
   - Machine masters and machine selection are removed; the `machines` and `machine_pricing` tables are dropped. The pricing matrix is a target removal and remains the current price source.
-  - Category and product changes are Owner-only and written to the audit log. Managers manage global attribute types and own-branch attributes and pricing rows; branch stock changes are branch-scoped.
+  - Category and product changes are Owner-only and written to the audit log. Managers manage own-branch attributes and pricing rows; branch stock changes are branch-scoped.
 - **Traceability:** NFR1, NFR7, PB-01.
 
 ### FR7 Search, filter, and paginate products

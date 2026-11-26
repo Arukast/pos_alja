@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Modules\Catalog\Http\Controllers\AttributeController;
-use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
 use App\Modules\Catalog\Http\Controllers\MaterialController;
 use App\Modules\Catalog\Http\Controllers\PricingController;
@@ -54,7 +53,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/users/{user}/restore', [UserController::class, 'restore']);
 
         Route::get('/categories', [CategoryController::class, 'index']);
-        Route::get('/attribute-types', [AttributeTypeController::class, 'index']);
         Route::get('/attributes', [AttributeController::class, 'index']);
         Route::get('/products', [ProductController::class, 'index']);
         Route::post('/products', [ProductController::class, 'store']);
@@ -79,9 +77,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/{category}', [CategoryController::class, 'update']);
-
-        Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
-        Route::delete('/attribute-types/{attributeType}', [AttributeTypeController::class, 'destroy']);
 
         Route::post('/attributes', [AttributeController::class, 'store']);
         Route::put('/attributes/{attribute}', [AttributeController::class, 'update']);
