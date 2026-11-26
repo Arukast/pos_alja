@@ -261,6 +261,7 @@ class CreateInvoiceApiTest extends TestCase
             ->postJson('/api/v1/customers', [
                 'name' => 'New Customer',
                 'phone' => '0812000000',
+                'institution' => 'Masyarakat/Retail',
                 'type' => 'Reguler',
             ])
             ->assertCreated()

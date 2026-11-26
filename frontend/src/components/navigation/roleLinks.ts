@@ -100,7 +100,6 @@ export const roleLinks: Record<string, NavGroup[]> = {
             links: [
                 { to: '/cashier/payments', label: 'Antrean Pembayaran', icon: CreditCard },
                 { to: '/cashier/pickup', label: 'Antrean Pengambilan', icon: Truck },
-                { to: '/cashier/expenses', label: 'Pengeluaran', icon: Receipt },
             ],
         },
     ],

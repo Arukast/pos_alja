@@ -7,6 +7,8 @@
 
 ## Summary
 
+Sprint Review 1 Sales acceptance: customer registration is separate from new-order search; institution is required while phone, email, and address remain optional. Designer item configuration follows Product -> Material -> Finishing -> Display. Cashiers have no expense-entry screen; invoice print is the customer-facing print flow.
+
 | ID | Module | Roles |
 | :--- | :--- | :--- |
 | FR1 | Autentikasi | All |
@@ -123,8 +125,8 @@
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
   - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. There is no finishing/display snapshot.
-  - Item entry currently selects a pricing row; the designer form does not offer finishing/display selection, and machine selection is gone.
-  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]`. There is no `order_attributes` table, no persistence of the selection, and no designer selection UI.
+  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone.
+  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]`. There is no `order_attributes` table and no persistence of the selection; the designer form now offers finishing/display selection.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
   - Submission creates one invoice, its orders, initial status logs, and an activity log in one transaction. No order attribute rows are written.
   - Invoice number follows `INV-{branch prefix}-{YYYYMMDD}-{NNNN}`.

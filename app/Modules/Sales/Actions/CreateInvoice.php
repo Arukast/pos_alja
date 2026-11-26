@@ -19,12 +19,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
+/**
+ * Membuat invoice baru beserta item pesanan, log status awal, dan jejak audit dalam satu transaksi.
+ */
 final class CreateInvoice
 {
+    /**
+     * Membuat instance aksi pembuatan invoice.
+     */
     public function __construct(private readonly CalculateQuote $quote) {}
 
     /**
+     * Menghitung ulang harga dari server, menyimpan invoice beserta item pesanan, dan menyiarkan pembaruan.
+     *
      * @param  array<string, mixed>  $data
+     *
+     * @throws ValidationException
      */
     public function execute(array $data, User $designer): Invoice
     {
@@ -37,11 +47,13 @@ final class CreateInvoice
         }
 
         $invoice = DB::transaction(function () use ($data, $designer, $branchId): Invoice {
+            $now = now();
+            $today = $now->toDateString();
             $customer = Customer::findOrFail($data['customer_id']);
             $customerType = $customer->type ?: 'Reguler';
 
             // Serialize invoice numbering per branch.
-            Branch::query()->whereKey($branchId)->lockForUpdate()->first();
+            $branch = Branch::query()->whereKey($branchId)->lockForUpdate()->first();
 
             $lines = [];
             $subtotal = 0.0;
@@ -115,8 +127,8 @@ final class CreateInvoice
 
                 $lines[] = [
                     'pricing_id' => $quote['pricing_id'],
-                    'file_name' => $item['file_name'] ?? null,
-                    'notes' => $item['notes'] ?? null,
+                    'file_name' => $this->normalizeOptionalText($item['file_name'] ?? null),
+                    'notes' => $this->normalizeOptionalText($item['notes'] ?? null),
                     'area' => $quote['area'],
                     'quantity' => $quote['quantity'],
                     'unit_price' => $quote['unit_price'],
@@ -132,6 +144,12 @@ final class CreateInvoice
 
             $discount = round((float) ($data['discount'] ?? 0), 2);
 
+            if ($discount < 0) {
+                throw ValidationException::withMessages([
+                    'discount' => 'Diskon tidak boleh bernilai negatif.',
+                ]);
+            }
+
             if ($discount > $subtotal) {
                 throw ValidationException::withMessages([
                     'discount' => 'Diskon tidak boleh melebihi subtotal invoice.',
@@ -140,20 +158,20 @@ final class CreateInvoice
 
             $grandTotal = round(max(0, $subtotal - $discount), 2);
             $totalProfit = round($grandTotal - $totalCost, 2);
-            $branch = Branch::find($branchId);
-            $prefix = $branch?->code !== null && $branch->code !== ''
-                ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $branch->code) ?? 'BR')
-                : $this->branchPrefix($branch?->name);
+            $cleanedCode = $branch?->code !== null
+                ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $branch->code) ?? '')
+                : '';
+            $prefix = $cleanedCode !== '' ? $cleanedCode : $this->branchPrefix($branch?->name);
             $count = Invoice::query()
-                ->where('created_date', now()->toDateString())
+                ->where('created_date', $today)
                 ->where('branch_id', $branchId)
                 ->count();
-            $invoiceNumber = 'INV-'.$prefix.'-'.now()->format('Ymd').'-'.str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT);
+            $invoiceNumber = 'INV-'.$prefix.'-'.$now->format('Ymd').'-'.str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT);
 
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'branch_id' => $branchId,
-                'created_date' => now()->toDateString(),
+                'created_date' => $today,
                 'customer_id' => $customer->id,
                 'designer_id' => $designer->id,
                 'status' => 0,
@@ -181,7 +199,7 @@ final class CreateInvoice
                     'subtotal' => $line['subtotal'],
                     'cost' => $line['cost'],
                     'profit' => $line['profit'],
-                    'ordered_at' => now()->toDateString(),
+                    'ordered_at' => $today,
                     'status' => 0,
                     'pickup_status' => 0,
                     'is_manual_price' => $line['is_manual_price'],
@@ -239,6 +257,9 @@ final class CreateInvoice
         return $invoice;
     }
 
+    /**
+     * Menghasilkan awalan dua huruf dari nama cabang saat kode cabang belum tersedia.
+     */
     private function branchPrefix(?string $name): string
     {
         if ($name === null || $name === '') {
@@ -253,5 +274,19 @@ final class CreateInvoice
         }
 
         return strtoupper(substr($cleaned, 0, 2)) ?: 'BR';
+    }
+
+    /**
+     * Merapikan teks opsional agar spasi kosong disimpan sebagai null.
+     */
+    private function normalizeOptionalText(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }

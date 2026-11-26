@@ -24,6 +24,11 @@
 
 ## 2. Authentication
 
+### Customers (Sales)
+
+- `GET /customers?search=` returns customer records including `name`, optional `phone`, `email`, `address`, required `institution`, and the pricing `type`.
+- `POST /customers` requires `name` and `institution` (`Masyarakat/Retail`, `Sekolah`, `Universitas`, or `Pemerintahan`). Phone, email, and address are optional.
+
 | Method | Path | Access | Purpose |
 | :--- | :--- | :--- | :--- |
 | POST | `/auth/login` | guest | Username, password, remember. 422 on failure, 429 when throttled. |
