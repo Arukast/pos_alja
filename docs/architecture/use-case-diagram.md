@@ -30,7 +30,7 @@ flowchart LR
             UC05(["Kelola Kategori Produk"])
             UC06(["Kelola Harga Bahan & Finishing"])
             UC07(["Cari & Filter Produk"])
-            UC08(["Kelola Diskon Kategori"])
+            UC08(["Kelola Minimum Stok"])
         end
 
         subgraph INV["Inventaris"]
@@ -102,6 +102,7 @@ flowchart LR
 
     Manager --- UC01
     Manager --- UC07
+    Manager --- UC08
     Manager --- UC09
     Manager --- UC11
     Manager --- UC12
@@ -170,7 +171,7 @@ Notes:
 - **Production `Data Stok`** is read plus usage/waste updates.
 - **Invoice and receipt print** are denied to Production because both contain money. Production uses the queue.
 - **Machine management** is removed; there is no machine selection or machine cost in the current build.
-- **Quantity discounts** are configured per product category by the Owner, not per pricing-matrix row.
+- **Minimum stock** is edited per branch by the Owner or the branch's Manager on the existing branch-stock row; it writes no stock movement and no audit row. Category quantity-discount tiers are removed.
 
 ## Notes
 

@@ -19,6 +19,11 @@ final class RestoreProduct
         try {
             $restored = DB::transaction(function () use ($product, $actor): Product {
                 $product->restore();
+                $product->loadMissing('category');
+
+                if ($product->category?->is_active === false) {
+                    $product->update(['is_active' => false]);
+                }
 
                 ActivityLog::create([
                     'branch_id' => $actor->branch_id,

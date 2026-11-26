@@ -79,7 +79,7 @@ const emptyItem: DraftItemState = {
 export function DesignerNewOrderPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const optionsQuery = useQuery({ queryKey: ['quote-options'], queryFn: api.quoteOptions });
+    const optionsQuery = useQuery({ queryKey: ['quote-options'], queryFn: () => api.quoteOptions() });
 
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [customerSearch, setCustomerSearch] = useState('');

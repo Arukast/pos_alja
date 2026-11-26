@@ -51,22 +51,12 @@ export interface Customer {
     type: string | null;
 }
 
-export interface CategoryDiscountTier {
-    id?: string;
-    min_qty: number;
-    discount_percent: string;
-}
-
 export interface Category {
     id: string;
     name: string;
-    discount_tiers: CategoryDiscountTier[];
-}
-
-export interface AttributeType {
-    id: string;
-    name: string;
-    calculation_archetype: string;
+    description: string | null;
+    is_active: boolean;
+    products_count?: number;
 }
 
 export interface Attribute {
@@ -86,7 +76,7 @@ export interface Product {
     pricing_type: string;
     is_active: boolean;
     deleted_at?: string | null;
-    category: { id: string; name: string } | null;
+    category: { id: string; name: string; is_active: boolean } | null;
     materials: Array<{ id: string; name: string }>;
     material_ids: string[];
 }
@@ -107,7 +97,7 @@ export interface Material {
     unit: string;
     cost: string;
     price: string;
-    category: { id: string; name: string } | null;
+    category: { id: string; name: string; is_active: boolean } | null;
     current_stock: string | null;
     min_stock: string | null;
     is_low_stock: boolean | null;

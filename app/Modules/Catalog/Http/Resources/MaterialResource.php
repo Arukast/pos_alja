@@ -42,6 +42,7 @@ final class MaterialResource extends JsonResource
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
+                'is_active' => (bool) $this->category->is_active,
             ] : null,
             'current_stock' => $single?->current_stock,
             'min_stock' => $single?->min_stock,

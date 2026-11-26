@@ -11,7 +11,10 @@ final class UpdateAttributeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('manageAttributes', Attribute::class) === true;
+        $attribute = $this->route('attribute');
+
+        return $attribute instanceof Attribute
+            && $this->user()?->can('updateAttribute', $attribute) === true;
     }
 
     /**
@@ -22,7 +25,6 @@ final class UpdateAttributeRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:finishing,display'],
-            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'cost' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'is_active' => ['sometimes', 'boolean'],

@@ -35,7 +35,7 @@ Outfit only, with tabular numerals for money and counts.
 - KPI value: 22px/800 (`StatCard`).
 - Panel heading: caller-owned. `Card` renders no title, so each caller sets the heading size. The nominal size
   is 16px at `font-semibold` (600), and the `CrudPage` section header uses 16px/700. Callers may deviate: the
-  quantity-discount panel on the category page uses 18px (`text-lg`). The 16px/700 rule in the design source
+  "Salin tingkat harga" panel on `/manager/pricing` uses 18px (`text-lg`). The 16px/700 rule in the design source
   is a convention for section headers, not something a component enforces.
 - Body copy: 14px (`text-sm`) on cards, forms, tables, and descriptions. The base element has no global
   14px rule.

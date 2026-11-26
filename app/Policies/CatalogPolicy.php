@@ -4,20 +4,12 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Models\Attribute;
 use App\Models\User;
 
 final class CatalogPolicy
 {
     public function viewCategories(User $user): bool
-    {
-        if ($user->role === 'owner') {
-            return true;
-        }
-
-        return $user->role === 'manager' && $user->branch_id !== null;
-    }
-
-    public function viewAttributeTypes(User $user): bool
     {
         if ($user->role === 'owner') {
             return true;
@@ -65,14 +57,18 @@ final class CatalogPolicy
         return $user->role === 'owner';
     }
 
-    public function manageAttributeTypes(User $user): bool
+    public function createAttribute(User $user): bool
     {
-        return $user->role === 'owner';
+        return $user->role === 'owner'
+            || ($user->role === 'manager' && $user->branch_id !== null);
     }
 
-    public function manageAttributes(User $user): bool
+    public function updateAttribute(User $user, Attribute $attribute): bool
     {
-        return $user->role === 'owner';
+        return $user->role === 'owner'
+            || ($user->role === 'manager'
+                && $user->branch_id !== null
+                && $attribute->branch_id === $user->branch_id);
     }
 
     public function managePricing(User $user): bool

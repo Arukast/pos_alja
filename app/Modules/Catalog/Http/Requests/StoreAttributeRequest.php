@@ -11,7 +11,7 @@ final class StoreAttributeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('manageAttributes', Attribute::class) === true;
+        return $this->user()?->can('createAttribute', Attribute::class) === true;
     }
 
     /**

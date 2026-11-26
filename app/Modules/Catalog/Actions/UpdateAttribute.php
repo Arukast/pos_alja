@@ -17,7 +17,6 @@ final class UpdateAttribute
      * @param  array{
      *     name: string,
      *     type: string,
-     *     branch_id?: string|null,
      *     price: int|float|string,
      *     cost: int|float|string,
      *     is_active?: bool
@@ -30,9 +29,6 @@ final class UpdateAttribute
                 $attribute->update([
                     'name' => $data['name'],
                     'type' => $data['type'],
-                    'branch_id' => array_key_exists('branch_id', $data)
-                        ? $data['branch_id']
-                        : $attribute->branch_id,
                     'price' => $data['price'],
                     'cost' => $data['cost'],
                     'is_active' => array_key_exists('is_active', $data)

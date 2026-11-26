@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { api } from '../../api/queries';
 import type { Category } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
+import { Checkbox } from '../../components/ui/Checkbox';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -22,28 +24,6 @@ import {
 import { Toast } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 
-interface TierDraft {
-    min_qty: string;
-    discount_percent: string;
-}
-
-function formatTierPercent(value: string): string {
-    const numeric = Number(value);
-
-    return Number.isFinite(numeric) ? `${numeric}%` : `${value}%`;
-}
-
-function formatDiscountTiers(category: Category): string {
-    if (category.discount_tiers.length === 0) {
-        return '-';
-    }
-
-    return [...category.discount_tiers]
-        .sort((left, right) => left.min_qty - right.min_qty)
-        .map((tier) => `≥ ${tier.min_qty}: ${formatTierPercent(tier.discount_percent)}`)
-        .join(', ');
-}
-
 export function CategoriesPage({
     eyebrow,
     queryKeyPrefix,
@@ -57,7 +37,8 @@ export function CategoriesPage({
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Category | null>(null);
     const [name, setName] = useState('');
-    const [discountTiers, setDiscountTiers] = useState<TierDraft[]>([]);
+    const [description, setDescription] = useState('');
+    const [isActive, setIsActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [notice, setNotice] = useState<{
         message: string;
@@ -80,18 +61,8 @@ export function CategoriesPage({
         mutationFn: () => {
             const payload = {
                 name,
-                discount_tiers: discountTiers
-                    .filter(
-                        (tier) =>
-                            tier.min_qty.trim() !== '' || tier.discount_percent.trim() !== ''
-                    )
-                    .map((tier) => ({
-                        min_qty: tier.min_qty.trim() === '' ? '' : Number(tier.min_qty),
-                        discount_percent:
-                            tier.discount_percent.trim() === ''
-                                ? ''
-                                : Number(tier.discount_percent),
-                    })),
+                description: description.trim() === '' ? null : description.trim(),
+                is_active: isActive,
             };
 
             if (editing) {
@@ -115,19 +86,11 @@ export function CategoriesPage({
         },
     });
 
-    const destroy = useMutation({
-        mutationFn: (id: string) => api.admin.deleteCategory(id),
-        onSuccess: () => {
-            invalidate();
-            setNotice({ message: 'Kategori dihapus.', tone: 'success' });
-        },
-        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
-    });
-
     const openCreate = () => {
         setEditing(null);
         setName('');
-        setDiscountTiers([]);
+        setDescription('');
+        setIsActive(true);
         setErrors({});
         setOpen(true);
     };
@@ -135,32 +98,10 @@ export function CategoriesPage({
     const openEdit = (category: Category) => {
         setEditing(category);
         setName(category.name);
-        setDiscountTiers(
-            [...category.discount_tiers]
-                .sort((left, right) => left.min_qty - right.min_qty)
-                .map((tier) => ({
-                    min_qty: String(tier.min_qty),
-                    discount_percent: String(Number(tier.discount_percent)),
-                }))
-        );
+        setDescription(category.description ?? '');
+        setIsActive(category.is_active);
         setErrors({});
         setOpen(true);
-    };
-
-    const addTier = () => {
-        setDiscountTiers([...discountTiers, { min_qty: '', discount_percent: '' }]);
-    };
-
-    const updateTier = (index: number, field: keyof TierDraft, value: string) => {
-        setDiscountTiers(
-            discountTiers.map((tier, rowIndex) =>
-                rowIndex === index ? { ...tier, [field]: value } : tier
-            )
-        );
-    };
-
-    const removeTier = (index: number) => {
-        setDiscountTiers(discountTiers.filter((_, rowIndex) => rowIndex !== index));
     };
 
     const rows = query.data?.data ?? [];
@@ -170,7 +111,7 @@ export function CategoriesPage({
             <PageBanner
                 eyebrow={eyebrow}
                 title="Kategori Produk"
-                description="Kelola kategori produk dan tingkat diskon kuantitas."
+                description="Kelola kategori produk, deskripsi, dan status aktif."
                 actions={
                     readOnly ? null : (
                         <Button size="sm" onClick={openCreate}>
@@ -201,7 +142,13 @@ export function CategoriesPage({
                             <TableHead>
                                 <TableRow>
                                     <TableHeaderCell>Nama</TableHeaderCell>
-                                    <TableHeaderCell>Diskon Kuantitas</TableHeaderCell>
+                                    <TableHeaderCell className="hidden sm:table-cell">
+                                        Deskripsi
+                                    </TableHeaderCell>
+                                    <TableHeaderCell className="hidden text-right tabular-nums sm:table-cell">
+                                        Produk
+                                    </TableHeaderCell>
+                                    <TableHeaderCell>Status</TableHeaderCell>
                                     {readOnly ? null : (
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
@@ -211,7 +158,7 @@ export function CategoriesPage({
                             </TableHead>
                             <TableBody>
                                 {rows.length === 0 ? (
-                                    <TableEmpty colSpan={readOnly ? 2 : 3}>
+                                    <TableEmpty colSpan={readOnly ? 4 : 5}>
                                         Belum ada data.
                                     </TableEmpty>
                                 ) : (
@@ -220,37 +167,31 @@ export function CategoriesPage({
                                             <TableCell>
                                                 <span className="font-medium">{category.name}</span>
                                             </TableCell>
+                                            <TableCell className="hidden sm:table-cell">
+                                                {category.description ?? '-'}
+                                            </TableCell>
+                                            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                {category.products_count ?? 0}
+                                            </TableCell>
                                             <TableCell>
-                                                {formatDiscountTiers(category)}
+                                                <Badge
+                                                    tone={
+                                                        category.is_active ? 'success' : 'neutral'
+                                                    }
+                                                >
+                                                    {category.is_active ? 'Aktif' : 'Nonaktif'}
+                                                </Badge>
                                             </TableCell>
                                             {readOnly ? null : (
                                                 <TableCell className="border-light-border bg-light-surface sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
-                                                    <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="secondary"
-                                                            aria-label={`Ubah ${category.name}`}
-                                                            onClick={() => openEdit(category)}
-                                                        >
-                                                            Ubah
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="danger"
-                                                            aria-label={`Hapus ${category.name}`}
-                                                            onClick={() => {
-                                                                if (
-                                                                    window.confirm(
-                                                                        'Hapus kategori ini?'
-                                                                    )
-                                                                ) {
-                                                                    destroy.mutate(category.id);
-                                                                }
-                                                            }}
-                                                        >
-                                                            Hapus
-                                                        </Button>
-                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        aria-label={`Ubah ${category.name}`}
+                                                        onClick={() => openEdit(category)}
+                                                    >
+                                                        Ubah
+                                                    </Button>
                                                 </TableCell>
                                             )}
                                         </TableRow>
@@ -274,80 +215,26 @@ export function CategoriesPage({
                     <div className="space-y-4">
                         <Input
                             label="Nama"
+                            required
                             value={name}
                             error={errors.name}
                             onChange={(event) => setName(event.target.value)}
                         />
 
-                        <div className="space-y-3 border-t border-light-border pt-3 dark:border-surface-300">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-light-muted text-[10px] font-semibold uppercase tracking-widest dark:text-gray-400">
-                                    Tingkat Diskon Kuantitas
-                                </span>
-                                <Button size="sm" variant="secondary" onClick={addTier}>
-                                    Tambah tingkat
-                                </Button>
-                            </div>
+                        <Input
+                            label="Deskripsi"
+                            maxLength={255}
+                            value={description}
+                            error={errors.description}
+                            onChange={(event) => setDescription(event.target.value)}
+                        />
 
-                            {errors.discount_tiers ? (
-                                <p className="text-xs text-red-600 dark:text-red-400">
-                                    {errors.discount_tiers}
-                                </p>
-                            ) : null}
-
-                            {discountTiers.length === 0 ? (
-                                <p className="text-light-muted text-xs dark:text-gray-400">
-                                    Belum ada tingkat diskon kuantitas.
-                                </p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {discountTiers.map((tier, index) => (
-                                        <div
-                                            key={index}
-                                            className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
-                                        >
-                                            <Input
-                                                label="Jml minimum"
-                                                type="number"
-                                                min="1"
-                                                value={tier.min_qty}
-                                                error={errors[`discount_tiers.${index}.min_qty`]}
-                                                onChange={(event) =>
-                                                    updateTier(index, 'min_qty', event.target.value)
-                                                }
-                                            />
-                                            <Input
-                                                label="Diskon (%)"
-                                                type="number"
-                                                min="0"
-                                                max="100"
-                                                step="0.01"
-                                                value={tier.discount_percent}
-                                                error={
-                                                    errors[
-                                                        `discount_tiers.${index}.discount_percent`
-                                                    ]
-                                                }
-                                                onChange={(event) =>
-                                                    updateTier(
-                                                        index,
-                                                        'discount_percent',
-                                                        event.target.value
-                                                    )
-                                                }
-                                            />
-                                            <Button
-                                                size="sm"
-                                                variant="danger"
-                                                onClick={() => removeTier(index)}
-                                            >
-                                                Hapus
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <Checkbox
+                            label="Aktif"
+                            checked={isActive}
+                            error={errors.is_active}
+                            onChange={(event) => setIsActive(event.target.checked)}
+                        />
 
                         <div className="flex justify-end gap-2">
                             <Button

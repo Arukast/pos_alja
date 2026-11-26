@@ -12,13 +12,6 @@ const paymentMethods: Record<string, string> = {
     QRIS: 'QRIS',
 };
 
-const archetypes: Record<string, string> = {
-    per_piece: 'Per Potong',
-    surface_area: 'Per Meter Persegi',
-    linear_dimension: 'Per Meter Lari',
-    tiered_volume: 'Harga Bertingkat',
-};
-
 const attributeTypes: Record<string, string> = {
     finishing: 'Finishing',
     cut: 'Potong',
@@ -50,10 +43,6 @@ export function roleLabel(role: string): string {
 
 export function paymentMethodLabel(method: string): string {
     return paymentMethods[method] ?? method;
-}
-
-export function archetypeLabel(archetype: string): string {
-    return archetypes[archetype] ?? archetype;
 }
 
 export function attributeTypeLabel(type: string): string {

@@ -327,6 +327,39 @@ class InvoiceApiTest extends TestCase
     }
 
     /**
+     * Memastikan detail invoice tetap menampilkan nama produk dan bahan dari baris harga yang dihapus lunak.
+     */
+    public function test_invoice_detail_resolves_soft_deleted_pricing_product_and_material(): void
+    {
+        $fixture = $this->catalogFixture($this->branchOne);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', [
+                'customer_id' => $this->customer->id,
+                'items' => [
+                    [
+                        'pricing_id' => $fixture['pricing']->id,
+                        'quantity' => 1,
+                        'width' => 2,
+                        'length' => 1,
+                        'is_manual_price' => false,
+                    ],
+                ],
+            ])
+            ->assertCreated();
+
+        $fixture['pricing']->delete();
+        $fixture['product']->delete();
+        $fixture['material']->delete();
+
+        $this->actingAs($this->designer)
+            ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.pricing.product', 'Spanduk Flexy')
+            ->assertJsonPath('invoice.orders.0.pricing.material', 'Flexy 340gr');
+    }
+
+    /**
      * Memastikan peran tidak dikenal ditolak saat membaca daftar dan detail invoice.
      */
     public function test_unknown_role_cannot_read_invoices(): void

@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Actions;
 
 use App\Models\Attribute;
 use App\Models\User;
+use App\Support\BranchScope;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,11 +26,27 @@ final class CreateAttribute
      */
     public function execute(array $data, User $actor): Attribute
     {
+        if ($actor->role !== 'owner') {
+            if ($actor->branch_id === null) {
+                abort(403);
+            }
+
+            if (array_key_exists('branch_id', $data)
+                && $data['branch_id'] !== null
+                && $data['branch_id'] !== $actor->branch_id) {
+                abort(403);
+            }
+        }
+
+        $branchId = $actor->role === 'owner'
+            ? ($data['branch_id'] ?? null)
+            : BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
+
         try {
             $attribute = DB::transaction(fn (): Attribute => Attribute::create([
                 'name' => $data['name'],
                 'type' => $data['type'],
-                'branch_id' => $data['branch_id'] ?? null,
+                'branch_id' => $branchId,
                 'price' => $data['price'],
                 'cost' => $data['cost'],
                 'is_active' => (bool) ($data['is_active'] ?? true),
