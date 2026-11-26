@@ -92,8 +92,8 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 ### FR6 Manage products, categories, materials, and prices
 - **Requirement:** Owner SHALL manage products, product categories, materials, finishing/display options, and quantity discounts. Branch Manager SHALL read products and categories, manage global attribute types and own-branch attributes and pricing rows, create materials, and manage branch stock.
 - **Acceptance criteria:**
-  - Product CRUD includes name, category, pricing type (`unit` or `area`), and active status.
-  - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`). The tiers are configured but not applied to quotes or invoices.
+  - Product CRUD includes name, category, pricing type (`unit` or `area`), compatible material mapping (`material_ids[]`), and active status. `products.pricing_type` drives area (`width * length`) vs per-unit price calculations.
+  - Category CRUD includes name and quantity discount tiers (`min_qty`, `discount_percent`). Legacy `calculation_archetype` and `allowed_attribute_types` inputs are removed from the category form and API. The tiers are configured but not applied to quotes or invoices.
   - Material master includes name, category, unit, type, dimensions, base cost, and base price. The allowed units are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; `m2` displays as `m²`. Create requires `unit`; update accepts it optionally. The column defaults to `pcs`.
   - Existing materials are backfilled by `MaterialUnit::backfill()`. The first match wins: material name keywords (`banner`, `vinyl`, `flexi`, `backdrop`, `spandex`, `spanduk` -> `m2`; `kertas`, `paper`, `hvs`, `art paper`, `sticker`, `stiker` -> `lembar`; `tinta`, `ink`, `solvent`, `pelarut` -> `liter`), then the same keyword sets against the category name, then a `surface_area` category archetype -> `m2`, otherwise `pcs`. A null or legacy value reads as `pcs`.
   - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form offers finishing/display selection, and the selection is persisted in `orders.selected_attributes`.
@@ -125,7 +125,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
   - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. Finishing and display selections are persisted in `orders.selected_attributes`; there is no `order_attributes` price/cost snapshot.
-  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone.
+  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone. When a product defines compatible materials (`material_product`), the Designer material selector filters to those mapped materials (falling back to all branch materials when no mapping exists).
   - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]` and stores it on the order.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
   - Submission creates one invoice, its orders (including `width`, `length`, and `selected_attributes`), initial status logs, and an activity log in one transaction. No `order_attributes` rows are written.

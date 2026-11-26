@@ -31,8 +31,10 @@ erDiagram
 
     PRODUCTS ||--o{ ORDERS : "ordered as"
     PRODUCTS ||--o{ PRICING : "priced as"
+    PRODUCTS ||--o{ MATERIAL_PRODUCT : "maps"
     MATERIALS ||--o{ ORDERS : "uses"
     MATERIALS ||--o{ PRICING : "priced as"
+    MATERIALS ||--o{ MATERIAL_PRODUCT : "compatible with"
     MATERIALS ||--o{ MATERIAL_BRANCH_STOCK : "stocked at"
     MATERIALS ||--o{ STOCK_LEDGERS : "moves"
     MATERIALS ||--o{ WASTED_MATERIALS : "wasted"
@@ -122,6 +124,13 @@ erDiagram
         string pricing_type
         boolean is_active
         timestamp deleted_at
+    }
+
+    MATERIAL_PRODUCT {
+        uuid product_id FK
+        uuid material_id FK
+        timestamp created_at
+        timestamp updated_at
     }
 
     PRICING["PRICING (current, transitional)"] {
@@ -348,8 +357,8 @@ erDiagram
 
 ## Relationship Notes
 
-1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`, and `product_categories.allowed_attribute_types` stores an array of type names. Referential integrity is by convention, not by key.
-2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity.
+1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`. Referential integrity is by convention, not by key.
+2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity, and `material_product` has a composite primary key `(product_id, material_id)`.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
 4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the finishing/display modifiers. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) is the reseller discount source. `product_category_discounts` stores tiers, but the current quote/invoice path does not apply them. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount + category quantity discount.
 5. **`order_attributes` is target-only.** No table exists; finishing/display selections are persisted on `orders.selected_attributes` as the attribute IDs used for pricing modifiers, without a per-attribute price/cost snapshot. The target keeps at most one row per `(order_id, type)` with a price/cost snapshot.
@@ -364,6 +373,8 @@ erDiagram
 14. **Target and implemented additions.** The following columns and tables are part of the target schema:
     - `branches.reseller_discount_percent` for Reseller pricing; implemented by `2026_11_25_000002_add_reseller_discount_percent_to_branches_table.php`.
     - `products.is_active` for catalog filtering; implemented by `2026_11_23_000000_add_is_active_and_indexes_to_products_table.php`.
+    - `product_categories.calculation_archetype` made nullable (default `per_piece`) and `allowed_attribute_types` deprecated from Category API/UI, with `products.pricing_type` backfilled to `area` for legacy `surface_area` categories by `2026_11_27_000000_drop_category_archetype_and_allowed_types.php`.
+    - `material_product` pivot for compatible materials per product (backfilled from `pricing`) by `2026_11_27_000001_create_material_product_table.php`.
     - `product_category_discounts` for quantity discounts; implemented by `2026_11_25_000000_create_product_category_discounts_table.php`.
     - `materials.unit` for `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; implemented by `2026_11_25_000001_add_unit_to_materials_table.php` with default `pcs` and a name/category/archetype backfill.
     - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
