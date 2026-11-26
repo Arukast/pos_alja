@@ -101,23 +101,15 @@ export function DesignerNewOrderPage() {
 
     const options = optionsQuery.data;
     const selectedProduct = (options?.products ?? []).find((product) => product.id === item.product_id);
-    const selectedCategory = (options?.categories ?? []).find(
-        (category) => category.id === selectedProduct?.category?.id
-    );
-    const archetype = selectedProduct?.category?.calculation_archetype ?? 'surface_area';
-    const needsWidth = archetype === 'surface_area';
-    const needsLength = archetype === 'surface_area' || archetype === 'linear_dimension';
-    const allowedAttributeTypes = selectedCategory?.allowed_attribute_types ?? [];
+    const isAreaProduct = selectedProduct?.pricing_type === 'area';
+    const needsWidth = isAreaProduct;
+    const needsLength = isAreaProduct;
 
     const finishingOptions = (options?.attributes ?? []).filter(
-        (attribute) =>
-            attribute.type === 'finishing' &&
-            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('finishing'))
+        (attribute) => attribute.type === 'finishing'
     );
     const displayOptions = (options?.attributes ?? []).filter(
-        (attribute) =>
-            attribute.type === 'display' &&
-            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('display'))
+        (attribute) => attribute.type === 'display'
     );
 
     const customerList = customersQuery.data?.data ?? [];

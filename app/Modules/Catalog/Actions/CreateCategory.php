@@ -16,8 +16,6 @@ final class CreateCategory
     /**
      * @param  array{
      *     name: string,
-     *     calculation_archetype: string,
-     *     allowed_attribute_types?: array<int, string>|null,
      *     discount_tiers?: array<int, array{min_qty: int|string, discount_percent: int|float|string}>
      * }  $data
      */
@@ -27,8 +25,8 @@ final class CreateCategory
             $category = DB::transaction(function () use ($data): ProductCategory {
                 $category = ProductCategory::create([
                     'name' => $data['name'],
-                    'calculation_archetype' => $data['calculation_archetype'],
-                    'allowed_attribute_types' => $data['allowed_attribute_types'] ?? null,
+                    'calculation_archetype' => 'per_piece',
+                    'allowed_attribute_types' => null,
                 ]);
 
                 $tiers = $data['discount_tiers'] ?? [];

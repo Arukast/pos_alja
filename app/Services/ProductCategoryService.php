@@ -24,7 +24,7 @@ class ProductCategoryService
                 return ProductCategory::create([
                     'id' => (string) Str::uuid(),
                     'name' => $data['name'],
-                    'calculation_archetype' => $data['calculation_archetype'],
+                    'calculation_archetype' => $data['calculation_archetype'] ?? 'per_piece',
                     'allowed_attribute_types' => $data['allowed_attribute_types'] ?? null,
                 ]);
             });
@@ -51,8 +51,6 @@ class ProductCategoryService
                 $category = ProductCategory::findOrFail($id);
                 $category->update([
                     'name' => $data['name'],
-                    'calculation_archetype' => $data['calculation_archetype'],
-                    'allowed_attribute_types' => $data['allowed_attribute_types'] ?? null,
                 ]);
 
                 return $category;

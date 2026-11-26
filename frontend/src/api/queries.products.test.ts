@@ -70,8 +70,6 @@ describe('api.products and admin product mutations', () => {
     it('calls create, update, and delete category endpoints with discount_tiers payloads', async () => {
         const createCategoryBody = {
             name: 'Print Lembaran',
-            calculation_archetype: 'per_piece',
-            allowed_attribute_types: ['finishing'],
             discount_tiers: [
                 { min_qty: 10, discount_percent: 5 },
                 { min_qty: 50, discount_percent: 10 },

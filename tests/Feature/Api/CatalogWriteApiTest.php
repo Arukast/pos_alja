@@ -357,20 +357,20 @@ class CatalogWriteApiTest extends TestCase
         $category = $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
                 'name' => 'Indoor',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
             ])
             ->assertCreated()
+            ->assertJsonMissingPath('category.calculation_archetype')
+            ->assertJsonMissingPath('category.allowed_attribute_types')
             ->json('category');
 
         $this->actingAs($this->owner)
             ->putJson("/api/v1/categories/{$category['id']}", [
                 'name' => 'Indoor Updated',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
             ])
             ->assertOk()
-            ->assertJsonPath('category.name', 'Indoor Updated');
+            ->assertJsonPath('category.name', 'Indoor Updated')
+            ->assertJsonMissingPath('category.calculation_archetype')
+            ->assertJsonMissingPath('category.allowed_attribute_types');
 
         $attributeType = $this->actingAs($this->owner)
             ->postJson('/api/v1/attribute-types', [
@@ -513,11 +513,14 @@ class CatalogWriteApiTest extends TestCase
 
         $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
-                'name' => 'Invalid',
+                'name' => 'Ignored Legacy Fields',
                 'calculation_archetype' => 'not-real',
+                'allowed_attribute_types' => ['finishing'],
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('calculation_archetype');
+            ->assertCreated()
+            ->assertJsonPath('category.name', 'Ignored Legacy Fields')
+            ->assertJsonMissingPath('category.calculation_archetype')
+            ->assertJsonMissingPath('category.allowed_attribute_types');
 
         $this->actingAs($this->owner)
             ->postJson('/api/v1/attribute-types', [
@@ -704,8 +707,6 @@ class CatalogWriteApiTest extends TestCase
         $created = $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
                 'name' => 'Print Lembaran',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
                 'discount_tiers' => [
                     ['min_qty' => 50, 'discount_percent' => 10],
                     ['min_qty' => 10, 'discount_percent' => 5.5],
@@ -727,8 +728,6 @@ class CatalogWriteApiTest extends TestCase
         $this->actingAs($this->owner)
             ->putJson("/api/v1/categories/{$created['id']}", [
                 'name' => 'Print Lembaran Update',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
                 'discount_tiers' => [
                     ['min_qty' => 20, 'discount_percent' => 7.25],
                 ],

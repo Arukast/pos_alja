@@ -9,7 +9,6 @@ import { Card, CardBody } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import {
     Table,
@@ -22,19 +21,11 @@ import {
 } from '../../components/ui/Table';
 import { Toast } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
-import { archetypeLabel } from '../../lib/labels';
 
 interface TierDraft {
     min_qty: string;
     discount_percent: string;
 }
-
-const archetypeOptions = [
-    { value: 'per_piece', label: archetypeLabel('per_piece') },
-    { value: 'surface_area', label: archetypeLabel('surface_area') },
-    { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
-    { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
-];
 
 function formatTierPercent(value: string): string {
     const numeric = Number(value);
@@ -66,8 +57,6 @@ export function CategoriesPage({
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Category | null>(null);
     const [name, setName] = useState('');
-    const [archetype, setArchetype] = useState('');
-    const [allowedTypes, setAllowedTypes] = useState('');
     const [discountTiers, setDiscountTiers] = useState<TierDraft[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [notice, setNotice] = useState<{
@@ -91,11 +80,6 @@ export function CategoriesPage({
         mutationFn: () => {
             const payload = {
                 name,
-                calculation_archetype: archetype,
-                allowed_attribute_types: allowedTypes
-                    .split(',')
-                    .map((value) => value.trim())
-                    .filter(Boolean),
                 discount_tiers: discountTiers
                     .filter(
                         (tier) =>
@@ -143,8 +127,6 @@ export function CategoriesPage({
     const openCreate = () => {
         setEditing(null);
         setName('');
-        setArchetype('');
-        setAllowedTypes('');
         setDiscountTiers([]);
         setErrors({});
         setOpen(true);
@@ -153,8 +135,6 @@ export function CategoriesPage({
     const openEdit = (category: Category) => {
         setEditing(category);
         setName(category.name);
-        setArchetype(category.calculation_archetype);
-        setAllowedTypes(category.allowed_attribute_types.join(','));
         setDiscountTiers(
             [...category.discount_tiers]
                 .sort((left, right) => left.min_qty - right.min_qty)
@@ -190,7 +170,7 @@ export function CategoriesPage({
             <PageBanner
                 eyebrow={eyebrow}
                 title="Kategori Produk"
-                description="Arketipe kategori, atribut yang diizinkan, dan diskon kuantitas."
+                description="Kelola kategori produk dan tingkat diskon kuantitas."
                 actions={
                     readOnly ? null : (
                         <Button size="sm" onClick={openCreate}>
@@ -221,10 +201,6 @@ export function CategoriesPage({
                             <TableHead>
                                 <TableRow>
                                     <TableHeaderCell>Nama</TableHeaderCell>
-                                    <TableHeaderCell>Arketipe</TableHeaderCell>
-                                    <TableHeaderCell className="hidden sm:table-cell">
-                                        Atribut yang diizinkan
-                                    </TableHeaderCell>
                                     <TableHeaderCell>Diskon Kuantitas</TableHeaderCell>
                                     {readOnly ? null : (
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
@@ -235,7 +211,7 @@ export function CategoriesPage({
                             </TableHead>
                             <TableBody>
                                 {rows.length === 0 ? (
-                                    <TableEmpty colSpan={readOnly ? 4 : 5}>
+                                    <TableEmpty colSpan={readOnly ? 2 : 3}>
                                         Belum ada data.
                                     </TableEmpty>
                                 ) : (
@@ -243,14 +219,6 @@ export function CategoriesPage({
                                         <TableRow key={category.id}>
                                             <TableCell>
                                                 <span className="font-medium">{category.name}</span>
-                                            </TableCell>
-                                            <TableCell>
-                                                {archetypeLabel(category.calculation_archetype)}
-                                            </TableCell>
-                                            <TableCell className="hidden sm:table-cell">
-                                                {category.allowed_attribute_types.length === 0
-                                                    ? 'Semua'
-                                                    : category.allowed_attribute_types.join(', ')}
                                             </TableCell>
                                             <TableCell>
                                                 {formatDiscountTiers(category)}
@@ -309,25 +277,6 @@ export function CategoriesPage({
                             value={name}
                             error={errors.name}
                             onChange={(event) => setName(event.target.value)}
-                        />
-                        <Select
-                            label="Arketipe"
-                            value={archetype}
-                            error={errors.calculation_archetype}
-                            onChange={(event) => setArchetype(event.target.value)}
-                        >
-                            <option value="">Pilih</option>
-                            {archetypeOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </Select>
-                        <Input
-                            label="Jenis atribut yang diizinkan (pisahkan dengan koma)"
-                            value={allowedTypes}
-                            error={errors.allowed_attribute_types}
-                            onChange={(event) => setAllowedTypes(event.target.value)}
                         />
 
                         <div className="space-y-3 border-t border-light-border pt-3 dark:border-surface-300">

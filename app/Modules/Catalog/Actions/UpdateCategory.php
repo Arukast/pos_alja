@@ -16,8 +16,6 @@ final class UpdateCategory
     /**
      * @param  array{
      *     name: string,
-     *     calculation_archetype: string,
-     *     allowed_attribute_types?: array<int, string>|null,
      *     discount_tiers?: array<int, array{min_qty: int|string, discount_percent: int|float|string}>
      * }  $data
      */
@@ -27,8 +25,6 @@ final class UpdateCategory
             $updated = DB::transaction(function () use ($category, $data): ProductCategory {
                 $category->update([
                     'name' => $data['name'],
-                    'calculation_archetype' => $data['calculation_archetype'],
-                    'allowed_attribute_types' => $data['allowed_attribute_types'] ?? null,
                 ]);
 
                 if (array_key_exists('discount_tiers', $data)) {

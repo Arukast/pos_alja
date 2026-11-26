@@ -25,7 +25,6 @@ final class ProductResource extends JsonResource
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
-                'calculation_archetype' => $this->category->calculation_archetype,
             ] : null,
         ];
     }

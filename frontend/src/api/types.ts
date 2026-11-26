@@ -60,8 +60,6 @@ export interface CategoryDiscountTier {
 export interface Category {
     id: string;
     name: string;
-    calculation_archetype: string;
-    allowed_attribute_types: string[];
     discount_tiers: CategoryDiscountTier[];
 }
 
@@ -88,7 +86,7 @@ export interface Product {
     pricing_type: string;
     is_active: boolean;
     deleted_at?: string | null;
-    category: { id: string; name: string; calculation_archetype: string } | null;
+    category: { id: string; name: string } | null;
 }
 
 export interface MaterialStock {
@@ -183,7 +181,7 @@ export interface Order {
     pricing?: {
         product: string | null;
         material: string | null;
-        calculation_archetype: string | null;
+        pricing_type: string | null;
     } | null;
     file_name: string | null;
     notes: string | null;

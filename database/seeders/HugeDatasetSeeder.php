@@ -154,7 +154,7 @@ class HugeDatasetSeeder extends Seeder
             ['name' => 'Kartu Nama', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Kartu Nama']->id],
             ['name' => 'Produk Jadi', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Produk Jadi']->id],
             ['name' => 'NOTA', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['NOTA']->id],
-            ['name' => 'DTF Large Format', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
+            ['name' => 'DTF Large Format', 'pricing_type' => 'area', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
         ];
 
         $productModels = [];
