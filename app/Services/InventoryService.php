@@ -95,7 +95,7 @@ class InventoryService
      *
      * Callers must hold a transaction; this method never opens its own.
      *
-     * @return array{old_stock: float, new_stock: float}
+     * @return array{old_stock: float, new_stock: float, ledger_id: string}
      */
     public function applyMovement(
         string $materialId,
@@ -163,7 +163,7 @@ class InventoryService
         $stock->current_stock = $newStock;
         $stock->save();
 
-        StockLedger::create([
+        $ledger = StockLedger::create([
             'branch_id' => $branchId,
             'material_id' => $materialId,
             'type' => $type,
@@ -180,7 +180,7 @@ class InventoryService
             'notes' => $notes,
         ]);
 
-        return ['old_stock' => $oldStock, 'new_stock' => $newStock];
+        return ['old_stock' => $oldStock, 'new_stock' => $newStock, 'ledger_id' => (string) $ledger->id];
     }
 
     /**
@@ -294,7 +294,7 @@ class InventoryService
     }
 
     /**
-     * Deduct stock for printed layout items.
+     * Deduct stock for printed layout items and return the created ledger row.
      */
     public function deductStockOnPrint(
         string $materialId,
@@ -302,15 +302,15 @@ class InventoryService
         ?string $branchId = null,
         ?string $orderId = null,
         ?User $operator = null,
-    ): Material {
+    ): StockLedger {
         $userId = auth()->id();
         $branchId = $branchId ?: (auth()->user()->branch_id ?? Branch::value('id'));
 
         try {
-            return DB::transaction(function () use ($materialId, $quantity, $branchId, $orderId, $operator) {
-                $material = Material::findOrFail($materialId);
+            return DB::transaction(function () use ($materialId, $quantity, $branchId, $orderId, $operator): StockLedger {
+                Material::findOrFail($materialId);
 
-                $this->applyMovement(
+                $movement = $this->applyMovement(
                     $materialId,
                     $branchId,
                     'usage',
@@ -321,7 +321,7 @@ class InventoryService
                     actor: $operator,
                 );
 
-                return $material;
+                return StockLedger::query()->findOrFail($movement['ledger_id']);
             });
         } catch (\Throwable $e) {
             Log::error('Deducting stock on print failed.', [

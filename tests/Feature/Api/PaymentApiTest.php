@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -220,6 +222,144 @@ class PaymentApiTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson("/api/v1/invoices/{$this->otherInvoice->id}/pickup")
             ->assertForbidden();
+    }
+
+    public function test_down_payment_writes_payment_audit_with_before_after(): void
+    {
+        $response = $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$this->invoice->id}/down-payments", [
+                'amount' => 50000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertCreated();
+
+        $paymentId = (string) $response->json('payment.id');
+
+        $log = ActivityLog::query()
+            ->where('action', 'PAYMENT')
+            ->where('model_type', Payment::class)
+            ->where('model_id', $paymentId)
+            ->firstOrFail();
+
+        $this->assertSame($this->cashier->id, $log->user_id);
+        $this->assertSame($this->cashier->username, $log->username);
+        $this->assertSame('cashier', $log->role);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+
+        $this->assertSame($this->invoice->id, $log->payload['invoice_id']);
+        $this->assertSame('50000.00', $log->payload['amount']);
+        $this->assertSame('Cash', $log->payload['method']);
+        $this->assertSame(0, $log->payload['status_before']);
+        $this->assertSame(1, $log->payload['status_after']);
+        $this->assertSame('100000.00', $log->payload['receivable_before']);
+        $this->assertSame('50000.00', $log->payload['receivable_after']);
+        $this->assertSame('50000.00', $log->payload['dp_after']);
+    }
+
+    public function test_settlement_writes_payment_audit_with_discount_and_money_strings(): void
+    {
+        $this->actingAs($this->cashier)->postJson(
+            "/api/v1/invoices/{$this->invoice->id}/down-payments",
+            ['amount' => 50000, 'payment_method' => 'Cash']
+        )->assertCreated();
+
+        $response = $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$this->invoice->id}/settlements", [
+                'discount' => 10000,
+                'payment_method' => 'Cash',
+                'cash_received' => 50000,
+            ])
+            ->assertCreated();
+
+        $paymentId = (string) $response->json('payment.id');
+
+        $log = ActivityLog::query()
+            ->where('action', 'PAYMENT')
+            ->where('model_type', Payment::class)
+            ->where('model_id', $paymentId)
+            ->firstOrFail();
+
+        $this->assertSame($this->cashier->id, $log->user_id);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+
+        $this->assertSame($this->invoice->id, $log->payload['invoice_id']);
+        $this->assertSame('40000.00', $log->payload['amount']);
+        $this->assertSame('Cash', $log->payload['method']);
+        $this->assertSame('10000.00', $log->payload['discount']);
+        $this->assertSame(1, $log->payload['status_before']);
+        $this->assertSame(2, $log->payload['status_after']);
+        $this->assertSame('100000.00', $log->payload['grand_total_before']);
+        $this->assertSame('90000.00', $log->payload['grand_total_after']);
+        $this->assertSame('50000.00', $log->payload['receivable_before']);
+        $this->assertSame('0.00', $log->payload['receivable_after']);
+    }
+
+    public function test_zero_amount_settlement_audits_invoice_as_subject(): void
+    {
+        $this->actingAs($this->cashier)->postJson(
+            "/api/v1/invoices/{$this->invoice->id}/down-payments",
+            ['amount' => 50000, 'payment_method' => 'Cash']
+        )->assertCreated();
+
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$this->invoice->id}/settlements", [
+                'discount' => 50000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('payment', null);
+
+        $log = ActivityLog::query()
+            ->where('action', 'PAYMENT')
+            ->where('model_type', Invoice::class)
+            ->where('model_id', $this->invoice->id)
+            ->firstOrFail();
+
+        $this->assertSame('0.00', $log->payload['amount']);
+        $this->assertSame('50000.00', $log->payload['discount']);
+        $this->assertSame(1, $log->payload['status_before']);
+        $this->assertSame(2, $log->payload['status_after']);
+        $this->assertSame('0.00', $log->payload['receivable_after']);
+    }
+
+    public function test_pickup_writes_pickup_audit(): void
+    {
+        $this->invoice->update(['status' => 2, 'accounts_receivable' => 0]);
+
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$this->invoice->id}/pickup")
+            ->assertOk();
+
+        $log = ActivityLog::query()
+            ->where('action', 'PICKUP')
+            ->where('model_type', Invoice::class)
+            ->where('model_id', $this->invoice->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->cashier->id, $log->user_id);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+        $this->assertSame(0, $log->payload['pickup_status_before']);
+        $this->assertSame(1, $log->payload['pickup_status_after']);
+        $this->assertSame($this->invoice->fresh()->pickup_date, $log->payload['pickup_date']);
+    }
+
+    public function test_failed_payment_does_not_write_audit(): void
+    {
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$this->invoice->id}/down-payments", [
+                'amount' => 120000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertStatus(422);
+
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$this->otherInvoice->id}/down-payments", [
+                'amount' => 10000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('activity_logs', 0);
     }
 
     private function branch(string $name): Branch

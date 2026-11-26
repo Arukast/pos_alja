@@ -7,12 +7,16 @@ namespace App\Modules\Sales\Actions;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\AuditLogger;
+use App\Support\Decimal;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class RegisterDownPayment
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * @param  array{amount: numeric, payment_method: string}  $data
      */
@@ -26,6 +30,9 @@ final class RegisterDownPayment
                     'amount' => 'Invoice ini sudah lunas.',
                 ]);
             }
+
+            $statusBefore = $locked->status;
+            $receivableBefore = Decimal::money($locked->accounts_receivable);
 
             $receivable = round((float) $locked->accounts_receivable, 2);
             $amount = round((float) $data['amount'], 2);
@@ -53,6 +60,24 @@ final class RegisterDownPayment
             ]);
 
             $locked->recalculatePayments();
+
+            $this->audit->record(
+                $cashier,
+                'PAYMENT',
+                'Menerima down payment invoice '.$locked->invoice_number,
+                $payment,
+                [
+                    'invoice_id' => $locked->id,
+                    'amount' => Decimal::money($payment->amount),
+                    'method' => $payment->payment_method,
+                    'status_before' => $statusBefore,
+                    'status_after' => $locked->status,
+                    'receivable_before' => $receivableBefore,
+                    'receivable_after' => Decimal::money($locked->accounts_receivable),
+                    'dp_after' => Decimal::money($locked->dp_amount),
+                ],
+                $locked->branch_id,
+            );
 
             return $payment;
         });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Events\OrderUpdated;
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -291,6 +292,48 @@ class ProductionFailApiTest extends TestCase
             OrderUpdated::class,
             fn (OrderUpdated $event) => $event->branchId === $this->branchOne->id
         );
+    }
+
+    public function test_fail_writes_order_fail_audit_with_reversal(): void
+    {
+        $order = $this->order($this->invoice, 0);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->actingAs($this->secondProduction)
+            ->postJson("/api/v1/orders/{$order->id}/fail", ['note' => 'Bahan rusak'])
+            ->assertOk();
+
+        $reversal = StockLedger::query()
+            ->where('reference_type', 'order')
+            ->where('reference_id', $order->id)
+            ->where('type', 'usage_reversal')
+            ->firstOrFail();
+
+        $log = ActivityLog::query()
+            ->where('action', 'ORDER_FAIL')
+            ->where('model_type', Order::class)
+            ->where('model_id', $order->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->secondProduction->id, $log->user_id);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+        $this->assertSame(1, $log->payload['status_before']);
+        $this->assertSame(3, $log->payload['status_after']);
+        $this->assertSame($this->production->id, $log->payload['operator_before']);
+        $this->assertSame($this->production->id, $log->payload['operator_after']);
+        $this->assertSame('Bahan rusak', $log->payload['note']);
+
+        $reversals = $log->payload['material_usage'];
+        $this->assertCount(1, $reversals);
+        $this->assertSame($this->material->id, $reversals[0]['material_id']);
+        $this->assertSame(6.0, (float) $reversals[0]['quantity']);
+        $this->assertSame(4.0, (float) $reversals[0]['stock_before']);
+        $this->assertSame(10.0, (float) $reversals[0]['stock_after']);
+        $this->assertSame('reversal', $reversals[0]['direction']);
+        $this->assertSame($reversal->id, $reversals[0]['ledger_id']);
     }
 
     public function test_fail_reverses_only_the_net_usage_after_a_prior_reversal(): void
