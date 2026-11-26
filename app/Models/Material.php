@@ -23,6 +23,14 @@ class Material extends Model
         'unit',
         'cost',
         'price',
+        'is_active',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     /**
