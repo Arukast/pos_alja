@@ -235,6 +235,44 @@ class UserApiTest extends TestCase
             ->assertJsonPath('user.is_active', true);
     }
 
+    public function test_user_branch_must_not_be_trashed_but_may_be_inactive(): void
+    {
+        $owner = $this->user('owner', null);
+        $inactive = $this->branch('Inactive');
+        $inactive->update(['is_active' => false]);
+
+        $created = $this->actingAs($owner)->postJson('/api/v1/users', [
+            'name' => 'Inactive Branch User',
+            'username' => 'inactive.branch',
+            'email' => 'inactive.branch@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'cashier',
+            'branch_id' => $inactive->id,
+        ])->assertCreated()->assertJsonPath('user.branch.id', $inactive->id)->json('user');
+
+        $trashed = $this->branch('Trashed');
+        $trashed->delete();
+
+        $this->actingAs($owner)->putJson("/api/v1/users/{$created['id']}", [
+            'name' => 'Inactive Branch User',
+            'username' => 'inactive.branch',
+            'email' => 'inactive.branch@example.com',
+            'role' => 'cashier',
+            'branch_id' => $trashed->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('branch_id');
+
+        $this->actingAs($owner)->postJson('/api/v1/users', [
+            'name' => 'Trashed Branch User',
+            'username' => 'trashed.branch',
+            'email' => 'trashed.branch@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'cashier',
+            'branch_id' => $trashed->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('branch_id');
+    }
+
     public function test_manager_can_create_branch_staff_but_not_privileged_or_cross_branch_users(): void
     {
         $manager = $this->user('manager', $this->branchOne);

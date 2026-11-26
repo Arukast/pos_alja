@@ -25,8 +25,11 @@ import { roleLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 import { quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
-const branchOptions = (branches: Array<{ id: string; name: string }>) =>
-    branches.map((branch) => ({ value: branch.id, label: branch.name }));
+const branchOptions = (branches: Array<{ id: string; name: string; is_active: boolean }>) =>
+    branches.map((branch) => ({
+        value: branch.id,
+        label: branch.is_active ? branch.name : `${branch.name} (nonaktif)`,
+    }));
 
 const roleOptions = ['owner', 'manager', 'cashier', 'designer', 'production'].map((role) => ({
     value: role,
@@ -154,6 +157,22 @@ export function OwnerUsersPage() {
 }
 
 export function BranchesPage() {
+    const queryClient = useQueryClient();
+    const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'error' } | null>(
+        null
+    );
+
+    const toggleBranch = useMutation({
+        mutationFn: (id: string) => api.admin.toggleBranch(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['owner', 'branches'] });
+            void queryClient.invalidateQueries({ queryKey: ['branches', 'selector'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            setNotice({ message: 'Status cabang diperbarui.', tone: 'success' });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
+
     const fields: Array<CrudField<Branch>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'code', label: 'Kode' },
@@ -166,59 +185,69 @@ export function BranchesPage() {
             defaultValue: 0,
             getValue: (branch) => branch.reseller_discount_percent,
         },
-        { key: 'is_active', label: 'Aktif', type: 'checkbox', defaultValue: true },
     ];
 
     return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Manajemen Cabang"
-            description="Data cabang, detail kontak, diskon reseller, dan status aktif."
-            queryKey={['owner', 'branches']}
-            queryFn={(page) => api.branches({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Nama', cell: (branch) => <span className="font-medium">{branch.name}</span> },
-                { header: 'Kode', cell: (branch) => branch.code ?? '-' },
-                { header: 'Telepon', cell: (branch) => branch.phone ?? '-' },
-                {
-                    header: 'Diskon Reseller',
-                    className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (branch) => `${Number(branch.reseller_discount_percent)}%`,
-                },
-                {
-                    header: 'Status',
-                    cell: (branch) => (
-                        <Badge tone={branch.is_active ? 'success' : 'neutral'}>
-                            {branch.is_active ? 'Aktif' : 'Nonaktif'}
-                        </Badge>
-                    ),
-                },
-            ]}
-            fields={fields}
-            rowLabel={(branch) => branch.name}
-            create={(values) =>
-                api.admin.createBranch({
-                    ...values,
-                    is_active: Boolean(values.is_active),
-                    reseller_discount_percent:
-                        values.reseller_discount_percent === ''
-                            ? 0
-                            : Number(values.reseller_discount_percent),
-                })
-            }
-            update={(id, values) =>
-                api.admin.updateBranch(id, {
-                    ...values,
-                    is_active: Boolean(values.is_active),
-                    reseller_discount_percent:
-                        values.reseller_discount_percent === ''
-                            ? 0
-                            : Number(values.reseller_discount_percent),
-                })
-            }
-            remove={(id) => api.admin.deleteBranch(id)}
-            createLabel="Tambah cabang"
-        />
+        <>
+            <CrudPage
+                eyebrow="Administrasi"
+                title="Manajemen Cabang"
+                description="Data cabang, detail kontak, diskon reseller, dan status aktif."
+                queryKey={['owner', 'branches']}
+                queryFn={(page) => api.branches({ page })}
+                columns={[
+                    { header: 'Nama', cell: (branch) => <span className="font-medium">{branch.name}</span> },
+                    { header: 'Kode', cell: (branch) => branch.code ?? '-' },
+                    { header: 'Telepon', cell: (branch) => branch.phone ?? '-' },
+                    {
+                        header: 'Diskon Reseller',
+                        className: 'text-right tabular-nums whitespace-nowrap',
+                        cell: (branch) => `${Number(branch.reseller_discount_percent)}%`,
+                    },
+                    {
+                        header: 'Status',
+                        cell: (branch) => (
+                            <Badge tone={branch.is_active ? 'success' : 'neutral'}>
+                                {branch.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        ),
+                    },
+                ]}
+                fields={fields}
+                rowLabel={(branch) => branch.name}
+                create={(values) =>
+                    api.admin.createBranch({
+                        ...values,
+                        reseller_discount_percent:
+                            values.reseller_discount_percent === ''
+                                ? 0
+                                : Number(values.reseller_discount_percent),
+                    })
+                }
+                update={(id, values) =>
+                    api.admin.updateBranch(id, {
+                        ...values,
+                        reseller_discount_percent:
+                            values.reseller_discount_percent === ''
+                                ? 0
+                                : Number(values.reseller_discount_percent),
+                    })
+                }
+                rowActions={(branch) => (
+                    <ActiveToggleButton
+                        active={branch.is_active}
+                        pending={toggleBranch.isPending && toggleBranch.variables === branch.id}
+                        confirmMessage="Nonaktifkan cabang ini? Semua pengguna cabang ini akan langsung kehilangan akses pada permintaan berikutnya sampai cabang diaktifkan kembali."
+                        ariaLabel={`${branch.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${branch.name}`}
+                        onClick={() => toggleBranch.mutate(branch.id)}
+                    />
+                )}
+                createLabel="Tambah cabang"
+            />
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
+        </>
     );
 }
 
