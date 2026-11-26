@@ -15,7 +15,7 @@ use Throwable;
 final class CreateProduct
 {
     /**
-     * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool}  $data
+     * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool, material_ids?: array<int, string>}  $data
      */
     public function execute(array $data, User $actor): Product
     {
@@ -28,6 +28,12 @@ final class CreateProduct
                     'is_active' => (bool) ($data['is_active'] ?? true),
                 ]);
 
+                if (array_key_exists('material_ids', $data)) {
+                    $product->materials()->sync(array_values($data['material_ids']));
+                }
+
+                $materialIds = $product->materials()->pluck('materials.id')->values()->all();
+
                 ActivityLog::create([
                     'branch_id' => $actor->branch_id,
                     'user_id' => $actor->id,
@@ -37,7 +43,7 @@ final class CreateProduct
                     'description' => "Membuat produk: {$product->name}",
                     'model_type' => Product::class,
                     'model_id' => $product->id,
-                    'payload' => $product->toArray(),
+                    'payload' => array_merge($product->toArray(), ['material_ids' => $materialIds]),
                 ]);
 
                 return $product;
@@ -53,6 +59,6 @@ final class CreateProduct
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $product->load('category');
+        return $product->load(['category', 'materials']);
     }
 }

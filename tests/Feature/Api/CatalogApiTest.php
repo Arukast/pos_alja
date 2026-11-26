@@ -72,7 +72,7 @@ class CatalogApiTest extends TestCase
             'allowed_attribute_types' => ['finishing'],
         ]);
 
-        Product::create([
+        $vinylBanner = Product::create([
             'name' => 'Vinyl Banner',
             'pricing_type' => 'area',
             'product_category_id' => $this->category->id,
@@ -93,6 +93,8 @@ class CatalogApiTest extends TestCase
             'cost' => 10000,
             'price' => 15000,
         ]);
+
+        $vinylBanner->materials()->sync([$this->material->id]);
 
         MaterialBranchStock::create([
             'material_id' => $this->material->id,
@@ -280,7 +282,9 @@ class CatalogApiTest extends TestCase
             ->getJson('/api/v1/products?search=Banner')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.name', 'Vinyl Banner');
+            ->assertJsonPath('data.0.name', 'Vinyl Banner')
+            ->assertJsonPath('data.0.material_ids.0', $this->material->id)
+            ->assertJsonPath('data.0.materials.0.name', 'Vinyl Roll');
     }
 
     public function test_owner_stock_ledgers_can_show_all_branches(): void
@@ -454,6 +458,40 @@ class CatalogApiTest extends TestCase
 
         $this->actingAs($branchlessManager)
             ->getJson('/api/v1/categories')
+            ->assertForbidden();
+    }
+
+    public function test_manager_reads_attribute_pricing_and_branchless_manager_is_denied(): void
+    {
+        $this->attributeOne->update([
+            'price' => 3500,
+            'cost' => 1500,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/attributes')
+            ->assertOk();
+
+        $attribute = collect($response->json('data'))->firstWhere('id', $this->attributeOne->id);
+
+        $this->assertNotNull($attribute);
+        $this->assertSame('3500.00', $attribute['price']);
+        $this->assertSame('1500.00', $attribute['cost']);
+        $this->assertTrue($attribute['is_active']);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/attribute-types')
+            ->assertOk();
+
+        $branchlessManager = $this->user('manager', null);
+
+        $this->actingAs($branchlessManager)
+            ->getJson('/api/v1/attributes')
+            ->assertForbidden();
+
+        $this->actingAs($branchlessManager)
+            ->getJson('/api/v1/attribute-types')
             ->assertForbidden();
     }
 

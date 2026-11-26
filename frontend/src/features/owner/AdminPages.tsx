@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/queries';
 import type { Branch, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
@@ -116,6 +117,13 @@ export function BranchesPage() {
         { key: 'code', label: 'Kode' },
         { key: 'phone', label: 'Telepon' },
         { key: 'address', label: 'Alamat' },
+        {
+            key: 'reseller_discount_percent',
+            label: 'Diskon Reseller (%)',
+            type: 'number',
+            defaultValue: 0,
+            getValue: (branch) => branch.reseller_discount_percent,
+        },
         { key: 'is_active', label: 'Aktif', type: 'checkbox', defaultValue: true },
     ];
 
@@ -123,13 +131,18 @@ export function BranchesPage() {
         <CrudPage
             eyebrow="Administrasi"
             title="Manajemen Cabang"
-            description="Data cabang, detail kontak, dan status aktif."
+            description="Data cabang, detail kontak, diskon reseller, dan status aktif."
             queryKey={['owner', 'branches']}
             queryFn={(page) => api.branches({ page, include_deleted: 1 })}
             columns={[
                 { header: 'Nama', cell: (branch) => <span className="font-medium">{branch.name}</span> },
                 { header: 'Kode', cell: (branch) => branch.code ?? '-' },
                 { header: 'Telepon', cell: (branch) => branch.phone ?? '-' },
+                {
+                    header: 'Diskon Reseller',
+                    className: 'text-right tabular-nums whitespace-nowrap',
+                    cell: (branch) => `${Number(branch.reseller_discount_percent)}%`,
+                },
                 {
                     header: 'Status',
                     cell: (branch) => (
@@ -141,8 +154,26 @@ export function BranchesPage() {
             ]}
             fields={fields}
             rowLabel={(branch) => branch.name}
-            create={(values) => api.admin.createBranch(values)}
-            update={(id, values) => api.admin.updateBranch(id, values)}
+            create={(values) =>
+                api.admin.createBranch({
+                    ...values,
+                    is_active: Boolean(values.is_active),
+                    reseller_discount_percent:
+                        values.reseller_discount_percent === ''
+                            ? 0
+                            : Number(values.reseller_discount_percent),
+                })
+            }
+            update={(id, values) =>
+                api.admin.updateBranch(id, {
+                    ...values,
+                    is_active: Boolean(values.is_active),
+                    reseller_discount_percent:
+                        values.reseller_discount_percent === ''
+                            ? 0
+                            : Number(values.reseller_discount_percent),
+                })
+            }
             remove={(id) => api.admin.deleteBranch(id)}
             createLabel="Tambah cabang"
         />
@@ -278,4 +309,8 @@ export function OwnerCategoriesPage() {
 
 export function OwnerProductsPage() {
     return <ProductsPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
+}
+
+export function OwnerAttributesPage() {
+    return <AttributesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }

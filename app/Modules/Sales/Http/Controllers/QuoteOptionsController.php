@@ -53,6 +53,7 @@ final class QuoteOptionsController extends Controller
             ->values();
 
         $attributes = Attribute::query()
+            ->where('is_active', true)
             ->where(function (Builder $query) use ($branchId): void {
                 $query->where('branch_id', $branchId)->orWhereNull('branch_id');
             })
@@ -64,7 +65,7 @@ final class QuoteOptionsController extends Controller
                 ProductCategory::query()->orderBy('name')->get()
             ),
             'products' => ProductResource::collection(
-                Product::query()->where('is_active', true)->with('category')->orderBy('name')->get()
+                Product::query()->where('is_active', true)->with(['category', 'materials'])->orderBy('name')->get()
             ),
             'materials' => $materials,
             'attributes' => AttributeResource::collection($attributes),

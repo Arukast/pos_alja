@@ -67,6 +67,8 @@ class QuoteApiTest extends TestCase
             'price' => 25000,
         ]);
 
+        $this->product->materials()->sync([$this->material->id]);
+
         MaterialBranchStock::create([
             'material_id' => $this->material->id,
             'branch_id' => $this->branchOne->id,
@@ -105,7 +107,10 @@ class QuoteApiTest extends TestCase
             ])
             ->assertJsonMissingPath('machines')
             ->assertJsonMissingPath('materials.0.cost')
-            ->assertJsonMissingPath('materials.0.price');
+            ->assertJsonMissingPath('materials.0.price')
+            ->assertJsonMissingPath('products.0.materials.0.cost')
+            ->assertJsonMissingPath('products.0.materials.0.price')
+            ->assertJsonPath('products.0.material_ids.0', $this->material->id);
 
         $this->assertSame($this->material->id, $response->json('materials.0.id'));
     }
@@ -126,6 +131,27 @@ class QuoteApiTest extends TestCase
         $ids = collect($response->json('products'))->pluck('id')->all();
 
         $this->assertContains($this->product->id, $ids);
+        $this->assertNotContains($inactive->id, $ids);
+    }
+
+    public function test_quote_options_excludes_inactive_attributes(): void
+    {
+        $inactive = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Matte',
+            'type' => 'finishing',
+            'price' => 1000,
+            'cost' => 500,
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk();
+
+        $ids = collect($response->json('attributes'))->pluck('id')->all();
+
+        $this->assertContains($this->attribute->id, $ids);
         $this->assertNotContains($inactive->id, $ids);
     }
 

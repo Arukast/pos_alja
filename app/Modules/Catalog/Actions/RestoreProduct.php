@@ -32,7 +32,7 @@ final class RestoreProduct
                     'payload' => $product->toArray(),
                 ]);
 
-                return $product->fresh('category') ?? $product->load('category');
+                return $product->fresh(['category', 'materials']) ?? $product->load(['category', 'materials']);
             });
         } catch (Throwable $exception) {
             Log::error('Product restoration failed.', [

@@ -25,6 +25,7 @@ export interface Branch {
     address: string | null;
     phone: string | null;
     is_active: boolean;
+    reseller_discount_percent: string;
     settings: Record<string, unknown> | null;
 }
 
@@ -59,8 +60,6 @@ export interface CategoryDiscountTier {
 export interface Category {
     id: string;
     name: string;
-    calculation_archetype: string;
-    allowed_attribute_types: string[];
     discount_tiers: CategoryDiscountTier[];
 }
 
@@ -74,6 +73,9 @@ export interface Attribute {
     id: string;
     name: string;
     type: string;
+    price: string;
+    cost: string;
+    is_active: boolean;
     branch_id: string | null;
     branch: { id: string; name: string } | null;
 }
@@ -84,7 +86,9 @@ export interface Product {
     pricing_type: string;
     is_active: boolean;
     deleted_at?: string | null;
-    category: { id: string; name: string; calculation_archetype: string } | null;
+    category: { id: string; name: string } | null;
+    materials: Array<{ id: string; name: string }>;
+    material_ids: string[];
 }
 
 export interface MaterialStock {
@@ -179,7 +183,7 @@ export interface Order {
     pricing?: {
         product: string | null;
         material: string | null;
-        calculation_archetype: string | null;
+        pricing_type: string | null;
     } | null;
     file_name: string | null;
     notes: string | null;

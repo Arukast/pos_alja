@@ -60,7 +60,7 @@ final class CatalogQueries
      */
     public function products(array $filters): LengthAwarePaginator
     {
-        $query = Product::query()->with('category');
+        $query = Product::query()->with(['category', 'materials']);
 
         if (($filters['include_deleted'] ?? false) === true) {
             $query->withTrashed();

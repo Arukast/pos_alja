@@ -20,16 +20,16 @@ import { errorMessage, mapApiErrors } from '../../lib/errors';
 export interface CrudField<T> {
     key: string;
     label: string;
-    type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox';
+    type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox' | 'multiselect';
     options?: Array<{ value: string; label: string }>;
     required?: boolean;
-    defaultValue?: string | number | boolean;
-    getValue?: (row: T) => string | number | boolean | null | undefined;
+    defaultValue?: string | number | boolean | string[];
+    getValue?: (row: T) => string | number | boolean | string[] | null | undefined;
     labelFor?: (values: Record<string, unknown>) => string;
     hideOnEdit?: boolean;
 }
 
-type FormValues = Record<string, string | number | boolean>;
+type FormValues = Record<string, string | number | boolean | string[]>;
 
 export function CrudPage<T extends { id: string }>({
     eyebrow,
@@ -102,6 +102,11 @@ export function CrudPage<T extends { id: string }>({
             const current = row
                 ? (field.getValue?.(row) ?? (row as Record<string, unknown>)[field.key])
                 : field.defaultValue;
+
+            if (field.type === 'multiselect') {
+                next[field.key] = Array.isArray(current) ? current : [];
+                continue;
+            }
 
             next[field.key] = (current ?? '') as string | number | boolean;
         }
@@ -349,6 +354,54 @@ export function CrudPage<T extends { id: string }>({
                         const value = values[field.key] ?? '';
                         const error = errors[field.key];
                         const label = field.labelFor?.(values) ?? field.label;
+
+                        if (field.type === 'multiselect') {
+                            const selectedIds = Array.isArray(value) ? value : [];
+
+                            return (
+                                <fieldset key={field.key} className="space-y-2">
+                                    <legend className="text-light-muted block text-[10px] font-semibold tracking-wider uppercase dark:text-gray-400">
+                                        {label}
+                                    </legend>
+                                    <div className="border-light-border dark:border-surface-300 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-3">
+                                        {(field.options ?? []).length === 0 ? (
+                                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                                Belum ada pilihan.
+                                            </p>
+                                        ) : (
+                                            (field.options ?? []).map((option) => {
+                                                const checked = selectedIds.includes(option.value);
+
+                                                return (
+                                                    <Checkbox
+                                                        key={option.value}
+                                                        label={option.label}
+                                                        checked={checked}
+                                                        onChange={(event) => {
+                                                            const next = event.target.checked
+                                                                ? [...selectedIds, option.value]
+                                                                : selectedIds.filter(
+                                                                      (id) => id !== option.value
+                                                                  );
+
+                                                            setValues({
+                                                                ...values,
+                                                                [field.key]: next,
+                                                            });
+                                                        }}
+                                                    />
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                    {error ? (
+                                        <p className="text-xs text-red-600 dark:text-red-400">
+                                            {error}
+                                        </p>
+                                    ) : null}
+                                </fieldset>
+                            );
+                        }
 
                         if (field.type === 'checkbox') {
                             return (

@@ -98,12 +98,9 @@ final class CreateInvoice
                         ]);
                     }
 
-                    $archetype = $pricing->product?->category?->calculation_archetype;
-                    $factor = match ($archetype) {
-                        'surface_area' => (float) $quote['area'],
-                        'linear_dimension' => (float) ($item['length'] ?? 0),
-                        default => 1.0,
-                    };
+                    $factor = $pricing->product?->pricing_type === 'area'
+                        ? (float) $quote['area']
+                        : 1.0;
 
                     $unitPrice = round((float) $item['unit_price'], 2);
                     $unitCost = round((float) $item['cost'], 2);

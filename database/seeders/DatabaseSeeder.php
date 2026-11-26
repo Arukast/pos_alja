@@ -107,7 +107,7 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Kartu Nama', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Kartu Nama']->id],
             ['name' => 'Produk Jadi', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Produk Jadi']->id],
             ['name' => 'NOTA', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['NOTA']->id],
-            ['name' => 'DTF Large Format', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
+            ['name' => 'DTF Large Format', 'pricing_type' => 'area', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
         ];
 
         $productModels = [];
@@ -142,6 +142,18 @@ class DatabaseSeeder extends Seeder
                 'current_stock' => $stocksMap[$m['name']]['current'],
                 'min_stock' => $stocksMap[$m['name']]['min'],
             ]);
+        }
+
+        foreach ($productModels as $productModel) {
+            $matchingMaterialIds = collect($materialModels)
+                ->where('product_category_id', $productModel->product_category_id)
+                ->pluck('id')
+                ->values()
+                ->all();
+
+            if ($matchingMaterialIds !== []) {
+                $productModel->materials()->sync($matchingMaterialIds);
+            }
         }
 
         // 5. Attributes (Finishing, Cuts, Displays)

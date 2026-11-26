@@ -323,7 +323,7 @@ class InvoiceApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('invoice.orders.0.pricing.product', 'Spanduk Flexy')
             ->assertJsonPath('invoice.orders.0.pricing.material', 'Flexy 340gr')
-            ->assertJsonPath('invoice.orders.0.pricing.calculation_archetype', 'surface_area');
+            ->assertJsonPath('invoice.orders.0.pricing.pricing_type', 'area');
     }
 
     /**

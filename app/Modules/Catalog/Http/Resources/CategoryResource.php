@@ -21,8 +21,6 @@ final class CategoryResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'calculation_archetype' => $this->calculation_archetype,
-            'allowed_attribute_types' => $this->allowed_attribute_types ?? [],
             'discount_tiers' => $this->relationLoaded('discountTiers')
                 ? $this->discountTiers->map(fn (ProductCategoryDiscount $tier): array => [
                     'id' => $tier->id,

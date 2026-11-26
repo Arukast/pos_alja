@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Http\Requests;
 
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class UpdateProductRequest extends FormRequest
 {
@@ -24,6 +25,8 @@ final class UpdateProductRequest extends FormRequest
             'product_category_id' => ['required', 'uuid', 'exists:product_categories,id'],
             'pricing_type' => ['required', 'string', 'in:unit,area'],
             'is_active' => ['sometimes', 'boolean'],
+            'material_ids' => ['sometimes', 'array'],
+            'material_ids.*' => ['uuid', 'distinct', Rule::exists('materials', 'id')->whereNull('deleted_at')],
         ];
     }
 }

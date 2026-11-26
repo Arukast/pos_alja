@@ -357,22 +357,22 @@ class CatalogWriteApiTest extends TestCase
         $category = $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
                 'name' => 'Indoor',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
             ])
             ->assertCreated()
+            ->assertJsonMissingPath('category.calculation_archetype')
+            ->assertJsonMissingPath('category.allowed_attribute_types')
             ->json('category');
 
         $this->actingAs($this->owner)
             ->putJson("/api/v1/categories/{$category['id']}", [
                 'name' => 'Indoor Updated',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
             ])
             ->assertOk()
-            ->assertJsonPath('category.name', 'Indoor Updated');
+            ->assertJsonPath('category.name', 'Indoor Updated')
+            ->assertJsonMissingPath('category.calculation_archetype')
+            ->assertJsonMissingPath('category.allowed_attribute_types');
 
-        $attributeType = $this->actingAs($this->manager)
+        $attributeType = $this->actingAs($this->owner)
             ->postJson('/api/v1/attribute-types', [
                 'name' => 'Lamination',
                 'calculation_archetype' => 'per_piece',
@@ -380,18 +380,36 @@ class CatalogWriteApiTest extends TestCase
             ->assertCreated()
             ->json('attribute_type');
 
-        $this->actingAs($this->manager)
+        $attribute = $this->actingAs($this->owner)
             ->postJson('/api/v1/attributes', [
                 'name' => 'Glossy',
                 'type' => 'finishing',
                 'branch_id' => $this->branchTwo->id,
+                'price' => 5000,
+                'cost' => 2000,
+                'is_active' => true,
             ])
             ->assertCreated()
-            ->assertJsonPath('attribute.branch_id', $this->branchOne->id);
+            ->assertJsonPath('attribute.branch_id', $this->branchTwo->id)
+            ->assertJsonPath('attribute.price', '5000.00')
+            ->assertJsonPath('attribute.cost', '2000.00')
+            ->assertJsonPath('attribute.is_active', true)
+            ->json('attribute');
 
-        $this->actingAs($this->manager)
-            ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
-            ->assertNoContent();
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/attributes/{$attribute['id']}", [
+                'name' => 'Glossy Matte',
+                'type' => 'display',
+                'branch_id' => $this->branchOne->id,
+                'price' => 6000,
+                'cost' => 2500,
+                'is_active' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('attribute.type', 'display')
+            ->assertJsonPath('attribute.price', '6000.00')
+            ->assertJsonPath('attribute.cost', '2500.00')
+            ->assertJsonPath('attribute.is_active', false);
 
         foreach ([$this->manager, $this->cashier] as $actor) {
             $this->actingAs($actor)
@@ -400,7 +418,48 @@ class CatalogWriteApiTest extends TestCase
                     'calculation_archetype' => 'per_piece',
                 ])
                 ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->postJson('/api/v1/attribute-types', [
+                    'name' => 'Nope Type',
+                    'calculation_archetype' => 'per_piece',
+                ])
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->postJson('/api/v1/attributes', [
+                    'name' => 'Nope Attr',
+                    'type' => 'finishing',
+                    'price' => 1000,
+                    'cost' => 500,
+                ])
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->putJson("/api/v1/attributes/{$attribute['id']}", [
+                    'name' => 'Nope Attr Update',
+                    'type' => 'finishing',
+                    'price' => 1000,
+                    'cost' => 500,
+                ])
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->deleteJson("/api/v1/attributes/{$attribute['id']}")
+                ->assertForbidden();
         }
+
+        $this->actingAs($this->owner)
+            ->deleteJson("/api/v1/attributes/{$attribute['id']}")
+            ->assertNoContent();
+
+        $this->actingAs($this->owner)
+            ->deleteJson("/api/v1/attribute-types/{$attributeType['id']}")
+            ->assertNoContent();
     }
 
     public function test_pricing_crud_and_clone_tiers(): void
@@ -454,13 +513,16 @@ class CatalogWriteApiTest extends TestCase
 
         $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
-                'name' => 'Invalid',
+                'name' => 'Ignored Legacy Fields',
                 'calculation_archetype' => 'not-real',
+                'allowed_attribute_types' => ['finishing'],
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('calculation_archetype');
+            ->assertCreated()
+            ->assertJsonPath('category.name', 'Ignored Legacy Fields')
+            ->assertJsonMissingPath('category.calculation_archetype')
+            ->assertJsonMissingPath('category.allowed_attribute_types');
 
-        $this->actingAs($actor)
+        $this->actingAs($this->owner)
             ->postJson('/api/v1/attribute-types', [
                 'name' => 'Invalid',
                 'calculation_archetype' => 'not-real',
@@ -468,13 +530,34 @@ class CatalogWriteApiTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('calculation_archetype');
 
-        $this->actingAs($actor)
+        $this->actingAs($this->owner)
             ->postJson('/api/v1/attributes', [
                 'name' => 'Invalid',
                 'type' => 'not-real',
+                'price' => 1000,
+                'cost' => 500,
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('type');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Negative Price',
+                'type' => 'finishing',
+                'price' => -1,
+                'cost' => 500,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('price');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Missing Cost',
+                'type' => 'display',
+                'price' => 1000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('cost');
 
         $this->actingAs($actor)
             ->postJson('/api/v1/pricing', [
@@ -504,16 +587,27 @@ class CatalogWriteApiTest extends TestCase
                 'name' => 'Banner Baru',
                 'product_category_id' => $this->category->id,
                 'pricing_type' => 'area',
+                'material_ids' => [$this->material->id],
             ])
             ->assertCreated()
             ->assertJsonPath('product.is_active', true)
+            ->assertJsonPath('product.material_ids.0', $this->material->id)
+            ->assertJsonPath('product.materials.0.id', $this->material->id)
             ->json('product');
 
-        $this->assertDatabaseHas('activity_logs', [
-            'action' => 'CREATE',
-            'model_type' => Product::class,
-            'model_id' => $created['id'],
+        $this->assertDatabaseHas('material_product', [
+            'product_id' => $created['id'],
+            'material_id' => $this->material->id,
         ]);
+
+        $createLog = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->where('model_type', Product::class)
+            ->where('model_id', $created['id'])
+            ->first();
+
+        $this->assertNotNull($createLog);
+        $this->assertSame([$this->material->id], $createLog->payload['material_ids']);
 
         $this->actingAs($this->owner)
             ->putJson("/api/v1/products/{$created['id']}", [
@@ -521,10 +615,21 @@ class CatalogWriteApiTest extends TestCase
                 'product_category_id' => $this->category->id,
                 'pricing_type' => 'unit',
                 'is_active' => false,
+                'material_ids' => [$this->otherMaterial->id],
             ])
             ->assertOk()
             ->assertJsonPath('product.is_active', false)
-            ->assertJsonPath('product.pricing_type', 'unit');
+            ->assertJsonPath('product.pricing_type', 'unit')
+            ->assertJsonPath('product.material_ids.0', $this->otherMaterial->id);
+
+        $this->assertDatabaseMissing('material_product', [
+            'product_id' => $created['id'],
+            'material_id' => $this->material->id,
+        ]);
+        $this->assertDatabaseHas('material_product', [
+            'product_id' => $created['id'],
+            'material_id' => $this->otherMaterial->id,
+        ]);
 
         $updateLog = ActivityLog::query()
             ->where('action', 'UPDATE')
@@ -535,6 +640,8 @@ class CatalogWriteApiTest extends TestCase
         $this->assertNotNull($updateLog);
         $this->assertTrue((bool) $updateLog->payload['before']['is_active']);
         $this->assertFalse((bool) $updateLog->payload['after']['is_active']);
+        $this->assertSame([$this->material->id], $updateLog->payload['before']['material_ids']);
+        $this->assertSame([$this->otherMaterial->id], $updateLog->payload['after']['material_ids']);
 
         $this->actingAs($this->owner)
             ->deleteJson("/api/v1/products/{$created['id']}")
@@ -617,6 +724,35 @@ class CatalogWriteApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('is_active');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Invalid Material Mapping',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'unit',
+                'material_ids' => [(string) Str::uuid()],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material_ids.0');
+
+        $deletedMaterial = Material::create([
+            'name' => 'Deleted Material',
+            'product_category_id' => $this->category->id,
+            'unit' => 'pcs',
+            'cost' => 1000,
+            'price' => 2000,
+        ]);
+        $deletedMaterial->delete();
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/products/{$this->product->id}", [
+                'name' => 'Deleted Material Mapping',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'unit',
+                'material_ids' => [$deletedMaterial->id],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material_ids.0');
     }
 
     public function test_owner_can_manage_category_quantity_discount_tiers_and_non_owners_are_denied(): void
@@ -624,8 +760,6 @@ class CatalogWriteApiTest extends TestCase
         $created = $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
                 'name' => 'Print Lembaran',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
                 'discount_tiers' => [
                     ['min_qty' => 50, 'discount_percent' => 10],
                     ['min_qty' => 10, 'discount_percent' => 5.5],
@@ -647,8 +781,6 @@ class CatalogWriteApiTest extends TestCase
         $this->actingAs($this->owner)
             ->putJson("/api/v1/categories/{$created['id']}", [
                 'name' => 'Print Lembaran Update',
-                'calculation_archetype' => 'per_piece',
-                'allowed_attribute_types' => ['finishing'],
                 'discount_tiers' => [
                     ['min_qty' => 20, 'discount_percent' => 7.25],
                 ],

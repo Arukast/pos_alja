@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -13,6 +15,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $branch_id
  * @property string $name
  * @property string $type
+ * @property string|float $price
+ * @property string|float $cost
+ * @property bool $is_active
  * @property-read Branch|null $branch
  */
 class Attribute extends Model
@@ -23,6 +28,18 @@ class Attribute extends Model
         'branch_id',
         'name',
         'type', // finishing, cut, display
+        'price',
+        'cost',
+        'is_active',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'price' => 'decimal:2',
+        'cost' => 'decimal:2',
+        'is_active' => 'boolean',
     ];
 
     /**

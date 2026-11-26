@@ -6,6 +6,10 @@ namespace App\Modules\Catalog\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttributeType;
+use App\Models\User;
+use App\Modules\Catalog\Actions\CreateAttributeType;
+use App\Modules\Catalog\Actions\DeleteAttributeType;
+use App\Modules\Catalog\Http\Requests\StoreAttributeTypeRequest;
 use App\Modules\Catalog\Http\Resources\AttributeTypeResource;
 use App\Modules\Catalog\Queries\CatalogQueries;
 use Illuminate\Http\JsonResponse;
@@ -23,26 +27,33 @@ final class AttributeTypeController extends Controller
         return AttributeTypeResource::collection($queries->attributeTypes());
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreAttributeTypeRequest $request, CreateAttributeType $action): JsonResponse
     {
-        Gate::authorize('manageAttributeTypes', AttributeType::class);
+        $actor = $request->user();
 
-        $type = AttributeType::create($request->validate([
-            'name' => ['required', 'string', 'max:100', 'unique:attribute_types,name'],
-            'calculation_archetype' => [
-                'required',
-                'string',
-                'in:per_piece,surface_area,linear_dimension,tiered_volume',
-            ],
-        ]));
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $type = $action->execute($request->validated(), $actor);
 
         return response()->json(['attribute_type' => new AttributeTypeResource($type)], 201);
     }
 
-    public function destroy(AttributeType $attributeType): Response
-    {
+    public function destroy(
+        Request $request,
+        AttributeType $attributeType,
+        DeleteAttributeType $action
+    ): Response {
         Gate::authorize('manageAttributeTypes', AttributeType::class);
-        $attributeType->delete();
+
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $action->execute($attributeType, $actor);
 
         return response()->noContent();
     }
