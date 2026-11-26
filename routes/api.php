@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Audit\Http\Controllers\BackupController;
+use App\Modules\Audit\Http\Controllers\BackupSettingController;
 use App\Modules\Catalog\Http\Controllers\AttributeController;
 use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
@@ -134,5 +135,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/backups', [BackupController::class, 'store']);
         Route::get('/backups/{backup}/download', [BackupController::class, 'download']);
         Route::patch('/backups/{backup}/pin', [BackupController::class, 'pin']);
+
+        Route::get('/backup-settings', [BackupSettingController::class, 'show']);
+        Route::put('/backup-settings', [BackupSettingController::class, 'update']);
     });
 });
