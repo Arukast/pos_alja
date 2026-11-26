@@ -199,6 +199,71 @@ class AccountStatusApiTest extends TestCase
         $this->assertTrue($owner->refresh()->is_active);
     }
 
+    public function test_last_active_owner_cannot_be_deleted(): void
+    {
+        $owner = $this->user('owner', null);
+
+        $this->actingAs($owner)
+            ->deleteJson("/api/v1/users/{$owner->id}")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('user')
+            ->assertJsonPath(
+                'errors.user.0',
+                'Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.'
+            );
+
+        $this->assertNotSoftDeleted('users', ['id' => $owner->id]);
+    }
+
+    public function test_delete_owner_succeeds_when_another_active_owner_exists(): void
+    {
+        $owner = $this->user('owner', null);
+        $this->user('owner', null);
+
+        $this->actingAs($owner)
+            ->deleteJson("/api/v1/users/{$owner->id}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('users', ['id' => $owner->id]);
+    }
+
+    public function test_last_active_owner_cannot_be_demoted(): void
+    {
+        $owner = $this->user('owner', null);
+
+        $this->actingAs($owner)->putJson("/api/v1/users/{$owner->id}", [
+            'name' => $owner->name,
+            'username' => $owner->username,
+            'email' => $owner->email,
+            'role' => 'manager',
+            'branch_id' => $this->branchOne->id,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('role')
+            ->assertJsonPath(
+                'errors.role.0',
+                'Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.'
+            );
+
+        $this->assertSame('owner', $owner->refresh()->role);
+    }
+
+    public function test_owner_can_be_demoted_when_another_active_owner_exists(): void
+    {
+        $owner = $this->user('owner', null);
+        $this->user('owner', null);
+
+        $this->actingAs($owner)->putJson("/api/v1/users/{$owner->id}", [
+            'name' => 'Demoted Owner',
+            'username' => $owner->username,
+            'email' => $owner->email,
+            'role' => 'manager',
+            'branch_id' => $this->branchOne->id,
+        ])->assertOk()->assertJsonPath('user.role', 'manager');
+
+        $this->assertSame('manager', $owner->refresh()->role);
+    }
+
     private function user(string $role, ?Branch $branch = null, array $overrides = []): User
     {
         return User::factory()->create(array_merge([

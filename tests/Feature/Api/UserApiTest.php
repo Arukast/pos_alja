@@ -298,6 +298,45 @@ class UserApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_manager_cannot_delete_or_restore_own_branch_staff(): void
+    {
+        $manager = $this->user('manager', $this->branchOne);
+        $cashier = $this->user('cashier', $this->branchOne);
+
+        $this->actingAs($manager)
+            ->deleteJson("/api/v1/users/{$cashier->id}")
+            ->assertForbidden();
+
+        $this->assertNotSoftDeleted('users', ['id' => $cashier->id]);
+
+        $cashier->delete();
+
+        $this->actingAs($manager)
+            ->postJson("/api/v1/users/{$cashier->id}/restore")
+            ->assertForbidden();
+
+        $this->assertSoftDeleted('users', ['id' => $cashier->id]);
+    }
+
+    public function test_guest_cannot_delete_user(): void
+    {
+        $cashier = $this->user('cashier', $this->branchOne);
+
+        $this->deleteJson("/api/v1/users/{$cashier->id}")->assertUnauthorized();
+
+        $this->assertNotSoftDeleted('users', ['id' => $cashier->id]);
+    }
+
+    public function test_guest_cannot_restore_user(): void
+    {
+        $cashier = $this->user('cashier', $this->branchOne);
+        $cashier->delete();
+
+        $this->postJson("/api/v1/users/{$cashier->id}/restore")->assertUnauthorized();
+
+        $this->assertSoftDeleted('users', ['id' => $cashier->id]);
+    }
+
     public function test_audit_payload_does_not_include_passwords(): void
     {
         $owner = $this->user('owner', null);

@@ -69,6 +69,10 @@ class UserService
                 $updateData['password'] = Hash::make($data['password']);
             }
 
+            if ($user->role === 'owner' && ($data['role'] ?? $user->role) !== 'owner') {
+                $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user, 'role');
+            }
+
             $user->update($updateData);
 
             $newData = $user->fresh()->toArray();
@@ -130,6 +134,8 @@ class UserService
     public function deleteUser(User $user, User $actor): void
     {
         DB::transaction(function () use ($user, $actor) {
+            $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user, 'user');
+
             $payload = $user->toArray();
             unset($payload['password']);
 
