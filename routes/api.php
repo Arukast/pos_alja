@@ -80,7 +80,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::post('/attributes', [AttributeController::class, 'store']);
         Route::put('/attributes/{attribute}', [AttributeController::class, 'update']);
-        Route::delete('/attributes/{attribute}', [AttributeController::class, 'destroy']);
 
         Route::post('/pricing/clone-tiers', [PricingController::class, 'cloneTiers']);
         Route::post('/pricing', [PricingController::class, 'store']);
@@ -126,6 +125,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
     // Tombstone: category deletion is removed, but DELETE must stay detectable as 404, not 405.
     Route::delete('/categories/{category}', static function (): void {
+        abort(404);
+    });
+
+    // Tombstone: attribute deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/attributes/{attribute}', static function (): void {
         abort(404);
     });
 });

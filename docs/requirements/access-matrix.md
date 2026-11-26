@@ -12,7 +12,7 @@
 | Branch CRUD | all | no | no | no | no |
 | User CRUD | all | own branch staff only | no | no | no |
 | Categories, quantity discounts | all | read | no | no | no |
-| Attributes (finishing, display, cut) | all | CRUD own branch | no | no | no |
+| Attributes (finishing, display, cut) | all | global read-only; create/update/activate own branch | no | no | no |
 | Pricing matrix | all | CRUD own branch | no | no | no |
 | Products | CRUD | read | read | read | no |
 | Materials master | CRUD; read all branches including low stock; global delete | create (own-branch stock only); restock/activate/adjust own branch; read own branch including low stock; no master edit/delete | no | no | read own branch including low stock |
@@ -46,11 +46,12 @@
 6. Invoice and receipt payloads enforce the same branch rule as the invoice.
 7. Quantity discounts are configured by the Owner per product category but are not applied by the current quote/invoice path. Staff cannot override a tier from the client.
 8. Expense categories are a fixed dropdown. Cashier is the only role that creates expenses and writes to their own branch; Owner and Manager can read them.
-9. Category, product, and discount writes are Owner-only. Managers may create materials and manage attributes and pricing rows for their own branch. Manager-created materials initialize branch stock only for the manager's own branch. Branch Manager reads products and categories and manages branch stock.
+9. Category, product, and discount writes are Owner-only. Managers may create materials and manage attributes and pricing rows for their own branch; global attributes are read-only. Manager-created materials initialize branch stock only for the manager's own branch. Branch Manager reads products and categories and manages branch stock.
 10. The Owner may write `branches.settings` through Branch CRUD. `settings.reseller_discount_percent` is API-only, has no SPA field, and is currently uncapped; the target `branches.reseller_discount_percent` column is not implemented. Manager has no branch write access.
 11. Designer updates an invoice only before production and while it is not fully paid. Owner and Branch Manager may override a design-status transition; Designer cannot move backward.
 12. A non-owner without a branch is never treated as global. Purchase requests return 403, branch-scoped lists return no rows, and actions that need a branch fail; a null branch is not `all`.
 13. Fail and reopen are production-only and branch-scoped. Fail requires status `1`; reopen requires status `3`; any other source status returns 422 with no stock or log change. Waste is allowed on status `0`, `1`, and `3`. The machine master, its pricing, its endpoints, and machine selection no longer exist.
+14. Catalog rows are retired with `is_active`; category, attribute, and attribute-type delete endpoints are removed; product delete/restore remain Owner-only recovery APIs with no SPA action.
 
 ## Revision Note
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\ActivityLog;
+use App\Models\Attribute;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
@@ -353,47 +354,140 @@ class CatalogWriteApiTest extends TestCase
         $this->assertCount(2, $ownerRow['stocks']);
     }
 
-    public function test_category_and_attribute_crud(): void
+    public function test_owner_creates_global_and_branch_attributes(): void
     {
-        $category = $this->actingAs($this->owner)
-            ->postJson('/api/v1/categories', [
-                'name' => 'Indoor',
-            ])
-            ->assertCreated()
-            ->assertJsonMissingPath('category.calculation_archetype')
-            ->assertJsonMissingPath('category.allowed_attribute_types')
-            ->json('category');
-
-        $this->actingAs($this->owner)
-            ->putJson("/api/v1/categories/{$category['id']}", [
-                'name' => 'Indoor Updated',
-            ])
-            ->assertOk()
-            ->assertJsonPath('category.name', 'Indoor Updated')
-            ->assertJsonMissingPath('category.calculation_archetype')
-            ->assertJsonMissingPath('category.allowed_attribute_types');
-
-        $attribute = $this->actingAs($this->owner)
+        $global = $this->actingAs($this->owner)
             ->postJson('/api/v1/attributes', [
                 'name' => 'Glossy',
+                'type' => 'finishing',
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attribute.branch_id', null)
+            ->json('attribute');
+
+        $this->assertDatabaseHas('attributes', [
+            'id' => $global['id'],
+            'branch_id' => null,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Matte',
+                'type' => 'display',
+                'branch_id' => $this->branchTwo->id,
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attribute.branch_id', $this->branchTwo->id);
+    }
+
+    public function test_manager_attribute_create_is_forced_or_rejected_by_branch(): void
+    {
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Glossy',
+                'type' => 'finishing',
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attribute.branch_id', $this->branchOne->id);
+
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Glossy Own',
+                'type' => 'finishing',
+                'branch_id' => $this->branchOne->id,
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attribute.branch_id', $this->branchOne->id);
+
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Glossy Null Branch',
+                'type' => 'finishing',
+                'branch_id' => null,
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attribute.branch_id', $this->branchOne->id);
+
+        $this->assertDatabaseMissing('attributes', [
+            'name' => 'Glossy Null Branch',
+            'branch_id' => null,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Glossy Other',
                 'type' => 'finishing',
                 'branch_id' => $this->branchTwo->id,
                 'price' => 5000,
                 'cost' => 2000,
-                'is_active' => true,
             ])
-            ->assertCreated()
-            ->assertJsonPath('attribute.branch_id', $this->branchTwo->id)
-            ->assertJsonPath('attribute.price', '5000.00')
-            ->assertJsonPath('attribute.cost', '2000.00')
-            ->assertJsonPath('attribute.is_active', true)
-            ->json('attribute');
+            ->assertForbidden();
 
-        $this->actingAs($this->owner)
-            ->putJson("/api/v1/attributes/{$attribute['id']}", [
-                'name' => 'Glossy Matte',
+        $this->assertDatabaseMissing('attributes', ['name' => 'Glossy Other']);
+
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Glossy Unknown',
+                'type' => 'finishing',
+                'branch_id' => (string) Str::uuid(),
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('branch_id');
+
+        $branchlessManager = $this->user('manager', null);
+
+        $this->actingAs($branchlessManager)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Glossy Branchless',
+                'type' => 'finishing',
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('attributes', ['name' => 'Glossy Branchless']);
+    }
+
+    public function test_manager_updates_only_own_branch_attributes(): void
+    {
+        $own = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Glossy',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+        $other = Attribute::create([
+            'branch_id' => $this->branchTwo->id,
+            'name' => 'Matte',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+        $global = Attribute::create([
+            'branch_id' => null,
+            'name' => 'Shared',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/attributes/{$own->id}", [
+                'name' => 'Glossy Updated',
                 'type' => 'display',
-                'branch_id' => $this->branchOne->id,
                 'price' => 6000,
                 'cost' => 2500,
                 'is_active' => false,
@@ -404,40 +498,148 @@ class CatalogWriteApiTest extends TestCase
             ->assertJsonPath('attribute.cost', '2500.00')
             ->assertJsonPath('attribute.is_active', false);
 
-        foreach ([$this->manager, $this->cashier] as $actor) {
-            $this->actingAs($actor)
-                ->postJson('/api/v1/categories', [
-                    'name' => 'Nope',
-                    'calculation_archetype' => 'per_piece',
-                ])
-                ->assertForbidden();
+        $branchlessManager = $this->user('manager', null);
 
-            $this->actingAs($actor)
-                ->postJson('/api/v1/attributes', [
-                    'name' => 'Nope Attr',
-                    'type' => 'finishing',
-                    'price' => 1000,
-                    'cost' => 500,
-                ])
-                ->assertForbidden();
+        $this->actingAs($branchlessManager)
+            ->putJson("/api/v1/attributes/{$own->id}", [
+                'name' => 'Glossy Branchless',
+                'type' => 'display',
+                'price' => 6000,
+                'cost' => 2500,
+            ])
+            ->assertForbidden();
 
-            $this->actingAs($actor)
-                ->putJson("/api/v1/attributes/{$attribute['id']}", [
-                    'name' => 'Nope Attr Update',
-                    'type' => 'finishing',
-                    'price' => 1000,
-                    'cost' => 500,
-                ])
-                ->assertForbidden();
+        $this->assertDatabaseHas('attributes', [
+            'id' => $own->id,
+            'name' => 'Glossy Updated',
+        ]);
 
-            $this->actingAs($actor)
-                ->deleteJson("/api/v1/attributes/{$attribute['id']}")
-                ->assertForbidden();
-        }
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/attributes/{$global->id}", [
+                'name' => 'Shared Updated',
+                'type' => 'display',
+                'price' => 6000,
+                'cost' => 2500,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/attributes/{$other->id}", [
+                'name' => 'Matte Updated',
+                'type' => 'display',
+                'price' => 6000,
+                'cost' => 2500,
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('attributes', ['id' => $global->id, 'name' => 'Shared']);
+        $this->assertDatabaseHas('attributes', ['id' => $other->id, 'name' => 'Matte']);
+    }
+
+    public function test_manager_cannot_move_an_attribute_to_another_branch(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Glossy',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/attributes/{$attribute->id}", [
+                'name' => 'Glossy Moved',
+                'type' => 'display',
+                'branch_id' => $this->branchTwo->id,
+                'price' => 6000,
+                'cost' => 2500,
+            ])
+            ->assertOk()
+            ->assertJsonPath('attribute.branch_id', $this->branchOne->id);
+
+        $this->assertDatabaseHas('attributes', [
+            'id' => $attribute->id,
+            'branch_id' => $this->branchOne->id,
+        ]);
+    }
+
+    public function test_attribute_delete_endpoint_is_removed(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Glossy',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $this->deleteJson("/api/v1/attributes/{$attribute->id}")
+            ->assertNotFound();
 
         $this->actingAs($this->owner)
-            ->deleteJson("/api/v1/attributes/{$attribute['id']}")
-            ->assertNoContent();
+            ->deleteJson("/api/v1/attributes/{$attribute->id}")
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('attributes', ['id' => $attribute->id]);
+    }
+
+    public function test_attribute_writes_are_owner_or_manager_only(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Glossy',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $designer = $this->user('designer', $this->branchOne);
+        $production = $this->user('production', $this->branchOne);
+
+        foreach ([$this->cashier, $designer, $production] as $actor) {
+            $this->actingAs($actor)
+                ->postJson('/api/v1/attributes', [
+                    'name' => 'Glossy Blocked',
+                    'type' => 'finishing',
+                    'price' => 5000,
+                    'cost' => 2000,
+                ])
+                ->assertForbidden();
+
+            $this->actingAs($actor)
+                ->putJson("/api/v1/attributes/{$attribute->id}", [
+                    'name' => 'Glossy Blocked',
+                    'type' => 'finishing',
+                    'price' => 5000,
+                    'cost' => 2000,
+                ])
+                ->assertForbidden();
+        }
+    }
+
+    public function test_attribute_write_endpoints_require_authentication(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Glossy',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $this->postJson('/api/v1/attributes', [
+            'name' => 'Guest',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ])->assertUnauthorized();
+
+        $this->putJson("/api/v1/attributes/{$attribute->id}", [
+            'name' => 'Guest',
+            'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
+        ])->assertUnauthorized();
     }
 
     public function test_pricing_crud_and_clone_tiers(): void

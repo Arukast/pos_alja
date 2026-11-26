@@ -101,7 +101,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.settings.reseller_discount_percent` and applied when a Reseller quote falls back to the Reguler pricing row.
   - `branches.settings.reseller_discount_percent` is the current source of the reseller discount. It is API-only, has no SPA field, and is currently uncapped. The target `branches.reseller_discount_percent` column is not implemented. The invoice branch's value applies.
   - Machine masters and machine selection are removed; the `machines` and `machine_pricing` tables are dropped. The pricing matrix is a target removal and remains the current price source.
-  - Category and product changes are Owner-only and written to the audit log. Managers manage own-branch attributes and pricing rows; branch stock changes are branch-scoped.
+  - Category and product changes are Owner-only and written to the audit log. Managers manage own-branch attributes and pricing rows; global attributes are read-only, attributes cannot be moved to another branch after creation, and the attribute delete endpoint is removed. Branch stock changes are branch-scoped.
 - **Traceability:** NFR1, NFR7, PB-01.
 
 ### FR7 Search, filter, and paginate products

@@ -25,11 +25,22 @@ final class CreateAttribute
      */
     public function execute(array $data, User $actor): Attribute
     {
+        if ($actor->role !== 'owner'
+            && array_key_exists('branch_id', $data)
+            && $data['branch_id'] !== null
+            && $data['branch_id'] !== $actor->branch_id) {
+            abort(403);
+        }
+
+        $branchId = $actor->role === 'owner'
+            ? ($data['branch_id'] ?? null)
+            : $actor->branch_id;
+
         try {
             $attribute = DB::transaction(fn (): Attribute => Attribute::create([
                 'name' => $data['name'],
                 'type' => $data['type'],
-                'branch_id' => $data['branch_id'] ?? null,
+                'branch_id' => $branchId,
                 'price' => $data['price'],
                 'cost' => $data['cost'],
                 'is_active' => (bool) ($data['is_active'] ?? true),

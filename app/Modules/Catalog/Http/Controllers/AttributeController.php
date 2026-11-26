@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Attribute;
 use App\Models\User;
 use App\Modules\Catalog\Actions\CreateAttribute;
-use App\Modules\Catalog\Actions\DeleteAttribute;
 use App\Modules\Catalog\Actions\UpdateAttribute;
 use App\Modules\Catalog\Http\Requests\StoreAttributeRequest;
 use App\Modules\Catalog\Http\Requests\UpdateAttributeRequest;
@@ -17,7 +16,6 @@ use App\Modules\Catalog\Queries\CatalogQueries;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 final class AttributeController extends Controller
@@ -70,20 +68,5 @@ final class AttributeController extends Controller
         return response()->json([
             'attribute' => new AttributeResource($updated),
         ]);
-    }
-
-    public function destroy(Request $request, Attribute $attribute, DeleteAttribute $action): Response
-    {
-        Gate::authorize('manageAttributes', Attribute::class);
-
-        $actor = $request->user();
-
-        if (! $actor instanceof User) {
-            abort(401);
-        }
-
-        $action->execute($attribute, $actor);
-
-        return response()->noContent();
     }
 }
