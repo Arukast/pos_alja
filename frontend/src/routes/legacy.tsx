@@ -18,6 +18,10 @@ const tabRoutes: Record<string, Record<string, string>> = {
         attributes: '/owner/attributes',
     },
     manager: {
+        revenue: '/manager/revenue',
+        cost: '/manager/base-cost',
+        profit: '/manager/net-profit',
+        expenses: '/manager/expenses',
         materials: '/manager/materials',
         ledgers: '/manager/ledgers',
         finishing: '/manager/finishing',

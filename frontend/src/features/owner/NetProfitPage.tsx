@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
+import { useAuth } from '../../auth/useAuth';
 import { PageBanner } from '../../components/PageBanner';
 import { ReportFilterBar, type ReportDraft } from '../../components/ReportFilterBar';
 import { Button } from '../../components/ui/Button';
@@ -16,15 +17,23 @@ import { formatMoney } from '../../lib/money';
 
 export function NetProfitPage() {
     const today = todayIso();
-    const branchesQuery = useBranches();
-    const [draft, setDraft] = useState<ReportDraft>({ start: today, end: today, branch: 'all' });
+    const { user } = useAuth();
+    const isOwner = user?.role === 'owner';
+    const branchesQuery = useBranches(isOwner);
+    const [draft, setDraft] = useState<ReportDraft>({
+        period: 'daily',
+        start: today,
+        end: today,
+        branch: isOwner ? 'all' : '',
+    });
     const [applied, setApplied] = useState(draft);
 
     const query = useQuery({
-        queryKey: ['report', 'net-profit', applied],
+        queryKey: ['report', 'net-profit', isOwner ? 'owner' : 'manager', applied],
         queryFn: () =>
             api.report.netProfit({
-                branch_id: applied.branch,
+                period: applied.period,
+                ...(isOwner ? { branch_id: applied.branch } : {}),
                 start_date: applied.start,
                 end_date: applied.end,
             }),
@@ -33,7 +42,7 @@ export function NetProfitPage() {
     return (
         <div className="space-y-6">
             <PageBanner
-                eyebrow="Analitik Pemilik"
+                eyebrow={isOwner ? 'Analitik Pemilik' : 'Analitik Cabang'}
                 title="Rincian Laba Bersih"
                 description="Pendapatan dikurangi HPP dan biaya operasional, beserta catatan pendukungnya."
             />
@@ -41,8 +50,9 @@ export function NetProfitPage() {
                 draft={draft}
                 branches={branchesQuery.data?.data ?? []}
                 loading={query.isFetching}
+                showBranch={isOwner}
                 onChange={setDraft}
-                onApply={() => setApplied(draft)}
+                onApply={(next) => setApplied(next ?? draft)}
             />
 
             {query.isLoading ? (

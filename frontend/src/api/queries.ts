@@ -45,6 +45,7 @@ function queryString(params: object = {}): string {
 }
 
 export interface ReportParams {
+    period?: string;
     branch_id?: string;
     start_date: string;
     end_date: string;

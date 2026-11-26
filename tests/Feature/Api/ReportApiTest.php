@@ -262,11 +262,98 @@ class ReportApiTest extends TestCase
 
     public function test_manager_cannot_read_owner_reports(): void
     {
-        foreach (['gross-revenue', 'base-cost', 'net-profit', 'expenses', 'sparkline'] as $report) {
+        $today = now()->toDateString();
+        $query = "?start_date={$today}&end_date={$today}";
+
+        // Guest assertions must run before actingAs() mutates the in-memory auth guard.
+        foreach (['gross-revenue', 'base-cost', 'net-profit', 'expenses'] as $report) {
+            $this->getJson('/api/v1/reports/'.$report.$query)
+                ->assertUnauthorized();
+        }
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/reports/sparkline')
+            ->assertForbidden();
+
+        $branchlessManager = $this->user('manager', null);
+
+        foreach (['gross-revenue', 'base-cost', 'net-profit', 'expenses'] as $report) {
+            foreach ([$this->cashier, $this->designer, $this->production, $branchlessManager] as $actor) {
+                $this->actingAs($actor)
+                    ->getJson('/api/v1/reports/'.$report.$query)
+                    ->assertForbidden();
+            }
+        }
+    }
+
+    public function test_manager_can_read_own_branch_financial_reports_and_is_denied_cross_branch(): void
+    {
+        $today = now()->toDateString();
+        $range = "start_date={$today}&end_date={$today}";
+
+        $this->actingAs($this->manager)
+            ->getJson("/api/v1/reports/gross-revenue?{$range}")
+            ->assertOk()
+            ->assertJsonPath('grand_total', '100000.00');
+
+        $this->actingAs($this->manager)
+            ->getJson("/api/v1/reports/base-cost?{$range}")
+            ->assertOk()
+            ->assertJsonPath('total_hpp', '80000.00');
+
+        $this->actingAs($this->manager)
+            ->getJson("/api/v1/reports/net-profit?{$range}")
+            ->assertOk()
+            ->assertJsonPath('net_profit', '10000.00');
+
+        $this->actingAs($this->manager)
+            ->getJson("/api/v1/reports/expenses?{$range}")
+            ->assertOk()
+            ->assertJsonPath('expenses_total', '10000.00');
+
+        foreach (['gross-revenue', 'base-cost', 'net-profit', 'expenses'] as $report) {
             $this->actingAs($this->manager)
-                ->getJson('/api/v1/reports/'.$report.'?start_date='.now()->toDateString().'&end_date='.now()->toDateString())
+                ->getJson("/api/v1/reports/{$report}?branch_id={$this->branchOne->id}&{$range}")
+                ->assertOk();
+
+            $this->actingAs($this->manager)
+                ->getJson("/api/v1/reports/{$report}?branch_id=all&{$range}")
+                ->assertForbidden();
+
+            $this->actingAs($this->manager)
+                ->getJson("/api/v1/reports/{$report}?branch_id={$this->branchTwo->id}&{$range}")
                 ->assertForbidden();
         }
+    }
+
+    public function test_financial_reports_support_period_presets_and_validate_date_ranges(): void
+    {
+        foreach (['daily', 'weekly', 'monthly'] as $preset) {
+            $this->actingAs($this->owner)
+                ->getJson("/api/v1/reports/gross-revenue?period={$preset}")
+                ->assertOk()
+                ->assertJsonPath('grand_total', '100000.00');
+
+            $this->actingAs($this->manager)
+                ->getJson("/api/v1/reports/expenses?period={$preset}")
+                ->assertOk()
+                ->assertJsonPath('expenses_total', '10000.00');
+        }
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/gross-revenue?period=yearly')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['period']);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/reports/gross-revenue?period=custom')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['start_date', 'end_date']);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/net-profit?start_date=2026-11-10&end_date=2026-11-01')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['end_date']);
     }
 
     public function test_owner_net_profit_subtracts_cost_waste_and_expenses(): void
