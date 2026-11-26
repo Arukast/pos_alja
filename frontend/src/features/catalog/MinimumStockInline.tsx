@@ -85,7 +85,15 @@ export function MinimumStockInline({
     }
 
     return (
-        <div className="inline-block space-y-1 text-left">
+        <div
+            className="inline-block space-y-1 text-left"
+            onKeyDown={(event) => {
+                if (event.key === 'Escape' && !save.isPending) {
+                    event.preventDefault();
+                    closeEditor();
+                }
+            }}
+        >
             <div className="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
                 <div className="w-24">
                     <Input

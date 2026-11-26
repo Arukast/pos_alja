@@ -215,6 +215,39 @@ export function OwnerMaterialsPage() {
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
 
+    const renderStocks = (material: Material) =>
+        material.stocks.length === 0 ? (
+            '-'
+        ) : (
+            <ul className="min-w-[9rem] space-y-2">
+                {material.stocks.map((stock) => (
+                    <li key={stock.branch_id}>
+                        <span className="block font-medium">
+                            {stock.branch_name ?? '-'}
+                        </span>
+                        <span className="block tabular-nums">
+                            {quantityWithUnit(stock.current_stock, material.unit)}
+                        </span>
+                        <div className="text-light-muted flex flex-wrap items-center gap-1 text-xs dark:text-gray-400">
+                            <span>min</span>
+                            <MinimumStockInline
+                                materialId={material.id}
+                                branchId={stock.branch_id}
+                                label={stock.branch_name ?? 'cabang'}
+                                value={stock.min_stock}
+                                unit={material.unit}
+                            />
+                        </div>
+                        {stock.is_low_stock ? (
+                            <span className="block font-semibold text-amber-700 dark:text-amber-300">
+                                menipis
+                            </span>
+                        ) : null}
+                    </li>
+                ))}
+            </ul>
+        );
+
     return (
         <CrudPage
             eyebrow="Administrasi"
@@ -259,43 +292,14 @@ export function OwnerMaterialsPage() {
                                 .filter(Boolean)
                                 .join(' · ')}
                         </p>
+                        <div className="mt-2 sm:hidden">{renderStocks(material)}</div>
                     </div>
                 ) },
                 { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
-                    cell: (material) =>
-                        material.stocks.length === 0 ? (
-                            '-'
-                        ) : (
-                            <ul className="min-w-[9rem] space-y-2">
-                                {material.stocks.map((stock) => (
-                                    <li key={stock.branch_id} className="whitespace-nowrap">
-                                        <span className="block font-medium">
-                                            {stock.branch_name ?? '-'}
-                                        </span>
-                                        <span className="block tabular-nums">
-                                            {quantityWithUnit(stock.current_stock, material.unit)}
-                                        </span>
-                                        <div className="text-light-muted flex flex-wrap items-center gap-1 text-xs dark:text-gray-400">
-                                            <span>min</span>
-                                            <MinimumStockInline
-                                                materialId={material.id}
-                                                branchId={stock.branch_id}
-                                                label={stock.branch_name ?? 'cabang'}
-                                                value={stock.min_stock}
-                                                unit={material.unit}
-                                            />
-                                        </div>
-                                        {stock.is_low_stock ? (
-                                            <span className="block font-semibold text-amber-700 dark:text-amber-300">
-                                                menipis
-                                            </span>
-                                        ) : null}
-                                    </li>
-                                ))}
-                            </ul>
-                        ),
+                    className: 'hidden sm:table-cell',
+                    cell: (material) => renderStocks(material),
                 },
                 { header: 'Biaya', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.cost) },
                 { header: 'Harga', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.price) },

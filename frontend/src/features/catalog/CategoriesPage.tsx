@@ -145,7 +145,9 @@ export function CategoriesPage({
                                     <TableHeaderCell className="hidden sm:table-cell">
                                         Deskripsi
                                     </TableHeaderCell>
-                                    <TableHeaderCell>Produk</TableHeaderCell>
+                                    <TableHeaderCell className="hidden text-right tabular-nums sm:table-cell">
+                                        Produk
+                                    </TableHeaderCell>
                                     <TableHeaderCell>Status</TableHeaderCell>
                                     {readOnly ? null : (
                                         <TableHeaderCell className="bg-light-surface border-light-border sticky right-0 border-l shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
@@ -168,7 +170,9 @@ export function CategoriesPage({
                                             <TableCell className="hidden sm:table-cell">
                                                 {category.description ?? '-'}
                                             </TableCell>
-                                            <TableCell>{category.products_count ?? 0}</TableCell>
+                                            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                {category.products_count ?? 0}
+                                            </TableCell>
                                             <TableCell>
                                                 <Badge
                                                     tone={

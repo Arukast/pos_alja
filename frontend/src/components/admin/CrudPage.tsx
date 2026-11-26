@@ -22,6 +22,7 @@ export interface CrudField<T> {
     label: string;
     type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox' | 'multiselect';
     options?: Array<{ value: string; label: string }>;
+    emptyOptionLabel?: string;
     required?: boolean;
     defaultValue?: string | number | boolean | string[];
     getValue?: (row: T) => string | number | boolean | string[] | null | undefined;
@@ -43,7 +44,6 @@ export function CrudPage<T extends { id: string }>({
     update,
     remove,
     canEditRow,
-    canDeleteRow,
     pageResetKey,
     rowActions,
     rowLabel,
@@ -66,7 +66,6 @@ export function CrudPage<T extends { id: string }>({
     update?: (id: string, values: FormValues) => Promise<unknown>;
     remove?: (id: string) => Promise<unknown>;
     canEditRow?: (row: T) => boolean;
-    canDeleteRow?: (row: T) => boolean;
     pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
     rowLabel?: (row: T) => string;
@@ -269,8 +268,7 @@ export function CrudPage<T extends { id: string }>({
                                             const label = rowLabel?.(row) ?? (row as { name?: string }).name;
                                             const showEdit =
                                                 update !== undefined && (canEditRow?.(row) ?? true);
-                                            const showDelete =
-                                                remove !== undefined && (canDeleteRow?.(row) ?? true);
+                                            const showDelete = remove !== undefined;
 
                                             return (
                                                 <TableRow key={row.id} className={rowClassName?.(row)}>
@@ -440,7 +438,7 @@ export function CrudPage<T extends { id: string }>({
                                         setValues({ ...values, [field.key]: event.target.value })
                                     }
                                 >
-                                    <option value="">Pilih</option>
+                                    <option value="">{field.emptyOptionLabel ?? 'Pilih'}</option>
                                     {(field.options ?? []).map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}

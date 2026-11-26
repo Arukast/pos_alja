@@ -207,7 +207,7 @@ export function ManagerMaterialsPage() {
                 },
                 {
                     header: 'Biaya',
-                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell',
                     cell: (material) => formatMoney(material.cost),
                 },
                 {

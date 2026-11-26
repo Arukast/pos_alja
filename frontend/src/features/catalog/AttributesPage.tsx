@@ -33,6 +33,7 @@ export function AttributesPage({
         label: 'Cabang',
         type: 'select',
         options: branchOptions,
+        emptyOptionLabel: 'Global (semua cabang)',
         getValue: (attribute) => attribute.branch?.id ?? '',
         hideOnEdit: true,
     };
@@ -87,7 +88,7 @@ export function AttributesPage({
                     header: 'Nama',
                     cell: (attribute) => <span className="font-medium">{attribute.name}</span>,
                 },
-                { header: 'Tipe', cell: (attribute) => attributeTypeLabel(attribute.type) },
+                { header: 'Tipe', className: 'hidden sm:table-cell', cell: (attribute) => attributeTypeLabel(attribute.type) },
                 {
                     header: 'Cabang',
                     className: 'hidden sm:table-cell',

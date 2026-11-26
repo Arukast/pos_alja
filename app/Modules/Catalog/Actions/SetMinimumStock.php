@@ -7,6 +7,7 @@ namespace App\Modules\Catalog\Actions;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\User;
+use App\Support\BranchScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +18,14 @@ final class SetMinimumStock
      */
     public function execute(Material $material, array $data, User $actor): void
     {
-        $branchId = $this->resolveBranchId($data['branch_id'] ?? null, $actor);
+        if ($actor->role !== 'owner'
+            && array_key_exists('branch_id', $data)
+            && $data['branch_id'] !== null
+            && $data['branch_id'] !== $actor->branch_id) {
+            abort(403);
+        }
+
+        $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
 
         DB::transaction(function () use ($material, $branchId, $data): void {
             $stock = MaterialBranchStock::query()
@@ -34,26 +42,5 @@ final class SetMinimumStock
 
             $stock->update(['min_stock' => $data['min_stock']]);
         });
-    }
-
-    private function resolveBranchId(?string $requested, User $actor): string
-    {
-        if ($actor->role === 'owner') {
-            if (! is_string($requested) || $requested === '') {
-                abort(422, 'Cabang wajib diisi.');
-            }
-
-            return $requested;
-        }
-
-        if ($actor->branch_id === null) {
-            abort(403);
-        }
-
-        if (is_string($requested) && $requested !== '' && $requested !== $actor->branch_id) {
-            abort(403);
-        }
-
-        return $actor->branch_id;
     }
 }
