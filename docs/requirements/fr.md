@@ -96,7 +96,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`). The tiers are configured but not applied to quotes or invoices.
   - Material master includes name, category, unit, type, dimensions, base cost, and base price. The allowed units are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; `m2` displays as `m²`. Create requires `unit`; update accepts it optionally. The column defaults to `pcs`.
   - Existing materials are backfilled by `MaterialUnit::backfill()`. The first match wins: material name keywords (`banner`, `vinyl`, `flexi`, `backdrop`, `spandex`, `spanduk` -> `m2`; `kertas`, `paper`, `hvs`, `art paper`, `sticker`, `stiker` -> `lembar`; `tinta`, `ink`, `solvent`, `pelarut` -> `liter`), then the same keyword sets against the category name, then a `surface_area` category archetype -> `m2`, otherwise `pcs`. A null or legacy value reads as `pcs`.
-  - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form offers finishing/display selection, while invoice creation does not persist a selection.
+  - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form offers finishing/display selection, and the selection is persisted in `orders.selected_attributes`.
   - The current price source is the pricing matrix: a quote selects a `pricing` row by product, material, customer type, and `min_qty`, then adds the selected `attribute_pricing` modifiers. The target model (material price + finishing/display price + reseller discount + category quantity discount) is not implemented.
   - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.settings.reseller_discount_percent` and applied when a Reseller quote falls back to the Reguler pricing row.
   - `branches.settings.reseller_discount_percent` is the current source of the reseller discount. It is API-only, has no SPA field, and is currently uncapped. The target `branches.reseller_discount_percent` column is not implemented. The invoice branch's value applies.
@@ -124,11 +124,11 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Customer search is the default. A new customer is created on a separate screen.
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
-  - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. There is no finishing/display snapshot.
+  - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. Finishing and display selections are persisted in `orders.selected_attributes`; there is no `order_attributes` price/cost snapshot.
   - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone.
-  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]`. There is no `order_attributes` table and no persistence of the selection; the designer form now offers finishing/display selection.
+  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]` and stores it on the order.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
-  - Submission creates one invoice, its orders, initial status logs, and an activity log in one transaction. No order attribute rows are written.
+  - Submission creates one invoice, its orders (including `width`, `length`, and `selected_attributes`), initial status logs, and an activity log in one transaction. No `order_attributes` rows are written.
   - Invoice number follows `INV-{branch prefix}-{YYYYMMDD}-{NNNN}`.
   - A printable A4 invoice is available. The invoice is the single customer document; the production queue is the production work list and never exposes money.
 - **Traceability:** NFR3, NFR9, PB-02.
@@ -137,8 +137,8 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Requirement:** Designer SHALL update an order that has not entered production and is not fully paid, including orders that have a down payment, with a change trail.
 - **Acceptance criteria:**
   - Allowed only while every order on the invoice has `status = 0` and the invoice status is `0` or `1`.
-  - A request on a fully paid invoice (`status = 2`) or after production starts is rejected with HTTP 409.
-  - The Designer may add, remove, or change items, quantities, specifications, and the deadline.
+  - A request on a fully paid invoice (`status = 2`), after production starts, or for an invoice containing an `is_manual_price` order is rejected with HTTP 409.
+  - The Designer may add, remove, or change items, quantities, specifications, and the deadline. An omitted `deadline` preserves the stored value; an explicit `null` clears it.
   - Invoice `grand_total`, `total_cost`, `total_profit`, quantity discounts, and `accounts_receivable` are recalculated; existing payments are preserved.
   - Invoice status is recalculated: `2` when the receivable is zero, `1` when a receivable remains after a payment.
   - The remaining receivable cannot become negative. If the new total is less than the total already paid, the request is rejected with HTTP 422.
@@ -256,7 +256,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Requirement:** Owner, Branch Manager, Cashier, Designer, and Production SHALL view a production queue ordered by target completion date and priority, with a status filter.
 - **Acceptance criteria:**
   - Sort: `created_at ASC`, then `id`. The target rule is `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`; it is not implemented.
-  - The implemented queue returns status `0`, `1`, and `3`; status `2` is excluded. No status filter is implemented; the target is a status filter, and the owner may also filter by branch.
+  - The implemented queue returns status `0`, `1`, and `3`; status `2` is excluded. `status` accepts 0/1/3 (422 otherwise) and `search` matches invoice number, file name, or exact order UUID. The owner may also filter by branch.
   - Each row shows order, customer, deadline, status, designer, and operator.
   - Branch-bound users see only their branch; owner may view all or one branch.
   - Statuses: `0` (Antre Produksi), `1` (Diproses), `3` (Gagal). Status `2` (Selesai) is not queued.

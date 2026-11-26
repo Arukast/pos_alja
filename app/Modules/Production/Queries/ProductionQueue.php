@@ -8,11 +8,12 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 final class ProductionQueue
 {
     /**
-     * @param  array{branch_id?: string|null}  $filters
+     * @param  array{branch_id?: string|null, status?: int|null, search?: string|null}  $filters
      */
     public function paginate(User $actor, array $filters): LengthAwarePaginator
     {
@@ -20,6 +21,26 @@ final class ProductionQueue
             ->with(['invoice.customer', 'invoice.designer', 'operator'])
             ->withExists('wastedMaterials')
             ->whereIn('status', [0, 1, 3]);
+
+        if (($filters['status'] ?? null) !== null) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (($filters['search'] ?? null) !== null && $filters['search'] !== '') {
+            $search = $filters['search'];
+
+            $query->where(function (Builder $query) use ($search): void {
+                $query->where('file_name', 'like', "%{$search}%")
+                    ->orWhereHas('invoice', function (Builder $query) use ($search): void {
+                        $query->where('invoice_number', 'like', "%{$search}%");
+                    });
+
+                // PostgreSQL rejects a non-UUID value in the UUID id column.
+                if (Str::isUuid($search)) {
+                    $query->orWhere('id', $search);
+                }
+            });
+        }
 
         if ($actor->role === 'owner') {
             $branchId = $filters['branch_id'] ?? null;
