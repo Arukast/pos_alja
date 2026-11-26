@@ -72,4 +72,33 @@ final class MaterialQueries
 
         return $materials;
     }
+
+    /**
+     * Counts globally active materials available to the actor's resolved branch.
+     */
+    public function availableCount(User $actor, ?string $requestedBranchId = null): int
+    {
+        $branchId = $actor->role === 'owner' ? $requestedBranchId : $actor->branch_id;
+
+        $resolvedBranchId = is_string($branchId) && $branchId !== '' && $branchId !== 'all'
+            ? $branchId
+            : null;
+
+        if ($actor->role !== 'owner' && $resolvedBranchId === null) {
+            return 0;
+        }
+
+        $query = Material::query()->where('is_active', true);
+
+        if ($resolvedBranchId !== null) {
+            $query->whereHas(
+                'branchStocks',
+                function (Builder $query) use ($resolvedBranchId): void {
+                    $query->where('branch_id', $resolvedBranchId)->where('is_active', true);
+                }
+            );
+        }
+
+        return $query->count();
+    }
 }

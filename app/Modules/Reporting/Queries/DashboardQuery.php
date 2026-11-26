@@ -6,13 +6,13 @@ namespace App\Modules\Reporting\Queries;
 
 use App\Models\Expense;
 use App\Models\Invoice;
-use App\Models\Material;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Pricing;
 use App\Models\StockLedger;
 use App\Models\User;
 use App\Modules\Catalog\Http\Resources\StockLedgerResource;
+use App\Modules\Catalog\Queries\MaterialQueries;
 use App\Modules\Production\Http\Resources\ProductionQueueResource;
 use App\Modules\Production\Queries\ProductionQueue;
 use App\Modules\Production\Queries\WasteByUnit;
@@ -29,6 +29,7 @@ final class DashboardQuery
         private readonly LeaderboardQuery $leaderboard,
         private readonly ProductionQueue $productionQueue,
         private readonly WasteByUnit $wasteByUnit,
+        private readonly MaterialQueries $materials,
     ) {}
 
     /**
@@ -80,9 +81,7 @@ final class DashboardQuery
         $branchId = $actor->branch_id;
 
         $counts = [
-            'materials' => $branchId === null ? 0 : Material::query()
-                ->whereHas('branchStocks', fn ($query) => $query->where('branch_id', $branchId))
-                ->count(),
+            'materials' => $this->materials->availableCount($actor, null),
             'staff' => $branchId === null ? 0 : User::query()
                 ->where('branch_id', $branchId)
                 ->whereIn('role', ['cashier', 'designer', 'production'])

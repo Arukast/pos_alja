@@ -302,6 +302,129 @@ class MaterialRetirementApiTest extends TestCase
         $this->assertDatabaseCount('stock_ledgers', 0);
     }
 
+    public function test_available_total_counts_globally_and_branch_active_materials(): void
+    {
+        $this->availabilityFixture();
+
+        $global = $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials?branch_id=all')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'links', 'meta', 'available_total'])
+            ->assertJsonPath('available_total', 3);
+        $this->assertIsInt($global->json('available_total'));
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials?branch_id='.$this->branchOne->id)
+            ->assertOk()
+            ->assertJsonPath('available_total', 1);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials?branch_id='.$this->branchTwo->id)
+            ->assertOk()
+            ->assertJsonPath('available_total', 2);
+
+        $manager = $this->actingAs($this->manager)
+            ->getJson('/api/v1/materials')
+            ->assertOk()
+            ->assertJsonPath('available_total', 1);
+        $this->assertIsInt($manager->json('available_total'));
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials')
+            ->assertOk()
+            ->assertJsonPath('available_total', 3);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials?branch_id=')
+            ->assertOk()
+            ->assertJsonPath('available_total', 3);
+
+        $this->actingAs($this->user('manager', null))
+            ->getJson('/api/v1/materials')
+            ->assertOk()
+            ->assertJsonPath('available_total', 0);
+    }
+
+    public function test_available_total_ignores_list_filters(): void
+    {
+        $this->availabilityFixture();
+        $this->material(['name' => 'Deleted Roll'])->delete();
+
+        $unfiltered = $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials?branch_id=all')
+            ->assertOk()
+            ->assertJsonPath('available_total', 3);
+
+        $filtered = $this->actingAs($this->owner)
+            ->getJson('/api/v1/materials?branch_id=all&search=Nomatch&low_stock=1&include_deleted=1&page=2')
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('available_total', 3);
+
+        $this->assertSame($unfiltered->json('available_total'), $filtered->json('available_total'));
+    }
+
+    public function test_manager_dashboard_material_count_uses_available_materials(): void
+    {
+        $fixture = $this->availabilityFixture();
+
+        $availableTotal = $this->actingAs($this->manager)
+            ->getJson('/api/v1/materials')
+            ->assertOk()
+            ->assertJsonPath('available_total', 1)
+            ->json('available_total');
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('counts.materials', $availableTotal);
+
+        $fixture['activeBranchOneStock']->update(['is_active' => false]);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('counts.materials', 0);
+    }
+
+    public function test_production_material_response_remains_unchanged(): void
+    {
+        $this->availabilityFixture();
+
+        $this->actingAs($this->user('production', $this->branchOne))
+            ->getJson('/api/v1/materials')
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonMissingPath('available_total')
+            ->assertJsonMissingPath('data.0.is_active')
+            ->assertJsonMissingPath('data.0.cost')
+            ->assertJsonMissingPath('data.0.price');
+    }
+
+    /**
+     * @return array{activeBranchOneStock: MaterialBranchStock}
+     */
+    private function availabilityFixture(): array
+    {
+        $activeBoth = $this->material(['name' => 'Active Both']);
+        $activeBranchOneStock = $this->stock($activeBoth, $this->branchOne);
+        $this->stock($activeBoth, $this->branchTwo);
+
+        $branchInactive = $this->material(['name' => 'Branch Inactive']);
+        $this->stock($branchInactive, $this->branchOne)->update(['is_active' => false]);
+        $this->stock($branchInactive, $this->branchTwo);
+
+        $globalInactive = $this->material(['name' => 'Global Inactive']);
+        $globalInactive->update(['is_active' => false]);
+        $this->stock($globalInactive, $this->branchOne);
+
+        $this->material(['name' => 'No Stock']);
+
+        return [
+            'activeBranchOneStock' => $activeBranchOneStock,
+        ];
+    }
+
     private function branch(string $name): Branch
     {
         return Branch::create([

@@ -59,7 +59,9 @@ final class MaterialController extends Controller
             return ProductionMaterialResource::collection($materials);
         }
 
-        return MaterialResource::collection($materials);
+        return MaterialResource::collection($materials)->additional([
+            'available_total' => $queries->availableCount($actor, is_string($branchId) ? $branchId : null),
+        ]);
     }
 
     public function store(
