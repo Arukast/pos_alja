@@ -8,6 +8,7 @@ import { CashierPaymentsPage } from '../features/cashier/CashierPaymentsPage';
 import { CashierPickupPage } from '../features/cashier/CashierPickupPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
 import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
+import { DesignerNewCustomerPage } from '../features/designer/DesignerNewCustomerPage';
 import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import {
@@ -112,6 +113,7 @@ export const router = createBrowserRouter([
                         children: [
                             { index: true, element: <DesignerDashboardPage /> },
                             { path: 'new-order', element: <DesignerNewOrderPage /> },
+                            { path: 'customers/new', element: <DesignerNewCustomerPage /> },
                             { path: 'orders', element: <DesignerOrdersPage /> },
                         ],
                     },

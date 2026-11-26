@@ -34,6 +34,7 @@ final class InvoiceResource extends JsonResource
                 'name' => $this->customer->name,
                 'phone' => $this->customer->phone,
                 'address' => $this->customer->address,
+                'institution' => $this->customer->institution,
                 'email' => $this->customer->email,
                 'type' => $this->customer->type,
             ] : null,

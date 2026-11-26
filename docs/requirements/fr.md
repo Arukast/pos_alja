@@ -7,6 +7,8 @@
 
 ## Summary
 
+Sprint Review 1 Sales acceptance: customer registration is separate from new-order search; institution is required while phone, email, and address remain optional. Designer item configuration follows Product -> Material -> Finishing -> Display. Cashiers have no expense-entry screen; invoice print is the customer-facing print flow.
+
 | ID | Module | Roles |
 | :--- | :--- | :--- |
 | FR1 | Autentikasi | All |
@@ -94,7 +96,7 @@
   - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`). The tiers are configured but not applied to quotes or invoices.
   - Material master includes name, category, unit, type, dimensions, base cost, and base price. The allowed units are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; `m2` displays as `m²`. Create requires `unit`; update accepts it optionally. The column defaults to `pcs`.
   - Existing materials are backfilled by `MaterialUnit::backfill()`. The first match wins: material name keywords (`banner`, `vinyl`, `flexi`, `backdrop`, `spandex`, `spanduk` -> `m2`; `kertas`, `paper`, `hvs`, `art paper`, `sticker`, `stiker` -> `lembar`; `tinta`, `ink`, `solvent`, `pelarut` -> `liter`), then the same keyword sets against the category name, then a `surface_area` category archetype -> `m2`, otherwise `pcs`. A null or legacy value reads as `pcs`.
-  - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form does not offer finishing/display selection, and invoice creation does not persist a selection.
+  - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form offers finishing/display selection, while invoice creation does not persist a selection.
   - The current price source is the pricing matrix: a quote selects a `pricing` row by product, material, customer type, and `min_qty`, then adds the selected `attribute_pricing` modifiers. The target model (material price + finishing/display price + reseller discount + category quantity discount) is not implemented.
   - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.settings.reseller_discount_percent` and applied when a Reseller quote falls back to the Reguler pricing row.
   - `branches.settings.reseller_discount_percent` is the current source of the reseller discount. It is API-only, has no SPA field, and is currently uncapped. The target `branches.reseller_discount_percent` column is not implemented. The invoice branch's value applies.
@@ -123,8 +125,8 @@
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
   - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. There is no finishing/display snapshot.
-  - Item entry currently selects a pricing row; the designer form does not offer finishing/display selection, and machine selection is gone.
-  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]`. There is no `order_attributes` table, no persistence of the selection, and no designer selection UI.
+  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone.
+  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]`. There is no `order_attributes` table and no persistence of the selection; the designer form now offers finishing/display selection.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
   - Submission creates one invoice, its orders, initial status logs, and an activity log in one transaction. No order attribute rows are written.
   - Invoice number follows `INV-{branch prefix}-{YYYYMMDD}-{NNNN}`.

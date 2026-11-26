@@ -34,7 +34,7 @@
 | Owner financial reports | all | no | no | no | no |
 | Designer leaderboard | no | own branch | no | no | no |
 | Audit trail | all | no | no | no | no |
-| Expenses | create/read all | create/read own branch | no | no | no |
+| Expenses | read all | read own branch | create/read own branch | no | no |
 | Real-time channels | owners + any branch | own branch | own branch | own branch | own branch |
 
 ## Rules
@@ -46,7 +46,7 @@
 5. Customers are global and materials master data is global, matching the ERD. Stock rows are branch-scoped.
 6. Invoice and receipt payloads enforce the same branch rule as the invoice.
 7. Quantity discounts are configured by the Owner per product category but are not applied by the current quote/invoice path. Staff cannot override a tier from the client.
-8. Expense categories are a fixed dropdown. Cashier has no expense access.
+8. Expense categories are a fixed dropdown. Cashier is the only role that creates expenses and writes to their own branch; Owner and Manager can read them.
 9. Category, product, and discount writes are Owner-only. Managers may create materials, manage global attribute types, and manage attributes and pricing rows for their own branch. Manager-created materials initialize branch stock only for the manager's own branch. Branch Manager reads products and categories and manages branch stock.
 10. The Owner may write `branches.settings` through Branch CRUD. `settings.reseller_discount_percent` is API-only, has no SPA field, and is currently uncapped; the target `branches.reseller_discount_percent` column is not implemented. Manager has no branch write access.
 11. Designer updates an invoice only before production and while it is not fully paid. Owner and Branch Manager may override a design-status transition; Designer cannot move backward.

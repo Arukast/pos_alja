@@ -143,6 +143,11 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 | GET | `/expenses` | owner all; manager own branch |
 | POST | `/expenses` | owner, manager |
 
+### Customers
+
+- `GET /customers?search=` returns customer records including `name`, optional `phone`, `email`, `address`, required `institution`, and the pricing `type`.
+- `POST /customers` requires `name` and `institution` (`Masyarakat/Retail`, `Sekolah`, `Universitas`, or `Pemerintahan`). Phone, email, and address are optional.
+
 ### Quote And Invoice Input
 
 `POST /quotes` accepts `product_id`, `material_id`, `selected_attributes[]?`, `quantity`, `width?`, `length?`, and `customer_type?`. It returns `pricing_id`, `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` comes from the pricing matrix plus `attribute_pricing` modifiers. Cost and profit are not returned to the designer. `customer_type` defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes.
