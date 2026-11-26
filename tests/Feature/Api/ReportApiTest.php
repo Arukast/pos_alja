@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Material;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -111,8 +112,11 @@ class ReportApiTest extends TestCase
             ->getJson('/api/v1/dashboard')
             ->assertOk()
             ->assertJsonPath('role', 'owner')
+            ->assertJsonPath('period', 'daily')
             ->assertJsonStructure([
-                'finance' => ['gross_revenue', 'total_cost', 'net_profit', 'expenses'],
+                'finance' => ['gross_revenue', 'total_cost', 'net_profit', 'expenses', 'receivables'],
+                'order_count',
+                'production' => ['queued', 'processing', 'completed', 'failed'],
                 'sparkline' => ['points', 'labels'],
             ]);
 
@@ -120,7 +124,16 @@ class ReportApiTest extends TestCase
             ->getJson('/api/v1/dashboard')
             ->assertOk()
             ->assertJsonPath('role', 'manager')
-            ->assertJsonStructure(['counts', 'stock_ledgers', 'expenses', 'leaderboard']);
+            ->assertJsonPath('period', 'daily')
+            ->assertJsonStructure([
+                'finance' => ['gross_revenue', 'expenses', 'receivables'],
+                'order_count',
+                'production' => ['queued', 'processing', 'completed', 'failed'],
+                'counts',
+                'stock_ledgers',
+                'expenses',
+                'leaderboard',
+            ]);
 
         $this->actingAs($this->cashier)
             ->getJson('/api/v1/dashboard')
@@ -142,6 +155,96 @@ class ReportApiTest extends TestCase
             ->assertJsonMissingPath('finance')
             ->assertJsonMissingPath('queue.data.0.unit_price')
             ->assertJsonMissingPath('queue.data.0.invoice.grand_total');
+    }
+
+    public function test_dashboard_requires_authentication_and_validates_period(): void
+    {
+        $this->getJson('/api/v1/dashboard')
+            ->assertUnauthorized();
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/dashboard?period=yearly')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['period']);
+    }
+
+    public function test_dashboard_enforces_branch_scope_for_non_owners(): void
+    {
+        $branchlessManager = $this->user('manager', null);
+
+        $this->actingAs($branchlessManager)
+            ->getJson('/api/v1/dashboard')
+            ->assertForbidden();
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard?branch_id=all')
+            ->assertForbidden();
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard?branch_id='.$this->branchTwo->id)
+            ->assertForbidden();
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard?branch_id='.$this->branchOne->id)
+            ->assertOk()
+            ->assertJsonPath('role', 'manager');
+    }
+
+    public function test_owner_and_manager_dashboards_compute_receivables_orders_and_production_counts(): void
+    {
+        $unpaidBranchOne = $this->invoice($this->branchOne, $this->designer, 1, 25000);
+        $unpaidBranchTwo = $this->invoice($this->branchTwo, $this->otherDesigner, 0, 15000);
+
+        $this->order($unpaidBranchOne, 0);
+        $this->order($unpaidBranchOne, 1);
+        $this->order($unpaidBranchOne, 2);
+        $this->order($unpaidBranchOne, 3);
+        $this->order($unpaidBranchTwo, 0);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/dashboard?branch_id=all')
+            ->assertOk()
+            ->assertJsonPath('finance.receivables', '40000.00')
+            ->assertJsonPath('order_count', 5)
+            ->assertJsonPath('production', [
+                'queued' => 2,
+                'processing' => 1,
+                'completed' => 1,
+                'failed' => 1,
+            ]);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/dashboard?branch_id='.$this->branchOne->id)
+            ->assertOk()
+            ->assertJsonPath('finance.receivables', '25000.00')
+            ->assertJsonPath('order_count', 4)
+            ->assertJsonPath('production', [
+                'queued' => 1,
+                'processing' => 1,
+                'completed' => 1,
+                'failed' => 1,
+            ]);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('period', 'daily')
+            ->assertJsonPath('finance.gross_revenue', '100000.00')
+            ->assertJsonPath('finance.expenses', '10000.00')
+            ->assertJsonPath('finance.receivables', '25000.00')
+            ->assertJsonPath('order_count', 4)
+            ->assertJsonPath('production', [
+                'queued' => 1,
+                'processing' => 1,
+                'completed' => 1,
+                'failed' => 1,
+            ]);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard?period=monthly')
+            ->assertOk()
+            ->assertJsonPath('period', 'monthly')
+            ->assertJsonPath('order_count', 4);
     }
 
     public function test_owner_gross_revenue_report_scopes_by_branch_and_period(): void
@@ -282,24 +385,47 @@ class ReportApiTest extends TestCase
         ]);
     }
 
-    private function invoice(Branch $branch, User $designer): Invoice
-    {
+    private function invoice(
+        Branch $branch,
+        User $designer,
+        int $status = 2,
+        int $accountsReceivable = 0,
+    ): Invoice {
         return Invoice::create([
             'invoice_number' => 'INV-'.Str::upper(Str::random(8)),
             'branch_id' => $branch->id,
             'created_date' => now()->toDateString(),
             'customer_id' => $this->customer->id,
             'designer_id' => $designer->id,
-            'status' => 2,
+            'status' => $status,
             'discount' => 0,
-            'dp_amount' => 100000,
-            'accounts_receivable' => 0,
+            'dp_amount' => 100000 - $accountsReceivable,
+            'accounts_receivable' => $accountsReceivable,
             'grand_total' => 100000,
             'total_cost' => 60000,
             'total_profit' => 40000,
             'deadline' => now()->addDay()->toDateString(),
             'pickup_status' => 0,
             'source' => 0,
+        ]);
+    }
+
+    private function order(Invoice $invoice, int $status): void
+    {
+        Order::create([
+            'invoice_id' => $invoice->id,
+            'file_name' => 'job-'.$status.'.pdf',
+            'notes' => 'Order fixture',
+            'area' => 2,
+            'quantity' => 1,
+            'unit_price' => 50000,
+            'subtotal' => 100000,
+            'cost' => 60000,
+            'profit' => 40000,
+            'ordered_at' => now()->toDateString(),
+            'status' => $status,
+            'pickup_status' => 0,
+            'is_manual_price' => false,
         ]);
     }
 

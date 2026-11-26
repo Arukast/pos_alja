@@ -355,19 +355,40 @@ export interface Leader {
     waste_count: number;
 }
 
+export type DashboardPeriod = 'daily' | 'weekly' | 'monthly';
+
+export interface ProductionStatusCounts {
+    queued: number;
+    processing: number;
+    completed: number;
+    failed: number;
+}
+
 export interface OwnerDashboard {
     role: 'owner';
+    period: DashboardPeriod;
     finance: {
         gross_revenue: string;
         total_cost: string;
         net_profit: string;
         expenses: string;
+        receivables: string;
     };
+    order_count: number;
+    production: ProductionStatusCounts;
     sparkline: Sparkline;
 }
 
 export interface ManagerDashboard {
     role: 'manager';
+    period: DashboardPeriod;
+    finance: {
+        gross_revenue: string;
+        expenses: string;
+        receivables: string;
+    };
+    order_count: number;
+    production: ProductionStatusCounts;
     counts: {
         materials: number;
         staff: number;
