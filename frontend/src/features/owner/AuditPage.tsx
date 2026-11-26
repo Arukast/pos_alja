@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
+import type { ActivityLog } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
@@ -13,12 +14,14 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
 import { roleLabel } from '../../lib/labels';
+import { AuditDetailModal } from './AuditDetailModal';
 
 export function AuditPage() {
     const [search, setSearch] = useState('');
     const [sort, setSort] = useState('created_at');
     const [direction, setDirection] = useState('desc');
     const [page, setPage] = useState(1);
+    const [selected, setSelected] = useState<ActivityLog | null>(null);
 
     const query = useQuery({
         queryKey: ['audit-logs', search, sort, direction, page],
@@ -98,11 +101,12 @@ export function AuditPage() {
                                         <TableHeaderCell>Peran</TableHeaderCell>
                                         <TableHeaderCell>Aksi</TableHeaderCell>
                                         <TableHeaderCell>Deskripsi</TableHeaderCell>
+                                        <TableHeaderCell>Detail</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {query.data.data.length === 0 ? (
-                                        <TableEmpty colSpan={5}>Tidak ada entri jejak audit yang cocok.</TableEmpty>
+                                        <TableEmpty colSpan={6}>Tidak ada entri jejak audit yang cocok.</TableEmpty>
                                     ) : (
                                         query.data.data.map((log) => (
                                             <TableRow key={log.id}>
@@ -113,6 +117,16 @@ export function AuditPage() {
                                                 <TableCell>{roleLabel(log.role)}</TableCell>
                                                 <TableCell>{log.action}</TableCell>
                                                 <TableCell>{log.description}</TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        aria-label={`Lihat detail ${log.action} oleh ${log.username}`}
+                                                        onClick={() => setSelected(log)}
+                                                    >
+                                                        Lihat
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -129,6 +143,12 @@ export function AuditPage() {
                     ) : null}
                 </CardBody>
             </Card>
+
+            <AuditDetailModal
+                log={selected}
+                open={selected !== null}
+                onClose={() => setSelected(null)}
+            />
         </div>
     );
 }

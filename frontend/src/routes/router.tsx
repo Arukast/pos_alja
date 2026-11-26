@@ -20,6 +20,7 @@ import {
     OwnerUsersPage,
 } from '../features/owner/AdminPages';
 import { AuditPage } from '../features/owner/AuditPage';
+import { BackupPage } from '../features/owner/BackupPage';
 import { BaseCostPage } from '../features/owner/BaseCostPage';
 import { ExpensesPage } from '../features/owner/ExpensesPage';
 import { GrossRevenuePage } from '../features/owner/GrossRevenuePage';
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
                             { path: 'net-profit', element: <NetProfitPage /> },
                             { path: 'expenses', element: <ExpensesPage /> },
                             { path: 'audit', element: <AuditPage /> },
+                            { path: 'backups', element: <BackupPage /> },
                             { path: 'users', element: <OwnerUsersPage /> },
                             { path: 'branches', element: <BranchesPage /> },
                             { path: 'categories', element: <OwnerCategoriesPage /> },
