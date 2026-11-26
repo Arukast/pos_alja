@@ -50,7 +50,7 @@ export function ProductsPage({
 
     const categoryOptions = (categories.data?.data ?? []).map((category) => ({
         value: category.id,
-        label: category.name,
+        label: category.is_active ? category.name : `${category.name} (nonaktif)`,
     }));
     const materialOptions = (materials.data ?? []).map((material) => ({
         value: material.id,
@@ -160,8 +160,14 @@ export function ProductsPage({
                 },
                 {
                     header: 'Kategori',
-                    className: 'hidden sm:table-cell',
-                    cell: (product) => product.category?.name ?? '-',
+                    cell: (product) => (
+                        <div className="flex flex-col items-start gap-1">
+                            <span>{product.category?.name ?? '-'}</span>
+                            {product.category && !product.category.is_active ? (
+                                <Badge tone="warning">Kategori nonaktif</Badge>
+                            ) : null}
+                        </div>
+                    ),
                 },
                 {
                     header: 'Tipe Harga',
@@ -211,7 +217,6 @@ export function ProductsPage({
                                   : [],
                           })
             }
-            remove={readOnly ? undefined : (id) => api.admin.deleteProduct(id)}
             createLabel="Tambah produk"
         />
     );
