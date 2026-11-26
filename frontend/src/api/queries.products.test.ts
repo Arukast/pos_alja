@@ -68,13 +68,11 @@ describe('api.products and admin product mutations', () => {
         });
     });
 
-    it('calls create, update, and delete category endpoints with discount_tiers payloads', async () => {
+    it('calls create and update category endpoints with description and active status', async () => {
         const createCategoryBody = {
             name: 'Print Lembaran',
-            discount_tiers: [
-                { min_qty: 10, discount_percent: 5 },
-                { min_qty: 50, discount_percent: 10 },
-            ],
+            description: 'Cetak lembaran',
+            is_active: true,
         };
         await api.admin.createCategory(createCategoryBody);
         expect(mockedApiFetch).toHaveBeenCalledWith('/categories', {
@@ -83,20 +81,36 @@ describe('api.products and admin product mutations', () => {
         });
 
         const updateCategoryBody = {
-            ...createCategoryBody,
-            discount_tiers: [{ min_qty: 20, discount_percent: 7.5 }],
+            name: 'Print Lembaran Updated',
+            description: null,
+            is_active: false,
         };
         await api.admin.updateCategory('cat-1', updateCategoryBody);
         expect(mockedApiFetch).toHaveBeenCalledWith('/categories/cat-1', {
             method: 'PUT',
             body: JSON.stringify(updateCategoryBody),
         });
+    });
 
-        await api.admin.deleteCategory('cat-1');
-        expect(mockedApiFetch).toHaveBeenCalledWith('/categories/cat-1', {
-            method: 'DELETE',
-            body: undefined,
+    it('calls the material minimum-stock endpoint with a branch-scoped payload', async () => {
+        const body = { branch_id: 'br-1', min_stock: 4.5 };
+
+        await api.admin.setMaterialMinimumStock('mat-1', body);
+
+        expect(mockedApiFetch).toHaveBeenCalledWith('/materials/mat-1/min-stock', {
+            method: 'PATCH',
+            body: JSON.stringify(body),
         });
+    });
+
+    it('serializes the include_inactive_attributes flag for quote options', async () => {
+        await api.quoteOptions({ include_inactive_attributes: 1 });
+        expect(mockedApiFetch).toHaveBeenCalledWith(
+            '/quotes/options?include_inactive_attributes=1'
+        );
+
+        await api.quoteOptions();
+        expect(mockedApiFetch).toHaveBeenCalledWith('/quotes/options');
     });
 
     it('calls attribute and branch admin endpoints with pricing, active status, and reseller discount', async () => {
@@ -119,12 +133,6 @@ describe('api.products and admin product mutations', () => {
         expect(mockedApiFetch).toHaveBeenCalledWith('/attributes/attr-1', {
             method: 'PUT',
             body: JSON.stringify(attributeUpdate),
-        });
-
-        await api.admin.deleteAttribute('attr-1');
-        expect(mockedApiFetch).toHaveBeenCalledWith('/attributes/attr-1', {
-            method: 'DELETE',
-            body: undefined,
         });
 
         const branchBody = {
