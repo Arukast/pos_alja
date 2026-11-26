@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Audit\Http\Controllers\BackupController;
 use App\Modules\Catalog\Http\Controllers\AttributeController;
 use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
@@ -128,5 +129,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/reports/designer-leaderboard', [ReportController::class, 'leaderboard']);
         Route::get('/audit-logs', [AuditController::class, 'index']);
         Route::get('/audit-logs/{activityLog}', [AuditController::class, 'show']);
+
+        Route::get('/backups', [BackupController::class, 'index']);
+        Route::post('/backups', [BackupController::class, 'store']);
     });
 });
