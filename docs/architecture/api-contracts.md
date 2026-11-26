@@ -83,6 +83,7 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | POST | `/materials/{material}/stock` | owner, manager (manager branch forced) |
 | POST | `/materials/{material}/adjustments` | owner, manager (manager branch forced) |
 | POST | `/materials/{material}/activate` | owner, manager (branch-stock activation) |
+| PATCH | `/materials/{material}/min-stock` | owner names the branch; manager own branch (other branch 403) |
 | GET | `/materials/similar?name=` | owner, manager |
 | GET | `/pricing` | owner all; manager own branch |
 | POST | `/pricing` | owner; manager own branch (branch forced) |
@@ -99,6 +100,8 @@ Material responses include `unit`, `current_stock`, `min_stock`, and `stocks` pe
 `GET /materials?low_stock=1` returns only materials whose resolved branch stock has `current_stock <= min_stock`. For an owner with `branch_id=all`, the filter uses OR semantics: a material is returned when at least one branch is low. In that case the top-level `is_low_stock` is always null, even when the response loads one stock row, and each `stocks[]` row carries its own boolean `is_low_stock`. For a single resolved branch the top-level `is_low_stock` is a boolean. Each `stocks[]` row always carries its own boolean. Manager and production are forced to their own branch. The filtered list is paginated like the normal list.
 
 Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta` (non-zero signed value, -99999999.99 to 99999999.99), plus `reason` (3-255 characters). `branch_id` is required for an owner and forced from the manager's account. It writes a `stock_ledgers` row of type `adjustment` with the reason and actor, and an activity log entry. The resulting stock must stay between 0 and 99999999.99; a negative result, a zero delta, both or neither mode, or a value over the cap is 422. The response is `{ material: MaterialResource }` with the updated stock, not the ledger row. For an owner adjusting one branch, the updated value appears in `stocks[]`; the top-level `is_low_stock` may be null when several branch rows are loaded. `POST /materials/{material}/stock` remains for a quick positive restock and writes ledger type `restock`.
+
+`PATCH /materials/{material}/min-stock` accepts `min_stock` (0-99999999.99, at most two decimals) and `branch_id` (a UUID). The owner must name the branch; a manager omitting it is forced to the manager's own branch, an explicit different branch returns 403, and a manager without a branch is denied. It updates only `material_branch_stock.min_stock` on an existing row; a missing branch-stock row returns 422 on `branch_id` and is not created. The action writes no `stock_ledgers` row and no activity log, and `current_stock` is unchanged. The response is `{ material: MaterialResource }` with the updated threshold. For an owner whose response loads multiple branch rows, the top-level `min_stock` is `null` and the updated value appears in `stocks[]`; the manager response resolves only the own-branch row and exposes its `min_stock` at the top level.
 
 ### Purchase Rules
 

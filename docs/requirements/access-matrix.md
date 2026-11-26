@@ -28,6 +28,7 @@
 | Waste logging | no | no | no | no | own branch; status 0, 1, or 3 |
 | Purchases | create/read all | create/read own branch | no | no | no |
 | Stock adjustment | all | own branch | no | no | no |
+| Minimum stock threshold | all branches | own branch | no | no | no |
 | Receipt | all | branch | branch | branch | no |
 | Dashboard | full | branch | branch | branch | branch |
 | Owner financial reports | all | no | no | no | no |
@@ -52,6 +53,7 @@
 12. A non-owner without a branch is never treated as global. Purchase requests return 403, branch-scoped lists return no rows, and actions that need a branch fail; a null branch is not `all`.
 13. Fail and reopen are production-only and branch-scoped. Fail requires status `1`; reopen requires status `3`; any other source status returns 422 with no stock or log change. Waste is allowed on status `0`, `1`, and `3`. The machine master, its pricing, its endpoints, and machine selection no longer exist.
 14. Catalog rows are retired with `is_active`; category, attribute, and attribute-type delete endpoints are removed; product delete/restore remain Owner-only recovery APIs with no SPA action.
+15. Editing a branch `min_stock` writes no `stock_ledgers` row and no activity log; `current_stock` changes only through restock, adjustment, purchase, or usage. The branch-stock row must already exist; otherwise the request returns 422 on `branch_id` and creates nothing. An explicit branch other than the manager's own is 403, and a manager without a branch is denied.
 
 ## Revision Note
 

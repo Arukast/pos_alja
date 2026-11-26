@@ -234,6 +234,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Stock is shown per branch with current stock and minimum stock.
   - Low-stock items are highlighted or listed separately.
   - A warning appears when `current_stock <= min_stock`.
+  - Owner and Branch Manager can edit the branch minimum-stock threshold without a stock-ledger movement or activity log; `current_stock` remains adjustment-only and the branch-stock row must already exist.
   - Owner may view all branches or one branch.
 - **Traceability:** NFR4, NFR9, PB-05.
 

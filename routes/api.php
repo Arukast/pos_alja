@@ -71,6 +71,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/materials/{material}/stock', [MaterialController::class, 'stock']);
         Route::post('/materials/{material}/adjustments', [MaterialController::class, 'adjust']);
         Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
+        Route::patch('/materials/{material}/min-stock', [MaterialController::class, 'minStock']);
 
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::post('/purchases', [PurchaseController::class, 'store']);
