@@ -113,6 +113,7 @@ class UserService
     {
         DB::transaction(function () use ($user, $actor) {
             $user->restore();
+            $user->update(['is_active' => true]);
 
             $payload = $user->toArray();
             unset($payload['password']);

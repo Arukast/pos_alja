@@ -177,7 +177,8 @@ class UserApiTest extends TestCase
                 'branch_id' => $this->branchOne->id,
             ])
             ->assertCreated()
-            ->assertJsonPath('user.username', 'new.cashier');
+            ->assertJsonPath('user.username', 'new.cashier')
+            ->assertJsonPath('user.is_active', true);
 
         $userId = $created->json('user.id');
 
@@ -202,6 +203,36 @@ class UserApiTest extends TestCase
             ->postJson("/api/v1/users/{$userId}/restore")
             ->assertOk()
             ->assertJsonPath('user.deleted_at', null);
+    }
+
+    public function test_user_resource_exposes_active_flag_and_ignores_client_is_active_on_update(): void
+    {
+        $owner = $this->user('owner', null);
+        $inactive = $this->user('cashier', $this->branchOne, ['is_active' => false]);
+
+        $this->actingAs($owner)->getJson('/api/v1/users')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $inactive->id, 'is_active' => false]);
+
+        $this->actingAs($owner)->putJson("/api/v1/users/{$inactive->id}", [
+            'name' => 'Still Inactive',
+            'username' => $inactive->username,
+            'email' => $inactive->email,
+            'role' => 'cashier',
+            'branch_id' => $this->branchOne->id,
+            'is_active' => true,
+        ])->assertOk()->assertJsonPath('user.is_active', false);
+    }
+
+    public function test_restore_sets_user_active(): void
+    {
+        $owner = $this->user('owner', null);
+        $removed = $this->user('cashier', $this->branchOne, ['is_active' => false]);
+        $removed->delete();
+
+        $this->actingAs($owner)->postJson("/api/v1/users/{$removed->id}/restore")
+            ->assertOk()
+            ->assertJsonPath('user.is_active', true);
     }
 
     public function test_manager_can_create_branch_staff_but_not_privileged_or_cross_branch_users(): void
