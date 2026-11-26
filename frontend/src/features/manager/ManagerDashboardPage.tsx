@@ -159,7 +159,7 @@ export function ManagerDashboardPage() {
                                         <TableHeaderCell className="text-right">Pesanan</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Pendapatan</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Rata-rata pesanan</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Catatan Sisa Bahan</TableHeaderCell>
+                                        <TableHeaderCell className="text-right">Catatan Bahan Terbuang</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>

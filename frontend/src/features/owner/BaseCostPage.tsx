@@ -36,7 +36,7 @@ export function BaseCostPage() {
             <PageBanner
                 eyebrow="Analitik Pemilik"
                 title="Rincian Biaya Dasar"
-                description="Rincian HPP invoice dan biaya sisa bahan."
+                description="Rincian HPP invoice dan biaya bahan terbuang."
             />
             <ReportFilterBar
                 draft={draft}
@@ -75,7 +75,7 @@ export function BaseCostPage() {
                             value={formatMoney(query.data.invoice_cost_total)}
                         />
                         <StatCard
-                            label="HPP Sisa Bahan"
+                            label="HPP Bahan Terbuang"
                             value={formatMoney(query.data.wasted_cost_total)}
                         />
                     </div>
@@ -115,7 +115,7 @@ export function BaseCostPage() {
 
                         <Card className="min-w-0">
                             <CardHeader>
-                                <h2 className="font-semibold">Sisa Bahan</h2>
+                                <h2 className="font-semibold">Bahan Terbuang</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
@@ -129,7 +129,7 @@ export function BaseCostPage() {
                                     </TableHead>
                                     <TableBody>
                                         {query.data.wasted_materials.length === 0 ? (
-                                            <TableEmpty colSpan={4}>Belum ada sisa bahan pada periode ini.</TableEmpty>
+                                            <TableEmpty colSpan={4}>Belum ada bahan terbuang pada periode ini.</TableEmpty>
                                         ) : (
                                             query.data.wasted_materials.map((waste) => (
                                                 <TableRow key={waste.id}>

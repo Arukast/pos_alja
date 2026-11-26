@@ -36,7 +36,7 @@
 | `/production` | production | Production dashboard |
 | `/production/materials` | production | Read-only Bahan & Stok with low-stock filter |
 | `/production/queue` | production | Start/complete/fail/reopen controls, inline waste modal |
-| `/production/waste` | production | Read-only Riwayat Sisa Bahan history |
+| `/production/waste` | production | Read-only Riwayat Bahan Terbuang history |
 | `/invoices/:id/print` | owner, manager, cashier, designer | A4 invoice print |
 | `/invoices/:id/receipt` | owner, manager, cashier, designer | 80 mm receipt |
 | `/dashboard?tab=...` | authenticated | Legacy redirect to role routes |
@@ -87,7 +87,7 @@ src/
 - A failed query renders an `EmptyState` with a `Coba lagi` retry that refetches; `ResourceTable` and the
   designer order form's `/quotes/options` selectors follow it. A successful empty result uses the empty copy,
   and errors inside a control stay inline. The states are never merged.
-- `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above with a `Gagal` badge for status `3`. A failed order with no waste shows a `Belum ada sisa bahan` warning badge in its invoice cell at every width, and closing its auto-opened waste modal asks `Belum ada sisa bahan. Tutup tetap?`. Status `0` offers `Mulai`, status `1` offers `Selesaikan` and `Gagal`, and status `3` offers `Proses Ulang`; status `0`, `1`, and `3` offer `Sisa Bahan`. Failing opens the waste modal with the failed order. It never shows money. `/production/materials` is a read-only Bahan & Stok list: no create/edit/delete or money fields, with the same low-stock filter. `/production/waste` is read-only history titled "Riwayat Sisa Bahan" with no create form.
+- `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above with a `Gagal` badge for status `3`. A failed order with no waste shows a `Belum ada bahan terbuang` warning badge in its invoice cell at every width, and closing its auto-opened waste modal asks `Belum ada bahan terbuang. Tetap tutup?`. Status `0` offers `Mulai`, status `1` offers `Selesaikan` and `Gagal`, and status `3` offers `Proses Ulang`; status `0`, `1`, and `3` offer `Bahan Terbuang`. Failing opens the waste modal with the failed order. It never shows money. `/production/materials` is a read-only Bahan & Stok list: no create/edit/delete or money fields, with the same low-stock filter. `/production/waste` is read-only history titled "Riwayat Bahan Terbuang" with no create form.
 - Print views have dedicated `@media print` CSS: A4 invoice at `min-h-[297mm] print:min-h-0`, 80 mm receipt,
   `PrintHeader` with CMYK marks, white paper. Production is denied both print views.
 - The designer order form selects a pricing row; it does not offer finishing/display controls. Finishing/display masters exist at `/manager/finishing`, and the quote/invoice API accepts `selected_attributes[]`, but there is no `order_attributes` persistence and no designer selection UI. Customer creation is inline on `/designer/new-order`.

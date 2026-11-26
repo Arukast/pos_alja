@@ -28,8 +28,8 @@ export function ProductionWastePage() {
         <div className="space-y-6">
             <PageBanner
                 eyebrow="Produksi"
-                title="Riwayat Sisa Bahan"
-                description="Catatan sisa bahan dari antrean produksi."
+                title="Riwayat Bahan Terbuang"
+                description="Catatan bahan terbuang dari antrean produksi."
             />
 
             <div className="grid gap-4 sm:max-w-xs">
@@ -39,7 +39,7 @@ export function ProductionWastePage() {
                     </div>
                 ) : summary.isError ? (
                     <EmptyState
-                        title="Ringkasan sisa bahan gagal dimuat"
+                        title="Ringkasan bahan terbuang gagal dimuat"
                         description="Periksa koneksi lalu coba lagi."
                         action={
                             <Button variant="secondary" onClick={() => summary.refetch()}>
@@ -49,7 +49,7 @@ export function ProductionWastePage() {
                     />
                 ) : (
                     <StatCard
-                        label="Sisa Bahan Hari Ini"
+                        label="Bahan Terbuang Hari Ini"
                         value={summary.data ? wasteByUnitLabel(summary.data.waste_today_by_unit) : '—'}
                     />
                 )}
@@ -57,7 +57,7 @@ export function ProductionWastePage() {
 
             <Card>
                 <CardHeader>
-                    <h2 className="font-semibold">Riwayat sisa bahan</h2>
+                    <h2 className="font-semibold">Riwayat bahan terbuang</h2>
                     {listQuery.data ? (
                         <span className="bg-light-surface-2 text-light-muted-strong rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
                             {listQuery.data.meta.total} catatan
@@ -71,7 +71,7 @@ export function ProductionWastePage() {
                         </div>
                     ) : listQuery.isError ? (
                         <EmptyState
-                            title="Riwayat sisa bahan gagal dimuat"
+                            title="Riwayat bahan terbuang gagal dimuat"
                             description="Periksa koneksi lalu coba lagi."
                             action={
                                 <Button variant="secondary" onClick={() => listQuery.refetch()}>
@@ -81,7 +81,7 @@ export function ProductionWastePage() {
                         />
                     ) : (
                         <>
-                            <Table ariaLabel="Riwayat sisa bahan">
+                            <Table ariaLabel="Riwayat bahan terbuang">
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
@@ -93,7 +93,7 @@ export function ProductionWastePage() {
                                 </TableHead>
                                 <TableBody>
                                     {(listQuery.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={5}>Belum ada sisa bahan tercatat.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada bahan terbuang tercatat.</TableEmpty>
                                     ) : (
                                         (listQuery.data?.data ?? []).map((waste) => (
                                             <TableRow key={waste.id}>

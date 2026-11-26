@@ -180,7 +180,7 @@ export function ProductionQueuePage() {
                                                         {needsWasteReminder(order) ? (
                                                             <span className="mt-1 block">
                                                                 <Badge tone="warning">
-                                                                    Belum ada sisa bahan
+                                                                    Belum ada bahan terbuang
                                                                 </Badge>
                                                             </span>
                                                         ) : null}
@@ -288,10 +288,10 @@ export function ProductionQueuePage() {
                                                             <Button
                                                                 size="sm"
                                                                 variant="secondary"
-                                                                aria-label={`Sisa Bahan ${itemLabel}`}
+                                                                aria-label={`Bahan Terbuang ${itemLabel}`}
                                                                 onClick={() => setWasteOrder(order)}
                                                             >
-                                                                Sisa Bahan
+                                                                Bahan Terbuang
                                                             </Button>
                                                         </div>
                                                     </TableCell>

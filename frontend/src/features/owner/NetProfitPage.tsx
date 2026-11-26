@@ -156,7 +156,7 @@ export function NetProfitPage() {
 
                         <Card className="min-w-0">
                             <CardHeader>
-                                <h2 className="font-semibold">Sisa Bahan</h2>
+                                <h2 className="font-semibold">Bahan Terbuang</h2>
                             </CardHeader>
                             <CardBody>
                                 <Table>
@@ -169,7 +169,7 @@ export function NetProfitPage() {
                                     </TableHead>
                                     <TableBody>
                                         {query.data.wasted_materials.length === 0 ? (
-                                            <TableEmpty colSpan={3}>Belum ada sisa bahan pada periode ini.</TableEmpty>
+                                            <TableEmpty colSpan={3}>Belum ada bahan terbuang pada periode ini.</TableEmpty>
                                         ) : (
                                             query.data.wasted_materials.map((waste) => (
                                                 <TableRow key={waste.id}>
