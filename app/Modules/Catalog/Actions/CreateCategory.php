@@ -16,32 +16,21 @@ final class CreateCategory
     /**
      * @param  array{
      *     name: string,
-     *     discount_tiers?: array<int, array{min_qty: int|string, discount_percent: int|float|string}>
+     *     description?: string|null,
+     *     is_active?: bool
      * }  $data
      */
     public function execute(array $data, User $actor): ProductCategory
     {
         try {
             $category = DB::transaction(function () use ($data): ProductCategory {
-                $category = ProductCategory::create([
+                return ProductCategory::create([
                     'name' => $data['name'],
+                    'description' => $data['description'] ?? null,
+                    'is_active' => (bool) ($data['is_active'] ?? true),
                     'calculation_archetype' => 'per_piece',
                     'allowed_attribute_types' => null,
                 ]);
-
-                $tiers = $data['discount_tiers'] ?? [];
-
-                if ($tiers !== []) {
-                    $category->discountTiers()->createMany(array_map(
-                        static fn (array $tier): array => [
-                            'min_qty' => (int) $tier['min_qty'],
-                            'discount_percent' => $tier['discount_percent'],
-                        ],
-                        $tiers
-                    ));
-                }
-
-                return $category;
             });
         } catch (Throwable $exception) {
             Log::error('Product category creation failed.', [
@@ -54,6 +43,6 @@ final class CreateCategory
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $category->load('discountTiers');
+        return $category;
     }
 }

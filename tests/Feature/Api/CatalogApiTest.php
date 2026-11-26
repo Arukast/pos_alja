@@ -12,7 +12,6 @@ use App\Models\MaterialBranchStock;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\ProductCategoryDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -435,13 +434,9 @@ class CatalogApiTest extends TestCase
         }
     }
 
-    public function test_manager_reads_categories_with_discount_tiers_and_branchless_manager_is_denied(): void
+    public function test_categories_expose_description_active_state_and_product_count(): void
     {
-        ProductCategoryDiscount::create([
-            'product_category_id' => $this->category->id,
-            'min_qty' => 10,
-            'discount_percent' => 5,
-        ]);
+        $vinylBanner = Product::query()->where('name', 'Vinyl Banner')->firstOrFail();
 
         $response = $this->actingAs($this->manager)
             ->getJson('/api/v1/categories')
@@ -450,15 +445,48 @@ class CatalogApiTest extends TestCase
         $category = collect($response->json('data'))->firstWhere('id', $this->category->id);
 
         $this->assertNotNull($category);
-        $this->assertCount(1, $category['discount_tiers']);
-        $this->assertSame(10, $category['discount_tiers'][0]['min_qty']);
-        $this->assertSame('5.00', $category['discount_tiers'][0]['discount_percent']);
+        $this->assertNull($category['description']);
+        $this->assertTrue($category['is_active']);
+        $this->assertSame(2, $category['products_count']);
+        $this->assertArrayNotHasKey('discount_tiers', $category);
+
+        $vinylBanner->delete();
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/categories')
+            ->assertOk();
+
+        $category = collect($response->json('data'))->firstWhere('id', $this->category->id);
+
+        $this->assertNotNull($category);
+        $this->assertSame(1, $category['products_count']);
 
         $branchlessManager = $this->user('manager', null);
 
         $this->actingAs($branchlessManager)
             ->getJson('/api/v1/categories')
             ->assertForbidden();
+    }
+
+    public function test_category_deactivation_is_allowed_and_does_not_touch_products(): void
+    {
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/categories/{$this->category->id}", [
+                'name' => 'Large Format',
+                'description' => 'Cetak besar',
+                'is_active' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('category.is_active', false)
+            ->assertJsonPath('category.description', 'Cetak besar');
+
+        $this->assertDatabaseHas('product_categories', [
+            'id' => $this->category->id,
+            'description' => 'Cetak besar',
+            'is_active' => false,
+        ]);
+        $this->assertDatabaseHas('products', ['name' => 'Vinyl Banner', 'is_active' => true]);
+        $this->assertDatabaseHas('products', ['name' => 'Flyer', 'is_active' => true]);
     }
 
     public function test_manager_reads_attribute_pricing_and_branchless_manager_is_denied(): void

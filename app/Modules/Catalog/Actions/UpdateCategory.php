@@ -16,7 +16,8 @@ final class UpdateCategory
     /**
      * @param  array{
      *     name: string,
-     *     discount_tiers?: array<int, array{min_qty: int|string, discount_percent: int|float|string}>
+     *     description?: string|null,
+     *     is_active?: bool
      * }  $data
      */
     public function execute(ProductCategory $category, array $data, User $actor): ProductCategory
@@ -25,22 +26,13 @@ final class UpdateCategory
             $updated = DB::transaction(function () use ($category, $data): ProductCategory {
                 $category->update([
                     'name' => $data['name'],
+                    'description' => array_key_exists('description', $data)
+                        ? $data['description']
+                        : $category->description,
+                    'is_active' => array_key_exists('is_active', $data)
+                        ? (bool) $data['is_active']
+                        : (bool) $category->is_active,
                 ]);
-
-                if (array_key_exists('discount_tiers', $data)) {
-                    $category->discountTiers()->delete();
-                    $tiers = $data['discount_tiers'];
-
-                    if ($tiers !== []) {
-                        $category->discountTiers()->createMany(array_map(
-                            static fn (array $tier): array => [
-                                'min_qty' => (int) $tier['min_qty'],
-                                'discount_percent' => $tier['discount_percent'],
-                            ],
-                            $tiers
-                        ));
-                    }
-                }
 
                 return $category;
             });
@@ -56,6 +48,6 @@ final class UpdateCategory
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $updated->fresh('discountTiers') ?? $updated->load('discountTiers');
+        return $updated->fresh() ?? $updated;
     }
 }

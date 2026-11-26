@@ -21,9 +21,8 @@ final class StoreCategoryRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'discount_tiers' => ['sometimes', 'array'],
-            'discount_tiers.*.min_qty' => ['required', 'integer', 'min:1', 'distinct'],
-            'discount_tiers.*.discount_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

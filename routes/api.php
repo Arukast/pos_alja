@@ -79,7 +79,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/{category}', [CategoryController::class, 'update']);
-        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
 
         Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
         Route::delete('/attribute-types/{attributeType}', [AttributeTypeController::class, 'destroy']);
@@ -128,5 +127,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/reports/designer-leaderboard', [ReportController::class, 'leaderboard']);
         Route::get('/audit-logs', [AuditController::class, 'index']);
         Route::get('/audit-logs/{activityLog}', [AuditController::class, 'show']);
+    });
+
+    // Tombstone: category deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/categories/{category}', static function (): void {
+        abort(404);
     });
 });

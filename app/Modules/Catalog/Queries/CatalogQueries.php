@@ -23,7 +23,7 @@ final class CatalogQueries
      */
     public function categories(): Collection
     {
-        return ProductCategory::query()->with('discountTiers')->orderBy('name')->get();
+        return ProductCategory::query()->withCount('products')->orderBy('name')->get();
     }
 
     /**

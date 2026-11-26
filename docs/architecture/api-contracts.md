@@ -69,7 +69,7 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | Method | Path | Access |
 | :--- | :--- | :--- |
 | GET | `/categories` | owner, manager |
-| POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner |
+| POST/PUT | `/categories`, `/categories/{category}` | owner |
 | GET | `/attribute-types` | owner, manager |
 | POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner |
 | GET | `/attributes` | owner, manager |
@@ -94,7 +94,7 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | GET | `/purchases` | owner all; manager own branch |
 | POST | `/purchases` | owner, manager (manager branch forced) |
 
-Categories accept `name` and `discount_tiers[]` (`min_qty`, `discount_percent`); `calculation_archetype` and `allowed_attribute_types` are omitted from category requests and `CategoryResource` (the tiers are stored but not applied to quotes or invoices). Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), `is_active`, and `material_ids[]?` (UUIDs of compatible non-deleted materials); `ProductResource` returns `materials[]` (`{id,name}`) and `material_ids[]`, and pricing formulas use `product.pricing_type`. Materials accept `name`, `product_category_id`, `type`, `dimensions`, `unit`, `cost`, `price`, `initial_stock`, and `min_stock`. `unit` is required on create and optional on update; allowed values are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`. The column defaults to `pcs`, and existing rows are backfilled; `m2` displays as `m²`. Attributes accept `name`, `type` (`finishing` or `display`), `branch_id`, `price`, `cost`, and `is_active`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
+Categories accept `name`, `description` (nullable, max 255), and `is_active`; `GET /categories` also returns the derived `products_count` (soft-deleted products excluded), while `POST/PUT` return `{id,name,description,is_active}` only. `calculation_archetype` and `allowed_attribute_types` are omitted from category requests and `CategoryResource`. `DELETE /categories/{category}` is removed and returns 404. Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), `is_active`, and `material_ids[]?` (UUIDs of compatible non-deleted materials); `ProductResource` returns `materials[]` (`{id,name}`) and `material_ids[]`, and pricing formulas use `product.pricing_type`. Materials accept `name`, `product_category_id`, `type`, `dimensions`, `unit`, `cost`, `price`, `initial_stock`, and `min_stock`. `unit` is required on create and optional on update; allowed values are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`. The column defaults to `pcs`, and existing rows are backfilled; `m2` displays as `m²`. Attributes accept `name`, `type` (`finishing` or `display`), `branch_id`, `price`, `cost`, and `is_active`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
 
 Material responses include `unit`, `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data, but include `unit`, `current_stock`, `min_stock`, and `is_low_stock`. The pricing-matrix endpoints (`/pricing`) remain. `POST /pricing` requires `product_id`, `material_id`, `customer_type`, `min_qty`, `price`, and `cost`; `profit` is optional and defaults to `max(0, price - cost)`. Managers are forced to their own branch for list, write, delete, and clone operations; owners may select a branch.
 
@@ -119,7 +119,7 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 - `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material {id,name,unit}`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
 - `type` is one of `initial`, `purchase`, `usage`, `usage_reversal`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference. `usage_reversal` is written when a failed processing order returns its net usage; it references the order and records `added_stock`.
 
-`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) and active attributes (`is_active = true`) only. `GET /categories` includes `discount_tiers[]` (`id`, `min_qty`, and 2-decimal `discount_percent`, ordered by `min_qty`).
+`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) and active attributes (`is_active = true`) only. `GET /categories` includes `description`, `is_active`, and the derived `products_count` (soft-deleted products excluded).
 
 ## 5. Sales
 
@@ -162,7 +162,6 @@ Server rules:
 
 - Base price is recomputed from the selected `pricing` row plus `attribute_pricing` modifiers; client prices are ignored unless `is_manual_price` is true.
 - Invoice creation reads the customer type from the customer record. The branch reseller discount is applied only when a Reseller quote falls back to the Reguler pricing row.
-- Category quantity discount tiers are configured but not applied to the invoice total.
 - Manual lines require both `unit_price` and `cost`; `unit_price` must be positive, `cost` must be non-negative, and `cost` must not exceed `unit_price`.
 - `selected_attributes[]` adds `attribute_pricing` modifiers to the pricing-matrix row. The selection is persisted on `orders.selected_attributes`; there is no `order_attributes` snapshot table.
 - Discount cannot exceed the computed subtotal.

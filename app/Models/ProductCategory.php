@@ -15,7 +15,16 @@ class ProductCategory extends Model
 
     protected $fillable = [
         'name',
+        'description',
+        'is_active',
         'calculation_archetype',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     /**
@@ -32,14 +41,5 @@ class ProductCategory extends Model
     public function materials(): HasMany
     {
         return $this->hasMany(Material::class, 'product_category_id');
-    }
-
-    /**
-     * @return HasMany<ProductCategoryDiscount, $this>
-     */
-    public function discountTiers(): HasMany
-    {
-        return $this->hasMany(ProductCategoryDiscount::class, 'product_category_id')
-            ->orderBy('min_qty');
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -505,6 +506,10 @@ class CatalogWriteApiTest extends TestCase
         foreach (['/materials', '/categories', '/attribute-types', '/attributes', '/pricing'] as $path) {
             $this->postJson('/api/v1'.$path, [])->assertUnauthorized();
         }
+
+        $this->getJson('/api/v1/categories')->assertUnauthorized();
+        $this->putJson("/api/v1/categories/{$this->category->id}", ['name' => 'Guest'])
+            ->assertUnauthorized();
     }
 
     public function test_catalog_write_validation_errors_are_422(): void
@@ -755,123 +760,191 @@ class CatalogWriteApiTest extends TestCase
             ->assertJsonValidationErrors('material_ids.0');
     }
 
-    public function test_owner_can_manage_category_quantity_discount_tiers_and_non_owners_are_denied(): void
+    public function test_owner_creates_and_updates_a_category_with_description_and_active_state(): void
     {
-        $created = $this->actingAs($this->owner)
+        $category = $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
-                'name' => 'Print Lembaran',
+                'name' => 'Indoor',
+                'description' => 'Bahan indoor',
+                'is_active' => true,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('category.description', 'Bahan indoor')
+            ->assertJsonPath('category.is_active', true)
+            ->assertJsonMissingPath('category.products_count')
+            ->assertJsonMissingPath('category.discount_tiers')
+            ->json('category');
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/categories/{$category['id']}", [
+                'name' => 'Indoor Updated',
+                'description' => null,
+                'is_active' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('category.description', null)
+            ->assertJsonPath('category.is_active', false);
+
+        $this->assertDatabaseHas('product_categories', [
+            'id' => $category['id'],
+            'description' => null,
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/categories/{$category['id']}", [
+                'name' => 'Indoor Kept',
+                'is_active' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('category.description', null)
+            ->assertJsonPath('category.is_active', true);
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/categories/{$category['id']}", [
+                'name' => 'Indoor Kept',
+                'description' => 'Bahan indoor lagi',
+                'is_active' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('category.description', 'Bahan indoor lagi');
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/categories/{$category['id']}", [
+                'name' => 'Indoor Kept',
+                'is_active' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('category.description', 'Bahan indoor lagi');
+    }
+
+    public function test_category_delete_endpoint_is_removed(): void
+    {
+        $this->deleteJson("/api/v1/categories/{$this->category->id}")
+            ->assertNotFound();
+
+        $this->actingAs($this->owner)
+            ->deleteJson("/api/v1/categories/{$this->category->id}")
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('product_categories', ['id' => $this->category->id]);
+    }
+
+    public function test_category_write_validation_errors_are_422(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/categories', [
+                'description' => 'Missing name',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('name');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/categories', [
+                'name' => 'Long Description',
+                'description' => str_repeat('a', 256),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('description');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/categories', [
+                'name' => 'Array Description',
+                'description' => ['nope'],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('description');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/categories', [
+                'name' => 'Invalid Active Flag',
+                'is_active' => 'not-a-bool',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('is_active');
+    }
+
+    public function test_legacy_discount_tiers_are_ignored(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/categories', [
+                'name' => 'Legacy',
                 'discount_tiers' => [
-                    ['min_qty' => 50, 'discount_percent' => 10],
-                    ['min_qty' => 10, 'discount_percent' => 5.5],
+                    ['min_qty' => 10, 'discount_percent' => 5],
                 ],
             ])
             ->assertCreated()
-            ->assertJsonPath('category.discount_tiers.0.min_qty', 10)
-            ->assertJsonPath('category.discount_tiers.0.discount_percent', '5.50')
-            ->assertJsonPath('category.discount_tiers.1.min_qty', 50)
-            ->assertJsonPath('category.discount_tiers.1.discount_percent', '10.00')
-            ->json('category');
+            ->assertJsonPath('category.name', 'Legacy');
 
-        $this->assertDatabaseHas('product_category_discounts', [
-            'product_category_id' => $created['id'],
-            'min_qty' => 10,
-            'discount_percent' => 5.5,
+        $this->assertFalse(Schema::hasTable('product_category_discounts'));
+    }
+
+    public function test_restore_product_is_inactive_when_its_category_is_inactive(): void
+    {
+        $inactiveCategory = ProductCategory::create([
+            'name' => 'Retired',
+            'is_active' => false,
         ]);
 
+        $inactiveProduct = Product::create([
+            'name' => 'Retired Banner',
+            'pricing_type' => 'unit',
+            'product_category_id' => $inactiveCategory->id,
+            'is_active' => true,
+        ]);
+        $inactiveProduct->delete();
+
         $this->actingAs($this->owner)
-            ->putJson("/api/v1/categories/{$created['id']}", [
-                'name' => 'Print Lembaran Update',
-                'discount_tiers' => [
-                    ['min_qty' => 20, 'discount_percent' => 7.25],
-                ],
-            ])
+            ->postJson("/api/v1/products/{$inactiveProduct->id}/restore")
             ->assertOk()
-            ->assertJsonCount(1, 'category.discount_tiers')
-            ->assertJsonPath('category.discount_tiers.0.min_qty', 20)
-            ->assertJsonPath('category.discount_tiers.0.discount_percent', '7.25');
+            ->assertJsonPath('product.is_active', false);
 
-        $this->assertDatabaseMissing('product_category_discounts', [
-            'product_category_id' => $created['id'],
-            'min_qty' => 10,
-        ]);
-        $this->assertDatabaseMissing('product_category_discounts', [
-            'product_category_id' => $created['id'],
-            'min_qty' => 50,
-        ]);
-        $this->assertDatabaseHas('product_category_discounts', [
-            'product_category_id' => $created['id'],
-            'min_qty' => 20,
-            'discount_percent' => 7.25,
+        $this->assertDatabaseHas('products', [
+            'id' => $inactiveProduct->id,
+            'is_active' => false,
         ]);
 
-        $designer = $this->user('designer', $this->branchOne);
-        $production = $this->user('production', $this->branchOne);
-        $blockedPayload = [
-            'name' => 'Blocked Category',
-            'calculation_archetype' => 'per_piece',
-        ];
-
-        foreach ([$this->manager, $this->cashier, $designer, $production] as $actor) {
-            $this->actingAs($actor)->postJson('/api/v1/categories', $blockedPayload)->assertForbidden();
-            $this->actingAs($actor)->putJson("/api/v1/categories/{$created['id']}", $blockedPayload)->assertForbidden();
-            $this->actingAs($actor)->deleteJson("/api/v1/categories/{$created['id']}")->assertForbidden();
-        }
+        $this->product->delete();
 
         $this->actingAs($this->owner)
-            ->deleteJson("/api/v1/categories/{$created['id']}")
-            ->assertNoContent();
+            ->postJson("/api/v1/products/{$this->product->id}/restore")
+            ->assertOk()
+            ->assertJsonPath('product.is_active', true);
 
-        $this->assertDatabaseMissing('product_category_discounts', [
-            'product_category_id' => $created['id'],
+        $this->assertDatabaseHas('products', [
+            'id' => $this->product->id,
+            'is_active' => true,
         ]);
     }
 
-    public function test_category_discount_tier_validation_errors_are_422(): void
+    public function test_category_writes_are_owner_only(): void
     {
-        $this->actingAs($this->owner)
-            ->postJson('/api/v1/categories', [
-                'name' => 'Duplicate Tier',
-                'calculation_archetype' => 'per_piece',
-                'discount_tiers' => [
-                    ['min_qty' => 10, 'discount_percent' => 5],
-                    ['min_qty' => 10, 'discount_percent' => 10],
-                ],
-            ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('discount_tiers.1.min_qty');
+        $designer = $this->user('designer', $this->branchOne);
+        $production = $this->user('production', $this->branchOne);
+        $payload = ['name' => 'Blocked Category'];
+
+        foreach ([$this->manager, $this->cashier, $designer, $production] as $actor) {
+            $this->actingAs($actor)->postJson('/api/v1/categories', $payload)->assertForbidden();
+            $this->actingAs($actor)
+                ->putJson("/api/v1/categories/{$this->category->id}", $payload)
+                ->assertForbidden();
+        }
+
+        $created = $this->actingAs($this->owner)
+            ->postJson('/api/v1/categories', ['name' => 'Owner Category'])
+            ->assertCreated()
+            ->json('category');
 
         $this->actingAs($this->owner)
-            ->postJson('/api/v1/categories', [
-                'name' => 'Zero Qty Tier',
-                'calculation_archetype' => 'per_piece',
-                'discount_tiers' => [
-                    ['min_qty' => 0, 'discount_percent' => 5],
-                ],
+            ->putJson("/api/v1/categories/{$created['id']}", [
+                'name' => 'Owner Category Updated',
+                'is_active' => false,
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('discount_tiers.0.min_qty');
+            ->assertOk()
+            ->assertJsonPath('category.name', 'Owner Category Updated')
+            ->assertJsonPath('category.is_active', false);
 
-        $this->actingAs($this->owner)
-            ->postJson('/api/v1/categories', [
-                'name' => 'Negative Discount Tier',
-                'calculation_archetype' => 'per_piece',
-                'discount_tiers' => [
-                    ['min_qty' => 5, 'discount_percent' => -1],
-                ],
-            ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('discount_tiers.0.discount_percent');
-
-        $this->actingAs($this->owner)
-            ->postJson('/api/v1/categories', [
-                'name' => 'Over Cap Discount Tier',
-                'calculation_archetype' => 'per_piece',
-                'discount_tiers' => [
-                    ['min_qty' => 5, 'discount_percent' => 101],
-                ],
-            ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('discount_tiers.0.discount_percent');
+        $this->assertFalse(Schema::hasTable('product_category_discounts'));
     }
 
     private function branch(string $name): Branch
