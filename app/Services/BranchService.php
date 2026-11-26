@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class BranchService
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * Create a new branch and log activity.
      */
@@ -26,17 +27,13 @@ class BranchService
                 'settings' => $data['settings'] ?? [],
             ]);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'CREATE',
-                'description' => "Membuat cabang: {$branch->name} ({$branch->code})",
-                'model_type' => Branch::class,
-                'model_id' => $branch->id,
-                'payload' => $branch->toArray(),
-            ]);
+            $this->audit->record(
+                $actor,
+                'CREATE',
+                "Membuat cabang: {$branch->name} ({$branch->code})",
+                $branch,
+                $branch->toArray(),
+            );
 
             return $branch;
         });
@@ -61,20 +58,16 @@ class BranchService
 
             $newData = $branch->fresh()->toArray();
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'UPDATE',
-                'description' => "Memperbarui cabang: {$branch->name} ({$branch->code})",
-                'model_type' => Branch::class,
-                'model_id' => $branch->id,
-                'payload' => [
+            $this->audit->record(
+                $actor,
+                'UPDATE',
+                "Memperbarui cabang: {$branch->name} ({$branch->code})",
+                $branch,
+                [
                     'before' => $oldData,
                     'after' => $newData,
                 ],
-            ]);
+            );
 
             return $branch;
         });
@@ -91,20 +84,16 @@ class BranchService
 
             $branch->update(['is_active' => $newStatus]);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'UPDATE',
-                'description' => "Mengubah status aktif cabang: {$branch->name} menjadi ".($newStatus ? 'aktif' : 'nonaktif'),
-                'model_type' => Branch::class,
-                'model_id' => $branch->id,
-                'payload' => [
+            $this->audit->record(
+                $actor,
+                'UPDATE',
+                "Mengubah status aktif cabang: {$branch->name} menjadi ".($newStatus ? 'aktif' : 'nonaktif'),
+                $branch,
+                [
                     'before' => ['is_active' => $oldStatus],
                     'after' => ['is_active' => $newStatus],
                 ],
-            ]);
+            );
 
             return $branch;
         });
@@ -116,17 +105,13 @@ class BranchService
     public function deleteBranch(Branch $branch, User $actor): void
     {
         DB::transaction(function () use ($branch, $actor): void {
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'DELETE',
-                'description' => "Menghapus cabang: {$branch->name} ({$branch->code})",
-                'model_type' => Branch::class,
-                'model_id' => $branch->id,
-                'payload' => $branch->toArray(),
-            ]);
+            $this->audit->record(
+                $actor,
+                'DELETE',
+                "Menghapus cabang: {$branch->name} ({$branch->code})",
+                $branch,
+                $branch->toArray(),
+            );
 
             $branch->delete();
         });

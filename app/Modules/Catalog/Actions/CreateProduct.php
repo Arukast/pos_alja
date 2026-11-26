@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Actions;
 
-use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +14,8 @@ use Throwable;
 
 final class CreateProduct
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool}  $data
      */
@@ -28,17 +30,13 @@ final class CreateProduct
                     'is_active' => (bool) ($data['is_active'] ?? true),
                 ]);
 
-                ActivityLog::create([
-                    'branch_id' => $actor->branch_id,
-                    'user_id' => $actor->id,
-                    'username' => $actor->username,
-                    'role' => $actor->role,
-                    'action' => 'CREATE',
-                    'description' => "Membuat produk: {$product->name}",
-                    'model_type' => Product::class,
-                    'model_id' => $product->id,
-                    'payload' => $product->toArray(),
-                ]);
+                $this->audit->record(
+                    $actor,
+                    'CREATE',
+                    "Membuat produk: {$product->name}",
+                    $product,
+                    $product->toArray(),
+                );
 
                 return $product;
             });

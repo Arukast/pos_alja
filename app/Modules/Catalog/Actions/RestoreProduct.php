@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Actions;
 
-use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,23 +14,21 @@ use Throwable;
 
 final class RestoreProduct
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     public function execute(Product $product, User $actor): Product
     {
         try {
             $restored = DB::transaction(function () use ($product, $actor): Product {
                 $product->restore();
 
-                ActivityLog::create([
-                    'branch_id' => $actor->branch_id,
-                    'user_id' => $actor->id,
-                    'username' => $actor->username,
-                    'role' => $actor->role,
-                    'action' => 'RESTORE',
-                    'description' => "Memulihkan produk: {$product->name}",
-                    'model_type' => Product::class,
-                    'model_id' => $product->id,
-                    'payload' => $product->toArray(),
-                ]);
+                $this->audit->record(
+                    $actor,
+                    'RESTORE',
+                    "Memulihkan produk: {$product->name}",
+                    $product,
+                    $product->toArray(),
+                );
 
                 return $product->fresh('category') ?? $product->load('category');
             });

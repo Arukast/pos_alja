@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Sales\Actions;
 
 use App\Exceptions\PricingNotFoundException;
-use App\Models\ActivityLog;
 use App\Models\Attribute;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
 use App\Models\Pricing;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\Decimal;
 use App\Support\SafeBroadcast;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,7 +24,10 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 final class UpdateInvoiceItems
 {
     /** Injects the server-side quote calculator. */
-    public function __construct(private readonly CalculateQuote $quote) {}
+    public function __construct(
+        private readonly CalculateQuote $quote,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * Reprices all submitted items, preserves payment rows, and records the change atomically.
@@ -234,16 +237,12 @@ final class UpdateInvoiceItems
             }
             $lockedInvoice->save();
 
-            ActivityLog::create([
-                'branch_id' => $branchId,
-                'user_id' => $designer->id,
-                'username' => $designer->username,
-                'role' => $designer->role,
-                'action' => 'UPDATE',
-                'description' => 'Memperbarui item invoice '.$lockedInvoice->invoice_number,
-                'model_type' => Invoice::class,
-                'model_id' => $lockedInvoice->id,
-                'payload' => [
+            $this->audit->record(
+                $designer,
+                'UPDATE',
+                'Memperbarui item invoice '.$lockedInvoice->invoice_number,
+                $lockedInvoice,
+                [
                     'before' => $before,
                     'after' => [
                         'grand_total' => Decimal::money($grandTotal),
@@ -260,7 +259,8 @@ final class UpdateInvoiceItems
                         ])->all(),
                     ],
                 ],
-            ]);
+                $branchId,
+            );
 
             return $lockedInvoice->load(['customer', 'branch', 'designer', 'orders', 'payments']);
         });

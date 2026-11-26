@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Attribute;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -118,6 +119,42 @@ class CreateInvoiceApiTest extends TestCase
             'subtotal' => 600000,
             'is_manual_price' => false,
         ]);
+    }
+
+    public function test_invoice_creation_audits_the_invoice_and_each_order(): void
+    {
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['discount' => 50000]))
+            ->assertCreated();
+
+        $invoiceId = (string) $response->json('invoice.id');
+        $orderId = (string) $response->json('invoice.orders.0.id');
+
+        $invoiceLog = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->where('model_type', Invoice::class)
+            ->where('model_id', $invoiceId)
+            ->firstOrFail();
+
+        $this->assertSame('50000.00', $invoiceLog->payload['discount']);
+        $this->assertSame([$orderId], $invoiceLog->payload['order_ids']);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'CREATE',
+            'branch_id' => $this->branchOne->id,
+            'user_id' => $this->designer->id,
+            'model_type' => Order::class,
+            'model_id' => $orderId,
+        ]);
+
+        $orderLog = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->where('model_type', Order::class)
+            ->where('model_id', $orderId)
+            ->firstOrFail();
+
+        $this->assertSame($invoiceId, $orderLog->payload['invoice_id']);
+        $this->assertSame('banner.pdf', $orderLog->payload['file_name']);
     }
 
     public function test_manual_price_requires_values_and_is_audit_logged(): void
