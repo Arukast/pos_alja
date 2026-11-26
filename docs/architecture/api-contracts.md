@@ -117,7 +117,7 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 - `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material {id,name,unit}`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
 - `type` is one of `initial`, `purchase`, `usage`, `usage_reversal`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference. `usage_reversal` is written when a failed processing order returns its net usage; it references the order and records `added_stock`.
 
-`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) and active attributes (`is_active = true`) only. `GET /categories` includes `description`, `is_active`, and the derived `products_count` (soft-deleted products excluded).
+`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active categories only; active products in an active or null category; materials in an active category; and active attributes unless `include_inactive_attributes=1` (still branch-scoped). Its categories omit `products_count`, and product/material `category` objects include `is_active`. `GET /categories` includes `description`, `is_active`, and the derived `products_count` (soft-deleted products excluded).
 
 ## 5. Sales
 
@@ -148,7 +148,7 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 
 ### Quote And Invoice Input
 
-`POST /quotes` accepts `product_id`, `material_id`, `selected_attributes[]?`, `quantity`, `width?`, `length?`, and `customer_type?`. It returns `pricing_id`, `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` comes from the pricing matrix plus `attribute_pricing` modifiers. Cost and profit are not returned to the designer. `customer_type` defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes.
+`POST /quotes` accepts `product_id`, `material_id`, `selected_attributes[]?`, `quantity`, `width?`, `length?`, and `customer_type?`. It returns `pricing_id`, `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` comes from the pricing matrix plus `attribute_pricing` modifiers. Cost and profit are not returned to the designer. `customer_type` defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes, filtered to active catalog entries; pass `include_inactive_attributes=1` to keep inactive attributes visible in the designer edit page.
 
 `POST /invoices` accepts `customer_id`, `discount?`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `selected_attributes[]?`, `is_manual_price`, `unit_price?`, and `cost?`. Order rows persist `width`, `length`, and `selected_attributes` so later edits can reprice from the saved specifications.
 

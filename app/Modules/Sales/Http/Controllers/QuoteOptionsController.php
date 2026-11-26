@@ -31,12 +31,17 @@ final class QuoteOptionsController extends Controller
         }
 
         $branchId = $actor->branch_id;
+        $includeInactiveAttributes = request()->boolean('include_inactive_attributes');
 
         $materials = Material::query()
             ->with('category')
             ->whereHas(
                 'branchStocks',
                 fn (Builder $query) => $query->where('branch_id', $branchId)
+            )
+            ->whereHas(
+                'category',
+                fn (Builder $query) => $query->where('is_active', true)
             )
             ->orderBy('name')
             ->get()
@@ -53,7 +58,10 @@ final class QuoteOptionsController extends Controller
             ->values();
 
         $attributes = Attribute::query()
-            ->where('is_active', true)
+            ->when(
+                ! $includeInactiveAttributes,
+                fn (Builder $query) => $query->where('is_active', true)
+            )
             ->where(function (Builder $query) use ($branchId): void {
                 $query->where('branch_id', $branchId)->orWhereNull('branch_id');
             })
@@ -62,10 +70,21 @@ final class QuoteOptionsController extends Controller
 
         return response()->json([
             'categories' => CategoryResource::collection(
-                ProductCategory::query()->orderBy('name')->get()
+                ProductCategory::query()->where('is_active', true)->orderBy('name')->get()
             ),
             'products' => ProductResource::collection(
-                Product::query()->where('is_active', true)->with(['category', 'materials'])->orderBy('name')->get()
+                Product::query()
+                    ->where('is_active', true)
+                    ->where(function (Builder $query): void {
+                        $query->whereNull('product_category_id')
+                            ->orWhereHas(
+                                'category',
+                                fn (Builder $category) => $category->where('is_active', true)
+                            );
+                    })
+                    ->with(['category', 'materials'])
+                    ->orderBy('name')
+                    ->get()
             ),
             'materials' => $materials,
             'attributes' => AttributeResource::collection($attributes),

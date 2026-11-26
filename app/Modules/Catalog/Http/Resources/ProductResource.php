@@ -28,6 +28,7 @@ final class ProductResource extends JsonResource
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
+                'is_active' => (bool) $this->category->is_active,
             ] : null,
             'materials' => $materials->map(static fn (Material $material): array => [
                 'id' => $material->id,

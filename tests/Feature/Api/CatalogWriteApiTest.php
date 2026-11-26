@@ -1050,6 +1050,24 @@ class CatalogWriteApiTest extends TestCase
         $this->assertFalse(Schema::hasTable('product_category_discounts'));
     }
 
+    public function test_product_can_be_created_under_an_inactive_category(): void
+    {
+        $inactiveCategory = ProductCategory::create([
+            'name' => 'Retired',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Retired Banner',
+                'product_category_id' => $inactiveCategory->id,
+                'pricing_type' => 'unit',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('product.is_active', true)
+            ->assertJsonPath('product.category.is_active', false);
+    }
+
     public function test_restore_product_is_inactive_when_its_category_is_inactive(): void
     {
         $inactiveCategory = ProductCategory::create([
