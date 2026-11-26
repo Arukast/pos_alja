@@ -108,7 +108,7 @@ final class MaterialController extends Controller
 
         return response()->json([
             'material' => new MaterialResource(
-                $material->load(['category', 'branchStocks.branch'])
+                $material->fresh(['category', 'branchStocks.branch'])
             ),
         ], 201);
     }

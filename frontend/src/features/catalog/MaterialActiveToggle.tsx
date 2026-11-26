@@ -11,6 +11,7 @@ export interface MaterialActiveToggleProps {
     isActive: boolean;
     branchId?: string;
     branchName?: string;
+    materialName?: string;
 }
 
 export function MaterialActiveToggle({
@@ -19,10 +20,13 @@ export function MaterialActiveToggle({
     isActive,
     branchId,
     branchName,
+    materialName,
 }: MaterialActiveToggleProps) {
     const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
+    const action = isActive ? 'Nonaktifkan' : 'Aktifkan';
     const label = scope === 'global' ? 'global' : (branchName ?? 'cabang');
+    const text = scope === 'global' ? `${action} global` : action;
 
     const toggle = useMutation({
         mutationFn: () =>
@@ -48,14 +52,14 @@ export function MaterialActiveToggle({
             <Button
                 size="sm"
                 variant="secondary"
-                aria-label={`${isActive ? 'Nonaktifkan' : 'Aktifkan'} ${label}`}
+                aria-label={`${action} ${label}${materialName ? `: ${materialName}` : ''}`}
                 loading={toggle.isPending}
                 onClick={() => {
                     setError(null);
                     toggle.mutate();
                 }}
             >
-                {isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                {text}
             </Button>
             {error ? (
                 <p role="alert" className="text-xs text-red-600 dark:text-red-400">

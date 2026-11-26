@@ -88,16 +88,7 @@ final class MaterialQueries
             return 0;
         }
 
-        $query = Material::query()->where('is_active', true);
-
-        if ($resolvedBranchId !== null) {
-            $query->whereHas(
-                'branchStocks',
-                function (Builder $query) use ($resolvedBranchId): void {
-                    $query->where('branch_id', $resolvedBranchId)->where('is_active', true);
-                }
-            );
-        }
+        $query = Material::query()->availableInBranch($resolvedBranchId);
 
         return $query->count();
     }

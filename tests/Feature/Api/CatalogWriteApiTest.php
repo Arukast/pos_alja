@@ -107,7 +107,8 @@ class CatalogWriteApiTest extends TestCase
                 'initial_stock' => 10,
                 'min_stock' => 2,
             ])
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('material.is_active', true);
 
         $this->assertDatabaseCount('material_branch_stock', 4);
         $this->assertDatabaseHas('material_branch_stock', [

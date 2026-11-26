@@ -251,6 +251,13 @@ class MaterialRetirementApiTest extends TestCase
             ->assertJsonValidationErrors('is_active');
 
         $this->actingAs($this->manager)
+            ->patchJson("/api/v1/materials/{$material->id}/branch-availability", [
+                'is_active' => 'not-a-bool',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('is_active');
+
+        $this->actingAs($this->manager)
             ->patchJson('/api/v1/materials/'.Str::uuid().'/branch-availability', ['is_active' => false])
             ->assertNotFound();
     }
@@ -328,6 +335,11 @@ class MaterialRetirementApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('available_total', 1);
         $this->assertIsInt($manager->json('available_total'));
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/materials?branch_id='.$this->branchTwo->id)
+            ->assertOk()
+            ->assertJsonPath('available_total', 1);
 
         $this->actingAs($this->owner)
             ->getJson('/api/v1/materials')

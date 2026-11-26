@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +33,25 @@ class Material extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Limits materials to globally active rows and, when given, an active stock row in the branch.
+     */
+    public function scopeAvailableInBranch(Builder $query, ?string $branchId): Builder
+    {
+        $query->where('is_active', true);
+
+        if ($branchId !== null) {
+            $query->whereHas(
+                'branchStocks',
+                fn (Builder $stocks) => $stocks
+                    ->where('branch_id', $branchId)
+                    ->where('is_active', true)
+            );
+        }
+
+        return $query;
+    }
 
     /**
      * @return HasMany<MaterialBranchStock, $this>

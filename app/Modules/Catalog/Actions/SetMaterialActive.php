@@ -13,9 +13,9 @@ final class SetMaterialActive
 {
     public function __construct(private readonly AuditLogger $audit) {}
 
-    public function execute(Material $material, bool $isActive, User $actor): Material
+    public function execute(Material $material, bool $isActive, User $actor): void
     {
-        return DB::transaction(function () use ($material, $isActive, $actor): Material {
+        DB::transaction(function () use ($material, $isActive, $actor): void {
             $locked = Material::query()
                 ->whereKey($material->id)
                 ->lockForUpdate()
@@ -35,8 +35,6 @@ final class SetMaterialActive
                     'after' => ['is_active' => (bool) $locked->is_active],
                 ],
             );
-
-            return $locked->refresh();
         });
     }
 }

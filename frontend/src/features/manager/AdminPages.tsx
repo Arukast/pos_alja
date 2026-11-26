@@ -178,6 +178,11 @@ export function ManagerMaterialsPage() {
                                     .filter(Boolean)
                                     .join(' · ')}
                             </p>
+                            {material.stocks[0]?.is_active === false ? (
+                                <span className="mt-1 block sm:hidden">
+                                    <Badge tone="danger">Nonaktif di cabang</Badge>
+                                </span>
+                            ) : null}
                             <div className="text-light-muted mt-1 flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 sm:hidden">
                                 <span className="text-light-muted text-xs dark:text-gray-400">
                                     Min
@@ -224,8 +229,9 @@ export function ManagerMaterialsPage() {
                     header: 'Status',
                     className: 'hidden sm:table-cell',
                     cell: (material) =>
-                        material.stocks.length > 0 &&
-                        material.stocks[0].is_active === false ? (
+                        material.is_active === false ||
+                        (material.stocks.length > 0 &&
+                            material.stocks[0].is_active === false) ? (
                             <Badge tone="danger">Nonaktif</Badge>
                         ) : material.is_low_stock === null ? (
                             '-'
@@ -248,6 +254,7 @@ export function ManagerMaterialsPage() {
                             isActive={material.stocks[0].is_active}
                             branchId={material.stocks[0].branch_id}
                             branchName={material.stocks[0].branch_name ?? 'cabang ini'}
+                            materialName={material.name}
                         />
                     ) : null}
                     <RestockMaterialButton material={material} />

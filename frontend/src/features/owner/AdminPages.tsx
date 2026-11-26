@@ -239,6 +239,7 @@ export function OwnerMaterialsPage() {
                                 isActive={stock.is_active}
                                 branchId={stock.branch_id}
                                 branchName={stock.branch_name ?? 'cabang'}
+                                materialName={material.name}
                             />
                         </div>
                         <div className="text-light-muted flex flex-wrap items-center gap-1 text-xs dark:text-gray-400">
@@ -333,6 +334,7 @@ export function OwnerMaterialsPage() {
                         scope="global"
                         materialId={material.id}
                         isActive={material.is_active}
+                        materialName={material.name}
                     />
                     <RestockMaterialButton material={material} />
                     <AdjustMaterialModal material={material} />

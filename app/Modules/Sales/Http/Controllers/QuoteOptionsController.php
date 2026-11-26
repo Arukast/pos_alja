@@ -35,13 +35,7 @@ final class QuoteOptionsController extends Controller
 
         $materials = Material::query()
             ->with('category')
-            ->where('is_active', true)
-            ->whereHas(
-                'branchStocks',
-                fn (Builder $query) => $query
-                    ->where('branch_id', $branchId)
-                    ->where('is_active', true)
-            )
+            ->availableInBranch($branchId)
             ->whereHas(
                 'category',
                 fn (Builder $query) => $query->where('is_active', true)

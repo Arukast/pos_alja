@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Material;
-use App\Models\MaterialBranchStock;
 
 /**
  * Resolves whether a material can be used for new quote and invoice lines in a branch.
@@ -21,10 +20,9 @@ class MaterialAvailability
             return false;
         }
 
-        return MaterialBranchStock::query()
-            ->where('material_id', $material->id)
-            ->where('branch_id', $branchId)
-            ->where('is_active', true)
+        return Material::query()
+            ->whereKey($material->id)
+            ->availableInBranch($branchId)
             ->exists();
     }
 }

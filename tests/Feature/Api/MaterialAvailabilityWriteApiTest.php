@@ -235,6 +235,20 @@ class MaterialAvailabilityWriteApiTest extends TestCase
         $this->assertDatabaseCount('orders', 2);
     }
 
+    public function test_invoice_edit_rejects_a_soft_deleted_material_even_when_already_used(): void
+    {
+        $invoice = $this->createInvoice();
+
+        $this->material->delete();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
+                'items' => [$this->item(['id' => $invoice['order_id']])],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
     public function test_invoice_edit_rejects_a_different_inactive_material(): void
     {
         $invoice = $this->createInvoice();

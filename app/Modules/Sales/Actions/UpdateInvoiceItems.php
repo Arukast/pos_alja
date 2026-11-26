@@ -94,7 +94,9 @@ final class UpdateInvoiceItems
                 $material = $pricing->material;
 
                 if (! $this->availability->isAvailable($material, $branchId)
-                    && ($material === null || ! in_array($material->id, $allowedMaterialIds, true))) {
+                    && ($material === null
+                        || $material->trashed()
+                        || ! in_array($material->id, $allowedMaterialIds, true))) {
                     throw ValidationException::withMessages([
                         "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
                     ]);
