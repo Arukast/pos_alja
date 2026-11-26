@@ -38,6 +38,14 @@ class BackupSchemaTest extends TestCase
         ]));
     }
 
+    public function test_backups_filename_column_is_nullable(): void
+    {
+        $column = collect(Schema::getColumns('backups'))->firstWhere('name', 'filename');
+
+        $this->assertNotNull($column);
+        $this->assertTrue((bool) $column['nullable']);
+    }
+
     public function test_backups_table_has_created_at_status_and_is_pinned_indexes(): void
     {
         $indexes = collect(Schema::getIndexes('backups'));
