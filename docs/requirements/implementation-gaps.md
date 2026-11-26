@@ -1,8 +1,8 @@
 # Implementation Gaps
 
-- **As of:** 2026-11-25, after the PB-05/PB-07 follow-up (material units, machine removal, production failure).
-- **Scope:** The refactor replaced Livewire/Blade with Laravel API modules and a React SPA. Sprint Review 1 changed the target for pricing, machines, customers, expenses, production, and printing. The machine drop, material units, and production failure/reopen are now implemented; pricing, the `order_attributes` snapshot, and the remaining FR sprints are not.
-- **Status source:** Route, controller, policy, model, migration, frontend, and test inspection on `feat/pb05-pb07-followup` at the final commit of the follow-up unit, plus the Sprint Review 1 change record.
+- **As of:** 2026-11-26, after the Unit A catalog cleanup (category description/active status, attribute types removed, Manager branch attributes, minimum-stock editing, pricing soft delete).
+- **Scope:** The refactor replaced Livewire/Blade with Laravel API modules and a React SPA. Sprint Review 1 changed the target for pricing, machines, customers, expenses, production, and printing. The machine drop, material units, production failure/reopen, and the Unit A catalog cleanup are now implemented; pricing, the `order_attributes` snapshot, and the remaining FR sprints are not.
+- **Status source:** Route, controller, policy, model, migration, frontend, and test inspection on `feat/unit-a-catalog-stock-cleanup` at the Unit A tip, plus the Sprint Review 1 and Sprint Review 2 change records.
 - **Read this first:** A feature marked Implemented has API endpoints, policies, tests, and SPA screens. Partial means core behavior exists but part of the acceptance criteria is still missing. Target means no implementation yet.
 
 ## Functional Requirements
@@ -14,14 +14,14 @@
 | FR3 | Implemented | Logout invalidates session; password change and confirm-password; `AuthTest`. |
 | FR4 | Implemented | User update, soft delete, restore; manager branch/role limits; `UserApiTest`. |
 | FR5 | Implemented | Policies, `BranchScope`, cross-branch tests, production money redaction; `FoundationTest`, `InvoiceApiTest`, `CatalogApiTest`. |
-| FR6 | Partial | Owner-only Product CRUD + restore (`ProductController`, FormRequests, Actions, `products.is_active`, `material_product` compatible-material mapping, 10-row server-side pagination, `/owner/products`, read-only `/manager/products`), Category CRUD (`product_categories.description`/`is_active`, derived `products_count`, no hard delete, Owner-only `CategoryController` FormRequests/Actions without legacy archetype or allowed-attribute inputs, `/owner/categories`, read-only `/manager/categories`), Finishing/Display attributes (`attributes.price`, `attributes.cost`, `attributes.is_active`, Owner/own-branch `AttributeController` FormRequests/Actions with attribute types removed, `/owner/attributes`, `/manager/finishing` for own-branch rows, active-only filter in `/quotes/options`), Branch reseller discount config (`branches.reseller_discount_percent`, `BranchController`, `BranchService`, `/owner/branches`, `BranchApiTest`), and Material units (`materials.unit` with seven values, migration plus backfill heuristic, required on create/optional on update, SPA field, dynamic Biaya/Harga labels, and `unitLabel`) are implemented (`CatalogApiTest`, `CatalogWriteApiTest`, `QuoteApiTest`, `MaterialUnitTest`, `MaterialUnitBackfillTest`); pricing formulas use `products.pricing_type`, and the machine master, machine pricing, its tables, and its UI are removed. Managers can CRUD own-branch pricing rows through `CatalogPolicy` and `/manager/pricing`. Remaining gaps: pricing redesign. The pricing matrix remains the price source. |
+| FR6 | Partial | Owner-only Product CRUD + restore (`ProductController`, FormRequests, Actions, `products.is_active`, `material_product` compatible-material mapping, 10-row server-side pagination, `/owner/products`, read-only `/manager/products`), Category CRUD (`product_categories.description`/`is_active`, derived `products_count`, no hard delete, Owner-only `CategoryController` FormRequests/Actions without legacy archetype or allowed-attribute inputs, `/owner/categories`, read-only `/manager/categories`), Finishing/Display attributes (`attributes.price`, `attributes.cost`, `attributes.is_active`, Owner/own-branch `AttributeController` FormRequests/Actions with attribute types removed, `/owner/attributes`, `/manager/finishing` for own-branch rows, active attributes by default in `/quotes/options` with `include_inactive_attributes=1` for the edit path), Branch reseller discount config (`branches.reseller_discount_percent`, `BranchController`, `BranchService`, `/owner/branches`, `BranchApiTest`), and Material units (`materials.unit` with seven values, migration plus backfill heuristic, required on create/optional on update, SPA field, dynamic Biaya/Harga labels, and `unitLabel`) are implemented (`CatalogApiTest`, `CatalogWriteApiTest`, `QuoteApiTest`, `MaterialUnitTest`, `MaterialUnitBackfillTest`); pricing formulas use `products.pricing_type`, and the machine master, machine pricing, its tables, and its UI are removed. Managers can CRUD own-branch pricing rows through `CatalogPolicy` and `/manager/pricing`. Remaining gaps: pricing redesign. The pricing matrix remains the price source. |
 | FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 10-row pagination, case-insensitive search, category and active-status filters; `CatalogApiTest`. |
 | FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices from the pricing matrix; `CreateInvoiceApiTest`. Customer search (`GET /customers?search=`), the separate `/designer/customers/new` page, and customer `institution`/`address` are implemented. Finishing/display masters exist (`attributes`), the designer form selects finishing/display, and the quote/invoice API accepts `selected_attributes[]` with `attribute_pricing` modifiers; `orders.width`, `orders.length`, and `orders.selected_attributes` persist the specifications for later edits, with no `order_attributes` snapshot table. Machine selection is removed. Missing: one A4 invoice print. |
 | FR9 | Implemented | `PUT /invoices/{invoice}/items`, `UpdateInvoiceItems`, locked pre-production eligibility, server-side quote recalculation, preserved payments, receivable guard, activity/status logs, `OrderUpdated`, and DP update tests. `/designer/orders/:id/edit` exposes the edit flow while the invoice is unpaid and every order is still pending. |
 | FR10 | Target | No `design_status`, `design_approved_at`, or `design_approved_by` columns or actions. |
 | FR11 | Implemented | `RegisterDownPayment`, `SettleInvoice`, receivable and overpay guards; `PaymentApiTest`. |
 | FR12 | Implemented | Multiple DP accumulate; full DP marks paid; over-limit and double-settlement tests; `PaymentApiTest`. |
-| FR13 | Partial | Receipt route, `InvoiceController::receipt`, and detailed 80 mm `ReceiptPage`; production is denied. The designer order list labels this as Cetak Invoice. A dedicated A4 invoice layout is not implemented. |
+| FR13 | Partial | Receipt route, `InvoiceController::receipt`, and detailed 80 mm `ReceiptPage`; production is denied. The designer order list labels this as Nota. A dedicated A4 invoice layout is not implemented. |
 | FR14 | Partial | `ExpenseController`, branch scope, cashier-only write; `ExpenseApiTest`. Needs Owner/Manager write, Cashier removal, fixed category dropdown, and `recorded_by_name`. |
 | FR15 | Implemented | `purchases`/`purchase_items` migrations and models, `PurchaseController` index/store, `RecordPurchase`, `PurchaseList`, `PurchasePolicy`, and `/owner/purchases` + `/manager/purchases`; `PurchaseApiTest`. Same-branch `idempotency_key` replay returns 200 without new stock or ledger rows; caps, stock increments, missing stock rows, and soft-deleted material rejection are tested. |
 | FR16 | Implemented | `InventoryService::applyMovement` writes typed ledger rows with actor and reference. Production start deducts by unit: `m2` uses `area * quantity` and 422s when `area <= 0`; every other unit uses `quantity`. Fail writes `usage_reversal` for the net `(material_id, branch_id)` usage; reopen clears the operator. Waste writes `waste` with the order reference, allows status 0, 1, or 3, makes the designer optional, and has no machine reference. Queue waste modal plus read-only `/production/waste` history; `InventoryServiceTest`, `ProductionWriteApiTest`, `ProductionFailApiTest`. |
@@ -33,7 +33,7 @@
 | FR22 | Partial | Owner finance cards and sparkline; manager counts, stock, expenses, leaderboard; the production dashboard returns `queued`, `processing`, `completed_today`, `waste_today_by_unit`, and the queue, while `/production/summary` additionally returns `failed`. Missing owner/manager order count, production-status summary, and receivables. |
 | FR23 | Partial | Owner has gross revenue, base cost, net profit, and expense reports. Manager has only the leaderboard; `ReportPolicy::viewOwnerReports` is owner-only. |
 | FR24 | Target | No Excel/PDF export route, service, or UI. |
-| FR25 | Partial | Audit read/detail for owner; invoice create, user, branch, and some catalog actions are logged. Purchase creation (`RecordPurchase`) and stock adjustment (`AdjustStock`) now write `ActivityLog` entries. Payment, order update, design status, expense, customer, and discount changes are not fully covered. |
+| FR25 | Partial | Audit read/detail for owner; invoice create, user, branch, product, purchase, and stock-adjustment actions are logged. Category, attribute, material, and minimum-stock changes, payment, order update, design status, expense, and customer changes are not fully covered. |
 | FR26 | Target | No manual backup command/route, scheduled backup, retention, or restore drill. |
 
 ## Non-Functional Requirements
@@ -42,7 +42,7 @@
 | :--- | :--- | :--- |
 | NFR1 | Partial | Pagination exists; no benchmark on a 10k-product/50k-order dataset. |
 | NFR2 | Partial | Owner reports exist; export is missing and report performance is unmeasured. |
-| NFR3 | Partial | DP arithmetic and order-edit receivable recalculation are tested; the quantity-discount redesign remains incomplete. |
+| NFR3 | Partial | DP arithmetic, order-edit receivable recalculation, order-history name resolution after the pricing soft delete, and minimum-stock edits are tested; the pricing redesign remains Unit B work. |
 | NFR4 | Partial | Responsive layouts exist; no formal WCAG audit or usability test; invoice print is missing. |
 | NFR5 | Partial | Policies, branch scope, and money redaction are tested; expense-role changes, customer PII, HTTPS, and OWASP controls are not verified in this repository. |
 | NFR6 | Partial | Compose and CI exist; backup/restore is FR26 and still missing. |
@@ -59,7 +59,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Sprint 0 | Platform foundation, SPA shell | — | Done | Auth foundation, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
 | Sprint 1 | PB-08 | FR1–FR5 | Done | Auth, RBAC, branch scope, user management | HTTPS/OWASP formal verification |
-| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product CRUD/restore, compatible-material mapping (`material_product`), 10-row pagination, Owner-only product/category writes, category description/active status and derived product count with no hard delete (legacy archetype/allowed-attribute fields removed), finishing/display attribute CRUD (`price`, `cost`, `is_active`; Owner any branch or global, manager own branch only, attribute types removed), branch reseller discount config, material units and labels, machine removal (tables dropped), legacy pricing matrix (transitional) | Pricing redesign |
+| Sprint 1 | PB-01 | FR6, FR7 | Partial | Product CRUD/restore, compatible-material mapping (`material_product`), 10-row pagination, Owner-only product/category writes, category description/active status and derived product count with no hard delete (legacy archetype/allowed-attribute fields removed), finishing/display attribute CRUD (`price`, `cost`, `is_active`; Owner any branch or global, manager own branch only, attribute types removed), branch reseller discount config, material units and labels, machine removal (tables dropped), legacy pricing matrix (transitional) | Unit B pricing redesign and product-level tiers |
 | Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer search and creation, quote, cart, pricing-matrix invoice, finishing/display selection with `orders.selected_attributes` persistence, pre-production invoice item edits (`PUT /invoices/{invoice}/items`) | Design status, A4 invoice print |
 | Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
 | Sprint 1 | PB-04 | FR13, FR14 | Partial | Receipt, operational expenses | A4 invoice print, expense role change, category dropdown |
@@ -80,13 +80,14 @@ Summary:
 
 Priority order:
 
-1. **Pricing redesign**: material price + finishing/display price + branch reseller discount; remove the pricing matrix and migrate data. Machine UI and tables are already gone.
-2. **FR8** A4 invoice print; finishing/display selections already persist on `orders.selected_attributes` until the target `order_attributes` snapshot.
-3. **FR10** design status.
-4. **FR14** expense Owner/Manager access and fixed category dropdown.
-5. **FR19** deadline/priority sorting, all-role queue UI; **FR21** order-level pickup propagation.
-6. **FR22/FR23** manager dashboard/report completeness; **FR24** Excel/PDF export.
-7. **FR25** audit coverage for payments, order updates, design status, expenses, customers, and discounts; **FR26** manual and scheduled backup.
+1. **Unit B pricing redesign**: material price + finishing/display price + branch reseller discount; remove the pricing matrix and migrate data. Machine UI and tables are already gone.
+2. **Unit B product-level quantity tiers**: replace the removed category tiers with tiers on the product and apply them in the quote/invoice path.
+3. **FR8** A4 invoice print; finishing/display selections already persist on `orders.selected_attributes` until the target `order_attributes` snapshot.
+4. **FR10** design status.
+5. **FR14** expense Owner/Manager access and fixed category dropdown.
+6. **FR19** deadline/priority sorting, all-role queue UI; **FR21** order-level pickup propagation.
+7. **FR22/FR23** manager dashboard/report completeness; **FR24** Excel/PDF export.
+8. **FR25** audit coverage for payments, order updates, design status, expenses, customers, category/attribute changes, and minimum stock; **FR26** manual and scheduled backup.
 
 ## Refactor Completion
 
@@ -97,7 +98,10 @@ Priority order:
 ## Convention Debt
 
 - Some Catalog controllers still use inline `$request->validate()` and direct model writes (materials update, pricing). Sales and Identity use FormRequests plus Actions. Extract Catalog FormRequests/Actions in the next cleanup.
-- Catalog price/cost mutations are not fully written to `activity_logs`; FR25 remains partial.
+- Catalog material, price/cost, category, and attribute writes are not fully written to `activity_logs`; FR25 remains partial.
+- Minimum-stock changes are not audited: `PATCH /materials/{material}/min-stock` writes no `activity_logs` row by design. This is accepted FR25 debt; if audit becomes required, add an audit row, never a stock movement.
+- `/quotes/options` returns `AttributeResource`, which includes `cost`, so designers can read attribute cost against AGENTS 2.4. This predates Unit A; the inactive-attribute flag widened the rows returned but did not add the field. Fix with a role-aware resource or a separate designer attribute payload; do not copy `cost` into new designer payloads.
+- Attribute delete is removed, but attributes soft-deleted before Unit A remain unresolvable: `/quotes/options` excludes them and `CalculateQuote` rejects them (throws when a selected id is absent), with no restore endpoint. Legacy `cut` attributes cannot round-trip through the attribute form because `type` accepts only `finishing` and `display`; leave them untouched.
 - `ProductionController::summary` builds its aggregate query in the controller; extract a `ProductionSummaryQuery` when FR19/FR21 work starts.
 - Existing audit descriptions and stock-ledger notes stay stored in English; new audit rows are Indonesian. Stock-ledger notes such as `Manual stock addition: +N` are persisted through the API but not displayed by the SPA, so they are left as-is.
 - The SPA has no i18n layer by design; copy is hardcoded Indonesian and code, API, and database values stay English. `expense.category` must move from free text to the fixed dropdown in FR14.
@@ -108,5 +112,6 @@ Priority order:
 
 - The machine tables were dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable, and `down()` recreates empty tables only. This drop supersedes the machine references in the historical sprint records, specs, planning files, and `root-cause-mapping.md`, which are left as written.
 - The pricing-matrix endpoints (`/pricing`) remain transitional, along with `/manager/pricing` (`Matriks Harga`). There is no machine endpoint or machine page.
+- Invoice history resolves soft-deleted `pricing`/`product`/`material` rows, but production actions treat a soft-deleted pricing row like the old hard delete (`pricing_id` resolves null) and skip stock deduction. The designer edit page stays enabled when an item's pricing row was soft-deleted, so saving that item returns 404. Both are parked for Unit B.
 - PostgreSQL concurrency is unverified for purchase idempotent replay, creating a missing branch stock row, and fail/reopen net-usage reversal. SQLite cannot reproduce those races; the unique `(branch_id, idempotency_key)` index, replay lookup, unique-violation catch, and `insertOrIgnore` + `lockForUpdate` path are implemented but not race-tested.
 - Legacy `stock_ledgers` rows may keep a null `type`, actor, and reference. The backfill is best-effort: it maps the known notes signatures and classifies remaining null-type rows with `added_stock > 0` as `restock`; it invents neither an actor nor a reference.

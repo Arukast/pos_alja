@@ -4,7 +4,7 @@
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
 - **Table naming:** Eloquent default pluralization, except `material_branch_stock`, which uses a singular table name.
 - **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `attributes`, and `pricing`.
-- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, and production failure are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
+- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, production failure, and the Unit A catalog cleanup are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
 - **Current transitional tables:** `PRICING` and `ATTRIBUTE_PRICING` exist in the current build and are the price source; the target pricing redesign replaces them (note 4).
 - **Machine tables:** `machines` and `machine_pricing` are dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable. `pricing` and `attribute_pricing` remain and are the current price source.
 - **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; the purchase and stock-ledger tables and columns are implemented as described here, while the remaining business tables follow this target.
@@ -217,7 +217,6 @@ erDiagram
         decimal unit_price
         string customer_type
         decimal reseller_discount_percent
-        decimal quantity_discount_percent
         decimal discount_amount
         decimal subtotal
         decimal cost
@@ -346,7 +345,7 @@ erDiagram
 1. **`attributes.type` has no reference table.** It stores `finishing` or `display`; legacy `cut` rows remain. Referential integrity is by request validation, not by key.
 2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `material_product` has a composite primary key `(product_id, material_id)`.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
-4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the finishing/display modifiers. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) is the reseller discount source. `DELETE /pricing/{pricing}` is a soft delete: quote lookups exclude deleted rows, invoice history resolves product and material names through trashed pricing rows with `withTrashed()`, and no restore endpoint exists. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount.
+4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the finishing/display modifiers. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) is the reseller discount source. `DELETE /pricing/{pricing}` is a soft delete: quote lookups exclude deleted rows, invoice history resolves product and material names through trashed pricing rows with `withTrashed()`, and no restore endpoint exists. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount + product-level quantity tiers (Unit B design). No order-level tier column is specified.
 5. **`order_attributes` is target-only.** No table exists; finishing/display selections are persisted on `orders.selected_attributes` as the attribute IDs used for pricing modifiers, without a per-attribute price/cost snapshot. The target keeps at most one row per `(order_id, type)` with a price/cost snapshot.
 6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
 7. **`invoices.designer_id`** is the user who submitted the order.
@@ -362,9 +361,10 @@ erDiagram
     - `product_categories.calculation_archetype` made nullable (default `per_piece`) and `allowed_attribute_types` deprecated from Category API/UI, with `products.pricing_type` backfilled to `area` for legacy `surface_area` categories by `2026_11_27_000000_drop_category_archetype_and_allowed_types.php`.
     - `material_product` pivot for compatible materials per product (backfilled from `pricing`) by `2026_11_27_000001_create_material_product_table.php`.
     - `product_categories.description` and `is_active`, with `product_category_discounts` dropped, by `2026_11_27_000002_add_description_and_is_active_to_product_categories_table.php` and `2026_11_27_000003_drop_product_category_discounts_table.php`.
+    - `attribute_types` dropped by `2026_11_27_000004_drop_attribute_types_table.php`; `attributes.type` stays a string validated as `finishing` or `display`, while legacy `cut` rows remain.
     - `materials.unit` for `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; implemented by `2026_11_25_000001_add_unit_to_materials_table.php` with default `pcs` and a name/category/archetype backfill.
     - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
-    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`.
     - The transitional order quote-input columns `width`, `length`, and `selected_attributes` are added by `2026_11_26_100000_add_order_edit_specifications.php` and persisted by invoice create/update so pre-production edits can reprice from the saved specifications.
     - `order_attributes` for finishing/display snapshots.
