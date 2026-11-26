@@ -4,6 +4,34 @@ const roles: Record<string, string> = {
     cashier: 'Kasir',
     designer: 'Desainer',
     production: 'Produksi',
+    system: 'Sistem',
+};
+
+const modelTypes: Record<string, string> = {
+    ActivityLog: 'Jejak Audit',
+    Attribute: 'Atribut',
+    AttributePricing: 'Harga Atribut',
+    AttributeType: 'Jenis Atribut',
+    Backup: 'Backup',
+    BackupSetting: 'Pengaturan Backup',
+    Branch: 'Cabang',
+    Customer: 'Pelanggan',
+    Expense: 'Pengeluaran',
+    Invoice: 'Invoice',
+    Material: 'Material',
+    MaterialBranchStock: 'Stok Bahan',
+    Order: 'Pesanan',
+    OrderStatusLog: 'Riwayat Status Pesanan',
+    Payment: 'Pembayaran',
+    Pricing: 'Harga',
+    Product: 'Produk',
+    ProductCategory: 'Kategori Produk',
+    ProductCategoryDiscount: 'Diskon Kategori Produk',
+    Purchase: 'Pembelian',
+    PurchaseItem: 'Item Pembelian',
+    StockLedger: 'Buku Stok',
+    User: 'Pengguna',
+    WastedMaterial: 'Bahan Terbuang',
 };
 
 const paymentMethods: Record<string, string> = {
@@ -39,6 +67,20 @@ const ledgerTypes: Record<string, string> = {
 
 export function roleLabel(role: string): string {
     return roles[role] ?? role;
+}
+
+export function usernameLabel(username: string): string {
+    return username === 'system' ? 'Sistem' : username;
+}
+
+export function modelTypeLabel(type: string | null): string {
+    if (type === null) {
+        return '-';
+    }
+
+    const basename = type.split('\\').pop() || type;
+
+    return modelTypes[basename] ?? basename;
 }
 
 export function paymentMethodLabel(method: string): string {

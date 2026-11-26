@@ -1,7 +1,9 @@
-import { apiFetch } from '../lib/api';
+import { API_BASE, apiFetch } from '../lib/api';
 import type {
     ActivityLog,
     Attribute,
+    Backup,
+    BackupSettings,
     BaseCostReport,
     Branch,
     Category,
@@ -127,6 +129,23 @@ export const api = {
 
     auditLogs: (params: QueryParams = {}) =>
         apiFetch<Paginated<ActivityLog>>(`/audit-logs${queryString(params)}`),
+
+    backups: (params: QueryParams = {}) =>
+        apiFetch<Paginated<Backup>>(`/backups${queryString(params)}`),
+
+    createBackup: () =>
+        mutate<{ message: string; backup: Backup }>('/backups', 'POST'),
+
+    pinBackup: (id: string, pinned: boolean) =>
+        mutate<{ backup: Backup }>(`/backups/${id}/pin`, 'PATCH', { pinned }),
+
+    backupSettings: () =>
+        apiFetch<{ settings: BackupSettings }>('/backup-settings'),
+
+    updateBackupSettings: (data: MutationBody) =>
+        mutate<{ settings: BackupSettings }>('/backup-settings', 'PUT', data),
+
+    backupDownloadUrl: (id: string) => `${API_BASE}/backups/${id}/download`,
 
     report: {
         grossRevenue: (params: ReportParams) =>

@@ -7,6 +7,7 @@ namespace App\Modules\Production\Actions;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 final class FailProduction
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly AuditLogger $audit,
+    ) {}
 
     public function execute(Order $order, User $operator, string $note): Order
     {
@@ -31,6 +35,9 @@ final class FailProduction
                 ]);
             }
 
+            $statusBefore = $locked->status;
+            $operatorBefore = $locked->operator_id;
+
             $netUsages = DB::table('stock_ledgers')
                 ->where('reference_type', 'order')
                 ->where('reference_id', $locked->id)
@@ -45,6 +52,8 @@ final class FailProduction
                 ->orderBy('branch_id')
                 ->get();
 
+            $materialUsage = [];
+
             foreach ($netUsages as $usage) {
                 $net = round((float) $usage->net_usage, 2);
 
@@ -52,7 +61,7 @@ final class FailProduction
                     continue;
                 }
 
-                $this->inventory->applyMovement(
+                $movement = $this->inventory->applyMovement(
                     (string) $usage->material_id,
                     (string) $usage->branch_id,
                     'usage_reversal',
@@ -62,6 +71,15 @@ final class FailProduction
                     notes: $note,
                     actor: $operator,
                 );
+
+                $materialUsage[] = [
+                    'material_id' => (string) $usage->material_id,
+                    'quantity' => $net,
+                    'stock_before' => $movement['old_stock'],
+                    'stock_after' => $movement['new_stock'],
+                    'ledger_id' => $movement['ledger_id'],
+                    'direction' => 'reversal',
+                ];
             }
 
             $locked->status = 3;
@@ -74,6 +92,21 @@ final class FailProduction
                 'user_name' => $operator->name,
                 'notes' => $note,
             ]);
+
+            $this->audit->record(
+                $operator,
+                'ORDER_FAIL',
+                'Menandai produksi pesanan '.$locked->file_name.' gagal',
+                $locked,
+                [
+                    'status_before' => $statusBefore,
+                    'status_after' => $locked->status,
+                    'operator_before' => $operatorBefore,
+                    'operator_after' => $locked->operator_id,
+                    'note' => $note,
+                    'material_usage' => $materialUsage,
+                ],
+            );
 
             return $locked;
         });

@@ -1,3 +1,21 @@
+x-app-environment: &app-environment
+    APP_ENV: production
+    APP_DEBUG: "false"
+    DB_CONNECTION: pgsql
+    DB_HOST: db
+    DB_PORT: "5432"
+    DB_DATABASE: ${DB_DATABASE:-pos_alja}
+    DB_USERNAME: ${DB_USERNAME:-pos_alja}
+    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    SESSION_DRIVER: database
+    CACHE_STORE: database
+    QUEUE_CONNECTION: database
+    DB_QUEUE_RETRY_AFTER: "900"
+    BROADCAST_CONNECTION: reverb
+    REVERB_HOST: reverb
+    REVERB_PORT: "8080"
+    REVERB_SCHEME: http
+
 services:
     app:
         build:
@@ -5,22 +23,9 @@ services:
             dockerfile: docker/php/Dockerfile
             target: app
         env_file: .env
-        environment:
-            APP_ENV: production
-            APP_DEBUG: "false"
-            DB_CONNECTION: pgsql
-            DB_HOST: db
-            DB_PORT: "5432"
-            DB_DATABASE: ${DB_DATABASE:-pos_alja}
-            DB_USERNAME: ${DB_USERNAME:-pos_alja}
-            DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-            SESSION_DRIVER: database
-            CACHE_STORE: database
-            QUEUE_CONNECTION: database
-            BROADCAST_CONNECTION: reverb
-            REVERB_HOST: reverb
-            REVERB_PORT: "8080"
-            REVERB_SCHEME: http
+        environment: *app-environment
+        volumes:
+            - backupdata:/var/www/html/storage/app/backups
         depends_on:
             db:
                 condition: service_healthy
@@ -72,6 +77,34 @@ services:
                 condition: service_healthy
         restart: unless-stopped
 
+    worker:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+            target: app
+        command: php artisan queue:work --sleep=3 --tries=1 --timeout=600
+        env_file: .env
+        environment: *app-environment
+        volumes:
+            - backupdata:/var/www/html/storage/app/backups
+        depends_on:
+            db:
+                condition: service_healthy
+        restart: unless-stopped
+
+    scheduler:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+            target: app
+        command: php artisan schedule:work
+        env_file: .env
+        environment: *app-environment
+        depends_on:
+            db:
+                condition: service_healthy
+        restart: unless-stopped
+
     db:
         image: postgres:16-alpine
         environment:
@@ -89,3 +122,4 @@ services:
 
 volumes:
     pgdata:
+    backupdata:

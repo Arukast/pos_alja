@@ -8,6 +8,7 @@
 - **Current transitional tables:** `PRICING` and `ATTRIBUTE_PRICING` exist in the current build and are the price source; the target pricing redesign replaces them (note 4).
 - **Machine tables:** `machines` and `machine_pricing` are dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable. `pricing` and `attribute_pricing` remain and are the current price source.
 - **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; the purchase and stock-ledger tables and columns are implemented as described here, while the remaining business tables follow this target.
+- **PB-10 tables:** `backups` (run history) and `backup_settings` (owner-editable singleton) are implemented by `2026_11_26_130000_create_backups_table.php`, `2026_11_26_130001_create_backup_settings_table.php`, and `2026_11_26_130002_make_backups_filename_nullable.php`. `activity_logs` gains a `created_at` index and a `nullOnDelete` branch FK.
 
 ```mermaid
 erDiagram
@@ -62,6 +63,7 @@ erDiagram
     USERS |o--o{ WASTED_MATERIALS : "operator"
     USERS |o--o{ EXPENSES : "records"
     USERS |o--o{ ACTIVITY_LOGS : "actor"
+    USERS |o--o{ BACKUPS : "starts"
 
     BRANCHES {
         uuid id PK
@@ -335,6 +337,46 @@ erDiagram
         string model_type
         uuid model_id
         json payload
+        timestamp created_at
+    }
+
+    BACKUPS {
+        uuid id PK
+        string trigger
+        string destination
+        string status
+        string filename
+        string local_path
+        string remote_path
+        bigint size_bytes
+        text error
+        boolean is_pinned
+        json meta
+        uuid user_id FK
+        timestamp started_at
+        timestamp finished_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    BACKUP_SETTINGS {
+        uuid id PK
+        boolean local_enabled
+        string local_time
+        boolean remote_enabled
+        string remote_time
+        integer local_daily_days
+        integer local_weekly_weeks
+        integer local_monthly_months
+        integer local_yearly_years
+        integer remote_daily_days
+        integer remote_weekly_weeks
+        integer remote_monthly_months
+        integer remote_yearly_years
+        date last_local_date
+        date last_remote_date
+        timestamp created_at
+        timestamp updated_at
     }
 ```
 
@@ -371,12 +413,17 @@ erDiagram
     - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`; implemented by `2026_11_24_000001_add_traceability_to_stock_ledgers_table.php`.
     - `purchases` and `purchase_items` for raw-material purchases; implemented by `2026_11_24_000002_create_purchases_table.php` and `2026_11_24_000003_create_purchase_items_table.php`. `purchases.user_id` is the actor (Owner or Branch Manager), and `purchases.idempotency_key` is unique per branch.
+    - `backups` and `backup_settings` for PB-10; implemented by the 2026-11-26 migrations, with `backups.filename` made nullable by a follow-up migration. `activity_logs` gains a `nullOnDelete` branch FK and a `created_at` index.
 15. **The machine master is gone.** `wasted_materials.machine_id` was dropped by `2026_11_24_000004_drop_machine_id_from_wasted_materials_table.php`; the `machines` and `machine_pricing` tables and their endpoints were dropped by `2026_11_25_000002_drop_machines_tables.php`. The rows are unrecoverable, and `down()` recreates empty tables only. The `pricing` and `attribute_pricing` tables remain. `wasted_materials.order_id` stays nullable for legacy rows, but the API requires it for all new waste.
 16. **Order priority is target-only.** There is no `priority` column; the implemented queue orders by `created_at`, then `id`. The target semantics are higher `priority` first, then `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`, with default priority 0.
 17. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The Designer may move forward; Owner and Branch Manager may override a backward transition.
 18. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `usage_reversal`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase (`purchase`) or order (`usage`, `usage_reversal`, `waste`) that caused the movement; `user_id` is the actor. `usage_reversal` is written when a processing order fails and adds back the net usage per `(material_id, branch_id)`. Legacy rows may have a null type, actor, and reference after the best-effort backfill.
 19. **Invoice print is a view, not a table.** There is no ticket table and no separate work-order document. The target invoice print reads `invoices`, `orders`, and `order_attributes`; the current build persists `orders.selected_attributes` and has no `order_attributes` table.
 20. **`materials.unit` is implemented** with exactly seven values (`m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, `batang`), default `pcs`, and `m2` displayed as `m²`. The unit drives production deduction: `m2` uses `area * quantity`; every other unit uses `quantity`. `materials.type` remains an optional descriptive label.
+21. **`backups` is run history, never the backup payload.** `trigger` is `manual` or `scheduled`; `destination` is `local`, `remote`, or `both`; `status` is `queued`, `running`, `success`, `partial`, or `failed`. `filename` is nullable while a row is still `queued`; the job fills it when it starts. `local_path` and `remote_path` are relative to the `backups-local` and `backups-s3` disks. `user_id` is the manual owner and `nullOnDelete`; scheduled rows have no user. `meta` holds pruned counts, `duration_ms`, `remote_skipped`, `retention_error`, and transient `pending_local`/`pending_temp` cleanup targets that `BackupResource` strips. Indexes: `created_at`, `status`, `is_pinned`. No branch column: backups are owner-only and global.
+22. **`backup_settings` is a singleton with a fixed UUID** (`00000000-0000-4000-8000-000000000001`) so concurrent first access cannot insert two rows. The row seeds from `config('backup.*')` on first access; afterwards the database is the source of truth and env values are initial defaults only. `last_local_date` and `last_remote_date` prevent duplicate daily scheduled runs. A retention window below 1 fails closed at prune time.
+23. **`activity_logs` is append-only from the application.** Eloquent `updating` and `deleting` throw `LogicException`; query-builder mass updates, `truncate()`, and raw SQL bypass the guard by convention. `branch_id` is nullable and `nullOnDelete`, so a force-deleted branch leaves the row with `branch_id = null`. `created_at` is indexed for the audit list and any future archive query. System writes use `user_id = null`, `username = system`, `role = system`.
+24. **Retention deletes files, not history.** When a dump file is pruned, the matching `local_path` or `remote_path` is set to `null` and the row remains. Pinned filenames are exempt from selection; the newest file on each destination is always kept. `ACTIVATE` audit payloads record branch-stock creation and initial stock because `materials` has no `is_active` column.
 
 ---
 
@@ -421,6 +468,16 @@ erDiagram
 | `stock_ledgers.type` | `waste` | Failed print / waste |
 | `stock_ledgers.type` | `adjustment` | Owner/Manager stock correction with reason |
 | `stock_ledgers.type` | `restock` | Manual stock addition |
+| `backups.trigger` | `manual` | Owner-triggered run |
+| `backups.trigger` | `scheduled` | `backup:tick` run |
+| `backups.destination` | `local` | Local `backupdata` volume only |
+| `backups.destination` | `remote` | R2/S3 only |
+| `backups.destination` | `both` | Local volume plus R2/S3 |
+| `backups.status` | `queued` | Row created, job not started |
+| `backups.status` | `running` | Job started; a killed worker can leave this state |
+| `backups.status` | `success` | Every requested destination written |
+| `backups.status` | `partial` | Local written, remote failed for `both` |
+| `backups.status` | `failed` | No usable destination produced |
 
 Both expense types are summed into `expenses_total` and subtracted from `net_profit`; `type` is a label, not a filter.
 
@@ -436,7 +493,9 @@ Both expense types are summed into `expenses_total` and subtracted from `net_pro
 | `invoices` | `invoice_number` unique |
 | `order_attributes` | `(order_id, type)` unique; one finishing and one display per order |
 | `purchases` / `purchase_items` | `purchases` has a unique `(branch_id, idempotency_key)`; `purchase_items.purchase_id` cascades and `material_id` restricts |
-| Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.design_approved_by`, `orders.operator_id`, and `wasted_materials.order_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, `stock_ledgers.material_id`, `orders.product_id`/`material_id`, `purchases.branch_id`/`user_id`, and `purchase_items.material_id` |
+| `backups` | `user_id` is `nullOnDelete`; indexes on `created_at`, `status`, and `is_pinned` |
+| `backup_settings` | One row with the fixed singleton UUID `00000000-0000-4000-8000-000000000001` |
+| Foreign keys | `cascadeOnDelete` on most owned children; `nullOnDelete` on actor references, `orders.design_approved_by`, `orders.operator_id`, `wasted_materials.order_id`, `backups.user_id`, and `activity_logs.branch_id`; NO ACTION/RESTRICT on `invoices.customer_id`, `wasted_materials.material_id`, `stock_ledgers.material_id`, `orders.product_id`/`material_id`, `purchases.branch_id`/`user_id`, and `purchase_items.material_id` |
 
 ---
 

@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\ActivityLog;
 use App\Models\Attribute;
+use App\Models\Backup;
+use App\Models\BackupSetting;
 use App\Models\Material;
 use App\Models\Pricing;
 use App\Models\Product;
@@ -12,11 +14,17 @@ use App\Models\Purchase;
 use App\Models\StockLedger;
 use App\Models\WastedMaterial;
 use App\Policies\AuditPolicy;
+use App\Policies\BackupPolicy;
+use App\Policies\BackupSettingPolicy;
 use App\Policies\CatalogPolicy;
 use App\Policies\MaterialPolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\WastePolicy;
+use App\Services\Backup\BackupDispatcher;
+use App\Services\Backup\DatabaseDumper;
+use App\Services\Backup\PgDumpDatabaseDumper;
+use App\Services\Backup\QueueBackupDispatcher;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -31,7 +39,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(DatabaseDumper::class, PgDumpDatabaseDumper::class);
+        $this->app->bind(BackupDispatcher::class, QueueBackupDispatcher::class);
     }
 
     /**
@@ -56,6 +65,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(WastedMaterial::class, WastePolicy::class);
         Gate::policy(Purchase::class, PurchasePolicy::class);
         Gate::policy(ActivityLog::class, AuditPolicy::class);
+        Gate::policy(Backup::class, BackupPolicy::class);
+        Gate::policy(BackupSetting::class, BackupSettingPolicy::class);
 
         Gate::define('viewDashboard', [ReportPolicy::class, 'viewDashboard']);
         Gate::define('viewOwnerReports', [ReportPolicy::class, 'viewOwnerReports']);

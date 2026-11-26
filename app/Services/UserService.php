@@ -2,13 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * Create a user and log activity.
      */
@@ -29,17 +30,13 @@ class UserService
             $payload = $user->toArray();
             unset($payload['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'CREATE',
-                'description' => "Membuat pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => $payload,
-            ]);
+            $this->audit->record(
+                $actor,
+                'CREATE',
+                "Membuat pengguna: {$user->username} ({$user->role})",
+                $user,
+                $payload,
+            );
 
             return $user;
         });
@@ -73,20 +70,16 @@ class UserService
             $newData = $user->fresh()->toArray();
             unset($newData['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'UPDATE',
-                'description' => "Memperbarui pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => [
+            $this->audit->record(
+                $actor,
+                'UPDATE',
+                "Memperbarui pengguna: {$user->username} ({$user->role})",
+                $user,
+                [
                     'before' => $oldData,
                     'after' => $newData,
                 ],
-            ]);
+            );
 
             return $user;
         });
@@ -101,17 +94,13 @@ class UserService
             $payload = $user->toArray();
             unset($payload['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'DELETE',
-                'description' => "Menghapus pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => $payload,
-            ]);
+            $this->audit->record(
+                $actor,
+                'DELETE',
+                "Menghapus pengguna: {$user->username} ({$user->role})",
+                $user,
+                $payload,
+            );
 
             $user->delete();
         });
@@ -128,17 +117,13 @@ class UserService
             $payload = $user->toArray();
             unset($payload['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'RESTORE',
-                'description' => "Memulihkan pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => $payload,
-            ]);
+            $this->audit->record(
+                $actor,
+                'RESTORE',
+                "Memulihkan pengguna: {$user->username} ({$user->role})",
+                $user,
+                $payload,
+            );
         });
     }
 }

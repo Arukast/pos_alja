@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class ActivityLog extends Model
 {
@@ -26,6 +27,20 @@ class ActivityLog extends Model
     protected $casts = [
         'payload' => 'array',
     ];
+
+    /**
+     * Keep the audit trail append-only for Eloquent writes.
+     */
+    protected static function booted(): void
+    {
+        static::updating(static function (): void {
+            throw new LogicException('Activity logs are append-only.');
+        });
+
+        static::deleting(static function (): void {
+            throw new LogicException('Activity logs are append-only.');
+        });
+    }
 
     /**
      * @return BelongsTo<Branch, $this>

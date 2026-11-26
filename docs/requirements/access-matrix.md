@@ -34,6 +34,10 @@
 | Owner financial reports | all | no | no | no | no |
 | Designer leaderboard | no | own branch | no | no | no |
 | Audit trail | all | no | no | no | no |
+| Backup page (history, run) | all | no | no | no | no |
+| Backup download | all | no | no | no | no |
+| Backup pin/unpin | all | no | no | no | no |
+| Backup settings (schedule, retention) | all | no | no | no | no |
 | Expenses | read all | read own branch | create/read own branch | no | no |
 | Real-time channels | owners + any branch | own branch | own branch | own branch | own branch |
 
@@ -54,7 +58,9 @@
 13. Fail and reopen are production-only and branch-scoped. Fail requires status `1`; reopen requires status `3`; any other source status returns 422 with no stock or log change. Waste is allowed on status `0`, `1`, and `3`. The machine master, its pricing, its endpoints, and machine selection no longer exist.
 14. Catalog rows are retired with `is_active`; category, attribute, and attribute-type delete endpoints are removed; product delete/restore remain Owner-only recovery APIs with no SPA action. Attributes soft-deleted before Unit A have no restore path.
 15. Editing a branch `min_stock` writes no `stock_ledgers` row and no activity log; `current_stock` changes only through restock, adjustment, purchase, or usage. The branch-stock row must already exist; otherwise the request returns 422 on `branch_id` and creates nothing. An explicit branch other than the manager's own is 403, and a manager without a branch is denied.
+16. Audit and backup are owner-only and global, not branch-filtered. `backup:tick` is a system actor (`user_id = null`, `username = system`, `role = system`, `branch_id = null`); manual runs carry the owner's user id.
+17. Customers are global and `CustomerPolicy::create` checks only the designer role. A designer with no branch can therefore create a customer, and the audit row records `branch_id = null`. This is a pre-existing access gap, not changed by PB-10; it is recorded in `docs/requirements/implementation-gaps.md`.
 
 ## Revision Note
 
-Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`. The PB-05/PB-07 follow-up dropped the machine tables and endpoints, added unit-aware production with fail/reopen, and allows waste on failed orders; the pricing matrix remains. The Unit A catalog cleanup removed category discount tiers and attribute types, made categories retire-only with `description`/`is_active`, allowed Manager own-branch attributes, and added branch minimum-stock editing without a stock ledger or audit row.
+Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`. The PB-05/PB-07 follow-up dropped the machine tables and endpoints, added unit-aware production with fail/reopen, and allows waste on failed orders; the pricing matrix remains. The Unit A catalog cleanup removed category discount tiers and attribute types, made categories retire-only with `description`/`is_active`, allowed Manager own-branch attributes, and added branch minimum-stock editing without a stock ledger or audit row. PB-10 adds owner-only backup page, download, pin/unpin, and settings; the audit trail stays owner-only and global.

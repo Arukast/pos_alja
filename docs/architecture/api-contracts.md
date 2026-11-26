@@ -15,7 +15,7 @@
 | Money | Decimal strings with two places, e.g. `"125000.00"`. |
 | Dates | `Y-m-d` for filters and date fields; ISO-8601 for timestamps. |
 | Pagination | `?page=`; response includes `data`, `links`, and `meta` (`current_page`, `last_page`, `per_page`, `total`). |
-| Errors | `{ "message": "...", "errors": { "field": ["..."] } }` with 401, 403, 404, 409, 419, 422, or 429. |
+| Errors | `{ "message": "...", "errors": { "field": ["..."] } }` with 401, 403, 404, 409, 410, 419, 422, or 429. |
 | Language | All user-facing messages are Indonesian. Field names, route paths, enum values, and action codes remain English. |
 | Error rendering | Framework-generated 401/403/404/500 on `/api/*` and `/broadcasting/*` render as `{"message": "..."}` in Indonesian. App-authored `abort()` messages with explicit **401/403** text are preserved; 404 route/model errors use the fixed message. 500 hides internals unless `APP_DEBUG=true`. 422 keeps `message` plus `errors`; 419 and 429 keep default rendering; non-JSON requests keep default rendering. |
 | Branch scope | Derived from the authenticated user. Owner may use `branch_id=all` in reporting. |
@@ -230,10 +230,79 @@ Production responses omit all money fields. Quantities are numeric. The queue is
 | GET | `/reports/designer-leaderboard` | manager |
 | GET | `/audit-logs` | owner |
 | GET | `/audit-logs/{activityLog}` | owner |
+| GET | `/backups` | owner |
+| POST | `/backups` | owner |
+| GET | `/backups/{backup}/download` | owner |
+| PATCH | `/backups/{backup}/pin` | owner |
+| GET | `/backup-settings` | owner |
+| PUT | `/backup-settings` | owner |
 
 Report filters: `branch_id`, `start_date`, `end_date`. `end_date` must be on or after `start_date`. Owner net profit subtracts invoice HPP, wasted material cost, and operating expenses. The production dashboard payload returns `queued`, `processing`, `completed_today`, `waste_today_by_unit`, and the queue; `failed` is returned by `/production/summary`.
 
 Audit logs support `search`, `sort` (`created_at`, `username`, `role`, `action`), `direction`, and pagination.
+
+`ActivityLogResource` returns `id`, `branch {id,name}` or null, `user {id,name}` or null, `username`, `role`, `action`, `description`, `model_type`, `model_id`, `payload`, and `created_at`. Eloquent audit rows are append-only: updates and deletes throw. Query-builder mass updates and raw SQL bypass the guard by convention. The list is global and owner-only; no branch filter exists. The SPA renders a detail modal from the same list payload; there is no extra detail fetch.
+
+### Backup Runs
+
+`GET /api/v1/backups`
+
+- Owner only. Paginated, `created_at` descending. `per_page` is 1-50 and defaults to 10.
+- `BackupResource` fields: `id`, `trigger` (`manual`/`scheduled`), `destination` (`local`/`remote`/`both`), `status` (`queued`/`running`/`success`/`partial`/`failed`), `filename` (null while `queued`), `size_bytes`, `local_available`, `remote_available`, `is_pinned`, `error`, `user {id,name}` or null, `started_at`, `finished_at`, `created_at`, and `meta`.
+- `local_available` is a live existence check on the local disk. `remote_available` only means `remote_path !== null`; no per-row R2 HEAD is issued, so the download endpoint's `410` remains authoritative.
+- `meta` carries `pruned` counts per destination, `duration_ms`, `remote_skipped`, and `retention_error`. Transient keys starting with `pending_` (job cleanup targets) are stripped from the response.
+
+`POST /api/v1/backups`
+
+- Owner only. No request body.
+- If a manual run is `queued` or `running` and was created within the last 30 minutes, returns `409` with `{ "message": "Backup manual sedang berjalan." }`. Scheduled runs never block a manual run.
+- Remote backup disabled: creates `trigger=manual`, `destination=local`, `status=queued` with the owner as `user_id`.
+- Remote backup enabled and configured: creates `destination=both`.
+- Remote backup enabled but unconfigured (bucket, endpoint, key, or secret missing): returns `422` with `{ "message": "Backup remote belum dikonfigurasi." }` and creates no row.
+- Dispatches the queued job and returns `202` with `{ "message": "Backup dimulai.", "backup": BackupResource }`. The dump never runs inside the request.
+- If dispatch throws, the row is marked `failed`, one `BACKUP` audit row is written, and the response is `500` with `{ "message": "Backup gagal dimulai." }`.
+
+`GET /api/v1/backups/{backup}/download`
+
+- Owner only. Streams the stored dump as `filename`. Prefers `local_path` when the file exists, then `remote_path`. The request never supplies a path.
+- Writes a `DOWNLOAD` audit row before streaming starts; the row means an attempted download, so a client abort after the headers still leaves it.
+- Returns `410` with `{ "message": "Berkas backup tidak ditemukan." }` when neither file exists.
+
+`PATCH /api/v1/backups/{backup}/pin`
+
+- Owner only. Body `{ "pinned": true|false }` (`pinned` is required and boolean); unknown fields are ignored.
+- Locks the row, updates `is_pinned`, writes `PIN` or `UNPIN` with before/after, and returns `200` `{ "backup": BackupResource }`.
+- Pinned files are exempt from retention. They still count toward usage and can still be downloaded.
+
+### Backup Settings
+
+`GET /api/v1/backup-settings` returns `{ "settings": BackupSettingResource }` for the owner. `PUT /api/v1/backup-settings` is a full replace: all twelve fields are required, and partial updates return `422`.
+
+| Field | Rule |
+| :--- | :--- |
+| `local_enabled`, `remote_enabled` | boolean |
+| `local_time`, `remote_time` | `H:i` |
+| `local_daily_days`, `remote_daily_days` | integer 7-90 |
+| `local_weekly_weeks`, `remote_weekly_weeks` | integer 4-52 |
+| `local_monthly_months`, `remote_monthly_months` | integer 6-24 |
+| `local_yearly_years`, `remote_yearly_years` | integer 1-10 |
+
+`BackupSettingResource` returns the twelve fields plus `local_usage_bytes`, `remote_usage_bytes`, `remote_quota_bytes`, `remote_usage_percent`, `remote_configured`, and `pinned_count`.
+
+- Usage sums `size_bytes` of rows whose matching path is not null; pinned files count. `remote_usage_percent = remote_usage_bytes / remote_quota_bytes * 100`, rounded to one decimal, and is `0` when the quota is `0`.
+- `remote_configured` only says whether bucket, endpoint, key, and secret are present; values are never exposed.
+- Saving with remote enabled but unconfigured is allowed; the first remote run fails visibly and the page shows a warning.
+- The update writes one `UPDATE` audit row with `before` and `after` for the submitted fields and returns `{ "settings": ... }`.
+- Changes apply on the next `backup:tick`; no scheduler restart is needed. A time moved earlier than now catches up on the next tick if today's run has not happened.
+
+### Backup Audit Actions
+
+| Action | Subject | Payload | Notes |
+| :--- | :--- | :--- | :--- |
+| `BACKUP` | `Backup` | `backup_id`, `trigger`, `destination`, `status`, `filename`, `local_path`, `remote_path`, `size`, `error`, `meta` | One row per run. Scheduled runs use the system actor. `RunBackup::failed()` is idempotent by checking for an existing row. |
+| `DOWNLOAD` | `Backup` | `backup_id`, `filename`, `source` (`local` or `remote`) | Written before streaming; it records the attempt, not completion. |
+| `PIN` / `UNPIN` | `Backup` | `backup_id`, `is_pinned_before`, `is_pinned_after` | Inside the pin transaction. |
+| `UPDATE` | `BackupSetting` | `before`, `after` | Keys limited to the submitted settings fields, e.g. `local_time` or `remote_daily_days`. |
 
 ## 8. Realtime
 

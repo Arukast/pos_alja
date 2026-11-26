@@ -16,8 +16,10 @@ use App\Modules\Catalog\Http\Resources\MaterialResource;
 use App\Modules\Catalog\Http\Resources\ProductionMaterialResource;
 use App\Modules\Catalog\Queries\MaterialQueries;
 use App\Modules\Inventory\Actions\AdjustStock;
+use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\BranchScope;
+use App\Support\Decimal;
 use App\Support\MaterialUnit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,7 +60,8 @@ final class MaterialController extends Controller
 
     public function store(
         StoreMaterialRequest $request,
-        InventoryService $inventory
+        InventoryService $inventory,
+        AuditLogger $audit
     ): JsonResponse {
         $actor = $request->user();
 
@@ -70,7 +73,7 @@ final class MaterialController extends Controller
         $initialStock = (float) ($data['initial_stock'] ?? 0);
         $minStock = (float) ($data['min_stock'] ?? 0);
 
-        $material = DB::transaction(function () use ($actor, $data, $inventory, $initialStock, $minStock): Material {
+        $material = DB::transaction(function () use ($actor, $data, $inventory, $audit, $initialStock, $minStock): Material {
             $material = $inventory->createGlobalMaterial($data);
 
             $branches = $actor->role === 'owner'
@@ -86,6 +89,14 @@ final class MaterialController extends Controller
                 );
             }
 
+            $audit->record(
+                $actor,
+                'CREATE',
+                "Membuat bahan: {$material->name}",
+                $material,
+                ['after' => $this->snapshot($material)],
+            );
+
             return $material;
         });
 
@@ -96,9 +107,15 @@ final class MaterialController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Material $material): JsonResponse
+    public function update(Request $request, Material $material, AuditLogger $audit): JsonResponse
     {
         Gate::authorize('update', $material);
+
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -110,7 +127,22 @@ final class MaterialController extends Controller
             'price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
         ]);
 
-        $material->update($data);
+        DB::transaction(function () use ($material, $data, $actor, $audit): void {
+            $before = $this->snapshot($material);
+
+            $material->update($data);
+
+            $audit->record(
+                $actor,
+                'UPDATE',
+                "Memperbarui bahan: {$material->name}",
+                $material,
+                [
+                    'before' => $before,
+                    'after' => $this->snapshot($material),
+                ],
+            );
+        });
 
         return response()->json([
             'material' => new MaterialResource(
@@ -119,19 +151,62 @@ final class MaterialController extends Controller
         ]);
     }
 
-    public function destroy(Material $material, InventoryService $inventory): Response
+    public function destroy(Request $request, Material $material, InventoryService $inventory, AuditLogger $audit): Response
     {
         Gate::authorize('delete', $material);
-        $inventory->deleteGlobalMaterial($material->id);
+
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        DB::transaction(function () use ($material, $inventory, $actor, $audit): void {
+            $before = $this->snapshot($material);
+
+            $inventory->deleteGlobalMaterial($material->id);
+
+            $audit->record(
+                $actor,
+                'DELETE',
+                "Menghapus bahan: {$material->name}",
+                $material,
+                [
+                    'before' => $before,
+                    'after' => null,
+                ],
+            );
+        });
 
         return response()->noContent();
     }
 
-    public function restore(string $material): JsonResponse
+    public function restore(Request $request, string $material, AuditLogger $audit): JsonResponse
     {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
         $model = Material::query()->withTrashed()->findOrFail($material);
         Gate::authorize('restore', $model);
-        $model->restore();
+
+        DB::transaction(function () use ($model, $actor, $audit): void {
+            $wasTrashed = $model->trashed();
+
+            $model->restore();
+
+            if ($wasTrashed) {
+                $audit->record(
+                    $actor,
+                    'RESTORE',
+                    "Memulihkan bahan: {$model->name}",
+                    $model,
+                    ['after' => $this->snapshot($model)],
+                );
+            }
+        });
 
         return response()->json([
             'material' => new MaterialResource(
@@ -143,7 +218,8 @@ final class MaterialController extends Controller
     public function stock(
         Request $request,
         Material $material,
-        InventoryService $inventory
+        InventoryService $inventory,
+        AuditLogger $audit
     ): JsonResponse {
         Gate::authorize('restock', $material);
 
@@ -161,12 +237,31 @@ final class MaterialController extends Controller
 
         $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
 
-        $inventory->addStock(
-            $material,
-            (float) $data['quantity'],
-            $data['notes'] ?? null,
-            $branchId
-        );
+        DB::transaction(function () use ($inventory, $material, $data, $branchId, $actor, $audit): void {
+            $movement = $inventory->addStock(
+                $material,
+                (float) $data['quantity'],
+                $data['notes'] ?? null,
+                $branchId
+            );
+
+            $audit->record(
+                $actor,
+                'STOCK',
+                "Menambah stok bahan: {$material->name}",
+                $material,
+                [
+                    'quantity' => (float) $data['quantity'],
+                    'stock_before' => $movement['old_stock'],
+                    'stock_after' => $movement['new_stock'],
+                    'delta' => round($movement['new_stock'] - $movement['old_stock'], 2),
+                    'notes' => $data['notes'] ?? null,
+                    'branch_id' => $branchId,
+                    'ledger_id' => $movement['ledger_id'],
+                ],
+                $branchId,
+            );
+        });
 
         return response()->json([
             'material' => new MaterialResource(
@@ -198,7 +293,8 @@ final class MaterialController extends Controller
     public function activate(
         Request $request,
         Material $material,
-        InventoryService $inventory
+        InventoryService $inventory,
+        AuditLogger $audit
     ): JsonResponse {
         Gate::authorize('activate', $material);
 
@@ -215,17 +311,44 @@ final class MaterialController extends Controller
         }
 
         $branchId = BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
+        $initialStock = (float) ($data['initial_stock'] ?? 0);
+        $minStock = (float) ($data['min_stock'] ?? 0);
 
-        $exists = $material->branchStocks()->where('branch_id', $branchId)->exists();
+        DB::transaction(function () use ($material, $branchId, $initialStock, $minStock, $inventory, $actor, $audit): void {
+            $stock = $material->branchStocks()->where('branch_id', $branchId)->first();
 
-        if (! $exists) {
-            $inventory->initializeBranchStock(
-                $material->id,
+            if ($stock === null) {
+                $result = $inventory->initializeBranchStock(
+                    $material->id,
+                    $branchId,
+                    $initialStock,
+                    $minStock
+                );
+
+                $stock = $result['stock'];
+                $createdStockRow = $result['created'];
+                $stockBefore = $createdStockRow ? 0.0 : (float) $stock->current_stock;
+            } else {
+                $createdStockRow = false;
+                $stockBefore = (float) $stock->current_stock;
+            }
+
+            $audit->record(
+                $actor,
+                'ACTIVATE',
+                "Mengaktifkan bahan di cabang: {$material->name}",
+                $material,
+                [
+                    'branch_id' => $branchId,
+                    'created_stock_row' => $createdStockRow,
+                    'initial_stock' => $createdStockRow ? $initialStock : 0.0,
+                    'min_stock' => (float) $stock->min_stock,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => (float) $stock->current_stock,
+                ],
                 $branchId,
-                (float) ($data['initial_stock'] ?? 0),
-                (float) ($data['min_stock'] ?? 0)
             );
-        }
+        });
 
         return response()->json([
             'material' => new MaterialResource(
@@ -268,5 +391,29 @@ final class MaterialController extends Controller
             ->get();
 
         return MaterialResource::collection($materials);
+    }
+
+    /**
+     * @return array{
+     *     name: string,
+     *     product_category_id: string,
+     *     type: string|null,
+     *     dimensions: string|null,
+     *     unit: string,
+     *     cost: string,
+     *     price: string
+     * }
+     */
+    private function snapshot(Material $material): array
+    {
+        return [
+            'name' => $material->name,
+            'product_category_id' => $material->product_category_id,
+            'type' => $material->type,
+            'dimensions' => $material->dimensions,
+            'unit' => $material->unit,
+            'cost' => Decimal::money($material->cost),
+            'price' => Decimal::money($material->price),
+        ];
     }
 }

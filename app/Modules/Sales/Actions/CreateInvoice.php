@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Sales\Actions;
 
 use App\Exceptions\PricingNotFoundException;
-use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -13,6 +12,7 @@ use App\Models\Order;
 use App\Models\OrderStatusLog;
 use App\Models\Pricing;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\Decimal;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +27,10 @@ final class CreateInvoice
     /**
      * Membuat instance aksi pembuatan invoice.
      */
-    public function __construct(private readonly CalculateQuote $quote) {}
+    public function __construct(
+        private readonly CalculateQuote $quote,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * Menghitung ulang harga dari server, menyimpan invoice beserta item pesanan, dan menyiarkan pembaruan.
@@ -56,6 +59,7 @@ final class CreateInvoice
             $branch = Branch::query()->whereKey($branchId)->lockForUpdate()->first();
 
             $lines = [];
+            $orderIds = [];
             $subtotal = 0.0;
             $totalCost = 0.0;
 
@@ -208,6 +212,8 @@ final class CreateInvoice
                     'is_manual_price' => $line['is_manual_price'],
                 ]);
 
+                $orderIds[] = $order->id;
+
                 OrderStatusLog::create([
                     'order_id' => $order->id,
                     'status' => 0,
@@ -216,41 +222,53 @@ final class CreateInvoice
                     'notes' => 'Order created',
                 ]);
 
+                $this->audit->record(
+                    $designer,
+                    'CREATE',
+                    'Membuat pesanan '.($line['file_name'] ?? 'item pesanan'),
+                    $order,
+                    [
+                        'invoice_id' => $order->invoice_id,
+                        'file_name' => $order->file_name,
+                        'width' => $order->width,
+                        'length' => $order->length,
+                        'area' => $order->area,
+                        'quantity' => $order->quantity,
+                    ],
+                    $branchId,
+                );
+
                 if ($line['is_manual_price']) {
-                    ActivityLog::create([
-                        'branch_id' => $branchId,
-                        'user_id' => $designer->id,
-                        'username' => $designer->username,
-                        'role' => $designer->role,
-                        'action' => 'MANUAL_PRICE',
-                        'description' => 'Harga manual diterapkan pada '.($line['file_name'] ?? 'item pesanan'),
-                        'model_type' => Order::class,
-                        'model_id' => $order->id,
-                        'payload' => [
+                    $this->audit->record(
+                        $designer,
+                        'MANUAL_PRICE',
+                        'Harga manual diterapkan pada '.($line['file_name'] ?? 'item pesanan'),
+                        $order,
+                        [
                             'unit_price' => Decimal::money($line['unit_price']),
                             'cost' => Decimal::money($line['cost']),
                             'subtotal' => Decimal::money($line['subtotal']),
                         ],
-                    ]);
+                        $branchId,
+                    );
                 }
             }
 
-            ActivityLog::create([
-                'branch_id' => $branchId,
-                'user_id' => $designer->id,
-                'username' => $designer->username,
-                'role' => $designer->role,
-                'action' => 'CREATE',
-                'description' => 'Membuat invoice '.$invoiceNumber,
-                'model_type' => Invoice::class,
-                'model_id' => $invoice->id,
-                'payload' => [
+            $this->audit->record(
+                $designer,
+                'CREATE',
+                'Membuat invoice '.$invoiceNumber,
+                $invoice,
+                [
                     'invoice_number' => $invoiceNumber,
                     'grand_total' => Decimal::money($grandTotal),
                     'total_cost' => Decimal::money($totalCost),
                     'total_profit' => Decimal::money($totalProfit),
+                    'discount' => Decimal::money($discount),
+                    'order_ids' => $orderIds,
                 ],
-            ]);
+                $branchId,
+            );
 
             return $invoice->load(['customer', 'branch', 'designer', 'orders', 'payments']);
         });

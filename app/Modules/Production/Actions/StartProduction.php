@@ -7,6 +7,7 @@ namespace App\Modules\Production\Actions;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 final class StartProduction
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly AuditLogger $audit,
+    ) {}
 
     public function execute(Order $order, User $operator): Order
     {
@@ -30,6 +34,9 @@ final class StartProduction
                     'status' => 'Hanya pesanan dalam antrean yang dapat memulai produksi.',
                 ]);
             }
+
+            $statusBefore = $locked->status;
+            $operatorBefore = $locked->operator_id;
 
             $pricing = $locked->pricing;
 
@@ -52,6 +59,8 @@ final class StartProduction
             $locked->operator_id = $operator->id;
             $locked->save();
 
+            $materialUsage = [];
+
             if ($pricing !== null) {
                 $quantity = $unit === 'm2'
                     ? $area * (float) $locked->quantity
@@ -60,13 +69,22 @@ final class StartProduction
                 $branchId = $operator->branch_id ?? $locked->invoice?->branch_id;
 
                 if ($branchId !== null) {
-                    $this->inventory->deductStockOnPrint(
+                    $usageLedger = $this->inventory->deductStockOnPrint(
                         $pricing->material_id,
                         $quantity,
                         $branchId,
                         $locked->id,
                         $operator,
                     );
+
+                    $materialUsage[] = [
+                        'material_id' => $pricing->material_id,
+                        'quantity' => round($quantity, 2),
+                        'stock_before' => (float) $usageLedger->initial_stock,
+                        'stock_after' => (float) $usageLedger->remaining_stock,
+                        'ledger_id' => $usageLedger->id,
+                        'direction' => 'usage',
+                    ];
                 }
             }
 
@@ -77,6 +95,20 @@ final class StartProduction
                 'user_name' => $operator->name,
                 'notes' => 'Production started',
             ]);
+
+            $this->audit->record(
+                $operator,
+                'ORDER_START',
+                'Memulai produksi pesanan '.$locked->file_name,
+                $locked,
+                [
+                    'status_before' => $statusBefore,
+                    'status_after' => $locked->status,
+                    'operator_before' => $operatorBefore,
+                    'operator_after' => $locked->operator_id,
+                    'material_usage' => $materialUsage,
+                ],
+            );
 
             return $locked;
         });

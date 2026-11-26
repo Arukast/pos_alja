@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/api', () => ({
+    API_BASE: '/api/v1',
     apiFetch: vi.fn(),
 }));
 

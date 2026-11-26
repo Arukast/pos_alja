@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Actions;
 
-use App\Models\ActivityLog;
 use App\Models\Material;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\BranchScope;
 use Illuminate\Support\Facades\DB;
 
 final class AdjustStock
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -36,22 +39,19 @@ final class AdjustStock
                 absolute: $absolute,
             );
 
-            ActivityLog::create([
-                'branch_id' => $branchId,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'ADJUST',
-                'description' => 'Menyesuaikan stok bahan',
-                'model_type' => Material::class,
-                'model_id' => $material->id,
-                'payload' => [
+            $this->audit->record(
+                $actor,
+                'ADJUST',
+                'Menyesuaikan stok bahan',
+                $material,
+                [
                     'before' => $movement['old_stock'],
                     'after' => $movement['new_stock'],
                     'delta' => round($movement['new_stock'] - $movement['old_stock'], 2),
                     'reason' => $reason,
                 ],
-            ]);
+                $branchId,
+            );
         });
 
         return $material;

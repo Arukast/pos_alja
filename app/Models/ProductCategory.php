@@ -42,4 +42,18 @@ class ProductCategory extends Model
     {
         return $this->hasMany(Material::class, 'product_category_id');
     }
+
+    /**
+     * Stable audit snapshot of the API-visible category fields.
+     *
+     * @return array{name: string, description: string|null, is_active: bool}
+     */
+    public function auditSnapshot(): array
+    {
+        return [
+            'name' => $this->name,
+            'description' => $this->description,
+            'is_active' => (bool) $this->is_active,
+        ];
+    }
 }

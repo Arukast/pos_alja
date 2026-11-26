@@ -290,6 +290,57 @@ export interface ActivityLog {
     created_at: string;
 }
 
+export type BackupStatus = 'queued' | 'running' | 'success' | 'partial' | 'failed';
+export type BackupDestination = 'local' | 'remote' | 'both';
+export type BackupTrigger = 'manual' | 'scheduled';
+
+export interface BackupMeta {
+    remote_skipped?: boolean;
+    retention_error?: string;
+    pruned?: Record<string, number>;
+    duration_ms?: number;
+    [key: string]: unknown;
+}
+
+export interface Backup {
+    id: string;
+    trigger: BackupTrigger;
+    destination: BackupDestination;
+    status: BackupStatus;
+    filename: string | null;
+    size_bytes: number | null;
+    local_available: boolean;
+    remote_available: boolean;
+    is_pinned: boolean;
+    error: string | null;
+    user: { id: string; name: string } | null;
+    started_at: string | null;
+    finished_at: string | null;
+    created_at: string;
+    meta: BackupMeta | null;
+}
+
+export interface BackupSettings {
+    local_enabled: boolean;
+    local_time: string;
+    remote_enabled: boolean;
+    remote_time: string;
+    local_daily_days: number;
+    local_weekly_weeks: number;
+    local_monthly_months: number;
+    local_yearly_years: number;
+    remote_daily_days: number;
+    remote_weekly_weeks: number;
+    remote_monthly_months: number;
+    remote_yearly_years: number;
+    local_usage_bytes: number;
+    remote_usage_bytes: number;
+    remote_quota_bytes: number;
+    remote_usage_percent: number;
+    remote_configured: boolean;
+    pinned_count: number;
+}
+
 export interface Sparkline {
     points: number[];
     labels: string[];

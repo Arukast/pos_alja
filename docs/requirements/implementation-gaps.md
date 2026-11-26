@@ -1,8 +1,8 @@
 # Implementation Gaps
 
-- **As of:** 2026-11-26, after the Unit A catalog cleanup (category description/active status, attribute types removed, Manager branch attributes, minimum-stock editing, pricing soft delete).
-- **Scope:** The refactor replaced Livewire/Blade with Laravel API modules and a React SPA. Sprint Review 1 changed the target for pricing, machines, customers, expenses, production, and printing. The machine drop, material units, production failure/reopen, and the Unit A catalog cleanup are now implemented; pricing, the `order_attributes` snapshot, and the remaining FR sprints are not.
-- **Status source:** Route, controller, policy, model, migration, frontend, and test inspection on `feat/unit-a-catalog-stock-cleanup` at the Unit A tip, plus the Sprint Review 1 and Sprint Review 2 change records.
+- **As of:** 2026-11-26, after merging PB-10 (audit coverage and database backups) with the Unit A catalog cleanup (category description/active status, attribute types removed, Manager branch attributes, minimum-stock editing, pricing soft delete).
+- **Scope:** The refactor replaced Livewire/Blade with Laravel API modules and a React SPA. Sprint Review 1 changed the target for pricing, machines, customers, expenses, production, and printing. The machine drop, material units, production failure/reopen, the Unit A catalog cleanup, PB-10 audit coverage, and PB-10 backup automation are now implemented; pricing, the `order_attributes` snapshot, and the remaining FR sprints are not.
+- **Status source:** Route, controller, policy, model, migration, frontend, and test inspection on `feat/pb10-audit-backup` merged with `origin/staging` (Unit A catalog cleanup), plus the Sprint Review 1, Sprint Review 2, and PB-10 change records.
 - **Read this first:** A feature marked Implemented has API endpoints, policies, tests, and SPA screens. Partial means core behavior exists but part of the acceptance criteria is still missing. Target means no implementation yet.
 
 ## Functional Requirements
@@ -33,8 +33,8 @@
 | FR22 | Partial | Owner finance cards and sparkline; manager counts, stock, expenses, leaderboard; the production dashboard returns `queued`, `processing`, `completed_today`, `waste_today_by_unit`, and the queue, while `/production/summary` additionally returns `failed`. Missing owner/manager order count, production-status summary, and receivables. |
 | FR23 | Partial | Owner has gross revenue, base cost, net profit, and expense reports. Manager has only the leaderboard; `ReportPolicy::viewOwnerReports` is owner-only. |
 | FR24 | Target | No Excel/PDF export route, service, or UI. |
-| FR25 | Partial | Audit read/detail for owner; invoice create, user, branch, product, purchase, and stock-adjustment actions are logged. Category, attribute, material, and minimum-stock changes, payment, order update, design status, expense, and customer changes are not fully covered. |
-| FR26 | Target | No manual backup command/route, scheduled backup, retention, or restore drill. |
+| FR25 | Implemented | `AuditLogger` is the single write path (actor, role, branch, system actor, 255-char cap, sensitive-key scrub); `ActivityLog` updates/deletes throw; `activity_logs.branch_id` is `nullOnDelete` and `created_at` is indexed (`AuditLoggerTest`, `AuditAppendOnlyTest`, `AuditApiTest`). Writes cover invoice create/update/manual price, down payment/settlement, pickup, production start/complete/fail/reopen, expense, customer create, category create/update, product create/update/delete/restore, material create/update/delete/restore/stock/`ACTIVATE`, stock adjustment, waste, user/branch writes, and backup operations. `ACTIVATE` records branch-stock creation and initial stock because `materials` has no `is_active` column (user-approved deviation). Exact gaps: design-status audit absent (no endpoint or columns; FR10 is target), customer update audit absent (no `PUT /customers/{customer}` route), pricing/attribute master writes are not audited, and branch minimum-stock edits write no audit row by design (accepted Unit A FR25 debt). Category delete no longer exists after the Unit A catalog cleanup, so no audit row is written for it. Read/detail stays owner-only and global; the SPA adds a payload detail modal. Audit retention and archive-then-delete are deferred; only the `created_at` index was added. |
+| FR26 | Implemented | `backups`/`backup_settings` migrations (`backups.filename` nullable for queued rows), owner-only policies, `GET/POST /backups`, `GET /backups/{id}/download`, `PATCH /backups/{id}/pin`, `GET/PUT /backup-settings`, queued `RunBackup` (`$tries = 1`), `PgDumpDatabaseDumper` (password in env, array command, timeout), `BackupService` for local/remote/both with `partial`/`failed` and `meta` (`pending_*` stripped by `BackupResource`), per-destination GFS retention (newest overall, pinned exempt, fails closed on a window below 1), `backup:tick` every minute with `withoutOverlapping(5)`, owner-editable times/retention, quota percent (`usage / quota * 100`), `/owner/backups`, `postgresql-client-16`, `worker`/`scheduler`, `backupdata` volume, and 600s nginx timeouts on `/api` and `/sanctum` only. Evidence: `BackupApiTest`, `BackupDownloadTest`, `BackupPinApiTest`, `BackupSettingApiTest`, `BackupSettingTest`, `BackupTickTest`, `BackupRetentionTest`, `RunBackupJobTest`, `PgDumpDatabaseDumperTest`, `BackupScheduleTest`, `BackupSchemaTest`. Exact gaps: no in-app restore; no client-side encryption (R2 server-side encryption, TLS, a private bucket, and a least-privilege token are deployment requirements); uploaded files and object storage are not backed up; no stale-run cleanup or retry (a killed worker leaves a `running` row until the page shows "Mungkin macet" after 30 minutes); live R2 upload unverified; the first real dump size is unknown, so quota fit is unmeasured; restore drill not run; PostgreSQL `change()` migration, Docker image/`pg_dump` 16, nginx syntax, and dark mode unverified (no Docker CLI, no `pg_dump`). UI smoke and 390/768/1440 screenshots recorded in `.ai-docs/screens/pb10/`. |
 
 ## Non-Functional Requirements
 
@@ -45,7 +45,7 @@
 | NFR3 | Partial | DP arithmetic, order-edit receivable recalculation, order-history name resolution after the pricing soft delete, and minimum-stock edits are tested; the pricing redesign remains Unit B work. |
 | NFR4 | Partial | Responsive layouts exist; no formal WCAG audit or usability test; invoice print is missing. |
 | NFR5 | Partial | Policies, branch scope, and money redaction are tested; expense-role changes, customer PII, HTTPS, and OWASP controls are not verified in this repository. |
-| NFR6 | Partial | Compose and CI exist; backup/restore is FR26 and still missing. |
+| NFR6 | Partial | Backup automation is implemented by FR26 with a documented restore procedure in `docs/architecture/deployment.md` section 7. No drill has run, so RPO/RTO/uptime are unverified. Blockers: no Docker CLI, no PostgreSQL 16 server, no `pg_dump`/`psql` client; the test suite uses SQLite with a fake dumper and faked R2 disk. |
 | NFR7 | Partial | API-first modules and SPA are in place; Catalog convention debt remains. |
 | NFR8 | Partial | CI and Compose exist; Docker build was not executed in this VM; browser matrix is not automated. |
 | NFR9 | Partial | Locking is implemented for payments, production, stock movements, and fail/reopen reversal; order-update locking, fail/reopen concurrency, and PostgreSQL concurrency are untested. |
@@ -67,14 +67,14 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 | Sprint 2 | PB-06 | FR19, FR20, FR21 | Partial | Start/complete/fail/reopen production, status log, net usage reversal, queue status/search filters | All-role queue UI, deadline/priority sort, order-level pickup |
 | Sprint 2 | PB-07 | FR16 | Done | Unit-aware automatic stock deduction, order-linked usage and waste ledgers, `usage_reversal` on fail, queue waste modal, read-only waste history | — |
 | Sprint 3 | PB-09 | FR22, FR23, FR24 | Partial | Owner reports/dashboard, manager leaderboard | Manager dashboard/report completeness, Excel/PDF export |
-| Sprint 3 | PB-10 | FR25, FR26 | Partial | Audit read/detail, purchase and stock-adjustment audit writes | Payment/order/expense/customer/design/discount audit coverage, manual and scheduled backup |
+| Sprint 3 | PB-10 | FR25, FR26 | Done | Append-only audit with full action coverage and owner detail modal; three backup types, owner schedules/retention, per-destination GFS, download, pin, quota, `/owner/backups`, PGDG client, worker/scheduler, `backupdata` volume, nginx 600s on `/api` and `/sanctum` | Design-status audit blocked on FR10; customer update endpoint absent; pricing/attribute audit; no in-app restore; no client-side encryption; uploaded files not backed up; no stale-run cleanup; restore drill and live R2 upload unverified; dump size unknown |
 
 Summary:
 
 - Sprint 0: done, except deployment verification.
 - Sprint 1: PB-08 and PB-03 fully done; PB-01, PB-02, and PB-04 partial. PB-08 moved from Sprint 3 to Sprint 1 after Sprint Review 1.
 - Sprint 2: PB-05 and PB-07 done; PB-06 partial.
-- Sprint 3: 0 of 2 done; PB-09 and PB-10 partial.
+- Sprint 3: PB-10 done with the documented gaps below; PB-09 partial.
 
 ## What Is Left
 
@@ -87,7 +87,7 @@ Priority order:
 5. **FR14** expense Owner/Manager access and fixed category dropdown.
 6. **FR19** deadline/priority sorting, all-role queue UI; **FR21** order-level pickup propagation.
 7. **FR22/FR23** manager dashboard/report completeness; **FR24** Excel/PDF export.
-8. **FR25** audit coverage for payments, order updates, design status, expenses, customers, category/attribute changes, and minimum stock; **FR26** manual and scheduled backup.
+8. **PB-10 follow-ups** (documented gaps, not new scope): design-status audit once FR10 exists, customer update audit once the endpoint exists, pricing/attribute audit, minimum-stock audit if it becomes a requirement, restore drill and live R2 upload, stale-run cleanup, and the audit-retention decision after the first real dump size is measured.
 
 ## Refactor Completion
 
@@ -98,7 +98,7 @@ Priority order:
 ## Convention Debt
 
 - Some Catalog controllers still use inline `$request->validate()` and direct model writes (materials update, pricing). Sales and Identity use FormRequests plus Actions. Extract Catalog FormRequests/Actions in the next cleanup.
-- Catalog material, price/cost, category, and attribute writes are not fully written to `activity_logs`; FR25 remains partial.
+- Pricing-matrix and attribute writes still have no `activity_logs` rows; PB-10 covers material writes logged at the existing `MaterialController` write sites. Customer update has no endpoint, so its audit row is not written.
 - Minimum-stock changes are not audited: `PATCH /materials/{material}/min-stock` writes no `activity_logs` row by design. This is accepted FR25 debt; if audit becomes required, add an audit row, never a stock movement.
 - `/quotes/options` returns `AttributeResource`, which includes `cost`, so designers can read attribute cost against AGENTS 2.4. This predates Unit A; the inactive-attribute flag widened the rows returned but did not add the field. Fix with a role-aware resource or a separate designer attribute payload; do not copy `cost` into new designer payloads.
 - Attribute delete is removed, but attributes soft-deleted before Unit A remain unresolvable: `/quotes/options` excludes them and `CalculateQuote` rejects them (throws when a selected id is absent), with no restore endpoint. Legacy `cut` attributes cannot round-trip through the attribute form because `type` accepts only `finishing` and `display`; leave them untouched.
@@ -115,3 +115,8 @@ Priority order:
 - Invoice history resolves soft-deleted `pricing`/`product`/`material` rows, but production actions treat a soft-deleted pricing row like the old hard delete (`pricing_id` resolves null) and skip stock deduction. The designer edit page stays enabled when an item's pricing row was soft-deleted, so saving that item returns 404. Both are parked for Unit B.
 - PostgreSQL concurrency is unverified for purchase idempotent replay, creating a missing branch stock row, and fail/reopen net-usage reversal. SQLite cannot reproduce those races; the unique `(branch_id, idempotency_key)` index, replay lookup, unique-violation catch, and `insertOrIgnore` + `lockForUpdate` path are implemented but not race-tested.
 - Legacy `stock_ledgers` rows may keep a null `type`, actor, and reference. The backfill is best-effort: it maps the known notes signatures and classifies remaining null-type rows with `added_stock > 0` as `restock`; it invents neither an actor nor a reference.
+- PB-10 audit and backup are unverified where this environment has no runtime: no Docker CLI (image build, `postgresql-client-16`, `pg_dump` against PostgreSQL 16, nginx `-t`, Compose syntax), no PostgreSQL 16 server (`activity_logs` FK rebuild and `backups.filename->change()` on PostgreSQL), and no live R2 credentials (upload and download fallback). UI smoke and 390/768/1440 backup and audit-modal screenshots are recorded in `.ai-docs/screens/pb10/`; dark mode remains unverified. Tests use SQLite, a fake dumper, and `Storage::fake`.
+- The restore drill has not been run. `docs/architecture/deployment.md` section 7 documents the scratch-database procedure; RPO/RTO stay unclaimed until it is executed and recorded in `docs/requirements/nfr.md`.
+- No stale-run cleanup, retry, or health check exists for queue workers. A killed worker leaves a `running` backup row; the page labels it "Mungkin macet" only after 30 minutes, and a queued run with no worker stays `queued` forever.
+- Audit rows grow without bound in PB-10. Retention/archive-then-delete is deferred until the first real backup size is measured; only the `created_at` index is in place. Eloquent append-only is enforced, but query-builder mass updates and raw SQL bypass the guard.
+- A designer with no branch can create a customer because `CustomerPolicy::create` checks only the role and customers are global; the audit row then has `branch_id = null`. This is a pre-existing access gap, recorded in `docs/requirements/access-matrix.md` rule 15 and not changed by PB-10.

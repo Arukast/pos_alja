@@ -100,4 +100,20 @@ class AuditApiTest extends TestCase
             ->getJson("/api/v1/audit-logs/{$this->createLog->id}")
             ->assertForbidden();
     }
+
+    public function test_guest_cannot_read_audit_logs(): void
+    {
+        $this->getJson('/api/v1/audit-logs')
+            ->assertUnauthorized();
+
+        $this->getJson("/api/v1/audit-logs/{$this->createLog->id}")
+            ->assertUnauthorized();
+    }
+
+    public function test_unknown_audit_log_returns_not_found(): void
+    {
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/audit-logs/'.Str::uuid())
+            ->assertNotFound();
+    }
 }
