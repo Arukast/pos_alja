@@ -24,10 +24,18 @@ final class OrderResource extends JsonResource
         return [
             'id' => $this->id,
             'pricing_id' => $this->pricing_id,
+            'pricing' => $this->when($this->relationLoaded('pricing'), fn (): ?array => $this->pricing === null ? null : [
+                'product' => $this->pricing->product?->name,
+                'material' => $this->pricing->material?->name,
+                'calculation_archetype' => $this->pricing->product?->category?->calculation_archetype,
+            ]),
             'file_name' => $this->file_name,
             'notes' => $this->notes,
             'area' => $this->area,
+            'width' => $this->width,
+            'length' => $this->length,
             'quantity' => $this->quantity,
+            'selected_attributes' => $this->selected_attributes ?? [],
             'unit_price' => $this->when($showSell, fn (): string => Decimal::money($this->unit_price)),
             'subtotal' => $this->when($showSell, fn (): string => Decimal::money($this->subtotal)),
             'cost' => $this->when($showCost, fn (): string => Decimal::money($this->cost)),

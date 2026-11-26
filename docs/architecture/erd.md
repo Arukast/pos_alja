@@ -352,7 +352,7 @@ erDiagram
 2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
 4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the finishing/display modifiers. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) is the reseller discount source. `product_category_discounts` stores tiers, but the current quote/invoice path does not apply them. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount + category quantity discount.
-5. **`order_attributes` is target-only.** No table exists, and the API does not persist finishing/display selections; it only accepts `selected_attributes[]` for pricing modifiers. The target keeps at most one row per `(order_id, type)` with a price/cost snapshot.
+5. **`order_attributes` is target-only.** No table exists; finishing/display selections are persisted on `orders.selected_attributes` as the attribute IDs used for pricing modifiers, without a per-attribute price/cost snapshot. The target keeps at most one row per `(order_id, type)` with a price/cost snapshot.
 6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
 7. **`invoices.designer_id`** is the user who submitted the order.
 8. **`payments.user_id`** is the cashier; `payments.cashier_name` is a denormalized audit copy.
@@ -369,6 +369,7 @@ erDiagram
     - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`.
+    - The transitional order quote-input columns `width`, `length`, and `selected_attributes` are added by `2026_11_26_100000_add_order_edit_specifications.php` and persisted by invoice create/update so pre-production edits can reprice from the saved specifications.
     - `order_attributes` for finishing/display snapshots.
     - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`; implemented by `2026_11_24_000001_add_traceability_to_stock_ledgers_table.php`.
@@ -377,7 +378,7 @@ erDiagram
 16. **Order priority is target-only.** There is no `priority` column; the implemented queue orders by `created_at`, then `id`. The target semantics are higher `priority` first, then `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`, with default priority 0.
 17. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The Designer may move forward; Owner and Branch Manager may override a backward transition.
 18. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `usage_reversal`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase (`purchase`) or order (`usage`, `usage_reversal`, `waste`) that caused the movement; `user_id` is the actor. `usage_reversal` is written when a processing order fails and adds back the net usage per `(material_id, branch_id)`. Legacy rows may have a null type, actor, and reference after the best-effort backfill.
-19. **Invoice print is a view, not a table.** There is no ticket table and no separate work-order document. The target invoice print reads `invoices`, `orders`, and `order_attributes`; the current build has no `order_attributes` table.
+19. **Invoice print is a view, not a table.** There is no ticket table and no separate work-order document. The target invoice print reads `invoices`, `orders`, and `order_attributes`; the current build persists `orders.selected_attributes` and has no `order_attributes` table.
 20. **`materials.unit` is implemented** with exactly seven values (`m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, `batang`), default `pcs`, and `m2` displayed as `m²`. The unit drives production deduction: `m2` uses `area * quantity`; every other unit uses `quantity`. `materials.type` remains an optional descriptive label.
 
 ---

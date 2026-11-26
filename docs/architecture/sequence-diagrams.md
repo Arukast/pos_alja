@@ -134,7 +134,7 @@ sequenceDiagram
     API-->>SPA: Quote
     SPA->>API: POST /api/v1/invoices
     API->>DB: BEGIN, lock branch for numbering, recompute every line
-    API->>DB: Create invoice, orders, order_attributes, status logs, audit
+    API->>DB: Create invoice, orders (with selected_attributes), status logs, audit
     API->>DB: COMMIT
     API-->>SPA: 201 invoice
     API->>R: OrderUpdated on branch/owners
@@ -158,12 +158,14 @@ sequenceDiagram
     SPA->>API: GET /api/v1/invoices/{id}
     API-->>SPA: Invoice, orders, payments
     D->>SPA: Add, remove, or change items
-    SPA->>API: PUT /api/v1/invoices/{id}
+    SPA->>API: PUT /api/v1/invoices/{id}/items
     API->>Policy: Authorize update (designer, same branch)
     API->>DB: BEGIN, lock invoice and orders
     API->>DB: Require every order status = 0 and invoice status 0 or 1
     alt Any order in production or invoice fully paid
         API-->>SPA: 409 cannot change
+    else Any order uses a manual price
+        API-->>SPA: 409 manual lines are not repriced
     else New total below total paid
         API-->>SPA: 422 would create a negative receivable
     else Editable
@@ -406,10 +408,13 @@ sequenceDiagram
     participant DB
 
     A->>SPA: Open production queue
-    SPA->>API: GET /api/v1/production/queue?branch_id
+    SPA->>API: GET /api/v1/production/queue?branch_id&status&search
     API->>Policy: Authorize viewQueue
     Policy-->>API: All roles, owner all branches, others own branch
     API->>DB: Query status 0, 1, and 3 rows by branch
+    opt status or search filter
+        API->>DB: Apply status 0/1/3 (422 otherwise) and search invoice number, file, or order UUID
+    end
     API-->>SPA: Queue resource with Gagal rows, no money for production
 ```
 

@@ -33,9 +33,10 @@
 | `/designer` | designer | Designer dashboard |
 | `/designer/new-order` | designer | Customer entry, quote, cart, invoice |
 | `/designer/orders` | designer | Invoice list and print links |
+| `/designer/orders/:id/edit` | designer | Edit invoice items while unpaid and before production |
 | `/production` | production | Production dashboard |
 | `/production/materials` | production | Read-only Bahan & Stok with low-stock filter |
-| `/production/queue` | production | Start/complete/fail/reopen controls, inline waste modal |
+| `/production/queue` | production | Start/complete/fail/reopen controls, inline waste modal, server-side status and search filters |
 | `/production/waste` | production | Read-only Riwayat Bahan Terbuang history |
 | `/invoices/:id/print` | owner, manager, cashier, designer | A4 invoice print |
 | `/invoices/:id/receipt` | owner, manager, cashier, designer | 80 mm receipt |
@@ -90,7 +91,7 @@ src/
 - `/production/queue` shows `Area` (m²) and `Operator` at `lg:` and above with a `Gagal` badge for status `3`. A failed order with no waste shows a `Belum ada bahan terbuang` warning badge in its invoice cell at every width, and closing its auto-opened waste modal asks `Belum ada bahan terbuang. Tetap tutup?`. Status `0` offers `Mulai`, status `1` offers `Selesaikan` and `Gagal`, and status `3` offers `Proses Ulang`; status `0`, `1`, and `3` offer `Bahan Terbuang`. Failing opens the waste modal with the failed order. It never shows money. `/production/materials` is a read-only Bahan & Stok list: no create/edit/delete or money fields, with the same low-stock filter. `/production/waste` is read-only history titled "Riwayat Bahan Terbuang" with no create form.
 - Print views have dedicated `@media print` CSS: A4 invoice at `min-h-[297mm] print:min-h-0`, 80 mm receipt,
   `PrintHeader` with CMYK marks, white paper. Production is denied both print views.
-- The designer order form follows Product -> Material -> Finishing -> Display. Finishing/display masters exist at `/owner/attributes` (read-only at `/manager/finishing`), and the quote/invoice API accepts `selected_attributes[]`, but there is no `order_attributes` persistence. Customer creation uses `/designer/customers/new` and returns to the order flow after save.
+- The designer order form follows Product -> Material -> Finishing -> Display. Finishing/display masters exist at `/owner/attributes` (read-only at `/manager/finishing`), and the quote/invoice API accepts and persists `selected_attributes[]` on `orders.selected_attributes`; there is no separate `order_attributes` snapshot table. Customer creation uses `/designer/customers/new` and returns to the order flow after save.
 - The material screen includes the `unit` dropdown with the seven values, dynamic `Biaya per {unit}` and `Harga per {unit}` labels, a reason-required stock adjustment action, and a low-stock filter. Owner, manager, and production lists render quantities through `unitLabel`/`quantityWithUnit` from `lib/units.ts`, so `m2` shows as `m²` and a null unit falls back to `pcs`. The owner marks low rows with a `menipis` text cue; manager and production also apply a row tint.
 - `/owner/products` and `/owner/categories` provide Owner CRUD (including 10-per-page product pagination and category quantity discount tiers `min_qty`, `discount_percent`). `/manager/products` and `/manager/categories` render read-only views for Branch Manager. `/owner/attributes` provides Owner CRUD for finishing/display options (`price`, `cost`, `is_active`) and attribute types, while `/manager/finishing` renders a read-only view for Branch Manager. `/owner/branches` includes the branch `reseller_discount_percent` field. `/manager/pricing` (`Matriks Harga`) performs CRUD on own-branch pricing-matrix rows. The machine pages and endpoints are removed. Category discount tiers are configured but not applied to quotes or invoices.
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI

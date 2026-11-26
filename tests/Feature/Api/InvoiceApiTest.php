@@ -297,6 +297,36 @@ class InvoiceApiTest extends TestCase
     }
 
     /**
+     * Memastikan detail invoice memuat label harga dan archetype untuk form edit desainer.
+     */
+    public function test_invoice_detail_includes_pricing_labels_and_archetype(): void
+    {
+        $fixture = $this->catalogFixture($this->branchOne);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', [
+                'customer_id' => $this->customer->id,
+                'items' => [
+                    [
+                        'pricing_id' => $fixture['pricing']->id,
+                        'quantity' => 1,
+                        'width' => 2,
+                        'length' => 1,
+                        'is_manual_price' => false,
+                    ],
+                ],
+            ])
+            ->assertCreated();
+
+        $this->actingAs($this->designer)
+            ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.pricing.product', 'Spanduk Flexy')
+            ->assertJsonPath('invoice.orders.0.pricing.material', 'Flexy 340gr')
+            ->assertJsonPath('invoice.orders.0.pricing.calculation_archetype', 'surface_area');
+    }
+
+    /**
      * Memastikan peran tidak dikenal ditolak saat membaca daftar dan detail invoice.
      */
     public function test_unknown_role_cannot_read_invoices(): void
