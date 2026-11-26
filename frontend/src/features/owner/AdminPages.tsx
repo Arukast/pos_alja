@@ -166,7 +166,6 @@ export function OwnerMaterialsPage() {
             options: categoryOptions,
             getValue: (material) => material.category?.id ?? '',
         },
-        { key: 'dimensions', label: 'Dimensi' },
         { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
         {
             key: 'cost',

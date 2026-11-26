@@ -96,7 +96,6 @@ export function ManagerMaterialsPage() {
     const fields: Array<CrudField<Material>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'product_category_id', label: 'Kategori', type: 'select', options, getValue: (material) => material.category?.id ?? '' },
-        { key: 'dimensions', label: 'Dimensi' },
         { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
         {
             key: 'cost',
