@@ -38,7 +38,7 @@ const ledgerTypes: Record<string, string> = {
     initial: 'Stok Awal',
     purchase: 'Pembelian',
     usage: 'Pemakaian',
-    waste: 'Sisa Bahan',
+    waste: 'Bahan Terbuang',
     adjustment: 'Koreksi',
     restock: 'Tambah Stok',
     usage_reversal: 'Pengembalian Pemakaian',

@@ -141,7 +141,7 @@ export function OwnerDashboardPage() {
                         <StatCard
                             label="Biaya Dasar"
                             value={formatMoney(data.finance.total_cost)}
-                            hint={`${shareOfRevenue(data.finance.total_cost, data.finance.gross_revenue, '% dari pendapatan bruto')} · HPP invoice ditambah sisa bahan`}
+                            hint={`${shareOfRevenue(data.finance.total_cost, data.finance.gross_revenue, '% dari pendapatan bruto')} · HPP invoice ditambah bahan terbuang`}
                         />
                         <StatCard
                             label="Laba Bersih"

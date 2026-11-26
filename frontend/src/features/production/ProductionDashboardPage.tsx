@@ -24,7 +24,7 @@ export function ProductionDashboardPage() {
             <PageBanner
                 eyebrow="Produksi"
                 title="Dasbor Produksi"
-                description="Antrean cetak aktif, pekerjaan selesai, dan sisa bahan."
+                description="Antrean cetak aktif, pekerjaan selesai, dan bahan terbuang."
             />
 
             {query.isLoading ? (
@@ -51,7 +51,7 @@ export function ProductionDashboardPage() {
                         <StatCard label="Pekerjaan dalam Antrean" value={String(data.queued)} />
                         <StatCard label="Sedang Dicetak" value={String(data.processing)} />
                         <StatCard label="Selesai Hari Ini" value={String(data.completed_today)} />
-                        <StatCard label="Sisa Bahan Hari Ini" value={wasteByUnitLabel(data.waste_today_by_unit)} />
+                        <StatCard label="Bahan Terbuang Hari Ini" value={wasteByUnitLabel(data.waste_today_by_unit)} />
                     </div>
 
                     <Card>

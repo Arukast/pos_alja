@@ -113,7 +113,7 @@ export function ProductionWasteModal({
         <Modal
             open={order !== null}
             onClose={close}
-            title="Catat Sisa Bahan"
+            title="Catat Bahan Terbuang"
             description={
                 order?.invoice
                     ? `Invoice ${order.invoice.invoice_number}${
@@ -132,7 +132,7 @@ export function ProductionWasteModal({
                         >
                             Batal
                         </Button>
-                        <Button onClick={closeConfirmed}>Tutup tetap</Button>
+                        <Button onClick={closeConfirmed}>Tetap Tutup</Button>
                     </>
                 ) : (
                     <>
@@ -153,7 +153,7 @@ export function ProductionWasteModal({
             }
         >
             {confirmingClose ? (
-                <p className="text-sm">Belum ada sisa bahan. Tutup tetap?</p>
+                <p className="text-sm">Belum ada bahan terbuang. Tetap tutup?</p>
             ) : (
                 <div className="space-y-4">
                     {notice ? (
@@ -181,7 +181,7 @@ export function ProductionWasteModal({
                     ) : materials.length === 0 ? (
                         <EmptyState
                             title="Belum ada bahan di cabang ini"
-                            description="Tambahkan stok bahan lewat inventaris sebelum mencatat sisa."
+                            description="Tambahkan stok bahan lewat inventaris sebelum mencatat bahan terbuang."
                         />
                     ) : (
                         <>

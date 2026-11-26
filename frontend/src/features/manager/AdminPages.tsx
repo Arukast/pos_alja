@@ -310,7 +310,7 @@ export function ManagerLedgersPage() {
                 { header: 'Pengguna', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
                 { header: 'Ditambahkan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.added_stock, ledger.material?.unit) },
                 { header: 'Digunakan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.used_stock, ledger.material?.unit) },
-                { header: 'Sisa Bahan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.wasted_stock, ledger.material?.unit) },
+                { header: 'Bahan Terbuang', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.wasted_stock, ledger.material?.unit) },
                 { header: 'Tersisa', className: 'text-right tabular-nums sm:whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.remaining_stock, ledger.material?.unit) },
             ]}
         />
@@ -538,7 +538,7 @@ export function ManagerLeaderboardPage() {
             <PageBanner
                 eyebrow="Ringkasan"
                 title="Papan Peringkat Desainer"
-                description="Pendapatan, jumlah pesanan, dan akurasi sisa bahan bulan ini."
+                description="Pendapatan, jumlah pesanan, dan akurasi bahan terbuang bulan ini."
             />
             <Card>
                 <CardBody>
@@ -565,7 +565,7 @@ export function ManagerLeaderboardPage() {
                                     <TableHeaderCell>Pesanan</TableHeaderCell>
                                     <TableHeaderCell className="text-right whitespace-nowrap">Pendapatan</TableHeaderCell>
                                     <TableHeaderCell className="text-right whitespace-nowrap">Rata-rata pesanan</TableHeaderCell>
-                                    <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
+                                    <TableHeaderCell>Catatan bahan terbuang</TableHeaderCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>

@@ -127,7 +127,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             links: [
                 { to: '/production/materials', label: 'Bahan & Stok', icon: Package },
                 { to: '/production/queue', label: 'Antrean Cetak', icon: Printer },
-                { to: '/production/waste', label: 'Riwayat Sisa Bahan', icon: Recycle },
+                { to: '/production/waste', label: 'Riwayat Bahan Terbuang', icon: Recycle },
             ],
         },
     ],
