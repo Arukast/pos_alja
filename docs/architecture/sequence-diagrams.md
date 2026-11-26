@@ -573,7 +573,7 @@ sequenceDiagram
     API-->>SPA: Paginated logs and detail
 ```
 
-### 7.4 Manual And Scheduled Backup
+### 7.4 Manual Backup (PB-10, implemented)
 
 ```mermaid
 sequenceDiagram
@@ -583,20 +583,194 @@ sequenceDiagram
     participant API
     participant Policy
     participant DB
-    participant FS as External Storage
-    participant SCH as Scheduler
+    participant Q as Queue
+    participant W as Worker
+    participant L as Local Disk
+    participant R2 as R2/S3
+    participant PG as pg_dump
 
-    alt Manual
-        O->>SPA: Run backup
-        SPA->>API: POST /api/v1/backups
-        API->>Policy: Authorize owner
-    else Scheduled
-        SCH->>API: Trigger scheduled backup
+    O->>SPA: Jalankan Backup
+    SPA->>API: POST /api/v1/backups (no body)
+    API->>Policy: Authorize create (owner)
+    API->>DB: Any manual queued/running younger than 30 minutes?
+    alt Recent manual run
+        API-->>SPA: 409 Backup manual sedang berjalan.
+    else No recent manual run
+        API->>DB: Load backup_settings
+        alt remote_enabled and not configured
+            API-->>SPA: 422 Backup remote belum dikonfigurasi. (no row)
+        else remote disabled
+            API->>DB: Create backups row trigger=manual, destination=local, status=queued
+        else remote enabled and configured
+            API->>DB: Create backups row trigger=manual, destination=both, status=queued
+        end
+        API->>Q: Dispatch RunBackup(backup id)
+        alt Dispatch throws
+            API->>DB: Mark failed, meta cleanup targets, BACKUP audit
+            API-->>SPA: 500 Backup gagal dimulai.
+        else Dispatched
+            API-->>SPA: 202 Backup dimulai. + BackupResource
+        end
     end
-    API->>DB: Dump schema and data
-    API->>FS: Store encrypted backup
-    API->>DB: Insert backup audit log
-    API-->>SPA: Success or failure
+    SPA->>API: GET /backups every 5 s while any active row is <= 2 min old
+    W->>DB: Mark running, started_at, filename
+    W->>PG: pg_dump --format=custom --compress=9 (PGPASSWORD in env)
+    alt local or both
+        PG-->>L: Write YYYY/MM/DD/pos_alja_*.dump
+    end
+    alt remote or both
+        PG-->>W: Write temp dump (remote only) or reuse the local file
+        W->>R2: Upload to <prefix>/YYYY/MM/DD/<file>.dump
+        W->>W: Delete the temp dump
+    end
+    W->>L: Prune local GFS (newest overall, pinned exempt)
+    W->>R2: Prune remote GFS (newest overall, pinned exempt)
+    W->>DB: Final status success/partial/failed, size, paths, meta, finished_at
+    W->>DB: One BACKUP audit row (manual actor)
+```
+
+### 7.5 Scheduled Local Backup (PB-10, implemented)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant SCH as Scheduler
+    participant CMD as backup:tick
+    participant DB
+    participant Q as Queue
+    participant W as Worker
+    participant L as Local Disk
+    participant PG as pg_dump
+
+    SCH->>CMD: Every minute, withoutOverlapping(5)
+    CMD->>DB: Load backup_settings
+    alt local disabled, before local_time, or last_local_date is today
+        CMD-->>SCH: Skip
+    else Due
+        CMD->>DB: Create backups row trigger=scheduled, destination=local, status=queued
+        CMD->>Q: Dispatch RunBackup
+        opt Dispatch throws
+            CMD->>DB: Mark failed + BACKUP audit (system actor)
+        end
+        CMD->>DB: Set last_local_date = today (also on dispatch failure)
+    end
+    W->>PG: pg_dump
+    PG-->>L: Write local dump
+    W->>L: Prune local GFS
+    W->>DB: Final status + BACKUP audit (system actor)
+```
+
+### 7.6 Scheduled Remote Backup (PB-10, implemented)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant SCH as Scheduler
+    participant CMD as backup:tick
+    participant DB
+    participant Q as Queue
+    participant W as Worker
+    participant R2 as R2/S3
+    participant PG as pg_dump
+
+    SCH->>CMD: Every minute, withoutOverlapping(5)
+    CMD->>DB: Load backup_settings
+    alt remote disabled, before remote_time, or last_remote_date is today
+        CMD-->>SCH: Skip
+    else Due
+        CMD->>DB: Create backups row trigger=scheduled, destination=remote, status=queued
+        CMD->>Q: Dispatch RunBackup
+        CMD->>DB: Set last_remote_date = today
+    end
+    W->>PG: pg_dump to storage/app/backup-tmp
+    W->>R2: Upload YYYY/MM/DD/<file>.dump
+    W->>W: Delete the temp dump
+    alt Upload or dump fails
+        W->>DB: status=failed, error
+    else Upload succeeds
+        W->>R2: Prune remote GFS
+        W->>DB: status=success
+    end
+    W->>DB: BACKUP audit (system actor)
+```
+
+### 7.7 Backup Download (PB-10, implemented)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Owner
+    participant SPA
+    participant API
+    participant Policy
+    participant DB
+    participant L as Local Disk
+    participant R2 as R2/S3
+
+    O->>SPA: Unduh
+    SPA->>API: GET /api/v1/backups/{id}/download
+    API->>Policy: Authorize download (owner)
+    API->>DB: Load backup row
+    alt local_path set and file exists
+        API->>L: Resolve local file
+    else remote_path set and file exists
+        API->>R2: Resolve remote file
+    else Neither file exists
+        API-->>SPA: 410 Berkas backup tidak ditemukan.
+    end
+    API->>DB: DOWNLOAD audit (backup id, filename, source) before streaming
+    API-->>SPA: Streamed file named filename
+```
+
+### 7.8 Backup Pin And Unpin (PB-10, implemented)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Owner
+    participant SPA
+    participant API
+    participant DB
+
+    O->>SPA: Sematkan or Lepas
+    SPA->>API: PATCH /api/v1/backups/{id}/pin {pinned}
+    API->>DB: Authorize update (owner), validate pinned boolean
+    API->>DB: BEGIN, lock backup row
+    API->>DB: Snapshot is_pinned before, save new value
+    API->>DB: PIN or UNPIN audit with before/after, COMMIT
+    API-->>SPA: 200 backup
+    Note over DB: Pinned filenames are exempt from the next retention run; the file still counts toward usage.
+```
+
+### 7.9 Backup Settings (PB-10, implemented)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Owner
+    participant SPA
+    participant API
+    participant Policy
+    participant DB
+
+    O->>SPA: Open /owner/backups
+    SPA->>API: GET /api/v1/backup-settings
+    API->>Policy: Authorize view (owner)
+    API->>DB: BackupSetting::current() (create defaults on first access)
+    API-->>SPA: settings + usage/quota/remote_configured/pinned_count
+
+    O->>SPA: Change enable flags, times, retention and save
+    SPA->>API: PUT /api/v1/backup-settings (all 12 fields)
+    API->>Policy: Authorize update (owner)
+    API->>API: Validate H:i times and 7-90 / 4-52 / 6-24 / 1-10 windows
+    alt Invalid
+        API-->>SPA: 422
+    else Valid
+        API->>DB: BEGIN, lock the singleton row
+        API->>DB: Snapshot before, update, UPDATE audit with before/after, COMMIT
+        API-->>SPA: 200 settings
+    end
+    Note over DB: backup:tick reads the row on its next minute, so no scheduler restart is needed.
 ```
 
 ## 8. Authorization Rules

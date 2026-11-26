@@ -329,6 +329,12 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Owner can view and filter the audit trail.
   - Audit rows are append-only from the application.
 - **Traceability:** NFR5, NFR9, PB-10.
+- **Implementation note (PB-10, 2026-11-26):**
+  - `App\Services\AuditLogger` is the single write path. It records actor, role, branch, action, `model_type`, `model_id`, payload, and timestamp; a null actor writes `username = system`, `role = system`, `user_id = null`, and `branch_id = null`. Descriptions are capped at 255 characters; payload keys such as `password`, `token`, and `secret` are dropped.
+  - Eloquent updates and deletes throw `LogicException`. Query-builder mass updates and raw SQL still bypass the guard, by convention. `activity_logs.branch_id` is `nullOnDelete`, and `activity_logs.created_at` is indexed.
+  - Covered actions: invoice create/update/manual price, down payment/settlement, pickup, production start/complete/fail/reopen, expense, customer create, category create/update/delete, product create/update/delete/restore, material create/update/delete/restore/stock, stock adjustment, waste, user and branch writes, and backup operations. `ACTIVATE` records branch-stock creation and initial stock; `materials` has no `is_active` column (user-approved deviation).
+  - Not covered: design status (its endpoint and columns do not exist), customer update (no endpoint), and pricing/attribute master writes.
+  - The owner list/search/sort stays global and owner-only. The SPA adds a "Lihat" detail modal over the list payload; there is no extra detail fetch. Audit rows are kept in full: retention and archive-then-delete are deferred until the first real backup size is known.
 
 ### FR26 Manual and scheduled database backup
 - **Requirement:** Owner SHALL run a manual database backup, and the system SHALL run scheduled automatic backups.
@@ -339,6 +345,17 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Backup success/failure is logged and visible.
   - A restore procedure is documented and tested.
 - **Traceability:** NFR6, PB-10.
+- **Implementation note (PB-10, 2026-11-26):**
+  - Three backup types, each an independent `backups` row with one `BACKUP` audit row:
+    1. Manual by the owner: `POST /api/v1/backups` returns `202` before the dump starts and queues a run with `destination=both` when remote backup is enabled and configured, `destination=local` when remote backup is disabled, and `422` (no row) when remote backup is enabled but unconfigured.
+    2. Scheduled local: `backup:tick` queues a local run when the owner-set local time is due and enabled.
+    3. Scheduled remote (R2/S3): `backup:tick` queues a remote-only run when the owner-set remote time is due and enabled.
+  - Schedules and retention are stored in `backup_settings` and read on every `backup:tick` run, so owner changes apply without a restart; a missed run catches up on the next tick. The tick runs every minute with a five-minute `withoutOverlapping` mutex. Defaults: local 02:00 and remote 02:30 in the application timezone.
+  - Retention is GFS per destination: defaults local 30/12/12/3 and remote 7/4/12/3 (daily/weekly/monthly/yearly), owner-editable. Pinned files are exempt, and each destination always keeps its newest file. A window below 1 fails closed with an error instead of deleting extra files.
+  - Download is owner-only, local first with R2 fallback, streamed as the stored filename, and returns `410` when neither file exists. Pin/unpin is owner-only. Attempted downloads write a `DOWNLOAD` audit row before streaming.
+  - R2 usage against the configured quota is shown with `remote_usage_percent = usage / quota * 100`; the page warns at 80% and 100%. The app never deletes archives to meet the quota.
+  - Backups are PostgreSQL-only and never stored in the application database. Storage: the `backupdata` volume at `/var/www/html/storage/app/backups` and an S3-compatible bucket. A queue worker is required; without it a run stays `queued`.
+  - Remaining gaps: no in-app restore, no client-side encryption, uploaded files are not backed up, no stale-run cleanup, live R2 upload unverified, dump size unknown, and the restore drill has not been run. See `docs/requirements/nfr.md` and `docs/requirements/implementation-gaps.md`.
 
 ---
 
@@ -363,3 +380,4 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 | :--- | :--- | :--- |
 | 2026-11-24 | Sprint Review 1 | FR6, FR8, FR9, FR13, FR14, FR16, FR18, FR19, FR20, and FR25 revised. PB-08 moved to Sprint 1. Details: `docs/requirements/sprint-review-1.md`. |
 | 2026-11-25 | PB-05/PB-07 follow-up | FR6 material units and pricing-source truth; FR8 finishing/display truth; FR16 unit-aware usage and reversal; FR19 queue statuses; FR20 fail/reopen transitions; FR22 per-unit waste KPI. Machine masters and tables removed. |
+| 2026-11-26 | PB-10 | FR25 audit coverage and append-only guard; FR26 three backup types, owner schedules and retention, download, pinning, quota warning. Acceptance text unchanged; implementation notes added. |

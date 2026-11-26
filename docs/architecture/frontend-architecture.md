@@ -18,7 +18,8 @@
 | `/owner/base-cost` | owner | Base cost detail |
 | `/owner/net-profit` | owner | Net profit detail |
 | `/owner/expenses` | owner | Expense entry and detail |
-| `/owner/audit` | owner | Audit trail |
+| `/owner/audit` | owner | Audit trail with search/sort and a per-row payload detail modal |
+| `/owner/backups` | owner | Backup history, manual run, download, pin/unpin, schedule and retention settings |
 | `/owner/purchases` | owner | Purchase history and purchase entry |
 | `/owner/users`, `/owner/branches`, `/owner/categories`, `/owner/products`, `/owner/materials` | owner | Administration CRUD |
 | `/manager` | manager | Branch dashboard |
@@ -94,6 +95,12 @@ src/
 - The designer order form follows Product -> Material -> Finishing -> Display. Finishing/display masters exist at `/manager/finishing`, and the quote/invoice API accepts and persists `selected_attributes[]` on `orders.selected_attributes`; there is no separate `order_attributes` snapshot table. Customer creation uses `/designer/customers/new` and returns to the order flow after save.
 - The material screen includes the `unit` dropdown with the seven values, dynamic `Biaya per {unit}` and `Harga per {unit}` labels, a reason-required stock adjustment action, and a low-stock filter. Owner, manager, and production lists render quantities through `unitLabel`/`quantityWithUnit` from `lib/units.ts`, so `m2` shows as `m²` and a null unit falls back to `pcs`. The owner marks low rows with a `menipis` text cue; manager and production also apply a row tint.
 - `/owner/products` and `/owner/categories` provide Owner CRUD (including 10-per-page product pagination and category quantity discount tiers `min_qty`, `discount_percent`). `/manager/products` and `/manager/categories` render read-only views for Branch Manager. `/manager/finishing` performs create/read/delete on global attribute types and CRUD on own-branch attributes; `/manager/pricing` (`Matriks Harga`) performs CRUD on own-branch pricing-matrix rows. The machine pages and endpoints are removed. Category discount tiers are configured but not applied to quotes or invoices.
+- `/owner/audit` keeps the owner-only global audit table with search, sort, and pagination. Each row has a `Lihat` button that opens `AuditDetailModal` from the already-loaded row: metadata plus a payload table (`before`/`after` as a three-column comparison, other payloads as key/value rows). There is no extra detail request.
+- `/owner/backups` (`BackupPage`) has a `PageBanner` with `Jalankan Backup`, and a "Pengaturan Backup" card: local/R2 enable toggles, `time` inputs, and four retention numbers per destination with the server's 7-90 / 4-52 / 6-24 / 1-10 bounds. The card shows "Penggunaan R2: X dari Y (Z%)", amber at 80% and red at 100%, the pinned count, "R2 nonaktif, backup lokal saja." when remote is off, and a warning when R2 is enabled but unconfigured (credentials stay operator-only in `.env`).
+  - "Riwayat Backup" is a paginated table: Waktu, Jenis (Manual/Terjadwal), Tujuan (Lokal/R2/Keduanya), Status (Menunggu/Berjalan/Berhasil/Sebagian/Gagal), Ukuran, Aksi. Status carries `R2 dilewati`, `Retensi gagal: ...`, and the run error; a `running` row older than 30 minutes shows `Mungkin macet`.
+  - `Unduh` is a normal same-origin link to `/api/v1/backups/{id}/download` and only renders when `local_available` or `remote_available`; otherwise the row shows `Tidak tersedia`. `Sematkan`/`Lepas` is a TanStack mutation that invalidates the list and settings.
+  - The list refetches every 5 seconds while any queued/running row is at most 2 minutes old; after that it stops and shows "Belum ada hasil. Periksa worker." when every active row is older. The run button is disabled while any queued/running row is under 30 minutes old. A finished run refreshes the settings query so usage updates.
+  - The page uses the shared `Card`, `Table`, `Pagination`, `Input`, `Checkbox`, `Badge`, `EmptyState`, `Spinner`, `Toast`, and `Button`; the settings grid stacks below `sm`. Copy is Indonesian.
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
   spec (10px uppercase label, 22px/800 value). Controls are 40px tall, labels 10px uppercase.
 - `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only
