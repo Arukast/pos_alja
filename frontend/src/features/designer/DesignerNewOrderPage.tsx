@@ -79,7 +79,7 @@ const emptyItem: DraftItemState = {
 export function DesignerNewOrderPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const optionsQuery = useQuery({ queryKey: ['quote-options'], queryFn: api.quoteOptions });
+    const optionsQuery = useQuery({ queryKey: ['quote-options'], queryFn: () => api.quoteOptions() });
 
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [customerSearch, setCustomerSearch] = useState('');
@@ -101,23 +101,19 @@ export function DesignerNewOrderPage() {
 
     const options = optionsQuery.data;
     const selectedProduct = (options?.products ?? []).find((product) => product.id === item.product_id);
-    const selectedCategory = (options?.categories ?? []).find(
-        (category) => category.id === selectedProduct?.category?.id
+    const isAreaProduct = selectedProduct?.pricing_type === 'area';
+    const needsWidth = isAreaProduct;
+    const needsLength = isAreaProduct;
+    const mappedMaterialIds = selectedProduct?.material_ids ?? [];
+    const availableMaterials = (options?.materials ?? []).filter(
+        (material) => mappedMaterialIds.length === 0 || mappedMaterialIds.includes(material.id)
     );
-    const archetype = selectedProduct?.category?.calculation_archetype ?? 'surface_area';
-    const needsWidth = archetype === 'surface_area';
-    const needsLength = archetype === 'surface_area' || archetype === 'linear_dimension';
-    const allowedAttributeTypes = selectedCategory?.allowed_attribute_types ?? [];
 
     const finishingOptions = (options?.attributes ?? []).filter(
-        (attribute) =>
-            attribute.type === 'finishing' &&
-            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('finishing'))
+        (attribute) => attribute.type === 'finishing'
     );
     const displayOptions = (options?.attributes ?? []).filter(
-        (attribute) =>
-            attribute.type === 'display' &&
-            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('display'))
+        (attribute) => attribute.type === 'display'
     );
 
     const customerList = customersQuery.data?.data ?? [];
@@ -433,13 +429,26 @@ export function DesignerNewOrderPage() {
                                         <Select
                                             label="Produk"
                                             value={item.product_id}
-                                            onChange={(event) =>
+                                            onChange={(event) => {
+                                                const nextProductId = event.target.value;
+                                                const nextProduct = (options?.products ?? []).find(
+                                                    (product) => product.id === nextProductId
+                                                );
+                                                const nextAllowedIds =
+                                                    nextProduct?.material_ids ?? [];
+                                                const keepMaterial =
+                                                    nextAllowedIds.length === 0 ||
+                                                    nextAllowedIds.includes(item.material_id);
+
                                                 updatePricingItem({
-                                                    product_id: event.target.value,
+                                                    product_id: nextProductId,
+                                                    material_id: keepMaterial
+                                                        ? item.material_id
+                                                        : '',
                                                     finishing_id: '',
                                                     display_id: '',
-                                                })
-                                            }
+                                                });
+                                            }}
                                         >
                                             <option value="">Pilih produk</option>
                                             {(options?.products ?? []).map((product) => (
@@ -456,7 +465,7 @@ export function DesignerNewOrderPage() {
                                             }
                                         >
                                             <option value="">Pilih bahan</option>
-                                            {(options?.materials ?? []).map((material) => (
+                                            {availableMaterials.map((material) => (
                                                 <option key={material.id} value={material.id}>
                                                     {material.name}
                                                 </option>

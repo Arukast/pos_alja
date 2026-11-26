@@ -260,6 +260,12 @@ Drill status: **not verified.** This environment has no Docker CLI, no PostgreSQ
 - The `change()` migration (`backups.filename` nullable), the Docker image with `postgresql-client-16`, and the nginx config are unverified in this environment (no Docker, no `pg_dump`, no nginx binary).
 - UI smoke and 390/768/1440 screenshots are recorded in `.ai-docs/screens/pb10/`; dark mode remains unverified.
 
+### 7.1 Irreversible Drop Migrations
+
+The Unit A drop migrations (`2026_11_27_000003_drop_product_category_discounts_table.php` and `2026_11_27_000004_drop_attribute_types_table.php`) are irreversible. Their `down()` methods recreate empty tables only; dropped rows cannot be recovered.
+
+Before `php artisan migrate --force` on any database that may contain rows in `product_category_discounts` or `attribute_types`, take and verify a backup: at minimum `pg_dump -Fc -t product_category_discounts -t attribute_types <database>` (a full database dump is also acceptable), confirm it restores, and get Owner approval to proceed. If either table is non-empty and no verified backup exists, stop.
+
 ## 8. Deployment Checklist
 
 1. Set production `.env` values, including HTTPS session and Sanctum domains.

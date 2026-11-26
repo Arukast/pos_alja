@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\User;
+use App\Modules\Catalog\Actions\SetMinimumStock;
 use App\Modules\Catalog\Http\Requests\AdjustStockRequest;
+use App\Modules\Catalog\Http\Requests\SetMinimumStockRequest;
 use App\Modules\Catalog\Http\Requests\StoreMaterialRequest;
 use App\Modules\Catalog\Http\Resources\MaterialResource;
 use App\Modules\Catalog\Http\Resources\ProductionMaterialResource;
@@ -347,6 +349,26 @@ final class MaterialController extends Controller
                 $branchId,
             );
         });
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function minStock(
+        SetMinimumStockRequest $request,
+        Material $material,
+        SetMinimumStock $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $action->execute($material, $request->validated(), $actor);
 
         return response()->json([
             'material' => new MaterialResource(

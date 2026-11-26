@@ -2,7 +2,6 @@ import { API_BASE, apiFetch } from '../lib/api';
 import type {
     ActivityLog,
     Attribute,
-    AttributeType,
     Backup,
     BackupSettings,
     BaseCostReport,
@@ -92,8 +91,6 @@ export const api = {
 
     categories: () => apiFetch<{ data: Category[] }>('/categories'),
 
-    attributeTypes: () => apiFetch<{ data: AttributeType[] }>('/attribute-types'),
-
     attributes: (params: QueryParams = {}) =>
         apiFetch<{ data: Attribute[] }>(`/attributes${queryString(params)}`),
 
@@ -171,7 +168,8 @@ export const api = {
         leaderboard: () => apiFetch<LeaderboardReport>('/reports/designer-leaderboard'),
     },
 
-    quoteOptions: () => apiFetch<QuoteOptions>('/quotes/options'),
+    quoteOptions: (params: QueryParams = {}) =>
+        apiFetch<QuoteOptions>(`/quotes/options${queryString(params)}`),
 
     quote: (data: MutationBody) => mutate<{ quote: Quote }>('/quotes', 'POST', data),
 
@@ -266,12 +264,13 @@ export const api = {
             mutate<{ material: Material }>(`/materials/${id}/stock`, 'POST', data),
         activateMaterial: (id: string, data: MutationBody) =>
             mutate<{ material: Material }>(`/materials/${id}/activate`, 'POST', data),
+        setMaterialMinimumStock: (id: string, data: MutationBody) =>
+            mutate<{ material: Material }>(`/materials/${id}/min-stock`, 'PATCH', data),
 
         createCategory: (data: MutationBody) =>
             mutate<{ category: Category }>('/categories', 'POST', data),
         updateCategory: (id: string, data: MutationBody) =>
             mutate<{ category: Category }>(`/categories/${id}`, 'PUT', data),
-        deleteCategory: (id: string) => mutate<void>(`/categories/${id}`, 'DELETE'),
 
         createProduct: (data: MutationBody) =>
             mutate<{ product: Product }>('/products', 'POST', data),
@@ -281,16 +280,10 @@ export const api = {
         restoreProduct: (id: string) =>
             mutate<{ product: Product }>(`/products/${id}/restore`, 'POST'),
 
-        createAttributeType: (data: MutationBody) =>
-            mutate<{ attribute_type: AttributeType }>('/attribute-types', 'POST', data),
-        deleteAttributeType: (id: string) =>
-            mutate<void>(`/attribute-types/${id}`, 'DELETE'),
-
         createAttribute: (data: MutationBody) =>
             mutate<{ attribute: Attribute }>('/attributes', 'POST', data),
         updateAttribute: (id: string, data: MutationBody) =>
             mutate<{ attribute: Attribute }>(`/attributes/${id}`, 'PUT', data),
-        deleteAttribute: (id: string) => mutate<void>(`/attributes/${id}`, 'DELETE'),
 
         createPricing: (data: MutationBody) =>
             mutate<{ pricing: Pricing }>('/pricing', 'POST', data),

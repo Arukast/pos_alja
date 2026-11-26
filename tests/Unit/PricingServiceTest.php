@@ -44,7 +44,6 @@ class PricingServiceTest extends TestCase
     {
         $category = ProductCategory::create([
             'name' => 'Merchandise',
-            'calculation_archetype' => 'per_piece',
         ]);
 
         $product = Product::create([
@@ -110,7 +109,6 @@ class PricingServiceTest extends TestCase
     {
         $category = ProductCategory::create([
             'name' => 'Large Format',
-            'calculation_archetype' => 'surface_area',
         ]);
 
         $product = Product::create([
@@ -177,7 +175,6 @@ class PricingServiceTest extends TestCase
     {
         $category = ProductCategory::create([
             'name' => 'Large Format',
-            'calculation_archetype' => 'surface_area',
         ]);
 
         $product = Product::create([
@@ -222,7 +219,6 @@ class PricingServiceTest extends TestCase
     {
         $category = ProductCategory::create([
             'name' => 'Merchandise',
-            'calculation_archetype' => 'per_piece',
         ]);
 
         $product = Product::create([

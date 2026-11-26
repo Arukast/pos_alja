@@ -2,14 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Attribute, AttributeType, Material, Pricing, UserRecord } from '../../api/types';
+import type { Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -20,8 +22,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { collectionAsPage } from '../../lib/pagination';
-import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
+import { ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 import { ledgerQuantity, quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
@@ -157,14 +158,27 @@ export function ManagerMaterialsPage() {
                     cell: (material) => (
                         <div>
                             <span className="block font-medium">{material.name}</span>
+                            {material.category && !material.category.is_active ? (
+                                <Badge tone="warning" className="mt-1">
+                                    Kategori nonaktif
+                                </Badge>
+                            ) : null}
                             <p className="text-light-muted text-xs dark:text-gray-400">
                                 {[material.type, material.dimensions, unitLabel(material.unit)]
                                     .filter(Boolean)
                                     .join(' · ')}
-                                <span className="sm:hidden">
-                                    {' · '}Min {quantityWithUnit(material.min_stock, material.unit)}
-                                </span>
                             </p>
+                            <div className="text-light-muted mt-1 flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 sm:hidden">
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    Min
+                                </span>
+                                <MinimumStockInline
+                                    materialId={material.id}
+                                    label="cabang ini"
+                                    value={material.min_stock ?? '0'}
+                                    unit={material.unit}
+                                />
+                            </div>
                             {material.is_low_stock === true ? (
                                 <span className="mt-1 block sm:hidden">
                                     <Badge tone="warning">Menipis</Badge>
@@ -182,11 +196,18 @@ export function ManagerMaterialsPage() {
                 {
                     header: 'Minimum',
                     className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
-                    cell: (material) => quantityWithUnit(material.min_stock, material.unit),
+                    cell: (material) => (
+                        <MinimumStockInline
+                            materialId={material.id}
+                            label="cabang ini"
+                            value={material.min_stock ?? '0'}
+                            unit={material.unit}
+                        />
+                    ),
                 },
                 {
                     header: 'Biaya',
-                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell',
                     cell: (material) => formatMoney(material.cost),
                 },
                 {
@@ -322,76 +343,7 @@ export function ManagerCategoriesPage() {
 }
 
 export function ManagerFinishingPage() {
-    const typeFields: Array<CrudField<AttributeType>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'calculation_archetype',
-            label: 'Arketipe',
-            type: 'select',
-            options: [
-                { value: 'per_piece', label: archetypeLabel('per_piece') },
-                { value: 'surface_area', label: archetypeLabel('surface_area') },
-                { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
-                { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
-            ],
-        },
-    ];
-
-    const attributeFields: Array<CrudField<Attribute>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'type',
-            label: 'Tipe',
-            type: 'select',
-            options: [
-                { value: 'finishing', label: attributeTypeLabel('finishing') },
-                { value: 'cut', label: attributeTypeLabel('cut') },
-                { value: 'display', label: attributeTypeLabel('display') },
-            ],
-        },
-    ];
-
-    return (
-        <div className="space-y-8">
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Display & Finishing"
-                description="Kelola atribut finishing, potong, dan display."
-                queryKey={['manager', 'attributes']}
-                queryFn={() => api.attributes().then((response) => collectionAsPage(response.data))}
-                columns={[
-                    { header: 'Nama', cell: (attribute) => <span className="font-medium">{attribute.name}</span> },
-                    { header: 'Tipe', cell: (attribute) => attributeTypeLabel(attribute.type) },
-                ]}
-                fields={attributeFields}
-                rowLabel={(attribute) => attribute.name}
-                create={(values) => api.admin.createAttribute(values)}
-                update={(id, values) => api.admin.updateAttribute(id, values)}
-                remove={(id) => api.admin.deleteAttribute(id)}
-                createLabel="Tambah atribut"
-                paginated={false}
-            />
-
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Tipe Atribut"
-                description="Tipe yang digunakan oleh perhitungan harga."
-                queryKey={['manager', 'attribute-types']}
-                queryFn={() => api.attributeTypes().then((response) => collectionAsPage(response.data))}
-                columns={[
-                    { header: 'Nama', cell: (type) => <span className="font-medium">{type.name}</span> },
-                    { header: 'Arketipe', cell: (type) => archetypeLabel(type.calculation_archetype) },
-                ]}
-                fields={typeFields}
-                rowLabel={(type) => type.name}
-                create={(values) => api.admin.createAttributeType(values)}
-                remove={(id) => api.admin.deleteAttributeType(id)}
-                createLabel="Tambah tipe atribut"
-                paginated={false}
-                hideBanner
-            />
-        </div>
-    );
+    return <AttributesPage eyebrow="Konfigurasi" queryKeyPrefix="manager" />;
 }
 
 export function ManagerProductsPage() {

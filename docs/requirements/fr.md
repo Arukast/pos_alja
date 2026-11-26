@@ -90,19 +90,20 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 ## 2. Products
 
 ### FR6 Manage products, categories, materials, and prices
-- **Requirement:** Owner SHALL manage products, product categories, materials, finishing/display options, and quantity discounts. Branch Manager SHALL read products and categories, manage global attribute types and own-branch attributes and pricing rows, create materials, and manage branch stock.
+- **Requirement:** Owner SHALL manage products, product categories, materials, and finishing/display options. Branch Manager SHALL read products and categories, manage own-branch attributes and pricing rows, create materials, and manage branch stock.
 - **Acceptance criteria:**
-  - Product CRUD includes name, category, pricing type (`unit` or `area`), and active status.
-  - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`). The tiers are configured but not applied to quotes or invoices.
+  - Product CRUD includes name, category, pricing type (`unit` or `area`), compatible material mapping (`material_ids[]`), and active status. `products.pricing_type` drives area (`width * length`) vs per-unit price calculations.
+  - Category CRUD includes name, description, active status, and the derived product count; categories are never deleted, so `is_active` is the retire mechanism. Legacy `calculation_archetype` and `allowed_attribute_types` remain dead columns but are removed from the category form and API. Quantity discount tiers are removed.
+  - Products use the same retire mechanism (`is_active`). An active product may still be created or edited under an inactive category (no 422 guard); it stays hidden from the designer option list until the category is active again.
+  - The designer `/quotes/options` list follows catalog visibility: active categories only, active products in an active or null category, materials in an active category, and active attributes unless `include_inactive_attributes=1`. The response omits `products_count`; product categories report `is_active`, while material categories remain `{id,name}`.
   - Material master includes name, category, unit, type, dimensions, base cost, and base price. The allowed units are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; `m2` displays as `m²`. Create requires `unit`; update accepts it optionally. The column defaults to `pcs`.
   - Existing materials are backfilled by `MaterialUnit::backfill()`. The first match wins: material name keywords (`banner`, `vinyl`, `flexi`, `backdrop`, `spandex`, `spanduk` -> `m2`; `kertas`, `paper`, `hvs`, `art paper`, `sticker`, `stiker` -> `lembar`; `tinta`, `ink`, `solvent`, `pelarut` -> `liter`), then the same keyword sets against the category name, then a `surface_area` category archetype -> `m2`, otherwise `pcs`. A null or legacy value reads as `pcs`.
   - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form offers finishing/display selection, and the selection is persisted in `orders.selected_attributes`.
-  - The current price source is the pricing matrix: a quote selects a `pricing` row by product, material, customer type, and `min_qty`, then adds the selected `attribute_pricing` modifiers. The target model (material price + finishing/display price + reseller discount + category quantity discount) is not implemented.
-  - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.settings.reseller_discount_percent` and applied when a Reseller quote falls back to the Reguler pricing row.
-  - `branches.settings.reseller_discount_percent` is the current source of the reseller discount. It is API-only, has no SPA field, and is currently uncapped. The target `branches.reseller_discount_percent` column is not implemented. The invoice branch's value applies.
-  - The category quantity discount would use the tier with the highest `min_qty` less than or equal to the item quantity; the current quote/invoice path does not apply it.
+  - The current price source is the pricing matrix: a quote selects a `pricing` row by product, material, customer type, and `min_qty`, then adds the selected `attribute_pricing` modifiers. The target model (material price + finishing/display price + reseller discount + product-level quantity tiers, designed in Unit B) is not implemented.
+  - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.reseller_discount_percent` (falling back to `branches.settings.reseller_discount_percent`) and applied when a Reseller quote falls back to the Reguler pricing row.
+  - `branches.reseller_discount_percent` (`0–100`, default `0`) is the reseller-discount source, mirrored into `branches.settings.reseller_discount_percent` by `BranchService` and editable on `/owner/branches`. `Branch::getResellerDiscountPercent()` falls back to `settings` for legacy rows. The invoice branch's value applies.
   - Machine masters and machine selection are removed; the `machines` and `machine_pricing` tables are dropped. The pricing matrix is a target removal and remains the current price source.
-  - Category, product, and discount changes are Owner-only and written to the audit log. Managers manage global attribute types and own-branch attributes and pricing rows; branch stock changes are branch-scoped.
+  - Category and product changes are Owner-only; product create, update, delete, and restore are written to the audit log, while category, attribute, material, and minimum-stock writes are not yet audited. Managers manage own-branch attributes and pricing rows; global attributes are read-only, attributes cannot be moved to another branch after creation, and the attribute delete endpoint is removed. Branch stock changes are branch-scoped.
 - **Traceability:** NFR1, NFR7, PB-01.
 
 ### FR7 Search, filter, and paginate products
@@ -125,7 +126,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
   - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. Finishing and display selections are persisted in `orders.selected_attributes`; there is no `order_attributes` price/cost snapshot.
-  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone.
+  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone. When a product defines compatible materials (`material_product`), the Designer material selector filters to those mapped materials (falling back to all branch materials when no mapping exists). The option lists hide inactive categories and the products/materials they contain. The designer edit page requests `include_inactive_attributes=1` with its own query key, so a saved inactive finishing/display stays selected and removable without being offered for new rows.
   - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]` and stores it on the order.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
   - Submission creates one invoice, its orders (including `width`, `length`, and `selected_attributes`), initial status logs, and an activity log in one transaction. No `order_attributes` rows are written.
@@ -139,7 +140,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Allowed only while every order on the invoice has `status = 0` and the invoice status is `0` or `1`.
   - A request on a fully paid invoice (`status = 2`), after production starts, or for an invoice containing an `is_manual_price` order is rejected with HTTP 409.
   - The Designer may add, remove, or change items, quantities, specifications, and the deadline. An omitted `deadline` preserves the stored value; an explicit `null` clears it.
-  - Invoice `grand_total`, `total_cost`, `total_profit`, quantity discounts, and `accounts_receivable` are recalculated; existing payments are preserved.
+  - Invoice `grand_total`, `total_cost`, `total_profit`, and `accounts_receivable` are recalculated; existing payments are preserved.
   - Invoice status is recalculated: `2` when the receivable is zero, `1` when a receivable remains after a payment.
   - The remaining receivable cannot become negative. If the new total is less than the total already paid, the request is rejected with HTTP 422.
   - Before/after values are written to the audit log with the actor and branch.
@@ -233,6 +234,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Stock is shown per branch with current stock and minimum stock.
   - Low-stock items are highlighted or listed separately.
   - A warning appears when `current_stock <= min_stock`.
+  - Owner and Branch Manager can edit the branch minimum-stock threshold without a stock-ledger movement or activity log; `current_stock` is unchanged by the edit, and the branch-stock row must already exist.
   - Owner may view all branches or one branch.
 - **Traceability:** NFR4, NFR9, PB-05.
 
@@ -325,9 +327,10 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Requirement:** The system SHALL record an audit trail for important changes, including payments, order changes, and stock adjustments.
 - **Acceptance criteria:**
   - Log fields: actor, role, branch, action, model type, model ID, before/after payload, timestamp.
-  - Covered actions: payment create/settle, order create/update, design status, stock purchase/usage/adjustment, expense create, customer create/update, user/branch/product/category/material/discount changes.
+  - Covered actions in code: product create/update/delete/restore, invoice create/update, purchase create, stock adjustment, user create/update/delete/restore, and branch create/update/delete.
   - Owner can view and filter the audit trail.
   - Audit rows are append-only from the application.
+  - **Audit debt:** payment create/settle, design status, expense creation, customer create/update, and category/attribute/material/minimum-stock writes are not yet logged. In particular, `PATCH /materials/{material}/min-stock` writes no `activity_logs` row (accepted FR25 debt, see `docs/requirements/implementation-gaps.md`).
 - **Traceability:** NFR5, NFR9, PB-10.
 - **Implementation note (PB-10, 2026-11-26):**
   - `App\Services\AuditLogger` is the single write path. It records actor, role, branch, action, `model_type`, `model_id`, payload, and timestamp; a null actor writes `username = system`, `role = system`, `user_id = null`, and `branch_id = null`. Descriptions are capped at 255 characters; payload keys such as `password`, `token`, and `secret` are dropped.
@@ -380,4 +383,5 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 | :--- | :--- | :--- |
 | 2026-11-24 | Sprint Review 1 | FR6, FR8, FR9, FR13, FR14, FR16, FR18, FR19, FR20, and FR25 revised. PB-08 moved to Sprint 1. Details: `docs/requirements/sprint-review-1.md`. |
 | 2026-11-25 | PB-05/PB-07 follow-up | FR6 material units and pricing-source truth; FR8 finishing/display truth; FR16 unit-aware usage and reversal; FR19 queue statuses; FR20 fail/reopen transitions; FR22 per-unit waste KPI. Machine masters and tables removed. |
+| 2026-11-26 | Unit A catalog cleanup | FR6 category description/active status with no hard delete, attribute types removed, Manager own-branch attributes; FR8/FR9 order-history and inactive-attribute edits; FR17 minimum stock editable per branch; FR25 minimum-stock audit debt. Category quantity-discount tiers removed; product-level tiers move to Unit B. |
 | 2026-11-26 | PB-10 | FR25 audit coverage and append-only guard; FR26 three backup types, owner schedules and retention, download, pinning, quota warning. Acceptance text unchanged; implementation notes added. |

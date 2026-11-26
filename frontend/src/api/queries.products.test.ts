@@ -41,6 +41,7 @@ describe('api.products and admin product mutations', () => {
             product_category_id: 'cat-1',
             pricing_type: 'area',
             is_active: true,
+            material_ids: ['mat-1'],
         };
         await api.admin.createProduct(createBody);
         expect(mockedApiFetch).toHaveBeenCalledWith('/products', {
@@ -68,15 +69,11 @@ describe('api.products and admin product mutations', () => {
         });
     });
 
-    it('calls create, update, and delete category endpoints with discount_tiers payloads', async () => {
+    it('calls create and update category endpoints with description and active status', async () => {
         const createCategoryBody = {
             name: 'Print Lembaran',
-            calculation_archetype: 'per_piece',
-            allowed_attribute_types: ['finishing'],
-            discount_tiers: [
-                { min_qty: 10, discount_percent: 5 },
-                { min_qty: 50, discount_percent: 10 },
-            ],
+            description: 'Cetak lembaran',
+            is_active: true,
         };
         await api.admin.createCategory(createCategoryBody);
         expect(mockedApiFetch).toHaveBeenCalledWith('/categories', {
@@ -85,19 +82,77 @@ describe('api.products and admin product mutations', () => {
         });
 
         const updateCategoryBody = {
-            ...createCategoryBody,
-            discount_tiers: [{ min_qty: 20, discount_percent: 7.5 }],
+            name: 'Print Lembaran Updated',
+            description: null,
+            is_active: false,
         };
         await api.admin.updateCategory('cat-1', updateCategoryBody);
         expect(mockedApiFetch).toHaveBeenCalledWith('/categories/cat-1', {
             method: 'PUT',
             body: JSON.stringify(updateCategoryBody),
         });
+    });
 
-        await api.admin.deleteCategory('cat-1');
-        expect(mockedApiFetch).toHaveBeenCalledWith('/categories/cat-1', {
-            method: 'DELETE',
-            body: undefined,
+    it('calls the material minimum-stock endpoint with a branch-scoped payload', async () => {
+        const body = { branch_id: 'br-1', min_stock: 4.5 };
+
+        await api.admin.setMaterialMinimumStock('mat-1', body);
+
+        expect(mockedApiFetch).toHaveBeenCalledWith('/materials/mat-1/min-stock', {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        });
+    });
+
+    it('serializes the include_inactive_attributes flag for quote options', async () => {
+        await api.quoteOptions({ include_inactive_attributes: 1 });
+        expect(mockedApiFetch).toHaveBeenCalledWith(
+            '/quotes/options?include_inactive_attributes=1'
+        );
+
+        await api.quoteOptions();
+        expect(mockedApiFetch).toHaveBeenCalledWith('/quotes/options');
+    });
+
+    it('calls attribute and branch admin endpoints with pricing, active status, and reseller discount', async () => {
+        const attributeBody = {
+            name: 'Laminasi Glossy',
+            type: 'finishing',
+            branch_id: null,
+            price: 5000,
+            cost: 2000,
+            is_active: true,
+        };
+        await api.admin.createAttribute(attributeBody);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attributes', {
+            method: 'POST',
+            body: JSON.stringify(attributeBody),
+        });
+
+        const attributeUpdate = { ...attributeBody, is_active: false };
+        await api.admin.updateAttribute('attr-1', attributeUpdate);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attributes/attr-1', {
+            method: 'PUT',
+            body: JSON.stringify(attributeUpdate),
+        });
+
+        const branchBody = {
+            name: 'Cabang Pusat',
+            code: 'PST',
+            is_active: true,
+            reseller_discount_percent: 12.5,
+        };
+        await api.admin.createBranch(branchBody);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/branches', {
+            method: 'POST',
+            body: JSON.stringify(branchBody),
+        });
+
+        const branchUpdate = { ...branchBody, reseller_discount_percent: 15 };
+        await api.admin.updateBranch('br-1', branchUpdate);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/branches/br-1', {
+            method: 'PUT',
+            body: JSON.stringify(branchUpdate),
         });
     });
 });

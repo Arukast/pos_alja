@@ -17,13 +17,15 @@ final class UpdateProduct
     public function __construct(private readonly AuditLogger $audit) {}
 
     /**
-     * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool}  $data
+     * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool, material_ids?: array<int, string>}  $data
      */
     public function execute(Product $product, array $data, User $actor): Product
     {
         try {
             $updated = DB::transaction(function () use ($product, $data, $actor): Product {
-                $before = $product->toArray();
+                $before = array_merge($product->toArray(), [
+                    'material_ids' => $product->materials()->pluck('materials.id')->values()->all(),
+                ]);
 
                 $product->update([
                     'name' => $data['name'],
@@ -34,7 +36,13 @@ final class UpdateProduct
                         : (bool) $product->is_active,
                 ]);
 
-                $after = $product->fresh()?->toArray() ?? $product->toArray();
+                if (array_key_exists('material_ids', $data)) {
+                    $product->materials()->sync(array_values($data['material_ids']));
+                }
+
+                $after = array_merge($product->fresh()?->toArray() ?? $product->toArray(), [
+                    'material_ids' => $product->materials()->pluck('materials.id')->values()->all(),
+                ]);
 
                 $this->audit->record(
                     $actor,
@@ -61,6 +69,6 @@ final class UpdateProduct
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $updated->load('category');
+        return $updated->load(['category', 'materials']);
     }
 }

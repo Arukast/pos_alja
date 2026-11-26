@@ -126,8 +126,9 @@ final class InvoiceController extends Controller
                 'designer',
                 'branch',
                 'orders',
-                'orders.pricing.product.category',
-                'orders.pricing.material',
+                'orders.pricing' => fn ($query) => $query->withTrashed(),
+                'orders.pricing.product' => fn ($query) => $query->withTrashed(),
+                'orders.pricing.material' => fn ($query) => $query->withTrashed(),
                 'payments',
             ];
 

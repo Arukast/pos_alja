@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    archetypeLabel,
     attributeTypeLabel,
     expenseTypeLabel,
     modelTypeLabel,
@@ -63,19 +62,6 @@ describe('paymentMethodLabel', () => {
 
     it('falls back to the input for an unknown method', () => {
         expect(paymentMethodLabel('Cheque')).toBe('Cheque');
-    });
-});
-
-describe('archetypeLabel', () => {
-    it('labels every stored archetype', () => {
-        expect(archetypeLabel('per_piece')).toBe('Per Potong');
-        expect(archetypeLabel('surface_area')).toBe('Per Meter Persegi');
-        expect(archetypeLabel('linear_dimension')).toBe('Per Meter Lari');
-        expect(archetypeLabel('tiered_volume')).toBe('Harga Bertingkat');
-    });
-
-    it('falls back to the input for an unknown archetype', () => {
-        expect(archetypeLabel('flat_rate')).toBe('flat_rate');
     });
 });
 

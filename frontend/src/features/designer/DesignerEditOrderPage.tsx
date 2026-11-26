@@ -13,6 +13,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
+import { selectableAttributes } from './attributeOptions';
 import { hasMissingLinearLength } from './orderSpecs';
 
 interface EditableOrderItem {
@@ -80,7 +81,7 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
     const [deadline, setDeadline] = useState(invoice.deadline ?? '');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [notice, setNotice] = useState<string | null>(null);
-    const optionsQuery = useQuery({ queryKey: ['quote-options'], queryFn: api.quoteOptions });
+    const optionsQuery = useQuery({ queryKey: ['quote-options', 'edit'], queryFn: () => api.quoteOptions({ include_inactive_attributes: 1 }) });
 
     const update = useMutation({
         mutationFn: () => api.updateInvoiceItems(invoiceId, {
@@ -191,10 +192,10 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
                                 <Input label="Lebar (m)" type="number" min="0.01" step="0.01" value={item.width} error={errors[`items.${index}.width`]} onChange={(event) => handleItemChange(index, { width: event.target.value })} />
                                 <Input label="Panjang (m)" type="number" min="0.01" step="0.01" value={item.length} error={errors[`items.${index}.length`]} onChange={(event) => handleItemChange(index, { length: event.target.value })} />
                                 <Select label="Finishing" value={attributes.find((attribute) => attribute.type === 'finishing' && item.selected_attributes.includes(attribute.id))?.id ?? ''} onChange={(event) => handleAttributeChange(index, 'finishing', event.target.value)}>
-                                    <option value="">Tanpa finishing</option>{attributes.filter((attribute) => attribute.type === 'finishing').map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}</option>)}
+                                    <option value="">Tanpa finishing</option>{selectableAttributes(attributes, 'finishing', item.selected_attributes).map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}{attribute.is_active ? '' : ' (nonaktif)'}</option>)}
                                 </Select>
                                 <Select label="Display" value={attributes.find((attribute) => attribute.type === 'display' && item.selected_attributes.includes(attribute.id))?.id ?? ''} onChange={(event) => handleAttributeChange(index, 'display', event.target.value)}>
-                                    <option value="">Tanpa display</option>{attributes.filter((attribute) => attribute.type === 'display').map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}</option>)}
+                                    <option value="">Tanpa display</option>{selectableAttributes(attributes, 'display', item.selected_attributes).map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}{attribute.is_active ? '' : ' (nonaktif)'}</option>)}
                                 </Select>
                                 <Input label="Catatan" value={item.notes} error={errors[`items.${index}.notes`]} onChange={(event) => handleItemChange(index, { notes: event.target.value })} />
                             </div>

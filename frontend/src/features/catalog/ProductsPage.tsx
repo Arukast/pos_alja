@@ -2,13 +2,25 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Product } from '../../api/types';
+import type { Material, Product } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { pricingTypeLabel } from '../../lib/labels';
+
+async function fetchAllMaterials(): Promise<Material[]> {
+    const first = await api.materials({ page: 1 });
+    const rows = [...first.data];
+
+    for (let nextPage = 2; nextPage <= first.meta.last_page; nextPage++) {
+        const pageResponse = await api.materials({ page: nextPage });
+        rows.push(...pageResponse.data);
+    }
+
+    return rows;
+}
 
 export function ProductsPage({
     eyebrow,
@@ -20,6 +32,11 @@ export function ProductsPage({
     readOnly?: boolean;
 }) {
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const materials = useQuery({
+        queryKey: ['materials', 'all-options'],
+        queryFn: fetchAllMaterials,
+        enabled: !readOnly,
+    });
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
     const [categoryId, setCategoryId] = useState('');
@@ -33,7 +50,11 @@ export function ProductsPage({
 
     const categoryOptions = (categories.data?.data ?? []).map((category) => ({
         value: category.id,
-        label: category.name,
+        label: category.is_active ? category.name : `${category.name} (nonaktif)`,
+    }));
+    const materialOptions = (materials.data ?? []).map((material) => ({
+        value: material.id,
+        label: material.name,
     }));
 
     const fields: Array<CrudField<Product>> = [
@@ -57,6 +78,14 @@ export function ProductsPage({
                 { value: 'area', label: pricingTypeLabel('area') },
             ],
             getValue: (product) => product.pricing_type,
+        },
+        {
+            key: 'material_ids',
+            label: 'Bahan yang Kompatibel',
+            type: 'multiselect',
+            defaultValue: [],
+            options: materialOptions,
+            getValue: (product) => product.material_ids ?? [],
         },
         {
             key: 'is_active',
@@ -127,17 +156,44 @@ export function ProductsPage({
             columns={[
                 {
                     header: 'Nama',
-                    cell: (product) => <span className="font-medium">{product.name}</span>,
+                    cell: (product) => (
+                        <div>
+                            <span className="block font-medium">{product.name}</span>
+                            <div className="mt-1 flex flex-col items-start gap-1 sm:hidden">
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    {product.category?.name ?? '-'}
+                                </span>
+                                {product.category && !product.category.is_active ? (
+                                    <Badge tone="warning">Kategori nonaktif</Badge>
+                                ) : null}
+                            </div>
+                        </div>
+                    ),
                 },
                 {
                     header: 'Kategori',
                     className: 'hidden sm:table-cell',
-                    cell: (product) => product.category?.name ?? '-',
+                    cell: (product) => (
+                        <div className="flex flex-col items-start gap-1">
+                            <span>{product.category?.name ?? '-'}</span>
+                            {product.category && !product.category.is_active ? (
+                                <Badge tone="warning">Kategori nonaktif</Badge>
+                            ) : null}
+                        </div>
+                    ),
                 },
                 {
                     header: 'Tipe Harga',
                     className: 'hidden md:table-cell',
                     cell: (product) => pricingTypeLabel(product.pricing_type),
+                },
+                {
+                    header: 'Bahan',
+                    className: 'hidden lg:table-cell',
+                    cell: (product) =>
+                        (product.materials ?? []).length === 0
+                            ? 'Semua bahan'
+                            : product.materials.map((material) => material.name).join(', '),
                 },
                 {
                     header: 'Status',
@@ -154,7 +210,13 @@ export function ProductsPage({
                 readOnly
                     ? undefined
                     : (values) =>
-                          api.admin.createProduct({ ...values, is_active: Boolean(values.is_active) })
+                          api.admin.createProduct({
+                              ...values,
+                              is_active: Boolean(values.is_active),
+                              material_ids: Array.isArray(values.material_ids)
+                                  ? values.material_ids
+                                  : [],
+                          })
             }
             update={
                 readOnly
@@ -163,9 +225,11 @@ export function ProductsPage({
                           api.admin.updateProduct(id, {
                               ...values,
                               is_active: Boolean(values.is_active),
+                              material_ids: Array.isArray(values.material_ids)
+                                  ? values.material_ids
+                                  : [],
                           })
             }
-            remove={readOnly ? undefined : (id) => api.admin.deleteProduct(id)}
             createLabel="Tambah produk"
         />
     );

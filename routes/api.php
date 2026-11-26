@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Modules\Audit\Http\Controllers\BackupController;
 use App\Modules\Audit\Http\Controllers\BackupSettingController;
 use App\Modules\Catalog\Http\Controllers\AttributeController;
-use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
 use App\Modules\Catalog\Http\Controllers\MaterialController;
 use App\Modules\Catalog\Http\Controllers\PricingController;
@@ -56,7 +55,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/users/{user}/restore', [UserController::class, 'restore']);
 
         Route::get('/categories', [CategoryController::class, 'index']);
-        Route::get('/attribute-types', [AttributeTypeController::class, 'index']);
         Route::get('/attributes', [AttributeController::class, 'index']);
         Route::get('/products', [ProductController::class, 'index']);
         Route::post('/products', [ProductController::class, 'store']);
@@ -75,20 +73,16 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/materials/{material}/stock', [MaterialController::class, 'stock']);
         Route::post('/materials/{material}/adjustments', [MaterialController::class, 'adjust']);
         Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
+        Route::patch('/materials/{material}/min-stock', [MaterialController::class, 'minStock']);
 
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::post('/purchases', [PurchaseController::class, 'store']);
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/{category}', [CategoryController::class, 'update']);
-        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
-
-        Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
-        Route::delete('/attribute-types/{attributeType}', [AttributeTypeController::class, 'destroy']);
 
         Route::post('/attributes', [AttributeController::class, 'store']);
         Route::put('/attributes/{attribute}', [AttributeController::class, 'update']);
-        Route::delete('/attributes/{attribute}', [AttributeController::class, 'destroy']);
 
         Route::post('/pricing/clone-tiers', [PricingController::class, 'cloneTiers']);
         Route::post('/pricing', [PricingController::class, 'store']);
@@ -138,5 +132,15 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::get('/backup-settings', [BackupSettingController::class, 'show']);
         Route::put('/backup-settings', [BackupSettingController::class, 'update']);
+    });
+
+    // Tombstone: category deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/categories/{category}', static function (): void {
+        abort(404);
+    });
+
+    // Tombstone: attribute deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/attributes/{attribute}', static function (): void {
+        abort(404);
     });
 });

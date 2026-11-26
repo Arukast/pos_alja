@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/queries';
 import type { Branch, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
@@ -116,6 +118,13 @@ export function BranchesPage() {
         { key: 'code', label: 'Kode' },
         { key: 'phone', label: 'Telepon' },
         { key: 'address', label: 'Alamat' },
+        {
+            key: 'reseller_discount_percent',
+            label: 'Diskon Reseller (%)',
+            type: 'number',
+            defaultValue: 0,
+            getValue: (branch) => branch.reseller_discount_percent,
+        },
         { key: 'is_active', label: 'Aktif', type: 'checkbox', defaultValue: true },
     ];
 
@@ -123,13 +132,18 @@ export function BranchesPage() {
         <CrudPage
             eyebrow="Administrasi"
             title="Manajemen Cabang"
-            description="Data cabang, detail kontak, dan status aktif."
+            description="Data cabang, detail kontak, diskon reseller, dan status aktif."
             queryKey={['owner', 'branches']}
             queryFn={(page) => api.branches({ page, include_deleted: 1 })}
             columns={[
                 { header: 'Nama', cell: (branch) => <span className="font-medium">{branch.name}</span> },
                 { header: 'Kode', cell: (branch) => branch.code ?? '-' },
                 { header: 'Telepon', cell: (branch) => branch.phone ?? '-' },
+                {
+                    header: 'Diskon Reseller',
+                    className: 'text-right tabular-nums whitespace-nowrap',
+                    cell: (branch) => `${Number(branch.reseller_discount_percent)}%`,
+                },
                 {
                     header: 'Status',
                     cell: (branch) => (
@@ -141,8 +155,26 @@ export function BranchesPage() {
             ]}
             fields={fields}
             rowLabel={(branch) => branch.name}
-            create={(values) => api.admin.createBranch(values)}
-            update={(id, values) => api.admin.updateBranch(id, values)}
+            create={(values) =>
+                api.admin.createBranch({
+                    ...values,
+                    is_active: Boolean(values.is_active),
+                    reseller_discount_percent:
+                        values.reseller_discount_percent === ''
+                            ? 0
+                            : Number(values.reseller_discount_percent),
+                })
+            }
+            update={(id, values) =>
+                api.admin.updateBranch(id, {
+                    ...values,
+                    is_active: Boolean(values.is_active),
+                    reseller_discount_percent:
+                        values.reseller_discount_percent === ''
+                            ? 0
+                            : Number(values.reseller_discount_percent),
+                })
+            }
             remove={(id) => api.admin.deleteBranch(id)}
             createLabel="Tambah cabang"
         />
@@ -183,6 +215,39 @@ export function OwnerMaterialsPage() {
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
 
+    const renderStocks = (material: Material) =>
+        material.stocks.length === 0 ? (
+            '-'
+        ) : (
+            <ul className="min-w-[9rem] space-y-2">
+                {material.stocks.map((stock) => (
+                    <li key={stock.branch_id}>
+                        <span className="block font-medium">
+                            {stock.branch_name ?? '-'}
+                        </span>
+                        <span className="block tabular-nums">
+                            {quantityWithUnit(stock.current_stock, material.unit)}
+                        </span>
+                        <div className="text-light-muted flex flex-wrap items-center gap-1 text-xs dark:text-gray-400">
+                            <span>min</span>
+                            <MinimumStockInline
+                                materialId={material.id}
+                                branchId={stock.branch_id}
+                                label={stock.branch_name ?? 'cabang'}
+                                value={stock.min_stock}
+                                unit={material.unit}
+                            />
+                        </div>
+                        {stock.is_low_stock ? (
+                            <span className="block font-semibold text-amber-700 dark:text-amber-300">
+                                menipis
+                            </span>
+                        ) : null}
+                    </li>
+                ))}
+            </ul>
+        );
+
     return (
         <CrudPage
             eyebrow="Administrasi"
@@ -217,41 +282,24 @@ export function OwnerMaterialsPage() {
                         >
                             {material.name}
                         </span>
+                        {material.category && !material.category.is_active ? (
+                            <Badge tone="warning" className="mt-1">
+                                Kategori nonaktif
+                            </Badge>
+                        ) : null}
                         <p className="text-light-muted text-xs dark:text-gray-400">
                             {[material.type, material.dimensions, unitLabel(material.unit)]
                                 .filter(Boolean)
                                 .join(' · ')}
                         </p>
+                        <div className="mt-2 sm:hidden">{renderStocks(material)}</div>
                     </div>
                 ) },
                 { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
-                    cell: (material) =>
-                        material.stocks.length === 0 ? (
-                            '-'
-                        ) : (
-                            <ul className="min-w-[9rem] space-y-2">
-                                {material.stocks.map((stock) => (
-                                    <li key={stock.branch_id} className="whitespace-nowrap">
-                                        <span className="block font-medium">
-                                            {stock.branch_name ?? '-'}
-                                        </span>
-                                        <span className="block tabular-nums">
-                                            {quantityWithUnit(stock.current_stock, material.unit)}
-                                        </span>
-                                        <span className="text-light-muted block text-xs tabular-nums dark:text-gray-400">
-                                            min {quantityWithUnit(stock.min_stock, material.unit)}
-                                        </span>
-                                        {stock.is_low_stock ? (
-                                            <span className="block font-semibold text-amber-700 dark:text-amber-300">
-                                                menipis
-                                            </span>
-                                        ) : null}
-                                    </li>
-                                ))}
-                            </ul>
-                        ),
+                    className: 'hidden sm:table-cell',
+                    cell: (material) => renderStocks(material),
                 },
                 { header: 'Biaya', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.cost) },
                 { header: 'Harga', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.price) },
@@ -278,4 +326,8 @@ export function OwnerCategoriesPage() {
 
 export function OwnerProductsPage() {
     return <ProductsPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
+}
+
+export function OwnerAttributesPage() {
+    return <AttributesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }

@@ -15,6 +15,7 @@ const tabRoutes: Record<string, Record<string, string>> = {
         materials: '/owner/materials',
         categories: '/owner/categories',
         products: '/owner/products',
+        attributes: '/owner/attributes',
     },
     manager: {
         materials: '/manager/materials',

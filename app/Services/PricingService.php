@@ -9,7 +9,6 @@ use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Pricing;
 use App\Models\Product;
-use App\Models\ProductCategory;
 use InvalidArgumentException;
 
 class PricingService
@@ -36,7 +35,6 @@ class PricingService
 
         // Load product to check pricing type and name
         $product = Product::findOrFail($productId);
-        $category = ProductCategory::findOrFail($product->product_category_id);
 
         $branchId = $params['branch_id'] ?? null;
 
@@ -113,36 +111,16 @@ class PricingService
         $unitCost = $baseCost + $attributeCostSum;
         $area = 0.0;
 
-        switch ($category->calculation_archetype) {
-            case 'surface_area':
-                if ($width <= 0 || $length <= 0) {
-                    throw new InvalidArgumentException('Lebar dan panjang harus lebih besar dari nol untuk perhitungan luas.');
-                }
-                $area = $width * $length;
-                $subtotal = $unitPrice * $quantity * $area;
-                $cost = $unitCost * $quantity * $area;
-                break;
-
-            case 'linear_dimension':
-                if ($length <= 0) {
-                    throw new InvalidArgumentException('Panjang harus lebih besar dari nol untuk perhitungan meter lari.');
-                }
-                $subtotal = $unitPrice * $quantity * $length;
-                $cost = $unitCost * $quantity * $length;
-                break;
-
-            case 'tiered_volume':
-                // The query above selects the correct tiered pricing row by min_qty lookup.
-                // We evaluate the unit price dynamically matching the quantity tier.
-                $subtotal = $unitPrice * $quantity;
-                $cost = $unitCost * $quantity;
-                break;
-
-            case 'per_piece':
-            default:
-                $subtotal = $unitPrice * $quantity;
-                $cost = $unitCost * $quantity;
-                break;
+        if ($product->pricing_type === 'area') {
+            if ($width <= 0 || $length <= 0) {
+                throw new InvalidArgumentException('Lebar dan panjang harus lebih besar dari nol untuk perhitungan luas.');
+            }
+            $area = $width * $length;
+            $subtotal = $unitPrice * $quantity * $area;
+            $cost = $unitCost * $quantity * $area;
+        } else {
+            $subtotal = $unitPrice * $quantity;
+            $cost = $unitCost * $quantity;
         }
 
         // Keep precision using float numbers for decimal currency support

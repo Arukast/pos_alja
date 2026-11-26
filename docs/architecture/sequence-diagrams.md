@@ -80,30 +80,40 @@ sequenceDiagram
     API-->>SPA: Product metadata and category
 ```
 
-### 2.2 Product, Category, Material, And Discount Administration
+### 2.2 Product, Category, Attribute, And Material Administration
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor A as Owner
+    actor M as Manager
     participant SPA
     participant API
     participant Policy
     participant DB
     participant R as Reverb
 
-    A->>SPA: Create or edit product, category, finishing/display, discount tier, or material
-    SPA->>API: POST/PUT/DELETE /api/v1/products, /categories, /attributes, /materials
-    API->>Policy: Authorize manage catalog
-    alt Not owner
+    alt Owner
+        A->>SPA: Create or edit product, category, material, or a global/branch finishing/display option
+        SPA->>API: POST/PUT /api/v1/products, /categories, /attributes, /materials
+        SPA->>API: PATCH /api/v1/materials/{id}/min-stock
+        API->>Policy: Authorize CatalogPolicy::manageCategories, manageProducts, createAttribute/updateAttribute, or MaterialPolicy::update/setMinimumStock
+    else Manager
+        M->>SPA: Edit own-branch finishing/display or branch minimum stock
+        SPA->>API: POST/PUT /api/v1/attributes or PATCH /api/v1/materials/{id}/min-stock
+        API->>Policy: Authorize CatalogPolicy::createAttribute/updateAttribute or MaterialPolicy::setMinimumStock for own branch
+    end
+    alt Denied
         Policy-->>API: Deny
         API-->>SPA: 403
     else Allowed
-        API->>DB: BEGIN, validate unit/discount, write catalog row, audit, COMMIT
+        API->>DB: BEGIN, validate, write catalog row or is_active flag (no category/attribute delete), audit product writes, COMMIT
         API-->>SPA: Resource
         API->>R: OrderUpdated
     end
 ```
+
+Categories, products, and attributes are retired with `is_active`; category and attribute delete routes return 404. Managers can manage only own-branch attributes and edit only their own branch's minimum stock; global attributes are read-only. There is no discount-tier administration: the pricing matrix remains the price source and category quantity-discount tiers are removed.
 
 ## 3. Sales And Orders
 
@@ -129,7 +139,7 @@ sequenceDiagram
     SPA->>API: GET /api/v1/quotes/options
     API-->>SPA: Branch catalog, no cost/profit for designer
     SPA->>API: POST /api/v1/quotes
-    API->>PriceCalc: Material + finishing/display price, customer type, branch reseller discount, category discount
+    API->>PriceCalc: Material + finishing/display price, customer type, branch reseller discount
     PriceCalc-->>API: Unit price, area, subtotal
     API-->>SPA: Quote
     SPA->>API: POST /api/v1/invoices

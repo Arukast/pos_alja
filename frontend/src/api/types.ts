@@ -25,6 +25,7 @@ export interface Branch {
     address: string | null;
     phone: string | null;
     is_active: boolean;
+    reseller_discount_percent: string;
     settings: Record<string, unknown> | null;
 }
 
@@ -50,30 +51,21 @@ export interface Customer {
     type: string | null;
 }
 
-export interface CategoryDiscountTier {
-    id?: string;
-    min_qty: number;
-    discount_percent: string;
-}
-
 export interface Category {
     id: string;
     name: string;
-    calculation_archetype: string;
-    allowed_attribute_types: string[];
-    discount_tiers: CategoryDiscountTier[];
-}
-
-export interface AttributeType {
-    id: string;
-    name: string;
-    calculation_archetype: string;
+    description: string | null;
+    is_active: boolean;
+    products_count?: number;
 }
 
 export interface Attribute {
     id: string;
     name: string;
     type: string;
+    price: string;
+    cost: string;
+    is_active: boolean;
     branch_id: string | null;
     branch: { id: string; name: string } | null;
 }
@@ -84,7 +76,9 @@ export interface Product {
     pricing_type: string;
     is_active: boolean;
     deleted_at?: string | null;
-    category: { id: string; name: string; calculation_archetype: string } | null;
+    category: { id: string; name: string; is_active: boolean } | null;
+    materials: Array<{ id: string; name: string }>;
+    material_ids: string[];
 }
 
 export interface MaterialStock {
@@ -103,7 +97,7 @@ export interface Material {
     unit: string;
     cost: string;
     price: string;
-    category: { id: string; name: string } | null;
+    category: { id: string; name: string; is_active: boolean } | null;
     current_stock: string | null;
     min_stock: string | null;
     is_low_stock: boolean | null;
@@ -179,7 +173,7 @@ export interface Order {
     pricing?: {
         product: string | null;
         material: string | null;
-        calculation_archetype: string | null;
+        pricing_type: string | null;
     } | null;
     file_name: string | null;
     notes: string | null;

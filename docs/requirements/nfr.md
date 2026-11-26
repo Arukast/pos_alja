@@ -8,7 +8,7 @@
 | :--- | :--- | :--- | :--- |
 | NFR1 | Performance efficiency | API p95 < 2 s for operational lists; SPA first meaningful paint < 3 s on office broadband; 10–20 rows per page (10 products per page for product catalog) | Browser measurements and query logs |
 | NFR2 | Performance efficiency | Reports p95 < 3 s at 10k invoices; export < 10 s (export is FR24, target) | Staging dataset benchmark |
-| NFR3 | Functional suitability | DP/settlement arithmetic reconciles to 2 decimals; unit-aware stock deduction and reversal reconcile to 2 decimals; no client-trusted prices | PHPUnit payment, reseller-discount, quantity-discount, order-edit, and production fail/reopen tests |
+| NFR3 | Functional suitability | DP/settlement arithmetic reconciles to 2 decimals; unit-aware stock deduction and reversal reconcile to 2 decimals; no client-trusted prices | PHPUnit payment, reseller-discount, order-edit, order-history resolution, minimum-stock, and production fail/reopen tests |
 | NFR4 | Interaction capability | WCAG 2.1 AA intent; 390/768/1440 px; keyboard-operable dialogs; dark mode | `agent-browser` checks and UI review, including invoice print and queue filters |
 | NFR5 | Security | 100% role and branch checks; Sanctum cookie + CSRF; production money redaction; validated input | Feature tests + `security-code-reviewer`; expense-role and customer-PII checks |
 | NFR6 | Reliability and availability | 99.5% monthly uptime; RPO <= 24 h; RTO <= 4 h. Backup automation is PB-10; RPO/RTO and uptime are not yet claimed | Provider/Compose checks; restore drill (not run) |
@@ -38,4 +38,4 @@ npm --prefix frontend run build
 - Stock integrity is unit-aware: production start deducts `area * quantity` for `m2` and `quantity` for every other unit; fail reverses the net `(material_id, branch_id)` usage and writes `usage_reversal`; reopen clears the operator, and the next start deducts again. The waste KPI groups today's waste by material unit, so mixed units are never summed.
 - NFR8 records PHP 8.5 as the tested runtime while `composer.json` keeps the `^8.3` compatibility floor.
 - User-facing copy and API messages are Indonesian; dates format with `id-ID`; production requires `APP_LOCALE=id`.
-- Sprint Review 1 changed FR6, FR8, FR9, FR13, FR14, FR16, FR18, FR19, FR20, and FR25. NFR targets are unchanged. NFR3, NFR4, NFR5, and NFR9 verification scope expanded to cover quantity discounts, invoice print, expense access, customer PII, and order-update locking.
+- Sprint Review 1 changed FR6, FR8, FR9, FR13, FR14, FR16, FR18, FR19, FR20, and FR25. NFR targets are unchanged. NFR3, NFR4, NFR5, and NFR9 verification scope expanded to cover invoice print, expense access, customer PII, and order-update locking. Unit A removed the category quantity-discount tiers and attribute types, and added minimum-stock editing; NFR3 verification now covers order-history resolution and minimum-stock changes instead of quantity discounts.

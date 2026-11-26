@@ -56,6 +56,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
                 { to: '/owner/branches', label: 'Manajemen Cabang', icon: Building2 },
                 { to: '/owner/categories', label: 'Kategori Produk', icon: Tags },
                 { to: '/owner/products', label: 'Produk', icon: Box },
+                { to: '/owner/attributes', label: 'Display & Finishing', icon: Tags },
                 { to: '/owner/materials', label: 'Bahan & Stok', icon: Package },
                 { to: '/owner/purchases', label: 'Pembelian', icon: ShoppingCart },
                 { to: '/owner/backups', label: 'Backup Data', icon: DatabaseBackup },

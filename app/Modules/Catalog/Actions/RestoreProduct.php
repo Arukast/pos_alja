@@ -21,6 +21,11 @@ final class RestoreProduct
         try {
             $restored = DB::transaction(function () use ($product, $actor): Product {
                 $product->restore();
+                $product->loadMissing('category');
+
+                if ($product->category?->is_active === false) {
+                    $product->update(['is_active' => false]);
+                }
 
                 $this->audit->record(
                     $actor,
@@ -30,7 +35,7 @@ final class RestoreProduct
                     $product->toArray(),
                 );
 
-                return $product->fresh('category') ?? $product->load('category');
+                return $product->fresh(['category', 'materials']) ?? $product->load(['category', 'materials']);
             });
         } catch (Throwable $exception) {
             Log::error('Product restoration failed.', [

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Queries;
 
 use App\Models\Attribute;
-use App\Models\AttributeType;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -23,15 +22,7 @@ final class CatalogQueries
      */
     public function categories(): Collection
     {
-        return ProductCategory::query()->with('discountTiers')->orderBy('name')->get();
-    }
-
-    /**
-     * @return Collection<int, AttributeType>
-     */
-    public function attributeTypes(): Collection
-    {
-        return AttributeType::query()->orderBy('name')->get();
+        return ProductCategory::query()->withCount('products')->orderBy('name')->get();
     }
 
     /**
@@ -60,7 +51,7 @@ final class CatalogQueries
      */
     public function products(array $filters): LengthAwarePaginator
     {
-        $query = Product::query()->with('category');
+        $query = Product::query()->with(['category', 'materials']);
 
         if (($filters['include_deleted'] ?? false) === true) {
             $query->withTrashed();

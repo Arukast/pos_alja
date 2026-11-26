@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Support\Decimal;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,27 +15,17 @@ class ProductCategory extends Model
 
     protected $fillable = [
         'name',
+        'description',
+        'is_active',
         'calculation_archetype',
-        'allowed_attribute_types',
-    ];
-
-    protected $casts = [
-        'allowed_attribute_types' => 'array',
     ];
 
     /**
-     * Determine if an attribute (or type string) is permitted within this category.
+     * @var array<string, string>
      */
-    public function isAttributeAllowed(string|Attribute $attribute): bool
-    {
-        $type = $attribute instanceof Attribute ? $attribute->type : $attribute;
-
-        if (empty($this->allowed_attribute_types)) {
-            return true;
-        }
-
-        return in_array($type, $this->allowed_attribute_types, true);
-    }
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 
     /**
      * Get the products for this category.
@@ -55,38 +44,16 @@ class ProductCategory extends Model
     }
 
     /**
-     * @return HasMany<ProductCategoryDiscount, $this>
-     */
-    public function discountTiers(): HasMany
-    {
-        return $this->hasMany(ProductCategoryDiscount::class, 'product_category_id')
-            ->orderBy('min_qty');
-    }
-
-    /**
-     * Stable audit snapshot; reads the tiers fresh so update/delete see current rows.
+     * Stable audit snapshot of the API-visible category fields.
      *
-     * @return array{
-     *     name: string,
-     *     calculation_archetype: string,
-     *     allowed_attribute_types: array<int, string>,
-     *     discount_tiers: array<int, array{min_qty: int, discount_percent: string}>
-     * }
+     * @return array{name: string, description: string|null, is_active: bool}
      */
     public function auditSnapshot(): array
     {
         return [
             'name' => $this->name,
-            'calculation_archetype' => $this->calculation_archetype,
-            'allowed_attribute_types' => $this->allowed_attribute_types ?? [],
-            'discount_tiers' => $this->discountTiers()
-                ->get()
-                ->map(static fn (ProductCategoryDiscount $tier): array => [
-                    'min_qty' => (int) $tier->min_qty,
-                    'discount_percent' => Decimal::money($tier->discount_percent),
-                ])
-                ->values()
-                ->all(),
+            'description' => $this->description,
+            'is_active' => (bool) $this->is_active,
         ];
     }
 }

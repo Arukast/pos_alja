@@ -3,8 +3,8 @@
 - **Database:** PostgreSQL in production, SQLite in the automated test suite.
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
 - **Table naming:** Eloquent default pluralization, except `material_branch_stock`, which uses a singular table name.
-- **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, and `attributes`.
-- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, and production failure are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
+- **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `attributes`, and `pricing`.
+- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, production failure, and the Unit A catalog cleanup are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
 - **Current transitional tables:** `PRICING` and `ATTRIBUTE_PRICING` exist in the current build and are the price source; the target pricing redesign replaces them (note 4).
 - **Machine tables:** `machines` and `machine_pricing` are dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable. `pricing` and `attribute_pricing` remain and are the current price source.
 - **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; the purchase and stock-ledger tables and columns are implemented as described here, while the remaining business tables follow this target.
@@ -28,12 +28,13 @@ erDiagram
 
     PRODUCT_CATEGORIES |o--o{ PRODUCTS : "groups"
     PRODUCT_CATEGORIES ||--o{ MATERIALS : "groups"
-    PRODUCT_CATEGORIES ||--o{ PRODUCT_CATEGORY_DISCOUNTS : "discounts"
 
     PRODUCTS ||--o{ ORDERS : "ordered as"
     PRODUCTS ||--o{ PRICING : "priced as"
+    PRODUCTS ||--o{ MATERIAL_PRODUCT : "maps"
     MATERIALS ||--o{ ORDERS : "uses"
     MATERIALS ||--o{ PRICING : "priced as"
+    MATERIALS ||--o{ MATERIAL_PRODUCT : "compatible with"
     MATERIALS ||--o{ MATERIAL_BRANCH_STOCK : "stocked at"
     MATERIALS ||--o{ STOCK_LEDGERS : "moves"
     MATERIALS ||--o{ WASTED_MATERIALS : "wasted"
@@ -104,17 +105,10 @@ erDiagram
     PRODUCT_CATEGORIES {
         uuid id PK
         string name
+        string description
+        boolean is_active
         string calculation_archetype
         json allowed_attribute_types
-    }
-
-    PRODUCT_CATEGORY_DISCOUNTS {
-        uuid id PK
-        uuid product_category_id FK
-        integer min_qty
-        decimal discount_percent
-        timestamp created_at
-        timestamp updated_at
     }
 
     PRODUCTS {
@@ -124,6 +118,13 @@ erDiagram
         string pricing_type
         boolean is_active
         timestamp deleted_at
+    }
+
+    MATERIAL_PRODUCT {
+        uuid product_id FK
+        uuid material_id FK
+        timestamp created_at
+        timestamp updated_at
     }
 
     PRICING["PRICING (current, transitional)"] {
@@ -180,12 +181,6 @@ erDiagram
         timestamp deleted_at
     }
 
-    ATTRIBUTE_TYPES {
-        uuid id PK
-        string name UK
-        string calculation_archetype
-    }
-
     INVOICES {
         uuid id PK
         string invoice_number UK
@@ -224,7 +219,6 @@ erDiagram
         decimal unit_price
         string customer_type
         decimal reseller_discount_percent
-        decimal quantity_discount_percent
         decimal discount_amount
         decimal subtotal
         decimal cost
@@ -390,10 +384,10 @@ erDiagram
 
 ## Relationship Notes
 
-1. **`attribute_types` is a reference table without foreign keys.** `attributes.type` stores `finishing` or `display`, and `product_categories.allowed_attribute_types` stores an array of type names. Referential integrity is by convention, not by key.
-2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `product_category_discounts` has a unique `(product_category_id, min_qty)` constraint so one category cannot define two tiers for the same quantity.
+1. **`attributes.type` has no reference table.** It stores `finishing` or `display`; legacy `cut` rows remain. Referential integrity is by request validation, not by key.
+2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `material_product` has a composite primary key `(product_id, material_id)`.
 3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
-4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the finishing/display modifiers. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.settings.reseller_discount_percent` is the current reseller source; it is API-only, has no SPA field, and is currently uncapped. The target column `branches.reseller_discount_percent` is not implemented. `product_category_discounts` stores tiers, but the current quote/invoice path does not apply them. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount + category quantity discount.
+4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the finishing/display modifiers. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) is the reseller discount source. `DELETE /pricing/{pricing}` is a soft delete: quote lookups exclude deleted rows, invoice history resolves product and material names through trashed pricing rows with `withTrashed()`, and no restore endpoint exists. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount + product-level quantity tiers (Unit B design). No order-level tier column is specified.
 5. **`order_attributes` is target-only.** No table exists; finishing/display selections are persisted on `orders.selected_attributes` as the attribute IDs used for pricing modifiers, without a per-attribute price/cost snapshot. The target keeps at most one row per `(order_id, type)` with a price/cost snapshot.
 6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
 7. **`invoices.designer_id`** is the user who submitted the order.
@@ -402,16 +396,18 @@ erDiagram
 10. **`activity_logs.model_id` is a UUID without a foreign key**, allowing the log to reference any model type.
 11. **`branch_id` is nullable on** `users`, `attributes`, `pricing`, `attribute_pricing`, `invoices`, `wasted_materials`, `stock_ledgers`, and `activity_logs`. A null value means "global" or "unassigned", depending on the table; owner accounts are the main case for a null user branch.
 12. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table.
-13. **`product_categories` deletion cascades, subject to NO ACTION references.** It is a hard delete, and `products.product_category_id` plus `materials.product_category_id` use `cascadeOnDelete`. The delete removes dependent products, materials, and discount tiers when no NO ACTION reference blocks it; `wasted_materials.material_id` and `stock_ledgers.material_id` can reject the delete when history exists.
+13. **`product_categories` rows are never deleted.** `is_active` is the retire mechanism: deactivating a category leaves its products and materials untouched. `calculation_archetype` and `allowed_attribute_types` remain dead columns but are still present in the table.
 14. **Target and implemented additions.** The following columns and tables are part of the target schema:
-    - `branches.reseller_discount_percent` for Reseller pricing.
+    - `branches.reseller_discount_percent` for Reseller pricing; implemented by `2026_11_25_000002_add_reseller_discount_percent_to_branches_table.php`.
     - `products.is_active` for catalog filtering; implemented by `2026_11_23_000000_add_is_active_and_indexes_to_products_table.php`.
-    - `product_category_discounts` for quantity discounts; implemented by `2026_11_25_000000_create_product_category_discounts_table.php`.
+    - `product_categories.calculation_archetype` made nullable (default `per_piece`) and `allowed_attribute_types` deprecated from Category API/UI, with `products.pricing_type` backfilled to `area` for legacy `surface_area` categories by `2026_11_27_000000_drop_category_archetype_and_allowed_types.php`.
+    - `material_product` pivot for compatible materials per product (backfilled from `pricing`) by `2026_11_27_000001_create_material_product_table.php`.
+    - `product_categories.description` and `is_active`, with `product_category_discounts` dropped, by `2026_11_27_000002_add_description_and_is_active_to_product_categories_table.php` and `2026_11_27_000003_drop_product_category_discounts_table.php`.
+    - `attribute_types` dropped by `2026_11_27_000004_drop_attribute_types_table.php`; `attributes.type` stays a string validated as `finishing` or `display`, while legacy `cut` rows remain.
     - `materials.unit` for `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; implemented by `2026_11_25_000001_add_unit_to_materials_table.php` with default `pcs` and a name/category/archetype backfill.
-    - `attributes.price` and `attributes.cost`.
-    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
+    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`.
-    - `attributes.is_active`.
     - The transitional order quote-input columns `width`, `length`, and `selected_attributes` are added by `2026_11_26_100000_add_order_edit_specifications.php` and persisted by invoice create/update so pre-production edits can reprice from the saved specifications.
     - `order_attributes` for finishing/display snapshots.
     - `expenses.user_id` and `recorded_by_name`.
@@ -450,7 +446,7 @@ erDiagram
 | `customers.type` | `Reguler` | Regular customer; no reseller discount |
 | `customers.type` | `Reseller` | Reseller customer; branch reseller discount applies |
 | `orders.customer_type` | `Reguler` / `Reseller` | Snapshot of the customer type used for the quote |
-| `branches.reseller_discount_percent` | target | Reseller discount percentage; current `branches.settings.reseller_discount_percent` is API-only and uncapped |
+| `branches.reseller_discount_percent` | `0–100` | Reseller discount percentage (default `0.00`; mirrored in `branches.settings.reseller_discount_percent`) |
 | `payments.type` | `down_payment` | Down payment |
 | `payments.type` | `settlement` | Balance settlement |
 | `payments.type` | `partial` | Reserved by schema; not written by `PaymentService` |
@@ -494,9 +490,7 @@ Both expense types are summed into `expenses_total` and subtracted from `net_pro
 | `branches` | `code` unique |
 | `users` | `username` unique |
 | `material_branch_stock` | `(material_id, branch_id)` unique |
-| `product_category_discounts` | `(product_category_id, min_qty)` unique |
 | `invoices` | `invoice_number` unique |
-| `attribute_types` | `name` unique |
 | `order_attributes` | `(order_id, type)` unique; one finishing and one display per order |
 | `purchases` / `purchase_items` | `purchases` has a unique `(branch_id, idempotency_key)`; `purchase_items.purchase_id` cascades and `material_id` restricts |
 | `backups` | `user_id` is `nullOnDelete`; indexes on `created_at`, `status`, and `is_pinned` |

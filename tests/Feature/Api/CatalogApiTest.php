@@ -5,17 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\Attribute;
-use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\ProductCategoryDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -72,7 +71,7 @@ class CatalogApiTest extends TestCase
             'allowed_attribute_types' => ['finishing'],
         ]);
 
-        Product::create([
+        $vinylBanner = Product::create([
             'name' => 'Vinyl Banner',
             'pricing_type' => 'area',
             'product_category_id' => $this->category->id,
@@ -94,6 +93,8 @@ class CatalogApiTest extends TestCase
             'price' => 15000,
         ]);
 
+        $vinylBanner->materials()->sync([$this->material->id]);
+
         MaterialBranchStock::create([
             'material_id' => $this->material->id,
             'branch_id' => $this->branchOne->id,
@@ -107,11 +108,6 @@ class CatalogApiTest extends TestCase
             'current_stock' => 3,
             'min_stock' => 5,
         ]);
-
-        AttributeType::firstOrCreate(
-            ['name' => 'finishing'],
-            ['calculation_archetype' => 'per_piece']
-        );
 
         $this->attributeOne = Attribute::create([
             'branch_id' => $this->branchOne->id,
@@ -177,11 +173,10 @@ class CatalogApiTest extends TestCase
         ]);
     }
 
-    public function test_owner_can_read_categories_attribute_types_attributes_products_and_pricing(): void
+    public function test_owner_can_read_categories_attributes_products_and_pricing(): void
     {
         foreach ([
             '/api/v1/categories',
-            '/api/v1/attribute-types',
             '/api/v1/attributes',
             '/api/v1/products',
             '/api/v1/materials',
@@ -201,6 +196,15 @@ class CatalogApiTest extends TestCase
         $this->actingAs($this->owner)
             ->postJson('/api/v1/machines', [])
             ->assertNotFound();
+    }
+
+    public function test_attribute_type_endpoints_and_table_are_removed(): void
+    {
+        $this->getJson('/api/v1/attribute-types')->assertNotFound();
+        $this->actingAs($this->owner)->getJson('/api/v1/attribute-types')->assertNotFound();
+        $this->actingAs($this->owner)->postJson('/api/v1/attribute-types', [])->assertNotFound();
+        $this->actingAs($this->owner)->deleteJson('/api/v1/attribute-types/00000000-0000-0000-0000-000000000000')->assertNotFound();
+        $this->assertFalse(Schema::hasTable('attribute_types'));
     }
 
     public function test_manager_reads_own_branch_catalog_scope(): void
@@ -231,7 +235,6 @@ class CatalogApiTest extends TestCase
         foreach ([$this->cashier, $this->designer] as $user) {
             $this->actingAs($user)->getJson('/api/v1/products')->assertOk();
             $this->actingAs($user)->getJson('/api/v1/categories')->assertForbidden();
-            $this->actingAs($user)->getJson('/api/v1/attribute-types')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/attributes')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/materials')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/pricing')->assertForbidden();
@@ -280,7 +283,9 @@ class CatalogApiTest extends TestCase
             ->getJson('/api/v1/products?search=Banner')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.name', 'Vinyl Banner');
+            ->assertJsonPath('data.0.name', 'Vinyl Banner')
+            ->assertJsonPath('data.0.material_ids.0', $this->material->id)
+            ->assertJsonPath('data.0.materials.0.name', 'Vinyl Roll');
     }
 
     public function test_owner_stock_ledgers_can_show_all_branches(): void
@@ -431,13 +436,9 @@ class CatalogApiTest extends TestCase
         }
     }
 
-    public function test_manager_reads_categories_with_discount_tiers_and_branchless_manager_is_denied(): void
+    public function test_categories_expose_description_active_state_and_product_count(): void
     {
-        ProductCategoryDiscount::create([
-            'product_category_id' => $this->category->id,
-            'min_qty' => 10,
-            'discount_percent' => 5,
-        ]);
+        $vinylBanner = Product::query()->where('name', 'Vinyl Banner')->firstOrFail();
 
         $response = $this->actingAs($this->manager)
             ->getJson('/api/v1/categories')
@@ -446,14 +447,73 @@ class CatalogApiTest extends TestCase
         $category = collect($response->json('data'))->firstWhere('id', $this->category->id);
 
         $this->assertNotNull($category);
-        $this->assertCount(1, $category['discount_tiers']);
-        $this->assertSame(10, $category['discount_tiers'][0]['min_qty']);
-        $this->assertSame('5.00', $category['discount_tiers'][0]['discount_percent']);
+        $this->assertNull($category['description']);
+        $this->assertTrue($category['is_active']);
+        $this->assertSame(2, $category['products_count']);
+        $this->assertArrayNotHasKey('discount_tiers', $category);
+
+        $vinylBanner->delete();
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/categories')
+            ->assertOk();
+
+        $category = collect($response->json('data'))->firstWhere('id', $this->category->id);
+
+        $this->assertNotNull($category);
+        $this->assertSame(1, $category['products_count']);
 
         $branchlessManager = $this->user('manager', null);
 
         $this->actingAs($branchlessManager)
             ->getJson('/api/v1/categories')
+            ->assertForbidden();
+    }
+
+    public function test_category_deactivation_is_allowed_and_does_not_touch_products(): void
+    {
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/categories/{$this->category->id}", [
+                'name' => 'Large Format',
+                'description' => 'Cetak besar',
+                'is_active' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('category.is_active', false)
+            ->assertJsonPath('category.description', 'Cetak besar');
+
+        $this->assertDatabaseHas('product_categories', [
+            'id' => $this->category->id,
+            'description' => 'Cetak besar',
+            'is_active' => false,
+        ]);
+        $this->assertDatabaseHas('products', ['name' => 'Vinyl Banner', 'is_active' => true]);
+        $this->assertDatabaseHas('products', ['name' => 'Flyer', 'is_active' => true]);
+    }
+
+    public function test_manager_reads_attribute_pricing_and_branchless_manager_is_denied(): void
+    {
+        $this->attributeOne->update([
+            'price' => 3500,
+            'cost' => 1500,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/attributes')
+            ->assertOk();
+
+        $attribute = collect($response->json('data'))->firstWhere('id', $this->attributeOne->id);
+
+        $this->assertNotNull($attribute);
+        $this->assertSame('3500.00', $attribute['price']);
+        $this->assertSame('1500.00', $attribute['cost']);
+        $this->assertTrue($attribute['is_active']);
+
+        $branchlessManager = $this->user('manager', null);
+
+        $this->actingAs($branchlessManager)
+            ->getJson('/api/v1/attributes')
             ->assertForbidden();
     }
 

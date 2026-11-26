@@ -29,7 +29,7 @@
 ## Delivery Notes
 
 1. PB-08 moved from Sprint 3 to Sprint 1 after Sprint Review 1. It is the foundation for all protected endpoints.
-2. PB-01 must precede PB-02 because product, material, finishing/display, and discount data feed order entry.
+2. PB-01 must precede PB-02 because product, material, finishing/display, and branch reseller-discount data feed order entry.
 3. PB-02 depends on the order-update and design-status schema changes in `docs/architecture/erd.md`.
 4. PB-05 depends on the purchase and stock-adjustment schema in `docs/architecture/erd.md`.
 5. PB-09 depends on the report queries, indexes, and export service in `docs/architecture/api-contracts.md`.

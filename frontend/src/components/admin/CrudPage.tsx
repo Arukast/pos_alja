@@ -20,16 +20,17 @@ import { errorMessage, mapApiErrors } from '../../lib/errors';
 export interface CrudField<T> {
     key: string;
     label: string;
-    type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox';
+    type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox' | 'multiselect';
     options?: Array<{ value: string; label: string }>;
+    emptyOptionLabel?: string;
     required?: boolean;
-    defaultValue?: string | number | boolean;
-    getValue?: (row: T) => string | number | boolean | null | undefined;
+    defaultValue?: string | number | boolean | string[];
+    getValue?: (row: T) => string | number | boolean | string[] | null | undefined;
     labelFor?: (values: Record<string, unknown>) => string;
     hideOnEdit?: boolean;
 }
 
-type FormValues = Record<string, string | number | boolean>;
+type FormValues = Record<string, string | number | boolean | string[]>;
 
 export function CrudPage<T extends { id: string }>({
     eyebrow,
@@ -42,6 +43,7 @@ export function CrudPage<T extends { id: string }>({
     create,
     update,
     remove,
+    canEditRow,
     pageResetKey,
     rowActions,
     rowLabel,
@@ -63,6 +65,7 @@ export function CrudPage<T extends { id: string }>({
     create?: (values: FormValues) => Promise<unknown>;
     update?: (id: string, values: FormValues) => Promise<unknown>;
     remove?: (id: string) => Promise<unknown>;
+    canEditRow?: (row: T) => boolean;
     pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
     rowLabel?: (row: T) => string;
@@ -102,6 +105,11 @@ export function CrudPage<T extends { id: string }>({
             const current = row
                 ? (field.getValue?.(row) ?? (row as Record<string, unknown>)[field.key])
                 : field.defaultValue;
+
+            if (field.type === 'multiselect') {
+                next[field.key] = Array.isArray(current) ? current : [];
+                continue;
+            }
 
             next[field.key] = (current ?? '') as string | number | boolean;
         }
@@ -258,6 +266,9 @@ export function CrudPage<T extends { id: string }>({
                                     ) : (
                                         (query.data?.data ?? []).map((row) => {
                                             const label = rowLabel?.(row) ?? (row as { name?: string }).name;
+                                            const showEdit =
+                                                update !== undefined && (canEditRow?.(row) ?? true);
+                                            const showDelete = remove !== undefined;
 
                                             return (
                                                 <TableRow key={row.id} className={rowClassName?.(row)}>
@@ -270,7 +281,7 @@ export function CrudPage<T extends { id: string }>({
                                                         <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
                                                             <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
                                                                 {rowActions?.(row)}
-                                                                {update ? (
+                                                                {showEdit ? (
                                                                     <Button
                                                                         size="sm"
                                                                         variant="secondary"
@@ -280,7 +291,7 @@ export function CrudPage<T extends { id: string }>({
                                                                         Ubah
                                                                     </Button>
                                                                 ) : null}
-                                                                {remove ? (
+                                                                {showDelete ? (
                                                                     <Button
                                                                         size="sm"
                                                                         variant="danger"
@@ -350,6 +361,54 @@ export function CrudPage<T extends { id: string }>({
                         const error = errors[field.key];
                         const label = field.labelFor?.(values) ?? field.label;
 
+                        if (field.type === 'multiselect') {
+                            const selectedIds = Array.isArray(value) ? value : [];
+
+                            return (
+                                <fieldset key={field.key} className="space-y-2">
+                                    <legend className="text-light-muted block text-[10px] font-semibold tracking-wider uppercase dark:text-gray-400">
+                                        {label}
+                                    </legend>
+                                    <div className="border-light-border dark:border-surface-300 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-3">
+                                        {(field.options ?? []).length === 0 ? (
+                                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                                Belum ada pilihan.
+                                            </p>
+                                        ) : (
+                                            (field.options ?? []).map((option) => {
+                                                const checked = selectedIds.includes(option.value);
+
+                                                return (
+                                                    <Checkbox
+                                                        key={option.value}
+                                                        label={option.label}
+                                                        checked={checked}
+                                                        onChange={(event) => {
+                                                            const next = event.target.checked
+                                                                ? [...selectedIds, option.value]
+                                                                : selectedIds.filter(
+                                                                      (id) => id !== option.value
+                                                                  );
+
+                                                            setValues({
+                                                                ...values,
+                                                                [field.key]: next,
+                                                            });
+                                                        }}
+                                                    />
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                    {error ? (
+                                        <p className="text-xs text-red-600 dark:text-red-400">
+                                            {error}
+                                        </p>
+                                    ) : null}
+                                </fieldset>
+                            );
+                        }
+
                         if (field.type === 'checkbox') {
                             return (
                                 <Checkbox
@@ -379,7 +438,7 @@ export function CrudPage<T extends { id: string }>({
                                         setValues({ ...values, [field.key]: event.target.value })
                                     }
                                 >
-                                    <option value="">Pilih</option>
+                                    <option value="">{field.emptyOptionLabel ?? 'Pilih'}</option>
                                     {(field.options ?? []).map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}
