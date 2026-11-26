@@ -16,13 +16,14 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast, type ToastTone } from '../../components/ui/Toast';
 import {
     backupDestinationLabel,
+    backupDisplayName,
     backupStatusLabel,
     backupStatusTone,
     backupTriggerLabel,
     formatBackupTime,
     formatBytes,
     isBackupActive,
-    MANUAL_LOCK_MS,
+    isBackupStale,
     manualBlocked,
     POLL_INTERVAL_MS,
     shouldPoll,
@@ -34,12 +35,6 @@ import { errorMessage, mapApiErrors } from '../../lib/errors';
 
 const downloadLinkClass =
     'focus-visible:ring-brand-fill focus-visible:ring-offset-light-bg dark:focus-visible:ring-offset-surface-900 inline-flex h-8 items-center justify-center rounded-xl border border-light-muted bg-light-surface px-3 text-xs font-semibold whitespace-nowrap text-light-text transition hover:bg-light-surface-2 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-surface-600 dark:text-gray-100 dark:hover:bg-surface-500';
-
-function ageMs(value: string): number {
-    const time = new Date(value).getTime();
-
-    return Number.isNaN(time) ? Number.POSITIVE_INFINITY : Date.now() - time;
-}
 
 function percentLabel(value: number): string {
     return `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(value)}%`;
@@ -160,7 +155,9 @@ function SettingsCard({
                         Pengaturan Backup
                     </h2>
                     <p className="text-light-muted mt-0.5 text-xs dark:text-gray-400">
-                        Jadwal dan retensi berlaku pada tick berikutnya.
+                        Jadwal baru berlaku pada pemeriksaan berikutnya. Retensi diterapkan setelah
+                        backup berikutnya berhasil; menurunkan retensi menghapus arsip yang lebih
+                        lama dan tidak dapat dibatalkan.
                     </p>
                 </div>
             </CardHeader>
@@ -186,7 +183,7 @@ function SettingsCard({
                         role="status"
                         className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"
                     >
-                        R2 belum dikonfigurasi. Backup remote akan gagal sampai kredensial diatur
+                        R2 belum dikonfigurasi. Backup R2 akan gagal sampai kredensial diatur
                         operator.
                     </p>
                 ) : null}
@@ -337,7 +334,7 @@ function SettingsCard({
 }
 
 function StatusCell({ backup }: { backup: Backup }) {
-    const runningStale = backup.status === 'running' && ageMs(backup.created_at) > MANUAL_LOCK_MS;
+    const runningStale = isBackupStale(backup);
 
     return (
         <>
@@ -349,7 +346,7 @@ function StatusCell({ backup }: { backup: Backup }) {
                 {backup.meta?.remote_skipped ? <Badge tone="info">R2 dilewati</Badge> : null}
             </div>
             {backup.meta?.retention_error ? (
-                <p className="mt-1 max-w-[18rem] text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-1 max-w-[18rem] text-xs break-words text-amber-700 dark:text-amber-300">
                     Retensi gagal: {backup.meta.retention_error}
                 </p>
             ) : null}
@@ -461,12 +458,18 @@ export function BackupPage() {
 
             <Card>
                 <CardHeader>
-                    <h2 className="text-light-text text-sm font-semibold dark:text-gray-100">
-                        Riwayat Backup
-                    </h2>
+                    <div>
+                        <h2 className="text-light-text text-sm font-semibold dark:text-gray-100">
+                            Riwayat Backup
+                        </h2>
+                        <p className="text-light-muted mt-0.5 max-w-xl text-xs dark:text-gray-400">
+                            Backup yang disematkan tidak dihapus oleh retensi. Melepas sematan
+                            membuat backup ini dapat dihapus pada backup berikutnya.
+                        </p>
+                    </div>
                     {activeRows.length > 0 ? (
                         <p className="text-light-muted text-xs dark:text-gray-400">
-                            Memantau {activeRows.length} backup berjalan.
+                            Memantau {activeRows.length} backup aktif.
                         </p>
                     ) : null}
                 </CardHeader>
@@ -540,7 +543,7 @@ export function BackupPage() {
                                                                 href={api.backupDownloadUrl(
                                                                     backup.id
                                                                 )}
-                                                                aria-label={`Unduh backup ${backup.filename} dari ${formatBackupTime(backup.created_at)}`}
+                                                                aria-label={`Unduh backup ${backupDisplayName(backup.filename, backup.created_at)}`}
                                                                 className={downloadLinkClass}
                                                             >
                                                                 Unduh
@@ -553,18 +556,27 @@ export function BackupPage() {
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            aria-label={`${backup.is_pinned ? 'Lepas sematan' : 'Sematkan'} backup ${backup.filename} dari ${formatBackupTime(backup.created_at)}`}
+                                                            aria-label={`${backup.is_pinned ? 'Lepas sematan' : 'Sematkan'} backup ${backupDisplayName(backup.filename, backup.created_at)}`}
                                                             aria-pressed={backup.is_pinned}
                                                             loading={
                                                                 pin.isPending &&
                                                                 pin.variables?.id === backup.id
                                                             }
-                                                            onClick={() =>
+                                                            onClick={() => {
+                                                                if (
+                                                                    backup.is_pinned &&
+                                                                    !window.confirm(
+                                                                        'Lepas sematan backup ini? Backup yang dilepas dapat dihapus pada backup berikutnya.'
+                                                                    )
+                                                                ) {
+                                                                    return;
+                                                                }
+
                                                                 pin.mutate({
                                                                     id: backup.id,
                                                                     pinned: !backup.is_pinned,
-                                                                })
-                                                            }
+                                                                });
+                                                            }}
                                                         >
                                                             {backup.is_pinned ? 'Lepas' : 'Sematkan'}
                                                         </Button>

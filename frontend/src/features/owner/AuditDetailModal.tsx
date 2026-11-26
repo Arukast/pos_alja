@@ -13,7 +13,7 @@ import {
 } from '../../components/ui/Table';
 import { auditPayloadView } from '../../lib/audit';
 import { formatBackupTime } from '../../lib/backups';
-import { roleLabel } from '../../lib/labels';
+import { modelTypeLabel, roleLabel, usernameLabel } from '../../lib/labels';
 
 function MetadataRow({ label, children }: { label: string; children: ReactNode }) {
     return (
@@ -83,13 +83,10 @@ export function AuditDetailModal({
     open: boolean;
     onClose: () => void;
 }) {
-    if (!log) {
-        return null;
-    }
-
+    // The parent keeps the selected log mounted while closing so the native dialog can restore focus.
     return (
         <Modal
-            open={open}
+            open={open && log !== null}
             onClose={onClose}
             size="xl"
             title="Detail Jejak Audit"
@@ -99,26 +96,28 @@ export function AuditDetailModal({
                 </Button>
             }
         >
-            <div className="space-y-5">
-                <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
-                    <MetadataRow label="Waktu">{formatBackupTime(log.created_at)}</MetadataRow>
-                    <MetadataRow label="Pengguna">
-                        {log.username} ({roleLabel(log.role)})
-                    </MetadataRow>
-                    <MetadataRow label="Aksi">{log.action}</MetadataRow>
-                    <MetadataRow label="Model">
-                        {log.model_type
-                            ? `${log.model_type}${log.model_id ? ` (${log.model_id})` : ''}`
-                            : '-'}
-                    </MetadataRow>
-                    <MetadataRow label="Deskripsi">{log.description}</MetadataRow>
-                </dl>
+            {log ? (
+                <div className="space-y-5">
+                    <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
+                        <MetadataRow label="Waktu">{formatBackupTime(log.created_at)}</MetadataRow>
+                        <MetadataRow label="Pengguna">
+                            {usernameLabel(log.username)} ({roleLabel(log.role)})
+                        </MetadataRow>
+                        <MetadataRow label="Aksi">{log.action}</MetadataRow>
+                        <MetadataRow label="Model">
+                            {log.model_type
+                                ? `${modelTypeLabel(log.model_type)}${log.model_id ? ` (${log.model_id})` : ''}`
+                                : '-'}
+                        </MetadataRow>
+                        <MetadataRow label="Deskripsi">{log.description}</MetadataRow>
+                    </dl>
 
-                <section className="space-y-2">
-                    <h3 className="text-sm font-semibold">Payload</h3>
-                    <PayloadSection payload={log.payload} />
-                </section>
-            </div>
+                    <section className="space-y-2">
+                        <h3 className="text-sm font-semibold">Payload</h3>
+                        <PayloadSection payload={log.payload} />
+                    </section>
+                </div>
+            ) : null}
         </Modal>
     );
 }

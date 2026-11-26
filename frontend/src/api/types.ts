@@ -313,7 +313,7 @@ export interface Backup {
     trigger: BackupTrigger;
     destination: BackupDestination;
     status: BackupStatus;
-    filename: string;
+    filename: string | null;
     size_bytes: number | null;
     local_available: boolean;
     remote_available: boolean;

@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import type { Backup } from '../api/types';
 import {
     backupDestinationLabel,
+    backupDisplayName,
     backupStatusLabel,
     backupStatusTone,
     backupTriggerLabel,
     formatBackupTime,
     formatBytes,
+    isBackupStale,
     MANUAL_LOCK_MS,
     manualBlocked,
     POLL_LIMIT_MS,
@@ -116,6 +118,53 @@ describe('formatBackupTime', () => {
     it('returns a dash for null and invalid values', () => {
         expect(formatBackupTime(null)).toBe('-');
         expect(formatBackupTime('bukan-tanggal')).toBe('-');
+    });
+});
+
+describe('backupDisplayName', () => {
+    it('uses the filename when the row has one', () => {
+        expect(backupDisplayName('pos_alja_20261126.dump', '2026-11-26T14:30:00')).toBe(
+            'pos_alja_20261126.dump'
+        );
+    });
+
+    it('falls back to the creation time for a queued row without a filename', () => {
+        expect(backupDisplayName(null, '2026-11-26T14:30:00')).toBe('26 Nov 2026, 14.30');
+    });
+});
+
+describe('isBackupStale', () => {
+    it('measures a running row from started_at when the run has begun', () => {
+        expect(
+            isBackupStale(
+                backupAt(31 * 60_000, {
+                    status: 'running',
+                    started_at: new Date(NOW - 31 * 60_000).toISOString(),
+                    created_at: new Date(NOW - 60_000).toISOString(),
+                }),
+                NOW
+            )
+        ).toBe(true);
+        expect(
+            isBackupStale(
+                backupAt(31 * 60_000, {
+                    status: 'running',
+                    started_at: new Date(NOW - 60_000).toISOString(),
+                    created_at: new Date(NOW - 31 * 60_000).toISOString(),
+                }),
+                NOW
+            )
+        ).toBe(false);
+    });
+
+    it('falls back to created_at for a running row without a start time', () => {
+        expect(isBackupStale(backupAt(31 * 60_000, { status: 'running' }), NOW)).toBe(true);
+        expect(isBackupStale(backupAt(MANUAL_LOCK_MS, { status: 'running' }), NOW)).toBe(false);
+    });
+
+    it('does not mark an inactive row stale', () => {
+        expect(isBackupStale(backupAt(31 * 60_000, { status: 'success' }), NOW)).toBe(false);
+        expect(isBackupStale(backupAt(31 * 60_000, { status: 'queued' }), NOW)).toBe(false);
     });
 });
 

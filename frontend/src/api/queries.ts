@@ -1,4 +1,4 @@
-import { apiFetch } from '../lib/api';
+import { API_BASE, apiFetch } from '../lib/api';
 import type {
     ActivityLog,
     Attribute,
@@ -148,7 +148,7 @@ export const api = {
     updateBackupSettings: (data: MutationBody) =>
         mutate<{ settings: BackupSettings }>('/backup-settings', 'PUT', data),
 
-    backupDownloadUrl: (id: string) => `/api/v1/backups/${id}/download`,
+    backupDownloadUrl: (id: string) => `${API_BASE}/backups/${id}/download`,
 
     report: {
         grossRevenue: (params: ReportParams) =>

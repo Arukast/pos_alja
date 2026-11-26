@@ -166,6 +166,7 @@ final class BackupService
         if ($localPath === null && $remotePath === null) {
             $status = 'failed';
             $error = $remoteError ?? 'Backup gagal.';
+            $sizeBytes = null;
         } elseif ($remoteRequired && $remotePath === null) {
             $status = 'partial';
             $error = $remoteError;
@@ -205,8 +206,6 @@ final class BackupService
                     : $e->getMessage();
             }
         }
-
-        $meta['duration_ms'] = $this->duration($startedAt);
 
         $this->finalize($backup, $status, $localPath, $remotePath, $sizeBytes, $error, $meta, $actor);
     }
@@ -267,6 +266,8 @@ final class BackupService
         array $meta,
         ?User $actor,
     ): void {
+        unset($meta['pending_local'], $meta['pending_temp']);
+
         $backup->forceFill([
             'status' => $status,
             'local_path' => $localPath,

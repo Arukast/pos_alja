@@ -4,10 +4,12 @@ import {
     archetypeLabel,
     attributeTypeLabel,
     expenseTypeLabel,
+    modelTypeLabel,
     paymentMethodLabel,
     pricingTypeLabel,
     ledgerTypeLabel,
     roleLabel,
+    usernameLabel,
 } from './labels';
 
 describe('roleLabel', () => {
@@ -17,10 +19,38 @@ describe('roleLabel', () => {
         expect(roleLabel('cashier')).toBe('Kasir');
         expect(roleLabel('designer')).toBe('Desainer');
         expect(roleLabel('production')).toBe('Produksi');
+        expect(roleLabel('system')).toBe('Sistem');
     });
 
     it('falls back to the input for an unknown role', () => {
         expect(roleLabel('auditor')).toBe('auditor');
+    });
+});
+
+describe('usernameLabel', () => {
+    it('renders the system actor in Indonesian', () => {
+        expect(usernameLabel('system')).toBe('Sistem');
+    });
+
+    it('keeps a human username', () => {
+        expect(usernameLabel('owner-contoh')).toBe('owner-contoh');
+    });
+});
+
+describe('modelTypeLabel', () => {
+    it('maps known model classes to Indonesian nouns', () => {
+        expect(modelTypeLabel('App\\Models\\BackupSetting')).toBe('Pengaturan Backup');
+        expect(modelTypeLabel('App\\Models\\Order')).toBe('Pesanan');
+        expect(modelTypeLabel('App\\Models\\Invoice')).toBe('Invoice');
+        expect(modelTypeLabel('App\\Models\\Material')).toBe('Material');
+    });
+
+    it('falls back to the class basename for an unknown model', () => {
+        expect(modelTypeLabel('App\\Models\\UnknownThing')).toBe('UnknownThing');
+    });
+
+    it('renders a dash for a missing model type', () => {
+        expect(modelTypeLabel(null)).toBe('-');
     });
 });
 

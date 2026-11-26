@@ -43,8 +43,8 @@ final class AuditLogger
         return ActivityLog::create([
             'branch_id' => $branchId ?? $actor?->branch_id,
             'user_id' => $actor?->id,
-            'username' => $actor->username ?? 'system',
-            'role' => $actor->role ?? 'system',
+            'username' => $actor === null ? 'system' : $actor->username,
+            'role' => $actor === null ? 'system' : $actor->role,
             'action' => $action,
             'description' => Str::limit($description, 255, ''),
             'model_type' => $subject !== null ? $subject::class : null,

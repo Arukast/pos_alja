@@ -349,6 +349,7 @@ class RunBackupJobTest extends TestCase
         $this->assertNotNull($backup->error);
         $this->assertNull($backup->local_path);
         $this->assertNull($backup->remote_path);
+        $this->assertNull($backup->size_bytes);
         $this->assertSame([], $this->tempFiles());
         $this->assertArrayNotHasKey('pending_temp', $backup->meta);
         $this->assertArrayNotHasKey('pending_local', $backup->meta);

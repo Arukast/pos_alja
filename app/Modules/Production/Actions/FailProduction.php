@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\SafeBroadcast;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -78,8 +77,7 @@ final class FailProduction
                     'quantity' => $net,
                     'stock_before' => $movement['old_stock'],
                     'stock_after' => $movement['new_stock'],
-                    // Arr::get tolerates the unchanged partial InventoryService test double.
-                    'ledger_id' => Arr::get($movement, 'ledger_id'),
+                    'ledger_id' => $movement['ledger_id'],
                     'direction' => 'reversal',
                 ];
             }

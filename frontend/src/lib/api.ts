@@ -1,6 +1,6 @@
 import { ApiError, type ApiErrorPayload } from './errors';
 
-const API_BASE = '/api/v1';
+export const API_BASE = '/api/v1';
 
 let csrfPromise: Promise<void> | null = null;
 let unauthorizedHandler: (() => void) | null = null;

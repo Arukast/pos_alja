@@ -447,7 +447,7 @@ class ProductionFailApiTest extends TestCase
             {
                 $this->movements[] = [$materialId, $branchId];
 
-                return ['old_stock' => 0.0, 'new_stock' => 0.0];
+                return ['old_stock' => 0.0, 'new_stock' => 0.0, 'ledger_id' => (string) Str::uuid()];
             }
         };
 

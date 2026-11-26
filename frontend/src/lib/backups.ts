@@ -111,6 +111,16 @@ export function formatBackupTime(value: string | null): string {
     }).format(date);
 }
 
+export function backupDisplayName(filename: string | null, createdAt: string): string {
+    return filename ?? formatBackupTime(createdAt);
+}
+
+export function isBackupStale(backup: Backup, now = Date.now()): boolean {
+    const anchor = backup.started_at ?? backup.created_at;
+
+    return backup.status === 'running' && ageMs(anchor, now) > MANUAL_LOCK_MS;
+}
+
 export function isBackupActive(status: string): boolean {
     return status === 'queued' || status === 'running';
 }
