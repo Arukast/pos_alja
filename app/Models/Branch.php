@@ -44,6 +44,12 @@ class Branch extends Model
      */
     public function getResellerDiscountPercent(): float
     {
-        return (float) $this->reseller_discount_percent;
+        $columnValue = (float) $this->reseller_discount_percent;
+
+        if ($columnValue > 0.0) {
+            return $columnValue;
+        }
+
+        return (float) ($this->settings['reseller_discount_percent'] ?? 0.0);
     }
 }

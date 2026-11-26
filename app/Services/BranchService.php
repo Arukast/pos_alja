@@ -17,14 +17,18 @@ class BranchService
     public function createBranch(array $data, User $actor): Branch
     {
         return DB::transaction(function () use ($data, $actor): Branch {
+            $settings = is_array($data['settings'] ?? null) ? $data['settings'] : [];
+            $resellerDiscount = (float) ($data['reseller_discount_percent'] ?? ($settings['reseller_discount_percent'] ?? 0));
+            $settings['reseller_discount_percent'] = $resellerDiscount;
+
             $branch = Branch::create([
                 'name' => $data['name'],
                 'code' => $data['code'] ?? null,
                 'address' => $data['address'] ?? null,
                 'phone' => $data['phone'] ?? null,
                 'is_active' => $data['is_active'] ?? true,
-                'reseller_discount_percent' => $data['reseller_discount_percent'] ?? 0,
-                'settings' => $data['settings'] ?? [],
+                'reseller_discount_percent' => $resellerDiscount,
+                'settings' => $settings,
             ]);
 
             ActivityLog::create([
@@ -51,16 +55,22 @@ class BranchService
         return DB::transaction(function () use ($branch, $data, $actor): Branch {
             $oldData = $branch->toArray();
 
+            $resellerDiscount = array_key_exists('reseller_discount_percent', $data)
+                ? (float) $data['reseller_discount_percent']
+                : (float) $branch->reseller_discount_percent;
+            $settings = is_array($data['settings'] ?? null)
+                ? $data['settings']
+                : (is_array($branch->settings) ? $branch->settings : []);
+            $settings['reseller_discount_percent'] = $resellerDiscount;
+
             $branch->update([
                 'name' => $data['name'],
                 'code' => $data['code'] ?? null,
                 'address' => $data['address'] ?? null,
                 'phone' => $data['phone'] ?? null,
                 'is_active' => $data['is_active'] ?? $branch->is_active,
-                'reseller_discount_percent' => array_key_exists('reseller_discount_percent', $data)
-                    ? $data['reseller_discount_percent']
-                    : $branch->reseller_discount_percent,
-                'settings' => $data['settings'] ?? $branch->settings ?? [],
+                'reseller_discount_percent' => $resellerDiscount,
+                'settings' => $settings,
             ]);
 
             $newData = $branch->fresh()->toArray();
