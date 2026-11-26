@@ -87,6 +87,8 @@ export interface Product {
     is_active: boolean;
     deleted_at?: string | null;
     category: { id: string; name: string } | null;
+    materials: Array<{ id: string; name: string }>;
+    material_ids: string[];
 }
 
 export interface MaterialStock {

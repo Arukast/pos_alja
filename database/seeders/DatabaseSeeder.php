@@ -144,6 +144,18 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        foreach ($productModels as $productModel) {
+            $matchingMaterialIds = collect($materialModels)
+                ->where('product_category_id', $productModel->product_category_id)
+                ->pluck('id')
+                ->values()
+                ->all();
+
+            if ($matchingMaterialIds !== []) {
+                $productModel->materials()->sync($matchingMaterialIds);
+            }
+        }
+
         // 5. Attributes (Finishing, Cuts, Displays)
         $attributes = [
             ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branchMain->id],

@@ -72,7 +72,7 @@ class CatalogApiTest extends TestCase
             'allowed_attribute_types' => ['finishing'],
         ]);
 
-        Product::create([
+        $vinylBanner = Product::create([
             'name' => 'Vinyl Banner',
             'pricing_type' => 'area',
             'product_category_id' => $this->category->id,
@@ -93,6 +93,8 @@ class CatalogApiTest extends TestCase
             'cost' => 10000,
             'price' => 15000,
         ]);
+
+        $vinylBanner->materials()->sync([$this->material->id]);
 
         MaterialBranchStock::create([
             'material_id' => $this->material->id,
@@ -280,7 +282,9 @@ class CatalogApiTest extends TestCase
             ->getJson('/api/v1/products?search=Banner')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.name', 'Vinyl Banner');
+            ->assertJsonPath('data.0.name', 'Vinyl Banner')
+            ->assertJsonPath('data.0.material_ids.0', $this->material->id)
+            ->assertJsonPath('data.0.materials.0.name', 'Vinyl Roll');
     }
 
     public function test_owner_stock_ledgers_can_show_all_branches(): void

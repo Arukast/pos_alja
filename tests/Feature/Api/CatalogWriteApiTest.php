@@ -587,16 +587,27 @@ class CatalogWriteApiTest extends TestCase
                 'name' => 'Banner Baru',
                 'product_category_id' => $this->category->id,
                 'pricing_type' => 'area',
+                'material_ids' => [$this->material->id],
             ])
             ->assertCreated()
             ->assertJsonPath('product.is_active', true)
+            ->assertJsonPath('product.material_ids.0', $this->material->id)
+            ->assertJsonPath('product.materials.0.id', $this->material->id)
             ->json('product');
 
-        $this->assertDatabaseHas('activity_logs', [
-            'action' => 'CREATE',
-            'model_type' => Product::class,
-            'model_id' => $created['id'],
+        $this->assertDatabaseHas('material_product', [
+            'product_id' => $created['id'],
+            'material_id' => $this->material->id,
         ]);
+
+        $createLog = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->where('model_type', Product::class)
+            ->where('model_id', $created['id'])
+            ->first();
+
+        $this->assertNotNull($createLog);
+        $this->assertSame([$this->material->id], $createLog->payload['material_ids']);
 
         $this->actingAs($this->owner)
             ->putJson("/api/v1/products/{$created['id']}", [
@@ -604,10 +615,21 @@ class CatalogWriteApiTest extends TestCase
                 'product_category_id' => $this->category->id,
                 'pricing_type' => 'unit',
                 'is_active' => false,
+                'material_ids' => [$this->otherMaterial->id],
             ])
             ->assertOk()
             ->assertJsonPath('product.is_active', false)
-            ->assertJsonPath('product.pricing_type', 'unit');
+            ->assertJsonPath('product.pricing_type', 'unit')
+            ->assertJsonPath('product.material_ids.0', $this->otherMaterial->id);
+
+        $this->assertDatabaseMissing('material_product', [
+            'product_id' => $created['id'],
+            'material_id' => $this->material->id,
+        ]);
+        $this->assertDatabaseHas('material_product', [
+            'product_id' => $created['id'],
+            'material_id' => $this->otherMaterial->id,
+        ]);
 
         $updateLog = ActivityLog::query()
             ->where('action', 'UPDATE')
@@ -618,6 +640,8 @@ class CatalogWriteApiTest extends TestCase
         $this->assertNotNull($updateLog);
         $this->assertTrue((bool) $updateLog->payload['before']['is_active']);
         $this->assertFalse((bool) $updateLog->payload['after']['is_active']);
+        $this->assertSame([$this->material->id], $updateLog->payload['before']['material_ids']);
+        $this->assertSame([$this->otherMaterial->id], $updateLog->payload['after']['material_ids']);
 
         $this->actingAs($this->owner)
             ->deleteJson("/api/v1/products/{$created['id']}")
@@ -700,6 +724,35 @@ class CatalogWriteApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('is_active');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Invalid Material Mapping',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'unit',
+                'material_ids' => [(string) Str::uuid()],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material_ids.0');
+
+        $deletedMaterial = Material::create([
+            'name' => 'Deleted Material',
+            'product_category_id' => $this->category->id,
+            'unit' => 'pcs',
+            'cost' => 1000,
+            'price' => 2000,
+        ]);
+        $deletedMaterial->delete();
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/products/{$this->product->id}", [
+                'name' => 'Deleted Material Mapping',
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'unit',
+                'material_ids' => [$deletedMaterial->id],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material_ids.0');
     }
 
     public function test_owner_can_manage_category_quantity_discount_tiers_and_non_owners_are_denied(): void

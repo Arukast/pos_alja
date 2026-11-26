@@ -40,6 +40,7 @@ describe('api.products and admin product mutations', () => {
             product_category_id: 'cat-1',
             pricing_type: 'area',
             is_active: true,
+            material_ids: ['mat-1'],
         };
         await api.admin.createProduct(createBody);
         expect(mockedApiFetch).toHaveBeenCalledWith('/products', {

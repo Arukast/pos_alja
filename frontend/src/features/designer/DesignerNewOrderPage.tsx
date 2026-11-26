@@ -104,6 +104,10 @@ export function DesignerNewOrderPage() {
     const isAreaProduct = selectedProduct?.pricing_type === 'area';
     const needsWidth = isAreaProduct;
     const needsLength = isAreaProduct;
+    const mappedMaterialIds = selectedProduct?.material_ids ?? [];
+    const availableMaterials = (options?.materials ?? []).filter(
+        (material) => mappedMaterialIds.length === 0 || mappedMaterialIds.includes(material.id)
+    );
 
     const finishingOptions = (options?.attributes ?? []).filter(
         (attribute) => attribute.type === 'finishing'
@@ -425,13 +429,26 @@ export function DesignerNewOrderPage() {
                                         <Select
                                             label="Produk"
                                             value={item.product_id}
-                                            onChange={(event) =>
+                                            onChange={(event) => {
+                                                const nextProductId = event.target.value;
+                                                const nextProduct = (options?.products ?? []).find(
+                                                    (product) => product.id === nextProductId
+                                                );
+                                                const nextAllowedIds =
+                                                    nextProduct?.material_ids ?? [];
+                                                const keepMaterial =
+                                                    nextAllowedIds.length === 0 ||
+                                                    nextAllowedIds.includes(item.material_id);
+
                                                 updatePricingItem({
-                                                    product_id: event.target.value,
+                                                    product_id: nextProductId,
+                                                    material_id: keepMaterial
+                                                        ? item.material_id
+                                                        : '',
                                                     finishing_id: '',
                                                     display_id: '',
-                                                })
-                                            }
+                                                });
+                                            }}
                                         >
                                             <option value="">Pilih produk</option>
                                             {(options?.products ?? []).map((product) => (
@@ -448,7 +465,7 @@ export function DesignerNewOrderPage() {
                                             }
                                         >
                                             <option value="">Pilih bahan</option>
-                                            {(options?.materials ?? []).map((material) => (
+                                            {availableMaterials.map((material) => (
                                                 <option key={material.id} value={material.id}>
                                                     {material.name}
                                                 </option>
