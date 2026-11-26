@@ -176,10 +176,14 @@ export interface Purchase {
 export interface Order {
     id: string;
     pricing_id: string | null;
+    pricing?: { product: string | null; material: string | null } | null;
     file_name: string | null;
     notes: string | null;
     area: string;
+    width: string | null;
+    length: string | null;
     quantity: string;
+    selected_attributes: string[];
     unit_price?: string;
     subtotal?: string;
     cost?: string;

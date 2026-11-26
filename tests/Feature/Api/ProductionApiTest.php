@@ -152,6 +152,67 @@ class ProductionApiTest extends TestCase
             ->assertJsonMissingPath('data.0.unit_price');
     }
 
+    public function test_queue_filters_by_status_and_rejects_unknown_status(): void
+    {
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?status=0')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.status', 0);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?status=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.status', 1);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?status=3')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.status', 3);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/production/queue?status=3')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?status=2')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('status');
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?status=abc')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('status');
+    }
+
+    public function test_queue_searches_invoice_number_and_file_name(): void
+    {
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?search=INV-B1-001')
+            ->assertOk()
+            ->assertJsonCount(3, 'data');
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?search=job-1.pdf')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.status', 1);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?search=job-3.pdf&status=3')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.status', 3);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?search=no-such-job')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
     public function test_summary_counts_match_fixtures_and_are_production_only(): void
     {
         $response = $this->actingAs($this->production)

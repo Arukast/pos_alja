@@ -16,8 +16,8 @@
 | FR5 | Implemented | Policies, `BranchScope`, cross-branch tests, production money redaction; `FoundationTest`, `InvoiceApiTest`, `CatalogApiTest`. |
 | FR6 | Partial | Owner-only Product CRUD + restore (`ProductController`, FormRequests, Actions, `products.is_active`, 10-row server-side pagination, `/owner/products`, read-only `/manager/products`) and Category quantity discount tiers (`product_category_discounts`, Owner-only `CategoryController` FormRequests/Actions, `/owner/categories`, read-only `/manager/categories`) are implemented (`CatalogApiTest`, `CatalogWriteApiTest`). Material units are implemented: `materials.unit` with seven values, migration plus backfill heuristic, required on create/optional on update, SPA field, dynamic Biaya/Harga labels, and `unitLabel`; the machine master, machine pricing, its tables, and its UI are removed. Managers can create/read/delete global attribute types and CRUD own-branch attributes and pricing rows through `CatalogPolicy`, `/manager/finishing`, and `/manager/pricing`. Remaining gaps: `attributes.price/cost/is_active`, a real `branches.reseller_discount_percent` column, pricing redesign, and applying the category discount tiers. The pricing matrix remains the price source. |
 | FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 10-row pagination, case-insensitive search, category and active-status filters; `CatalogApiTest`. |
-| FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices from the pricing matrix; `CreateInvoiceApiTest`. Customer search (`GET /customers?search=`), the separate `/designer/customers/new` page, and customer `institution`/`address` are implemented. Finishing/display masters exist (`attributes`), the designer form selects finishing/display, and the quote/invoice API accepts `selected_attributes[]` with `attribute_pricing` modifiers, but there is no `order_attributes` table and no persistence; machine selection is removed. Missing: finishing/display persistence and one A4 invoice print. |
-| FR9 | Target | No invoice update route or `UpdateInvoice` action. Order items cannot be changed after submission. |
+| FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices from the pricing matrix; `CreateInvoiceApiTest`. Customer search (`GET /customers?search=`), the separate `/designer/customers/new` page, and customer `institution`/`address` are implemented. Finishing/display masters exist (`attributes`), the designer form selects finishing/display, and the quote/invoice API accepts `selected_attributes[]` with `attribute_pricing` modifiers; `orders.width`, `orders.length`, and `orders.selected_attributes` persist the quote inputs for later edits, but there is no `order_attributes` table and no finishing/display snapshot. Machine selection is removed. Missing: finishing/display persistence and one A4 invoice print. |
+| FR9 | Implemented | `PUT /invoices/{invoice}/items`, `UpdateInvoiceItems`, locked pre-production eligibility, server-side quote recalculation, preserved payments, receivable guard, activity/status logs, `OrderUpdated`, and DP update tests. `/designer/orders/:id/edit` exposes the edit flow while the invoice is unpaid and every order is still pending. |
 | FR10 | Target | No `design_status`, `design_approved_at`, or `design_approved_by` columns or actions. |
 | FR11 | Implemented | `RegisterDownPayment`, `SettleInvoice`, receivable and overpay guards; `PaymentApiTest`. |
 | FR12 | Implemented | Multiple DP accumulate; full DP marks paid; over-limit and double-settlement tests; `PaymentApiTest`. |
@@ -42,7 +42,7 @@
 | :--- | :--- | :--- |
 | NFR1 | Partial | Pagination exists; no benchmark on a 10k-product/50k-order dataset. |
 | NFR2 | Partial | Owner reports exist; export is missing and report performance is unmeasured. |
-| NFR3 | Partial | DP arithmetic and multiple-DP tests pass; quantity-discount and order-edit arithmetic are not implemented. |
+| NFR3 | Partial | DP arithmetic and order-edit receivable recalculation are tested; the quantity-discount redesign remains incomplete. |
 | NFR4 | Partial | Responsive layouts exist; no formal WCAG audit or usability test; invoice print and queue filters are missing. |
 | NFR5 | Partial | Policies, branch scope, and money redaction are tested; expense-role changes, customer PII, HTTPS, and OWASP controls are not verified in this repository. |
 | NFR6 | Partial | Compose and CI exist; backup/restore is FR26 and still missing. |
@@ -60,7 +60,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 | Sprint 0 | Platform foundation, SPA shell | — | Done | Auth foundation, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
 | Sprint 1 | PB-08 | FR1–FR5 | Done | Auth, RBAC, branch scope, user management | HTTPS/OWASP formal verification |
 | Sprint 1 | PB-01 | FR6, FR7 | Partial | Product CRUD/restore, 10-row pagination, Owner-only product/category writes, category quantity discount tiers (configuration), material units and labels, machine removal (tables dropped), legacy pricing matrix (transitional) | Attribute prices, reseller discount config, pricing redesign, category discount application |
-| Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer search and creation, quote, cart, pricing-matrix invoice, finishing/display selection and `selected_attributes` API pipe | Finishing/display persistence, order update, design status, A4 invoice print |
+| Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer search and creation, quote, cart, pricing-matrix invoice, finishing/display selection and `selected_attributes` API pipe, pre-production invoice item edits (`PUT /invoices/{invoice}/items`) | Finishing/display persistence, design status, A4 invoice print |
 | Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
 | Sprint 1 | PB-04 | FR13, FR14 | Partial | Receipt, operational expenses | A4 invoice print, expense role change, category dropdown |
 | Sprint 2 | PB-05 | FR15, FR17, FR18 | Done | Stock read, restock, stock ledger, purchase records, reason-required adjustment, low-stock filter | — |
@@ -83,7 +83,7 @@ Priority order:
 1. **Pricing redesign**: material price + finishing/display price + branch reseller discount + applied category quantity discount; remove the pricing matrix and migrate data. Machine UI and tables are already gone.
 2. **FR6** attribute price/cost/is_active, branch reseller discount config, and applying the configured category discount tiers.
 3. **FR8** finishing/display persistence (`order_attributes`) and A4 invoice print.
-4. **FR9** order update before production and while not fully paid; **FR10** design status.
+4. **FR10** design status.
 5. **FR14** expense Owner/Manager access and fixed category dropdown.
 6. **FR19** deadline/priority sorting, status filter, all-role queue UI; **FR21** order-level pickup propagation.
 7. **FR22/FR23** manager dashboard/report completeness; **FR24** Excel/PDF export.

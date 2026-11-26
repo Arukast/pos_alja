@@ -35,10 +35,16 @@ final class ProductionController extends Controller
 
         Gate::authorize('viewQueue', Order::class);
 
+        $validated = $request->validate([
+            'status' => ['nullable', 'integer', 'in:0,1,3'],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
         $branchId = $request->query('branch_id');
 
         return ProductionQueueResource::collection($queue->paginate($actor, [
             'branch_id' => is_string($branchId) ? $branchId : null,
+            'status' => isset($validated['status']) ? (int) $validated['status'] : null,
+            'search' => $validated['search'] ?? null,
         ]));
     }
 

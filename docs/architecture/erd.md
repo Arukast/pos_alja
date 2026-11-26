@@ -370,6 +370,7 @@ erDiagram
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`.
     - `attributes.is_active`.
+    - The transitional order quote-input columns `width`, `length`, and `selected_attributes` are added by `2026_11_26_100000_add_order_edit_specifications.php` so pre-production invoice edits can be repriced using their saved specifications.
     - `order_attributes` for finishing/display snapshots.
     - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`; implemented by `2026_11_24_000001_add_traceability_to_stock_ledgers_table.php`.

@@ -6,7 +6,9 @@ namespace Tests\Feature\Api;
 
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Material;
+use App\Models\Order;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -198,6 +200,158 @@ class CreateInvoiceApiTest extends TestCase
                 ->postJson('/api/v1/invoices', $this->payload())
                 ->assertForbidden();
         }
+    }
+
+    public function test_designer_updates_items_on_an_unpaid_dp_invoice(): void
+    {
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $orderId = (string) $invoiceResponse->json('invoice.orders.0.id');
+
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$invoiceId}/down-payments", [
+                'amount' => 100000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertCreated();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'deadline' => now()->addDays(5)->toDateString(),
+                'items' => [$this->item([
+                    'id' => $orderId,
+                    'quantity' => 3,
+                    'file_name' => 'banner-revisi.pdf',
+                ])],
+            ])
+            ->assertOk()
+            ->assertJsonPath('invoice.status', 1)
+            ->assertJsonPath('invoice.grand_total', '900000.00')
+            ->assertJsonPath('invoice.dp_amount', '100000.00')
+            ->assertJsonPath('invoice.accounts_receivable', '800000.00')
+            ->assertJsonPath('invoice.orders.0.id', $orderId)
+            ->assertJsonPath('invoice.orders.0.file_name', 'banner-revisi.pdf');
+        $this->assertDatabaseHas('orders', ['id' => $orderId, 'quantity' => 3]);
+
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'UPDATE',
+            'model_id' => $invoiceId,
+        ]);
+    }
+
+    /** A designer can append a line and later remove it while keeping the invoice payment history. */
+    public function test_designer_can_add_and_remove_invoice_items(): void
+    {
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $existingOrderId = (string) $invoiceResponse->json('invoice.orders.0.id');
+
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$invoiceId}/down-payments", [
+                'amount' => 100000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertCreated();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'items' => [$this->item(['id' => $existingOrderId]), $this->item(['quantity' => 1])],
+            ])
+            ->assertOk()
+            ->assertJsonCount(2, 'invoice.orders')
+            ->assertJsonPath('invoice.grand_total', '900000.00')
+            ->assertJsonPath('invoice.accounts_receivable', '800000.00');
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'items' => [$this->item(['id' => $existingOrderId, 'quantity' => 1])],
+            ])
+            ->assertOk()
+            ->assertJsonCount(1, 'invoice.orders')
+            ->assertJsonPath('invoice.grand_total', '300000.00')
+            ->assertJsonPath('invoice.accounts_receivable', '200000.00');
+
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('orders', 1);
+    }
+
+    /** Item updates require a designer in the invoice branch and return 401 to guests. */
+    public function test_invoice_item_update_enforces_auth_and_branch_scope(): void
+    {
+        $this->putJson('/api/v1/invoices/'.Str::uuid().'/items', [])->assertUnauthorized();
+
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $payload = ['items' => [$this->item()]];
+
+        $this->actingAs($this->cashier)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", $payload)
+            ->assertForbidden();
+
+        $otherDesigner = $this->user('designer', $this->branchTwo);
+        $this->actingAs($otherDesigner)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", $payload)
+            ->assertForbidden();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", ['items' => []])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+    }
+
+    /** Fully paid invoices and invoices with an order already in production return 409. */
+    public function test_invoice_item_update_is_blocked_after_payment_or_production(): void
+    {
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $orderId = (string) $invoiceResponse->json('invoice.orders.0.id');
+        $payload = ['items' => [$this->item()]];
+
+        Invoice::query()->whereKey($invoiceId)->update(['status' => 2]);
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", $payload)
+            ->assertStatus(409);
+
+        Invoice::query()->whereKey($invoiceId)->update(['status' => 1]);
+        Order::query()->whereKey($orderId)->update(['status' => 1]);
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", $payload)
+            ->assertStatus(409);
+    }
+
+    /** New totals below previously collected payments are rejected without losing payment history. */
+    public function test_invoice_item_update_cannot_make_receivable_negative(): void
+    {
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$invoiceId}/down-payments", [
+                'amount' => 200000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertCreated();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'items' => [$this->item(['width' => 0.5, 'length' => 1, 'quantity' => 1])],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertEquals(400000, Invoice::query()->findOrFail($invoiceId)->accounts_receivable);
     }
 
     public function test_cross_branch_pricing_is_rejected(): void

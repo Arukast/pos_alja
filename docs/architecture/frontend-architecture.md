@@ -33,9 +33,10 @@
 | `/designer` | designer | Designer dashboard |
 | `/designer/new-order` | designer | Customer entry, quote, cart, invoice |
 | `/designer/orders` | designer | Invoice list and print links |
+| `/designer/orders/:id/edit` | designer | Edit invoice items while unpaid and before production |
 | `/production` | production | Production dashboard |
 | `/production/materials` | production | Read-only Bahan & Stok with low-stock filter |
-| `/production/queue` | production | Start/complete/fail/reopen controls, inline waste modal |
+| `/production/queue` | production | Start/complete/fail/reopen controls, inline waste modal, server-side status and search filters |
 | `/production/waste` | production | Read-only Riwayat Bahan Terbuang history |
 | `/invoices/:id/print` | owner, manager, cashier, designer | A4 invoice print |
 | `/invoices/:id/receipt` | owner, manager, cashier, designer | 80 mm receipt |

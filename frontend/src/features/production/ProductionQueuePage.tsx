@@ -9,7 +9,9 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
+import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -38,10 +40,18 @@ export function ProductionQueuePage() {
     } | null>(null);
     const [wasteOrder, setWasteOrder] = useState<ProductionQueueItem | null>(null);
     const [failOrder, setFailOrder] = useState<ProductionQueueItem | null>(null);
+    const [statusFilter, setStatusFilter] = useState('');
+    const [search, setSearch] = useState('');
+    const trimmedSearch = search.trim();
 
     const query = useQuery({
-        queryKey: ['production', 'queue', page],
-        queryFn: () => api.productionQueue({ page }),
+        queryKey: ['production', 'queue', page, statusFilter, trimmedSearch],
+        queryFn: () =>
+            api.productionQueue({
+                page,
+                status: statusFilter || undefined,
+                search: trimmedSearch || undefined,
+            }),
     });
     const summary = useQuery({
         queryKey: ['production', 'summary'],
@@ -51,6 +61,18 @@ export function ProductionQueuePage() {
     const refresh = () => {
         void queryClient.invalidateQueries({ queryKey: ['production'] });
         void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    };
+
+    /** Memperbarui filter status antrean dan mengembalikan paginasi ke halaman pertama. */
+    const handleStatusChange = (status: string) => {
+        setStatusFilter(status);
+        setPage(1);
+    };
+
+    /** Memperbarui pencarian antrean dan mengembalikan paginasi ke halaman pertama. */
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        setPage(1);
     };
 
     const start = useMutation({
@@ -129,6 +151,24 @@ export function ProductionQueuePage() {
                     ) : null}
                 </CardHeader>
                 <CardBody>
+                    <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                        <Select
+                            label="Status antrean"
+                            value={statusFilter}
+                            onChange={(event) => handleStatusChange(event.target.value)}
+                        >
+                            <option value="">Semua status antrean</option>
+                            <option value="0">Antre</option>
+                            <option value="1">Diproses</option>
+                            <option value="3">Gagal</option>
+                        </Select>
+                        <Input
+                            label="Cari invoice atau pesanan"
+                            placeholder="Nomor invoice, nama file, atau ID pesanan..."
+                            value={search}
+                            onChange={(event) => handleSearchChange(event.target.value)}
+                        />
+                    </div>
                     {query.isLoading ? (
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
@@ -164,7 +204,11 @@ export function ProductionQueuePage() {
                                 </TableHead>
                                 <TableBody>
                                     {(query.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={10}>Belum ada pekerjaan dalam antrean.</TableEmpty>
+                                        <TableEmpty colSpan={10}>
+                                            {statusFilter !== '' || trimmedSearch !== ''
+                                                ? 'Belum ada pekerjaan yang cocok.'
+                                                : 'Belum ada pekerjaan dalam antrean.'}
+                                        </TableEmpty>
                                     ) : (
                                         (query.data?.data ?? []).map((order) => {
                                             const invoiceNumber =

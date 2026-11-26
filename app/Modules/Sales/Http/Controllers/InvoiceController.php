@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\User;
 use App\Modules\Sales\Actions\CreateInvoice;
+use App\Modules\Sales\Actions\UpdateInvoiceItems;
 use App\Modules\Sales\Http\Requests\StoreInvoiceRequest;
+use App\Modules\Sales\Http\Requests\UpdateInvoiceItemsRequest;
 use App\Modules\Sales\Http\Resources\InvoiceResource;
 use App\Modules\Sales\Http\Resources\ProductionInvoiceResource;
 use App\Modules\Sales\Queries\InvoiceList;
@@ -84,6 +86,26 @@ final class InvoiceController extends Controller
         ], 201);
     }
 
+    /** Replaces and recalculates invoice items while the invoice is editable. */
+    public function updateItems(
+        UpdateInvoiceItemsRequest $request,
+        Invoice $invoice,
+        UpdateInvoiceItems $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        Gate::authorize('update', $invoice);
+        $updatedInvoice = $action->execute($invoice, $request->validated(), $actor);
+
+        return response()->json([
+            'invoice' => new InvoiceResource($updatedInvoice),
+        ]);
+    }
+
     /**
      * Menampilkan detail invoice sesuai cakupan cabang dan visibilitas nilai uang per peran.
      */
@@ -143,7 +165,14 @@ final class InvoiceController extends Controller
 
         Gate::authorize('receipt', $invoice);
 
-        $invoice->load(['customer', 'designer', 'branch', 'orders', 'payments']);
+        $invoice->load([
+            'customer',
+            'designer',
+            'branch',
+            'orders.pricing.product',
+            'orders.pricing.material',
+            'payments',
+        ]);
 
         return response()->json([
             'invoice' => new InvoiceResource($invoice),

@@ -127,6 +127,7 @@ export function DesignerOrdersPage() {
                                             Tenggat
                                         </TableHeaderCell>
                                         <TableHeaderCell>Status</TableHeaderCell>
+                                        <TableHeaderCell>Ubah Item</TableHeaderCell>
                                         <TableHeaderCell className="hidden lg:table-cell">
                                             Pengambilan
                                         </TableHeaderCell>
@@ -138,7 +139,7 @@ export function DesignerOrdersPage() {
                                 </TableHead>
                                 <TableBody>
                                     {invoices.length === 0 ? (
-                                        <TableEmpty colSpan={7}>Belum ada pesanan yang cocok.</TableEmpty>
+                                        <TableEmpty colSpan={8}>Belum ada pesanan yang cocok.</TableEmpty>
                                     ) : (
                                         invoices.map((invoice) => (
                                             <TableRow key={invoice.id}>
@@ -159,6 +160,18 @@ export function DesignerOrdersPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <InvoiceStatusBadge status={invoice.status} />
+                                                </TableCell>
+                                                <TableCell>
+                                                    {invoice.status === 2 ? (
+                                                        <span className="text-light-muted text-sm">Terkunci</span>
+                                                    ) : (
+                                                        <Link
+                                                            className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                                                            to={`/designer/orders/${invoice.id}/edit`}
+                                                        >
+                                                            Edit
+                                                        </Link>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="hidden lg:table-cell">
                                                     <PickupStatusBadge status={invoice.pickup_status} />

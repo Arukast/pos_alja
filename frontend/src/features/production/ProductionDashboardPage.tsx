@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { formatDate } from '../../lib/dates';
 import { wasteByUnitLabel } from '../../lib/units';
 
+/** Shows production-only workload counts and queue fields without invoice financial data. */
 export function ProductionDashboardPage() {
     const query = useQuery({
         queryKey: ['dashboard', 'production'],

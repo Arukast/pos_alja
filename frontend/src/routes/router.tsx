@@ -7,8 +7,9 @@ import { CashierExpensesPage } from '../features/cashier/CashierExpensesPage';
 import { CashierPaymentsPage } from '../features/cashier/CashierPaymentsPage';
 import { CashierPickupPage } from '../features/cashier/CashierPickupPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
-import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
+import { DesignerEditOrderPage } from '../features/designer/DesignerEditOrderPage';
 import { DesignerNewCustomerPage } from '../features/designer/DesignerNewCustomerPage';
+import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
 import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import {
@@ -115,6 +116,7 @@ export const router = createBrowserRouter([
                             { path: 'new-order', element: <DesignerNewOrderPage /> },
                             { path: 'customers/new', element: <DesignerNewCustomerPage /> },
                             { path: 'orders', element: <DesignerOrdersPage /> },
+                            { path: 'orders/:id/edit', element: <DesignerEditOrderPage /> },
                         ],
                     },
                     {
