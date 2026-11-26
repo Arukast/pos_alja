@@ -25,7 +25,12 @@ RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --no-a
 FROM php:8.5-fpm-bookworm AS app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip libpq-dev libicu-dev libpng-dev libzip-dev \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg git unzip libpq-dev libicu-dev libpng-dev libzip-dev \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-16 \
     && docker-php-ext-install pdo_pgsql bcmath intl gd zip pcntl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,7 +38,8 @@ WORKDIR /var/www/html
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=vendor /usr/bin/composer /usr/bin/composer
 COPY . .
-RUN composer dump-autoload --optimize --no-dev \
+RUN mkdir -p storage/app/backups storage/app/backup-tmp \
+    && composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \
     && chown -R www-data:www-data storage bootstrap/cache
 USER www-data
