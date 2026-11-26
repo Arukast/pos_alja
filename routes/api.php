@@ -51,6 +51,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/users', [UserController::class, 'store']);
         Route::get('/users/{user}', [UserController::class, 'show']);
         Route::put('/users/{user}', [UserController::class, 'update']);
+        Route::patch('/users/{user}/status', [UserController::class, 'status']);
         Route::delete('/users/{user}', [UserController::class, 'destroy']);
         Route::post('/users/{user}/restore', [UserController::class, 'restore']);
 

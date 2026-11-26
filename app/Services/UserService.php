@@ -5,10 +5,14 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class UserService
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly LastActiveOwnerGuard $lastActiveOwnerGuard
+    ) {}
 
     /**
      * Create a user and log activity.
@@ -78,6 +82,41 @@ class UserService
                 [
                     'before' => $oldData,
                     'after' => $newData,
+                ],
+            );
+
+            return $user;
+        });
+    }
+
+    /**
+     * Toggle a user's active status and log activity.
+     */
+    public function toggleUserStatus(User $user, User $actor): User
+    {
+        if ($actor->is($user)) {
+            throw ValidationException::withMessages([
+                'is_active' => 'Anda tidak dapat menonaktifkan akun Anda sendiri dari Manajemen Pengguna. Gunakan menu Profil.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($user, $actor): User {
+            $oldStatus = $user->is_active;
+
+            if ($oldStatus) {
+                $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user);
+            }
+
+            $user->update(['is_active' => ! $oldStatus]);
+
+            $this->audit->record(
+                $actor,
+                'UPDATE',
+                "Mengubah status aktif pengguna: {$user->username} menjadi ".($user->is_active ? 'aktif' : 'nonaktif'),
+                $user,
+                [
+                    'before' => ['is_active' => $oldStatus],
+                    'after' => ['is_active' => $user->is_active],
                 ],
             );
 
