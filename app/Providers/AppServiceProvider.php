@@ -22,6 +22,8 @@ use App\Policies\MaterialPolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\WastePolicy;
+use App\Services\Backup\DatabaseDumper;
+use App\Services\Backup\PgDumpDatabaseDumper;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -36,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(DatabaseDumper::class, PgDumpDatabaseDumper::class);
     }
 
     /**
