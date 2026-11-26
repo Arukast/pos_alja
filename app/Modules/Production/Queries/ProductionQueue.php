@@ -18,7 +18,7 @@ final class ProductionQueue
     {
         $query = Order::query()
             ->with(['invoice.customer', 'invoice.designer', 'operator'])
-            ->whereIn('status', [0, 1]);
+            ->whereIn('status', [0, 1, 3]);
 
         if ($actor->role === 'owner') {
             $branchId = $filters['branch_id'] ?? null;

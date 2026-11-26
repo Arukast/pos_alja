@@ -37,6 +37,7 @@ final class PurchaseResource extends JsonResource
                     'material' => $item->material ? [
                         'id' => $item->material->id,
                         'name' => $item->material->name,
+                        'unit' => $item->material->unit,
                     ] : null,
                     'quantity' => $item->quantity,
                     'unit_cost' => $item->unit_cost,

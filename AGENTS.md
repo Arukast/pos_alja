@@ -108,7 +108,7 @@ Rules:
 
 - `invoices.status`: 0 Unpaid, 1 Down Payment, 2 Paid.
 - `invoices.pickup_status`: 0 Not Picked Up, 1 Picked Up.
-- `orders.status`: 0 Pending, 1 Processing, 2 Completed.
+- `orders.status`: 0 Pending, 1 Processing, 2 Completed, 3 Failed.
 
 ### 3.2 Keys And Portability
 

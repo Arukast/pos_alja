@@ -8,7 +8,7 @@
 | ID Backlog | Sprint | Kode FR | Peran (Role) | User Story | Acceptance Criteria |
 | :---: | :---: | :---: | :---: | :--- | :--- |
 | PB-01 | Sprint 1 | FR6, FR7 | Owner (write), Branch Manager, Designer, Kasir (read/search) | Sebagai Owner, saya ingin mengelola produk, kategori, bahan, finishing/display, dan diskon kuantitas; sebagai pengguna operasional, saya ingin mencari katalog dengan pagination. | Katalog produk tampil dengan pencarian, filter, dan pagination di bawah 2 detik (NFR1); harga dihitung dari bahan + finishing/display, diskon reseller cabang, dan diskon kategori. |
-| PB-02 | Sprint 1 | FR8, FR9, FR10 | Designer | Sebagai Designer, saya ingin mencari pelanggan, mencatat pesanan baru, memperbarui status desain, dan mengubah pesanan yang belum diproduksi serta belum lunas. | Pelanggan dicari terlebih dahulu; pesanan memakai urutan Produk -> Bahan -> Finishing -> Display; pesanan berstatus DP dapat diubah sebelum produksi; satu invoice dapat dicetak. |
+| PB-02 | Sprint 1 | FR8, FR9, FR10 | Designer | Sebagai Designer, saya ingin mencari pelanggan, mencatat pesanan baru, memperbarui status desain, dan mengubah pesanan yang belum diproduksi serta belum lunas. | Pelanggan dicari terlebih dahulu; pesanan memakai urutan Produk -> Bahan; pemilihan Finishing/Display belum diterapkan; pesanan berstatus DP dapat diubah sebelum produksi; satu invoice dapat dicetak. |
 | PB-03 | Sprint 1 | FR11, FR12 | Kasir | Sebagai Kasir, saya ingin memproses pembayaran DP berkali-kali hingga lunas dengan validasi angka otomatis, agar tidak terjadi error atau selisih hitung. | Input nominal divalidasi. Sistem menghitung sisa piutang secara akurat (NFR3). |
 | PB-04 | Sprint 1 | FR13, FR14 | Kasir, Owner, Branch Manager, Designer | Sebagai Kasir, saya ingin mencetak invoice dan nota pembayaran; sebagai Owner/Manajer, saya ingin mencatat pengeluaran operasional dengan kategori tetap. | Invoice A4 dan nota 80 mm menampilkan rincian biaya, riwayat DP, dan sisa tagihan; pengeluaran cabang memakai dropdown kategori dan tersimpan di basis data. |
 | PB-05 | Sprint 2 | FR15, FR17, FR18 | Owner, Branch Manager, Produksi | Sebagai pengelola cabang, saya ingin mencatat pembelian bahan baku, melakukan koreksi stok dengan alasan, dan melihat peringatan stok minimum. | Pembelian menambah stok dan ledger purchase; koreksi stok wajib alasan dan tercatat di `stock_ledgers`; peringatan muncul saat stok di bawah batas minimum. |
@@ -38,7 +38,7 @@
 
 ## Reconciliation Notes
 
-1. **"Diambil" is not a fourth production status.** The target schema uses `orders.pickup_status = 1` and `orders.pickup_date` for pickup, while production status remains `0/1/2`. Pickup changes are logged through the audit trail; if the team wants a fourth `order_status_logs` status, add it explicitly to FR20, FR21, and the ERD.
+1. **"Diambil" is not a production status.** Production status is `0/1/2/3` (`3` = Gagal); pickup uses `orders.pickup_status = 1` and `orders.pickup_date`, separately from production status.
 2. **Original branch names were generalized** to "Cabang A dan Cabang B" for the repository, per the privacy rule.
 3. **PB-02 says "sebelum diproduksi"**, which matches FR9: an order may be changed only while every order on the invoice has `status = 0` and the invoice is not fully paid.
 4. **PB-10 says "activity_logs"** for payment, order, and stock changes; this is the target FR25 coverage.

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
+import type { WasteByUnit } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
@@ -12,7 +13,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { apiFetch } from '../../lib/api';
 import { formatDate } from '../../lib/dates';
-import { formatQuantity } from '../../lib/money';
+import { quantityWithUnit, wasteByUnitLabel } from '../../lib/units';
 
 export function ProductionWastePage() {
     const [page, setPage] = useState(1);
@@ -20,7 +21,7 @@ export function ProductionWastePage() {
     const listQuery = useQuery({ queryKey: ['waste', 'list', page], queryFn: () => api.waste({ page }) });
     const summary = useQuery({
         queryKey: ['production', 'summary'],
-        queryFn: () => apiFetch<{ waste_today: number }>('/production/summary'),
+        queryFn: () => apiFetch<{ waste_today_by_unit: WasteByUnit[] }>('/production/summary'),
     });
 
     return (
@@ -49,7 +50,7 @@ export function ProductionWastePage() {
                 ) : (
                     <StatCard
                         label="Sisa Bahan Hari Ini"
-                        value={summary.data ? String(summary.data.waste_today) : '—'}
+                        value={summary.data ? wasteByUnitLabel(summary.data.waste_today_by_unit) : '—'}
                     />
                 )}
             </div>
@@ -86,7 +87,7 @@ export function ProductionWastePage() {
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Desainer</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Jml</TableHeaderCell>
+                                        <TableHeaderCell className="text-right whitespace-nowrap">Jml</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Dimensi</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
@@ -100,12 +101,15 @@ export function ProductionWastePage() {
                                                     {formatDate(waste.logged_at)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="font-medium">
+                                                    <span
+                                                        className="block max-w-[9rem] truncate font-medium sm:max-w-none"
+                                                        title={waste.material?.name ?? undefined}
+                                                    >
                                                         {waste.material?.name ?? '-'}
                                                     </span>
                                                     {waste.notes ? (
                                                         <p
-                                                            className="text-light-muted max-w-[16rem] truncate text-xs dark:text-gray-400"
+                                                            className="text-light-muted max-w-[9rem] truncate text-xs sm:max-w-[16rem] dark:text-gray-400"
                                                             title={waste.notes}
                                                         >
                                                             {waste.notes}
@@ -113,8 +117,8 @@ export function ProductionWastePage() {
                                                     ) : null}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.designer?.name ?? '-'}</TableCell>
-                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {formatQuantity(waste.quantity)}
+                                                <TableCell className="text-right tabular-nums whitespace-normal sm:whitespace-nowrap">
+                                                    {quantityWithUnit(waste.quantity, waste.material?.unit)}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.dimensions ?? '-'}</TableCell>
                                             </TableRow>

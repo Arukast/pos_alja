@@ -261,6 +261,7 @@ export function CategoriesPage({
                                                         <Button
                                                             size="sm"
                                                             variant="secondary"
+                                                            aria-label={`Ubah ${category.name}`}
                                                             onClick={() => openEdit(category)}
                                                         >
                                                             Ubah
@@ -268,6 +269,7 @@ export function CategoriesPage({
                                                         <Button
                                                             size="sm"
                                                             variant="danger"
+                                                            aria-label={`Hapus ${category.name}`}
                                                             onClick={() => {
                                                                 if (
                                                                     window.confirm(

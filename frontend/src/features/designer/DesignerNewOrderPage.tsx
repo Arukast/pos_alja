@@ -21,7 +21,6 @@ interface CartLine {
     quote: Quote;
     file_name: string;
     notes: string;
-    machine_id: string;
     width: number;
     length: number;
     quantity: number;
@@ -30,7 +29,6 @@ interface CartLine {
 const emptyItem = {
     product_id: '',
     material_id: '',
-    machine_id: '',
     quantity: 1,
     width: 1,
     length: 1,
@@ -72,7 +70,6 @@ export function DesignerNewOrderPage() {
             api.quote({
                 product_id: item.product_id,
                 material_id: item.material_id,
-                machine_id: item.machine_id || null,
                 quantity: item.quantity,
                 width: item.width,
                 length: item.length,
@@ -102,7 +99,6 @@ export function DesignerNewOrderPage() {
                     quantity: line.quantity,
                     width: line.width,
                     length: line.length,
-                    machine_id: line.machine_id || null,
                     is_manual_price: false,
                 })),
             });
@@ -135,7 +131,6 @@ export function DesignerNewOrderPage() {
                 quote,
                 file_name: item.file_name,
                 notes: item.notes,
-                machine_id: item.machine_id,
                 width: item.width,
                 length: item.length,
                 quantity: item.quantity,
@@ -267,20 +262,6 @@ export function DesignerNewOrderPage() {
                                             {(options?.materials ?? []).map((material) => (
                                                 <option key={material.id} value={material.id}>
                                                     {material.name}
-                                                </option>
-                                            ))}
-                                        </Select>
-                                        <Select
-                                            label="Mesin"
-                                            value={item.machine_id}
-                                            onChange={(event) =>
-                                                setItem({ ...item, machine_id: event.target.value })
-                                            }
-                                        >
-                                            <option value="">Tanpa mesin</option>
-                                            {(options?.machines ?? []).map((machine) => (
-                                                <option key={machine.id} value={machine.id}>
-                                                    {machine.name}
                                                 </option>
                                             ))}
                                         </Select>

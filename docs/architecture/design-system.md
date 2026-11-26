@@ -89,8 +89,9 @@ width 1600px.
   Rows that contain an action render about 48px because `Button size="sm"` is 32px tall plus 8px vertical
   cell padding. Numeric columns are right-aligned and tabular, with two exceptions: the production dashboard
   queue table renders `Jml` left-aligned, and the manager materials movements panel (`Pergerakan stok
-  terbaru`) renders its stock counts left-aligned. The action column is sticky on the right only at `lg:` and
-  above.
+  terbaru`) renders its stock counts left-aligned. In the CRUD tables the action column is sticky on the right
+  at every width; in the production queue the action column and in purchases the total column are sticky only
+  below `lg:` (`max-lg:sticky`).
 - Pagination: Indonesian copy. `Menampilkan X–Y dari Z` when a total is known, `Menampilkan X dari Z` when
   the window is a single row, and `Halaman X dari Y` for lists whose total cannot be stated honestly
   (client-side filtered lists that only know the current page). Buttons are `Sebelumnya` and `Berikutnya`.
@@ -132,7 +133,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
 
 - `PrintHeader` renders four CMYK squares and the wordmark with `print-color-exact`, so the marks survive the
   browser's print colour handling.
-- Invoice: A4 sheet, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The invoice is
+- Invoice: A4 page, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The invoice is
   the single customer document and includes prices, discounts, DP history, and the remaining receivable.
 - Production has no invoice or receipt print. Its work list is the production queue, which contains no money
   field. No separate ticket or money-free print mode is part of the target.
@@ -155,7 +156,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
   there is no panel to replace.
 - Production screens never show price, cost, profit, discount, receivable, or payment fields. Invoice and
   receipt print are denied to production; production uses the queue.
-- The production queue table shows `Area` (m²), `Operator`, and a status filter. Failed print (waste) is
+- The production queue table shows `Area` (m²) and `Operator`. Failed print (waste) is
   recorded from the queue row and shows a quantity, never money.
 - Money is transported as decimal strings with two places and displayed through `formatMoney`; the SPA never
   submits authoritative line prices.

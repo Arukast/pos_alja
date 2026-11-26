@@ -7,7 +7,6 @@ namespace App\Modules\Sales\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
 use App\Models\Invoice;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -53,16 +52,6 @@ final class QuoteOptionsController extends Controller
             ])
             ->values();
 
-        $machines = Machine::query()
-            ->where('branch_id', $branchId)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Machine $machine): array => [
-                'id' => $machine->id,
-                'name' => $machine->name,
-            ])
-            ->values();
-
         $attributes = Attribute::query()
             ->where(function (Builder $query) use ($branchId): void {
                 $query->where('branch_id', $branchId)->orWhereNull('branch_id');
@@ -78,7 +67,6 @@ final class QuoteOptionsController extends Controller
                 Product::query()->where('is_active', true)->with('category')->orderBy('name')->get()
             ),
             'materials' => $materials,
-            'machines' => $machines,
             'attributes' => AttributeResource::collection($attributes),
         ]);
     }

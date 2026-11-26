@@ -12,7 +12,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { formatQuantity } from '../../lib/money';
+import { quantityWithUnit, unitLabel } from '../../lib/units';
 
 export function ProductionMaterialsPage() {
     const [page, setPage] = useState(1);
@@ -72,10 +72,10 @@ export function ProductionMaterialsPage() {
                                         <TableHeaderCell className="text-right whitespace-nowrap">
                                             Stok
                                         </TableHeaderCell>
-                                        <TableHeaderCell className="text-right whitespace-nowrap">
+                                        <TableHeaderCell className="hidden text-right whitespace-nowrap sm:table-cell">
                                             Minimum
                                         </TableHeaderCell>
-                                        <TableHeaderCell>Status</TableHeaderCell>
+                                        <TableHeaderCell className="whitespace-nowrap">Status</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -96,26 +96,30 @@ export function ProductionMaterialsPage() {
                                                 }
                                             >
                                                 <TableCell>
-                                                    <span className="font-medium">{material.name}</span>
-                                                    {material.type || material.dimensions ? (
-                                                        <p className="text-light-muted text-xs dark:text-gray-400">
-                                                            {[material.type, material.dimensions]
-                                                                .filter(Boolean)
-                                                                .join(' · ')}
-                                                        </p>
-                                                    ) : null}
+                                                    <span className="font-medium break-words">{material.name}</span>
+                                                    <p className="text-light-muted text-xs dark:text-gray-400">
+                                                        {[material.type, material.dimensions, unitLabel(material.unit)]
+                                                            .filter(Boolean)
+                                                            .join(' · ')}
+                                                        <span className="sm:hidden">
+                                                            {' · '}Min{' '}
+                                                            {quantityWithUnit(material.min_stock, material.unit)}
+                                                        </span>
+                                                    </p>
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">
                                                     {material.category?.name ?? '-'}
                                                 </TableCell>
                                                 <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {formatQuantity(material.current_stock)}
+                                                    {quantityWithUnit(material.current_stock, material.unit)}
                                                 </TableCell>
-                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {formatQuantity(material.min_stock)}
+                                                <TableCell className="hidden text-right tabular-nums whitespace-nowrap sm:table-cell">
+                                                    {quantityWithUnit(material.min_stock, material.unit)}
                                                 </TableCell>
-                                                <TableCell>
-                                                    {material.is_low_stock === true ? (
+                                                <TableCell className="whitespace-nowrap">
+                                                    {material.is_low_stock === null ? (
+                                                        '-'
+                                                    ) : material.is_low_stock ? (
                                                         <Badge tone="warning">Menipis</Badge>
                                                     ) : (
                                                         <Badge tone="success">Tersedia</Badge>

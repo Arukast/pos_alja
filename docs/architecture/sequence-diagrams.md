@@ -382,13 +382,13 @@ sequenceDiagram
 
     P->>SPA: Open the production queue and choose a job
     SPA->>API: GET /api/v1/waste/options
-    API-->>SPA: Branch materials and designers, no machines
+    API-->>SPA: Branch materials with units and branch designers
     P->>SPA: Submit failed print from the queue row
     SPA->>API: POST /api/v1/waste
-    API->>DB: Require order (status 0/1, same branch); designer optional; machine ignored
+    API->>DB: Require order in status 0, 1, or 3 and the same branch; designer optional
     API->>DB: Require material branch stock
     API->>DB: BEGIN, applyMovement locks stock, create waste, ledger type waste with order reference and actor, COMMIT
-    API-->>SPA: Waste record, no machine
+    API-->>SPA: Waste record with material unit
     API->>R: OrderUpdated
 ```
 
@@ -405,12 +405,12 @@ sequenceDiagram
     participant Policy
     participant DB
 
-    A->>SPA: Open production queue and choose a status filter
-    SPA->>API: GET /api/v1/production/queue?status&branch_id
+    A->>SPA: Open production queue
+    SPA->>API: GET /api/v1/production/queue?branch_id
     API->>Policy: Authorize viewQueue
     Policy-->>API: All roles, owner all branches, others own branch
-    API->>DB: Query filtered queue, sort deadline ASC, priority DESC, created_at ASC
-    API-->>SPA: Queue resource, no money for production
+    API->>DB: Query status 0, 1, and 3 rows by branch
+    API-->>SPA: Queue resource with Gagal rows, no money for production
 ```
 
 ### 6.2 Start, Usage, And Complete Production
@@ -431,7 +431,7 @@ sequenceDiagram
     API->>Policy: Authorize production, same branch
     API->>DB: BEGIN, lock order, require status 0
     API->>Inventory: Record order-linked usage
-    Inventory->>DB: Lock stock, decrement, ledger type usage with order reference
+    Inventory->>DB: Lock stock; deduct area * quantity for m2 (422 when area <= 0), otherwise quantity; ledger type usage with order reference
     API->>DB: Set status 1, operator, status log, audit, COMMIT
     API-->>SPA: Order
     API->>R: OrderUpdated
@@ -444,7 +444,50 @@ sequenceDiagram
     API->>R: OrderUpdated
 ```
 
-### 6.3 Realtime Invalidation
+### 6.3 Fail And Reopen Production
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Production
+    participant SPA
+    participant API
+    participant Policy
+    participant Inventory
+    participant DB
+    participant R as Reverb
+
+    P->>SPA: Mark a processing job as failed and enter a note
+    SPA->>API: POST /api/v1/orders/{id}/fail {note}
+    API->>Policy: Authorize production, same branch
+    API->>DB: BEGIN, lock order, require status 1 and note 3-255
+    alt Wrong status or invalid note
+        API-->>SPA: 422
+    else Valid
+        API->>DB: Sum usage minus usage_reversal per material and branch
+        loop Each material with positive net usage
+            API->>Inventory: Apply usage_reversal for the net quantity
+            Inventory->>DB: Lock stock, add net usage, ledger type usage_reversal with order reference and actor
+        end
+        API->>DB: Set status 3, keep operator, status log with the note, COMMIT
+        API-->>SPA: Order
+        API->>R: OrderUpdated
+    end
+
+    P->>SPA: Reopen a failed job
+    SPA->>API: POST /api/v1/orders/{id}/reopen
+    API->>Policy: Authorize production, same branch
+    API->>DB: BEGIN, lock order, require status 3
+    alt Not status 3
+        API-->>SPA: 422
+    else Valid
+        API->>DB: Set status 0, clear operator, status log "Production reopened", COMMIT
+        API-->>SPA: Order
+        API->>R: OrderUpdated
+    end
+```
+
+### 6.4 Realtime Invalidation
 
 ```mermaid
 sequenceDiagram

@@ -41,6 +41,7 @@ const ledgerTypes: Record<string, string> = {
     waste: 'Sisa Bahan',
     adjustment: 'Koreksi',
     restock: 'Tambah Stok',
+    usage_reversal: 'Pengembalian Pemakaian',
 };
 
 export function roleLabel(role: string): string {

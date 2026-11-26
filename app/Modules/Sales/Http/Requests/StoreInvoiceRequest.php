@@ -6,7 +6,6 @@ namespace App\Modules\Sales\Http\Requests;
 
 use App\Models\Invoice;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 final class StoreInvoiceRequest extends FormRequest
 {
@@ -32,11 +31,6 @@ final class StoreInvoiceRequest extends FormRequest
             'items.*.width' => ['nullable', 'numeric', 'gt:0', 'max:999'],
             'items.*.length' => ['nullable', 'numeric', 'gt:0', 'max:999'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:100000'],
-            'items.*.machine_id' => [
-                'nullable',
-                'uuid',
-                Rule::exists('machines', 'id')->where('branch_id', $this->user()?->branch_id),
-            ],
             'items.*.selected_attributes' => ['nullable', 'array'],
             'items.*.selected_attributes.*' => ['uuid', 'exists:attributes,id'],
             'items.*.is_manual_price' => ['sometimes', 'boolean'],

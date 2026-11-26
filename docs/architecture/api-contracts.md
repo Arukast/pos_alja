@@ -49,7 +49,7 @@
 | PATCH | `/branches/{branch}/status` | owner |
 | DELETE | `/branches/{branch}` | owner |
 
-Branch create/update responses include `reseller_discount_percent` (decimal `0–100`, default `0`). `PUT /branches/{branch}` accepts it; the invoice branch's value is used for Reseller pricing.
+Branch create/update accept `settings`; `settings.reseller_discount_percent` is read by pricing but is API-only, has no SPA field, and is currently uncapped. The target `reseller_discount_percent` field is not implemented.
 
 ### Users
 
@@ -71,9 +71,9 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | GET | `/categories` | owner, manager |
 | POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner |
 | GET | `/attribute-types` | owner, manager |
-| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner |
+| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner, manager (global) |
 | GET | `/attributes` | owner, manager |
-| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner |
+| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner; manager own branch (branch forced) |
 | GET | `/products` | owner, manager, cashier, designer |
 | POST/PUT/DELETE | `/products`, `/products/{product}` | owner |
 | POST | `/products/{product}/restore` | owner |
@@ -86,13 +86,17 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | POST | `/materials/{material}/adjustments` | owner, manager (manager branch forced) |
 | POST | `/materials/{material}/activate` | owner, manager (branch-stock activation) |
 | GET | `/materials/similar?name=` | owner, manager |
+| GET | `/pricing` | owner all; manager own branch |
+| POST | `/pricing` | owner; manager own branch (branch forced) |
+| PUT/DELETE | `/pricing/{pricing}` | owner; manager own branch |
+| POST | `/pricing/clone-tiers` | owner; manager own branch (branch forced) |
 | GET | `/stock-ledgers` | owner all; manager own branch |
 | GET | `/purchases` | owner all; manager own branch |
 | POST | `/purchases` | owner, manager (manager branch forced) |
 
-Categories accept `discount_tiers[]` with `min_qty` and `discount_percent`. Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), and `is_active`. Materials accept `type`, `cost`, and `price`; the target `unit` field (`m2`, `sheet`, `pcs`) is not implemented (see `docs/requirements/implementation-gaps.md`). Attributes accept `type` (`finishing` or `display`), `price`, and `cost`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
+Categories accept `discount_tiers[]` with `min_qty` and `discount_percent`; the tiers are stored but not applied to quotes or invoices. Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), and `is_active`. Materials accept `name`, `product_category_id`, `type`, `dimensions`, `unit`, `cost`, `price`, `initial_stock`, and `min_stock`. `unit` is required on create and optional on update; allowed values are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`. The column defaults to `pcs`, and existing rows are backfilled; `m2` displays as `m²`. Attributes accept `name`, `type` (`finishing`, `cut`, or `display`), and `branch_id`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
 
-Material responses include `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data, but include `current_stock`, `min_stock`, and `is_low_stock`. Machine endpoints and pricing-matrix endpoints remain transitional; machine-master removal is not part of the PB-05/PB-07 build (see `docs/requirements/implementation-gaps.md`).
+Material responses include `unit`, `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data, but include `unit`, `current_stock`, `min_stock`, and `is_low_stock`. The pricing-matrix endpoints (`/pricing`) remain. `POST /pricing` requires `product_id`, `material_id`, `customer_type`, `min_qty`, `price`, and `cost`; `profit` is optional and defaults to `max(0, price - cost)`. Managers are forced to their own branch for list, write, delete, and clone operations; owners may select a branch.
 
 `GET /materials?low_stock=1` returns only materials whose resolved branch stock has `current_stock <= min_stock`. For an owner with `branch_id=all`, the filter uses OR semantics: a material is returned when at least one branch is low. In that case the top-level `is_low_stock` is always null, even when the response loads one stock row, and each `stocks[]` row carries its own boolean `is_low_stock`. For a single resolved branch the top-level `is_low_stock` is a boolean. Each `stocks[]` row always carries its own boolean. Manager and production are forced to their own branch. The filtered list is paginated like the normal list.
 
@@ -105,15 +109,15 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 - The server computes each line `subtotal` with integer-cent arithmetic, rounds every line to two decimals, and sums the rounded lines into `total_amount`. Client subtotals and totals are ignored.
 - One transaction creates the purchase and items, increments branch stock, writes one `stock_ledgers` row per line (`type=purchase`, `reference_type=purchase`, `reference_id`, actor), and writes an activity log entry. A missing branch stock row is created with `min_stock=0`. Duplicate material lines are allowed as separate lines and each increments stock.
 - The unique key is `(branch_id, idempotency_key)`. A replay in the resolved branch returns the stored purchase with 200 and no stock or ledger change, even when the payload differs, provided the new payload still validates; an invalid payload returns 422 before the replay lookup. A new purchase returns 201. The replay lookup is branch-scoped, so a manager cannot read another branch's key.
-- The response is `{ purchase: PurchaseResource }`. Fields: `id`, `branch {id,name}`, `user {id,name}`, `purchased_at` (`Y-m-d`), `supplier`, `total_amount`, `notes`, `items[]` (`id`, `material {id,name}`, `quantity`, `unit_cost`, `subtotal`), and `created_at`. Purchase history keeps the name of a soft-deleted material.
+- The response is `{ purchase: PurchaseResource }`. Fields: `id`, `branch {id,name}`, `user {id,name}`, `purchased_at` (`Y-m-d`), `supplier`, `total_amount`, `notes`, `items[]` (`id`, `material {id,name,unit}`, `quantity`, `unit_cost`, `subtotal`), and `created_at`. Purchase history keeps the name and unit of a soft-deleted material.
 - There is no purchase detail, update, or delete route. Purchases are immutable after creation and there is no reversal flow.
 - Over-cap values, a soft-deleted material, or an invalid payload return 422.
 
 ### Stock Ledger Rules
 
 - `GET /stock-ledgers` is owner all; manager own branch.
-- `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
-- `type` is one of `initial`, `purchase`, `usage`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference.
+- `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material {id,name,unit}`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
+- `type` is one of `initial`, `purchase`, `usage`, `usage_reversal`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference. `usage_reversal` is written when a failed processing order returns its net usage; it references the order and records `added_stock`.
 
 `GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) only. `GET /categories` includes `discount_tiers[]` (`id`, `min_qty`, and 2-decimal `discount_percent`, ordered by `min_qty`).
 
@@ -141,18 +145,17 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 
 ### Quote And Invoice Input
 
-`POST /quotes` accepts `customer_id?`, `product_id`, `material_id`, `finishing_id?`, `display_id?`, `quantity`, `width?`, `length?`. It returns `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` is after the reseller adjustment and before the category quantity discount. Cost and profit are not returned to the designer. When `customer_id` is present, the customer type is read from the customer record; otherwise it defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes; it does not return machines.
+`POST /quotes` accepts `product_id`, `material_id`, `selected_attributes[]?`, `quantity`, `width?`, `length?`, and `customer_type?`. It returns `pricing_id`, `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` comes from the pricing matrix plus `attribute_pricing` modifiers. Cost and profit are not returned to the designer. `customer_type` defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes.
 
-`POST /invoices` and `PUT /invoices/{invoice}` accept `customer_id`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `product_id`, `material_id`, `finishing_id?`, `display_id?`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `is_manual_price`, `unit_price?`, and `cost?`.
+`POST /invoices` accepts `customer_id`, `discount?`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `selected_attributes[]?`, `is_manual_price`, `unit_price?`, and `cost?`.
 
 Server rules:
 
-- Base price is recomputed from material price plus finishing/display price; client prices are ignored unless `is_manual_price` is true.
-- For a Reseller customer, the branch reseller discount is applied to the base price. The customer type comes from `customer_id`, never from a client-writable `customer_type`.
-- The category quantity discount uses the tier with the highest `min_qty <= quantity`.
-- Manual lines require both `unit_price` and `cost`, must be non-negative, and `cost` must not exceed `unit_price`.
-- Only one finishing and one display option may be selected per item; the selected option and its price/cost snapshot are stored in `order_attributes`.
-- Machine ids are no longer accepted.
+- Base price is recomputed from the selected `pricing` row plus `attribute_pricing` modifiers; client prices are ignored unless `is_manual_price` is true.
+- Invoice creation reads the customer type from the customer record. The branch reseller discount is applied only when a Reseller quote falls back to the Reguler pricing row.
+- Category quantity discount tiers are configured but not applied to the invoice total.
+- Manual lines require both `unit_price` and `cost`; `unit_price` must be positive, `cost` must be non-negative, and `cost` must not exceed `unit_price`.
+- `selected_attributes[]` adds `attribute_pricing` modifiers to the pricing-matrix row. No finishing/display selection is persisted; `order_attributes` does not exist.
 - Discount cannot exceed the computed subtotal.
 - Invoice numbers use the unique branch code and a per-branch daily sequence.
 - Creation, update, and manual-price audit entries are atomic.
@@ -181,17 +184,23 @@ Customer input requires `name` and `institution`; `phone`, `email`, `address`, a
 
 | Method | Path | Access |
 | :--- | :--- | :--- |
-| GET | `/production/queue?status=&branch_id=` | all roles, branch-scoped |
+| GET | `/production/queue?branch_id=` | all roles, branch-scoped |
 | GET | `/production/summary` | production |
 | POST | `/orders/{order}/start` | production, branch-scoped |
 | POST | `/orders/{order}/complete` | production, branch-scoped |
+| POST | `/orders/{order}/fail` | production, branch-scoped |
+| POST | `/orders/{order}/reopen` | production, branch-scoped |
 | GET | `/waste` | production, branch-scoped |
 | POST | `/waste` | production, branch-scoped |
 | GET | `/waste/options` | production, branch-scoped |
 
-The queue filters by `status` (`0`, `1`, `2`) and, for owner, by `branch_id`. It sorts by deadline, priority, and creation time. Starting an order deducts material stock once, sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
+The queue returns statuses `0`, `1`, and `3` (Gagal), and for owner filters by `branch_id`. It currently orders by `created_at`, then `id`; deadline/priority sorting and a status filter are not implemented. Starting an order requires status 0 and deducts material stock once by unit: `m2` deducts `area * quantity` and 422s when `area <= 0`; every other unit deducts `quantity`. It sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
 
-Waste is recorded from the queue row and requires `order_id`; the order must belong to the operator's branch and have status 0 or 1. `material_id` must have a branch stock row, `quantity` must be positive, at most two decimals, and at most 99999999.99, `dimensions` and `notes` are optional, and `designer_id` is optional (a designer in the same branch). `machine_id` is not accepted and is ignored if sent. Waste writes a `stock_ledgers` row of type `waste` with the order reference and actor, and may push stock negative but not below -99999999.99. `GET /waste` returns paginated history; `WasteResource` has `id`, `branch`, `material`, `order_id`, `designer`, `operator`, `quantity`, `dimensions`, `notes`, and `logged_at`, with no machine. `GET /waste/options` returns branch materials and branch designers only. The SPA records waste from the queue row; `/production/waste` is read-only history.
+`GET /production/summary` is production-only and branch-scoped. It returns `queued`, `processing`, `completed_today`, `failed` (orders currently in status `3`), and `waste_today_by_unit`, an array of `{ unit, quantity }` for today grouped by material unit, including soft-deleted materials. The old flat waste number no longer exists.
+
+`POST /orders/{order}/fail` requires `note` (3–255 characters) and status `1`; any other status returns 422. It reverses the net usage per `(material_id, branch_id)` (`usage` minus `usage_reversal`), writes one `usage_reversal` row for each material with positive net usage, sets status `3`, keeps the operator, writes the status log with the note verbatim, and broadcasts. It returns 200 `{ order }`. `POST /orders/{order}/reopen` takes no body and requires status `3`; any other status returns 422. It sets status `0`, clears the operator, writes the status log note `Production reopened`, and broadcasts. It returns 200 `{ order }`. Both are production-only and branch-scoped: guest 401, wrong role or other branch 403.
+
+Waste is recorded from the queue row and requires `order_id`; the order must belong to the operator's branch and have status `0`, `1`, or `3`. A completed order (status `2`) returns 422. `material_id` must have a branch stock row, `quantity` must be positive, at most two decimals, and at most 99999999.99, `dimensions` and `notes` are optional, and `designer_id` is optional (a designer in the same branch). Waste writes a `stock_ledgers` row of type `waste` with the order reference and actor, and may push stock negative but not below -99999999.99. `GET /waste` returns paginated history; `WasteResource` has `id`, `branch`, `material {id,name,unit}`, `order_id`, `designer`, `operator`, `quantity`, `dimensions`, `notes`, and `logged_at`. `GET /waste/options` returns branch materials and branch designers only. The SPA records waste from the queue row; `/production/waste` is read-only history.
 
 Production responses omit all money fields. Quantities are numeric. The queue is the production work list; there is no separate ticket endpoint.
 
@@ -213,7 +222,7 @@ Production responses omit all money fields. Quantities are numeric. The queue is
 | GET | `/audit-logs` | owner |
 | GET | `/audit-logs/{activityLog}` | owner |
 
-Report filters: `branch_id`, `start_date`, `end_date`. `end_date` must be on or after `start_date`. Owner net profit subtracts invoice HPP, wasted material cost, and operating expenses.
+Report filters: `branch_id`, `start_date`, `end_date`. `end_date` must be on or after `start_date`. Owner net profit subtracts invoice HPP, wasted material cost, and operating expenses. The production dashboard payload returns `queued`, `processing`, `completed_today`, `waste_today_by_unit`, and the queue; `failed` is returned by `/production/summary`.
 
 Audit logs support `search`, `sort` (`created_at`, `username`, `role`, `action`), `direction`, and pagination.
 

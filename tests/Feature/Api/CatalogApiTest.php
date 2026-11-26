@@ -7,7 +7,6 @@ namespace Tests\Feature\Api;
 use App\Models\Attribute;
 use App\Models\AttributeType;
 use App\Models\Branch;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Pricing;
@@ -41,10 +40,6 @@ class CatalogApiTest extends TestCase
     private ProductCategory $category;
 
     private Material $material;
-
-    private Machine $machineOne;
-
-    private Machine $machineTwo;
 
     private Attribute $attributeOne;
 
@@ -94,6 +89,7 @@ class CatalogApiTest extends TestCase
             'product_category_id' => $this->category->id,
             'type' => 'roll',
             'dimensions' => '1.2m',
+            'unit' => 'm2',
             'cost' => 10000,
             'price' => 15000,
         ]);
@@ -110,18 +106,6 @@ class CatalogApiTest extends TestCase
             'branch_id' => $this->branchTwo->id,
             'current_stock' => 3,
             'min_stock' => 5,
-        ]);
-
-        $this->machineOne = Machine::create([
-            'branch_id' => $this->branchOne->id,
-            'name' => 'Printer A',
-            'cost' => 1000,
-        ]);
-
-        $this->machineTwo = Machine::create([
-            'branch_id' => $this->branchTwo->id,
-            'name' => 'Printer B',
-            'cost' => 2000,
         ]);
 
         AttributeType::firstOrCreate(
@@ -193,7 +177,7 @@ class CatalogApiTest extends TestCase
         ]);
     }
 
-    public function test_owner_can_read_categories_attribute_types_attributes_products_and_machines(): void
+    public function test_owner_can_read_categories_attribute_types_attributes_products_and_pricing(): void
     {
         foreach ([
             '/api/v1/categories',
@@ -201,12 +185,22 @@ class CatalogApiTest extends TestCase
             '/api/v1/attributes',
             '/api/v1/products',
             '/api/v1/materials',
-            '/api/v1/machines',
             '/api/v1/pricing',
             '/api/v1/stock-ledgers',
         ] as $path) {
             $this->actingAs($this->owner)->getJson($path)->assertOk();
         }
+    }
+
+    public function test_machine_endpoints_are_removed(): void
+    {
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/machines')
+            ->assertNotFound();
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/machines', [])
+            ->assertNotFound();
     }
 
     public function test_manager_reads_own_branch_catalog_scope(): void
@@ -218,12 +212,6 @@ class CatalogApiTest extends TestCase
 
         $this->assertContains($this->attributeOne->id, collect($attributes)->pluck('id')->all());
         $this->assertNotContains($this->attributeTwo->id, collect($attributes)->pluck('id')->all());
-
-        $this->actingAs($this->manager)
-            ->getJson('/api/v1/machines?branch_id='.$this->branchTwo->id)
-            ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $this->machineOne->id);
 
         $this->actingAs($this->manager)
             ->getJson('/api/v1/pricing?branch_id='.$this->branchTwo->id)
@@ -246,7 +234,6 @@ class CatalogApiTest extends TestCase
             $this->actingAs($user)->getJson('/api/v1/attribute-types')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/attributes')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/materials')->assertForbidden();
-            $this->actingAs($user)->getJson('/api/v1/machines')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/pricing')->assertForbidden();
         }
     }
@@ -254,7 +241,6 @@ class CatalogApiTest extends TestCase
     public function test_production_can_read_materials_without_money_fields(): void
     {
         $this->actingAs($this->production)->getJson('/api/v1/products')->assertForbidden();
-        $this->actingAs($this->production)->getJson('/api/v1/machines')->assertForbidden();
 
         $response = $this->actingAs($this->production)
             ->getJson('/api/v1/materials')
@@ -264,6 +250,7 @@ class CatalogApiTest extends TestCase
 
         $this->assertEquals(10, (float) $response->json('data.0.current_stock'));
         $this->assertSame($this->material->id, $response->json('data.0.id'));
+        $this->assertSame('m2', $response->json('data.0.unit'));
     }
 
     public function test_manager_material_list_is_scoped_to_own_branch(): void
@@ -287,34 +274,13 @@ class CatalogApiTest extends TestCase
         $this->assertNull($response->json('data.0.current_stock'));
     }
 
-    public function test_product_and_machine_search_filters_results(): void
+    public function test_product_search_filters_results(): void
     {
         $this->actingAs($this->owner)
             ->getJson('/api/v1/products?search=Banner')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Vinyl Banner');
-
-        $this->actingAs($this->owner)
-            ->getJson('/api/v1/machines?search=Printer A')
-            ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.name', 'Printer A');
-    }
-
-    public function test_include_deleted_machines(): void
-    {
-        $this->machineOne->delete();
-
-        $this->actingAs($this->owner)
-            ->getJson('/api/v1/machines')
-            ->assertOk()
-            ->assertJsonMissing(['id' => $this->machineOne->id]);
-
-        $this->actingAs($this->owner)
-            ->getJson('/api/v1/machines?include_deleted=1')
-            ->assertOk()
-            ->assertJsonFragment(['id' => $this->machineOne->id]);
     }
 
     public function test_owner_stock_ledgers_can_show_all_branches(): void
@@ -497,12 +463,25 @@ class CatalogApiTest extends TestCase
             ->getJson('/api/v1/stock-ledgers')
             ->assertOk()
             ->assertJsonPath('data.0.id', $this->ledgerOne->id)
+            ->assertJsonPath('data.0.material.unit', 'm2')
             ->assertJsonPath('data.0.type', 'purchase')
             ->assertJsonPath('data.0.reason', 'Pembelian bahan baku')
             ->assertJsonPath('data.0.user.id', $this->manager->id)
             ->assertJsonPath('data.0.user.name', $this->manager->name)
             ->assertJsonPath('data.0.reference_type', 'purchase')
             ->assertJsonPath('data.0.reference_id', $this->ledgerOne->reference_id);
+    }
+
+    public function test_stock_ledger_returns_a_null_material_when_it_is_soft_deleted(): void
+    {
+        $this->material->delete();
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/stock-ledgers')
+            ->assertOk();
+
+        $this->assertCount(1, $response->json('data'));
+        $this->assertNull($response->json('data.0.material'));
     }
 
     private function branch(string $name): Branch

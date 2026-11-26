@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Branch, Machine, Material, UserRecord } from '../../api/types';
+import type { Branch, Material, UserRecord } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
@@ -15,7 +15,8 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
 import { roleLabel } from '../../lib/labels';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney } from '../../lib/money';
+import { quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
 const branchOptions = (branches: Array<{ id: string; name: string }>) =>
     branches.map((branch) => ({ value: branch.id, label: branch.name }));
@@ -24,6 +25,8 @@ const roleOptions = ['owner', 'manager', 'cashier', 'designer', 'production'].ma
     value: role,
     label: roleLabel(role),
 }));
+
+const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
 export function OwnerUsersPage() {
     const branches = useBranches();
@@ -98,6 +101,7 @@ export function OwnerUsersPage() {
                 { header: 'Cabang', className: 'hidden sm:table-cell', cell: (user) => user.branch?.name ?? 'Global' },
             ]}
             fields={fields}
+            rowLabel={(user) => user.name}
             create={(values) => api.admin.createUser(values)}
             update={(id, values) => api.admin.updateUser(id, values)}
             remove={(id) => api.admin.deleteUser(id)}
@@ -136,6 +140,7 @@ export function BranchesPage() {
                 },
             ]}
             fields={fields}
+            rowLabel={(branch) => branch.name}
             create={(values) => api.admin.createBranch(values)}
             update={(id, values) => api.admin.updateBranch(id, values)}
             remove={(id) => api.admin.deleteBranch(id)}
@@ -163,8 +168,19 @@ export function OwnerMaterialsPage() {
         },
         { key: 'type', label: 'Jenis' },
         { key: 'dimensions', label: 'Dimensi' },
-        { key: 'cost', label: 'Biaya', type: 'number' },
-        { key: 'price', label: 'Harga', type: 'number' },
+        { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
+        {
+            key: 'cost',
+            label: 'Biaya',
+            type: 'number',
+            labelFor: (values) => `Biaya per ${unitLabelFor(values)}`,
+        },
+        {
+            key: 'price',
+            label: 'Harga',
+            type: 'number',
+            labelFor: (values) => `Harga per ${unitLabelFor(values)}`,
+        },
         { key: 'initial_stock', label: 'Stok awal', type: 'number', hideOnEdit: true },
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
@@ -195,24 +211,42 @@ export function OwnerMaterialsPage() {
                 </Card>
             }
             columns={[
-                { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
-                { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
+                { header: 'Bahan', cell: (material) => (
+                    <div>
+                        <span
+                            className="block font-medium break-words"
+                            title={material.name}
+                        >
+                            {material.name}
+                        </span>
+                        <p className="text-light-muted text-xs dark:text-gray-400">
+                            {[material.type, material.dimensions, unitLabel(material.unit)]
+                                .filter(Boolean)
+                                .join(' · ')}
+                        </p>
+                    </div>
+                ) },
+                { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
                     cell: (material) =>
                         material.stocks.length === 0 ? (
                             '-'
                         ) : (
-                            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                            <ul className="min-w-[9rem] space-y-2">
                                 {material.stocks.map((stock) => (
-                                    <li key={stock.branch_id}>
-                                        <span>
-                                            {stock.branch_name ?? '-'}:{' '}
-                                            {formatQuantity(stock.current_stock)} /{' '}
-                                            {formatQuantity(stock.min_stock)}
+                                    <li key={stock.branch_id} className="whitespace-nowrap">
+                                        <span className="block font-medium">
+                                            {stock.branch_name ?? '-'}
+                                        </span>
+                                        <span className="block tabular-nums">
+                                            {quantityWithUnit(stock.current_stock, material.unit)}
+                                        </span>
+                                        <span className="text-light-muted block text-xs tabular-nums dark:text-gray-400">
+                                            min {quantityWithUnit(stock.min_stock, material.unit)}
                                         </span>
                                         {stock.is_low_stock ? (
-                                            <span className="ml-1 font-semibold text-amber-700 dark:text-amber-300">
+                                            <span className="block font-semibold text-amber-700 dark:text-amber-300">
                                                 menipis
                                             </span>
                                         ) : null}
@@ -221,10 +255,11 @@ export function OwnerMaterialsPage() {
                             </ul>
                         ),
                 },
-                { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.cost) },
-                { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.price) },
+                { header: 'Biaya', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.cost) },
+                { header: 'Harga', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.price) },
             ]}
             fields={fields}
+            rowLabel={(material) => material.name}
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
             remove={(id) => api.admin.deleteMaterial(id)}
@@ -241,37 +276,6 @@ export function OwnerMaterialsPage() {
 
 export function OwnerCategoriesPage() {
     return <CategoriesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
-}
-
-export function OwnerMachinesPage() {
-    const branches = useBranches();
-    const options = branchOptions(branches.data?.data ?? []);
-
-    const fields: Array<CrudField<Machine>> = [
-        { key: 'name', label: 'Nama', required: true },
-        { key: 'branch_id', label: 'Cabang', type: 'select', options, getValue: (machine) => machine.branch?.id ?? '' },
-        { key: 'cost', label: 'Biaya Dasar', type: 'number' },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Mesin Cetak"
-            description="Data mesin dan biaya dasar."
-            queryKey={['owner', 'machines']}
-            queryFn={(page) => api.machines({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Cabang', cell: (machine) => machine.branch?.name ?? 'Global' },
-                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createMachine(values)}
-            update={(id, values) => api.admin.updateMachine(id, values)}
-            remove={(id) => api.admin.deleteMachine(id)}
-            createLabel="Tambah mesin"
-        />
-    );
 }
 
 export function OwnerProductsPage() {

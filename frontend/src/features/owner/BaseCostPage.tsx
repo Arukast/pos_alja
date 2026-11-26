@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { useBranches } from '../../hooks/useBranches';
 import { formatDate, todayIso } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
+import { quantityWithUnit } from '../../lib/units';
 
 export function BaseCostPage() {
     const today = todayIso();
@@ -134,7 +135,7 @@ export function BaseCostPage() {
                                                 <TableRow key={waste.id}>
                                                     <TableCell>{formatDate(waste.logged_at)}</TableCell>
                                                     <TableCell>{waste.material?.name ?? '-'}</TableCell>
-                                                    <TableCell>{waste.quantity}</TableCell>
+                                                    <TableCell>{quantityWithUnit(waste.quantity, waste.material?.unit)}</TableCell>
                                                     <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                         {formatMoney(waste.wasted_cost)}
                                                     </TableCell>

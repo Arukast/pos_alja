@@ -6,8 +6,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\Attribute;
 use App\Models\Branch;
-use App\Models\Machine;
-use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Pricing;
@@ -35,8 +33,6 @@ class QuoteApiTest extends TestCase
     private Product $product;
 
     private Material $material;
-
-    private Machine $machine;
 
     private Attribute $attribute;
 
@@ -78,7 +74,7 @@ class QuoteApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        $pricing = Pricing::create([
+        Pricing::create([
             'branch_id' => $this->branchOne->id,
             'product_id' => $this->product->id,
             'material_id' => $this->material->id,
@@ -87,21 +83,6 @@ class QuoteApiTest extends TestCase
             'price' => 50000,
             'cost' => 20000,
             'profit' => 30000,
-        ]);
-
-        $this->machine = Machine::create([
-            'branch_id' => $this->branchOne->id,
-            'name' => 'Printer A',
-            'cost' => 0,
-        ]);
-
-        MachinePricing::create([
-            'branch_id' => $this->branchOne->id,
-            'pricing_id' => $pricing->id,
-            'machine_id' => $this->machine->id,
-            'price' => 5000,
-            'cost' => 3000,
-            'profit' => 2000,
         ]);
 
         $this->attribute = Attribute::create([
@@ -120,14 +101,13 @@ class QuoteApiTest extends TestCase
                 'categories',
                 'products',
                 'materials',
-                'machines',
                 'attributes',
             ])
+            ->assertJsonMissingPath('machines')
             ->assertJsonMissingPath('materials.0.cost')
             ->assertJsonMissingPath('materials.0.price');
 
         $this->assertSame($this->material->id, $response->json('materials.0.id'));
-        $this->assertSame($this->machine->id, $response->json('machines.0.id'));
     }
 
     public function test_quote_options_excludes_inactive_products(): void
@@ -162,15 +142,16 @@ class QuoteApiTest extends TestCase
             ->postJson('/api/v1/quotes', [
                 'product_id' => $this->product->id,
                 'material_id' => $this->material->id,
-                'machine_id' => $this->machine->id,
+                // Legacy clients may still send machine_id; it must be ignored.
+                'machine_id' => (string) Str::uuid(),
                 'quantity' => 2,
                 'width' => 2,
                 'length' => 3,
             ])
             ->assertOk()
-            ->assertJsonPath('quote.unit_price', '55000.00')
+            ->assertJsonPath('quote.unit_price', '50000.00')
             ->assertJsonPath('quote.area', 6)
-            ->assertJsonPath('quote.subtotal', '660000.00')
+            ->assertJsonPath('quote.subtotal', '600000.00')
             ->assertJsonMissingPath('quote.unit_cost')
             ->assertJsonMissingPath('quote.cost')
             ->assertJsonMissingPath('quote.profit');

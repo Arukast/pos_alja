@@ -20,7 +20,7 @@ class InventoryService
 {
     private const MAX_STOCK = 99999999.99;
 
-    private const MOVEMENT_TYPES = ['initial', 'purchase', 'usage', 'waste', 'adjustment', 'restock'];
+    private const MOVEMENT_TYPES = ['initial', 'purchase', 'usage', 'usage_reversal', 'waste', 'adjustment', 'restock'];
 
     /**
      * Create a global material catalog entry.
@@ -40,6 +40,7 @@ class InventoryService
                     'product_category_id' => $data['product_category_id'],
                     'type' => $data['type'] ?? null,
                     'dimensions' => $data['dimensions'] ?? null,
+                    'unit' => $data['unit'] ?? 'pcs',
                     'cost' => (float) ($data['cost'] ?? 0.0),
                     'price' => (float) ($data['price'] ?? 0.0),
                 ]);

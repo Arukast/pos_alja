@@ -8,8 +8,6 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Invoice;
-use App\Models\Machine;
-use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
@@ -166,10 +164,10 @@ class HugeDatasetSeeder extends Seeder
 
         // Create global materials first
         $globalMaterials = [
-            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000],
-            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000],
-            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500],
-            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500],
+            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 8000, 'price' => 15000],
+            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 15000, 'price' => 30000],
+            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'unit' => 'lembar', 'cost' => 1200, 'price' => 3500],
+            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'unit' => 'lembar', 'cost' => 150, 'price' => 500],
         ];
 
         $materialModels = [];
@@ -177,9 +175,8 @@ class HugeDatasetSeeder extends Seeder
             $materialModels[$m['name']] = Material::create($m);
         }
 
-        // 4. Materials, Machines, Attributes, and Pricing per branch
+        // 4. Materials, Attributes, and Pricing per branch
         $materialsByBranch = [];
-        $machinesByBranch = [];
         $attributesByBranch = [];
         $pricingsByBranch = [];
 
@@ -204,17 +201,6 @@ class HugeDatasetSeeder extends Seeder
                     'current_stock' => $stockInfo['current_stock'],
                     'min_stock' => $stockInfo['min_stock'],
                 ]);
-            }
-
-            // Machines
-            $machines = [
-                ['name' => 'Konica Minolta C1085', 'branch_id' => $branch->id],
-                ['name' => 'Challenger FY-3208R', 'branch_id' => $branch->id],
-            ];
-
-            $machinesByBranch[$branch->id] = [];
-            foreach ($machines as $mac) {
-                $machinesByBranch[$branch->id][$mac['name']] = Machine::create($mac);
             }
 
             // Attributes
@@ -248,15 +234,6 @@ class HugeDatasetSeeder extends Seeder
             ]);
             $pricingsByBranch[$branch->id][] = $p1;
 
-            MachinePricing::create([
-                'branch_id' => $branch->id,
-                'pricing_id' => $p1->id,
-                'machine_id' => $machinesByBranch[$branch->id]['Challenger FY-3208R']->id,
-                'price' => 0,
-                'cost' => 0,
-                'profit' => 0,
-            ]);
-
             AttributePricing::create([
                 'branch_id' => $branch->id,
                 'pricing_id' => $p1->id,
@@ -278,15 +255,6 @@ class HugeDatasetSeeder extends Seeder
                 'customer_type' => 'Reguler',
             ]);
             $pricingsByBranch[$branch->id][] = $p2;
-
-            MachinePricing::create([
-                'branch_id' => $branch->id,
-                'pricing_id' => $p2->id,
-                'machine_id' => $machinesByBranch[$branch->id]['Konica Minolta C1085']->id,
-                'price' => 0,
-                'cost' => 0,
-                'profit' => 0,
-            ]);
 
             AttributePricing::create([
                 'branch_id' => $branch->id,

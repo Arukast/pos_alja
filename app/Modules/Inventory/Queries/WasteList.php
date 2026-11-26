@@ -45,6 +45,7 @@ final class WasteList
                 'id' => $material->id,
                 'name' => $material->name,
                 'type' => $material->type,
+                'unit' => $material->unit,
                 'dimensions' => $material->dimensions,
             ])
             ->values()

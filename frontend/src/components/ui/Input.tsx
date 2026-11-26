@@ -8,7 +8,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     hint?: string;
 }
 
-export function Input({ label, error, hint, className, id, ...props }: InputProps) {
+export function Input({ label, error, hint, className, id, required, ...props }: InputProps) {
     const generatedId = useId();
     const inputId = id ?? generatedId;
     const describedBy = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined;
@@ -21,10 +21,17 @@ export function Input({ label, error, hint, className, id, ...props }: InputProp
                     className="text-light-muted block text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400"
                 >
                     {label}
+                    {required ? (
+                        <span aria-hidden="true" className="ml-0.5 text-red-600 dark:text-red-400">
+                            *
+                        </span>
+                    ) : null}
                 </label>
             ) : null}
             <input
                 id={inputId}
+                required={required}
+                aria-required={required || undefined}
                 aria-invalid={error ? true : undefined}
                 aria-describedby={describedBy}
                 className={cn(
