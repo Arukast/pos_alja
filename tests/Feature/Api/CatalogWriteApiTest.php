@@ -678,6 +678,17 @@ class CatalogWriteApiTest extends TestCase
             'material_id' => $this->otherMaterial->id,
             'customer_type' => 'Reguler',
         ]);
+
+        $this->actingAs($this->manager)
+            ->deleteJson("/api/v1/pricing/{$pricing['id']}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('pricing', ['id' => $pricing['id']]);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/pricing')
+            ->assertOk()
+            ->assertJsonMissing(['id' => $pricing['id']]);
     }
 
     public function test_catalog_write_endpoints_require_authentication(): void

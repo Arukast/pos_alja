@@ -36,6 +36,8 @@ class QuoteApiTest extends TestCase
 
     private Attribute $attribute;
 
+    private Pricing $pricing;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -76,7 +78,7 @@ class QuoteApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        Pricing::create([
+        $this->pricing = Pricing::create([
             'branch_id' => $this->branchOne->id,
             'product_id' => $this->product->id,
             'material_id' => $this->material->id,
@@ -368,6 +370,22 @@ class QuoteApiTest extends TestCase
             ->postJson('/api/v1/quotes', [
                 'product_id' => $this->product->id,
                 'material_id' => $unpriced->id,
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('quote');
+    }
+
+    public function test_quote_rejects_a_soft_deleted_pricing_row(): void
+    {
+        $this->pricing->delete();
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
                 'quantity' => 1,
                 'width' => 2,
                 'length' => 3,
