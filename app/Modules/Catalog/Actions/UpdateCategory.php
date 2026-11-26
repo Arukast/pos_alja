@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Actions;
 
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,8 @@ use Throwable;
 
 final class UpdateCategory
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * @param  array{
      *     name: string,
@@ -24,7 +27,9 @@ final class UpdateCategory
     public function execute(ProductCategory $category, array $data, User $actor): ProductCategory
     {
         try {
-            $updated = DB::transaction(function () use ($category, $data): ProductCategory {
+            $updated = DB::transaction(function () use ($category, $data, $actor): ProductCategory {
+                $before = $category->auditSnapshot();
+
                 $category->update([
                     'name' => $data['name'],
                     'calculation_archetype' => $data['calculation_archetype'],
@@ -45,6 +50,17 @@ final class UpdateCategory
                         ));
                     }
                 }
+
+                $this->audit->record(
+                    $actor,
+                    'UPDATE',
+                    "Memperbarui kategori: {$category->name}",
+                    $category,
+                    [
+                        'before' => $before,
+                        'after' => $category->auditSnapshot(),
+                    ],
+                );
 
                 return $category;
             });

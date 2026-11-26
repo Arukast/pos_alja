@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Actions;
 
+use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\WastedMaterial;
+use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\SafeBroadcast;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class LogWaste
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -74,17 +80,44 @@ final class LogWaste
             ]);
         }
 
-        $waste = $this->inventory->logWaste([
-            'branch_id' => $branchId,
-            'material_id' => $data['material_id'],
-            'designer_id' => $data['designer_id'] ?? null,
-            'operator_id' => $operator->id,
-            'order_id' => $order->id,
-            'quantity' => $data['quantity'],
-            'dimensions' => $data['dimensions'] ?? null,
-            'notes' => $data['notes'] ?? 'Print failure',
-            'actor' => $operator,
-        ]);
+        $material = Material::query()->withTrashed()->findOrFail($data['material_id']);
+        $reason = $data['notes'] ?? 'Print failure';
+
+        $waste = DB::transaction(function () use ($material, $branchId, $data, $operator, $order, $reason): WastedMaterial {
+            $result = $this->inventory->logWaste([
+                'branch_id' => $branchId,
+                'material_id' => $material->id,
+                'designer_id' => $data['designer_id'] ?? null,
+                'operator_id' => $operator->id,
+                'order_id' => $order->id,
+                'quantity' => $data['quantity'],
+                'dimensions' => $data['dimensions'] ?? null,
+                'notes' => $reason,
+                'actor' => $operator,
+            ]);
+
+            $waste = $result['waste'];
+
+            $this->audit->record(
+                $operator,
+                'STOCK_USAGE',
+                "Mencatat sisa bahan: {$material->name}",
+                $material,
+                [
+                    'waste_id' => $waste->id,
+                    'order_id' => $order->id,
+                    'material_id' => $material->id,
+                    'quantity' => (float) $data['quantity'],
+                    'stock_before' => $result['old_stock'],
+                    'stock_after' => $result['new_stock'],
+                    'reason' => $reason,
+                    'ledger_id' => $result['ledger_id'],
+                ],
+                $branchId,
+            );
+
+            return $waste;
+        });
 
         SafeBroadcast::orderUpdated($branchId, $operator);
 

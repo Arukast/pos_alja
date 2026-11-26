@@ -10,6 +10,7 @@ use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -117,6 +118,24 @@ class CatalogWriteApiTest extends TestCase
             'branch_id' => $this->branchTwo->id,
             'current_stock' => 10,
         ]);
+
+        $log = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $response->json('material.id'))
+            ->firstOrFail();
+
+        $this->assertSame($this->owner->id, $log->user_id);
+        $this->assertSame('Membuat bahan: New Vinyl', $log->description);
+        $this->assertSame([
+            'name' => 'New Vinyl',
+            'product_category_id' => $this->category->id,
+            'type' => 'roll',
+            'dimensions' => null,
+            'unit' => 'roll',
+            'cost' => '1000.00',
+            'price' => '2000.00',
+        ], $log->payload['after']);
     }
 
     public function test_material_create_requires_a_unit_from_the_fixed_set(): void
@@ -203,6 +222,24 @@ class CatalogWriteApiTest extends TestCase
             'id' => $this->material->id,
             'unit' => 'kg',
         ]);
+
+        $logs = ActivityLog::query()
+            ->where('action', 'UPDATE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->get();
+
+        $this->assertCount(2, $logs);
+
+        $kilograms = $logs->first(
+            fn (ActivityLog $log): bool => $log->payload['after']['unit'] === 'kg'
+        );
+
+        $this->assertNotNull($kilograms);
+        $this->assertSame('pcs', $kilograms->payload['before']['unit']);
+        $this->assertSame('kg', $kilograms->payload['after']['unit']);
+        $this->assertSame('1000.00', $kilograms->payload['before']['cost']);
+        $this->assertSame('2000.00', $kilograms->payload['after']['price']);
     }
 
     public function test_manager_creates_material_only_for_own_branch(): void
@@ -270,6 +307,28 @@ class CatalogWriteApiTest extends TestCase
             'material_id' => $this->material->id,
             'added_stock' => 3,
         ]);
+
+        $ledger = StockLedger::query()
+            ->where('material_id', $this->material->id)
+            ->where('branch_id', $this->branchOne->id)
+            ->where('type', 'restock')
+            ->firstOrFail();
+
+        $log = ActivityLog::query()
+            ->where('action', 'STOCK')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->manager->id, $log->user_id);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+        $this->assertSame(3.0, (float) $log->payload['quantity']);
+        $this->assertSame(5.0, (float) $log->payload['stock_before']);
+        $this->assertSame(8.0, (float) $log->payload['stock_after']);
+        $this->assertSame(3.0, (float) $log->payload['delta']);
+        $this->assertSame('Restock', $log->payload['notes']);
+        $this->assertSame($this->branchOne->id, $log->payload['branch_id']);
+        $this->assertSame($ledger->id, $log->payload['ledger_id']);
     }
 
     public function test_global_material_delete_is_owner_only(): void
@@ -278,11 +337,27 @@ class CatalogWriteApiTest extends TestCase
             ->deleteJson("/api/v1/materials/{$this->material->id}")
             ->assertForbidden();
 
+        $this->assertDatabaseCount('activity_logs', 0);
+
         $this->actingAs($this->owner)
             ->deleteJson("/api/v1/materials/{$this->material->id}")
             ->assertNoContent();
 
         $this->assertSoftDeleted('materials', ['id' => $this->material->id]);
+
+        $log = ActivityLog::query()
+            ->where('action', 'DELETE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->owner->id, $log->user_id);
+        $this->assertSame('Menghapus bahan: Vinyl Roll', $log->description);
+        $this->assertSame('Vinyl Roll', $log->payload['before']['name']);
+        $this->assertSame('roll', $log->payload['before']['type']);
+        $this->assertSame('1000.00', $log->payload['before']['cost']);
+        $this->assertSame('2000.00', $log->payload['before']['price']);
+        $this->assertNull($log->payload['after']);
     }
 
     public function test_manager_cannot_update_global_material_master(): void
@@ -330,6 +405,86 @@ class CatalogWriteApiTest extends TestCase
             'branch_id' => $this->branchOne->id,
             'current_stock' => 5,
         ]);
+
+        $log = ActivityLog::query()
+            ->where('action', 'RESTORE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->owner->id, $log->user_id);
+        $this->assertSame('Memulihkan bahan: Vinyl Roll', $log->description);
+        $this->assertSame('Vinyl Roll', $log->payload['after']['name']);
+        $this->assertSame('1000.00', $log->payload['after']['cost']);
+        $this->assertSame('2000.00', $log->payload['after']['price']);
+
+        $this->actingAs($this->owner)
+            ->postJson("/api/v1/materials/{$this->material->id}/restore")
+            ->assertOk();
+
+        $this->assertSame(1, ActivityLog::query()
+            ->where('action', 'RESTORE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->count());
+    }
+
+    public function test_activate_material_writes_activate_audit(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson("/api/v1/materials/{$this->otherMaterial->id}/activate", [
+                'branch_id' => $this->branchOne->id,
+                'initial_stock' => 4,
+                'min_stock' => 2,
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('material_branch_stock', [
+            'material_id' => $this->otherMaterial->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 4,
+            'min_stock' => 2,
+        ]);
+
+        $first = ActivityLog::query()
+            ->where('action', 'ACTIVATE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->otherMaterial->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->owner->id, $first->user_id);
+        $this->assertSame($this->branchOne->id, $first->payload['branch_id']);
+        $this->assertTrue($first->payload['created_stock_row']);
+        $this->assertSame(4.0, (float) $first->payload['initial_stock']);
+        $this->assertSame(2.0, (float) $first->payload['min_stock']);
+        $this->assertSame(0.0, (float) $first->payload['stock_before']);
+        $this->assertSame(4.0, (float) $first->payload['stock_after']);
+
+        $this->actingAs($this->owner)
+            ->postJson("/api/v1/materials/{$this->otherMaterial->id}/activate", [
+                'branch_id' => $this->branchOne->id,
+                'initial_stock' => 9,
+                'min_stock' => 3,
+            ])
+            ->assertOk();
+
+        $logs = ActivityLog::query()
+            ->where('action', 'ACTIVATE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->otherMaterial->id)
+            ->get();
+
+        $this->assertCount(2, $logs);
+
+        $second = $logs->first(
+            fn (ActivityLog $log): bool => $log->payload['created_stock_row'] === false
+        );
+
+        $this->assertNotNull($second);
+        $this->assertSame(4.0, (float) $second->payload['stock_before']);
+        $this->assertSame(4.0, (float) $second->payload['stock_after']);
+        $this->assertSame(0.0, (float) $second->payload['initial_stock']);
+        $this->assertSame(2.0, (float) $second->payload['min_stock']);
     }
 
     public function test_manager_material_list_hides_other_branch_stock(): void
@@ -644,6 +799,21 @@ class CatalogWriteApiTest extends TestCase
             'discount_percent' => 5.5,
         ]);
 
+        $createLog = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->where('model_type', ProductCategory::class)
+            ->where('model_id', $created['id'])
+            ->first();
+
+        $this->assertNotNull($createLog);
+        $this->assertSame('Print Lembaran', $createLog->payload['after']['name']);
+        $this->assertSame('per_piece', $createLog->payload['after']['calculation_archetype']);
+        $this->assertSame(['finishing'], $createLog->payload['after']['allowed_attribute_types']);
+        $this->assertSame([
+            ['min_qty' => 10, 'discount_percent' => '5.50'],
+            ['min_qty' => 50, 'discount_percent' => '10.00'],
+        ], $createLog->payload['after']['discount_tiers']);
+
         $this->actingAs($this->owner)
             ->putJson("/api/v1/categories/{$created['id']}", [
                 'name' => 'Print Lembaran Update',
@@ -672,6 +842,21 @@ class CatalogWriteApiTest extends TestCase
             'discount_percent' => 7.25,
         ]);
 
+        $updateLog = ActivityLog::query()
+            ->where('action', 'UPDATE')
+            ->where('model_type', ProductCategory::class)
+            ->where('model_id', $created['id'])
+            ->first();
+
+        $this->assertNotNull($updateLog);
+        $this->assertSame([
+            ['min_qty' => 10, 'discount_percent' => '5.50'],
+            ['min_qty' => 50, 'discount_percent' => '10.00'],
+        ], $updateLog->payload['before']['discount_tiers']);
+        $this->assertSame([
+            ['min_qty' => 20, 'discount_percent' => '7.25'],
+        ], $updateLog->payload['after']['discount_tiers']);
+
         $designer = $this->user('designer', $this->branchOne);
         $production = $this->user('production', $this->branchOne);
         $blockedPayload = [
@@ -685,6 +870,11 @@ class CatalogWriteApiTest extends TestCase
             $this->actingAs($actor)->deleteJson("/api/v1/categories/{$created['id']}")->assertForbidden();
         }
 
+        $this->assertSame(2, ActivityLog::query()
+            ->where('model_type', ProductCategory::class)
+            ->where('model_id', $created['id'])
+            ->count());
+
         $this->actingAs($this->owner)
             ->deleteJson("/api/v1/categories/{$created['id']}")
             ->assertNoContent();
@@ -692,6 +882,18 @@ class CatalogWriteApiTest extends TestCase
         $this->assertDatabaseMissing('product_category_discounts', [
             'product_category_id' => $created['id'],
         ]);
+
+        $deleteLog = ActivityLog::query()
+            ->where('action', 'DELETE')
+            ->where('model_type', ProductCategory::class)
+            ->where('model_id', $created['id'])
+            ->first();
+
+        $this->assertNotNull($deleteLog);
+        $this->assertSame([
+            ['min_qty' => 20, 'discount_percent' => '7.25'],
+        ], $deleteLog->payload['before']['discount_tiers']);
+        $this->assertNull($deleteLog->payload['after']);
     }
 
     public function test_category_discount_tier_validation_errors_are_422(): void
@@ -740,6 +942,8 @@ class CatalogWriteApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('discount_tiers.0.discount_percent');
+
+        $this->assertDatabaseCount('activity_logs', 0);
     }
 
     private function branch(string $name): Branch

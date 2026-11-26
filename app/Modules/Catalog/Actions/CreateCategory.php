@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Actions;
 
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,8 @@ use Throwable;
 
 final class CreateCategory
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * @param  array{
      *     name: string,
@@ -24,7 +27,7 @@ final class CreateCategory
     public function execute(array $data, User $actor): ProductCategory
     {
         try {
-            $category = DB::transaction(function () use ($data): ProductCategory {
+            $category = DB::transaction(function () use ($data, $actor): ProductCategory {
                 $category = ProductCategory::create([
                     'name' => $data['name'],
                     'calculation_archetype' => $data['calculation_archetype'],
@@ -42,6 +45,14 @@ final class CreateCategory
                         $tiers
                     ));
                 }
+
+                $this->audit->record(
+                    $actor,
+                    'CREATE',
+                    "Membuat kategori: {$category->name}",
+                    $category,
+                    ['after' => $category->auditSnapshot()],
+                );
 
                 return $category;
             });

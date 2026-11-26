@@ -431,6 +431,58 @@ class ProductionWriteApiTest extends TestCase
             'wasted_stock' => 2,
             'remaining_stock' => 8,
         ]);
+
+        $ledger = StockLedger::query()
+            ->where('material_id', $this->material->id)
+            ->where('type', 'waste')
+            ->where('reference_id', $this->order->id)
+            ->firstOrFail();
+
+        $log = ActivityLog::query()
+            ->where('action', 'STOCK_USAGE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->production->id, $log->user_id);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+        $this->assertSame($response->json('waste.id'), $log->payload['waste_id']);
+        $this->assertSame($this->order->id, $log->payload['order_id']);
+        $this->assertSame($this->material->id, $log->payload['material_id']);
+        $this->assertSame(2.0, (float) $log->payload['quantity']);
+        $this->assertSame(10.0, (float) $log->payload['stock_before']);
+        $this->assertSame(8.0, (float) $log->payload['stock_after']);
+        $this->assertSame('Failed print', $log->payload['reason']);
+        $this->assertSame($ledger->id, $log->payload['ledger_id']);
+    }
+
+    public function test_waste_accepts_a_soft_deleted_material_and_writes_stock_usage_audit(): void
+    {
+        $this->material->delete();
+
+        $response = $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'order_id' => $this->order->id,
+                'quantity' => 2,
+            ])
+            ->assertCreated();
+
+        $this->assertSame(8.0, (float) $this->material->stocks()->first()?->current_stock);
+        $this->assertDatabaseHas('wasted_materials', [
+            'id' => $response->json('waste.id'),
+            'material_id' => $this->material->id,
+        ]);
+
+        $log = ActivityLog::query()
+            ->where('action', 'STOCK_USAGE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->firstOrFail();
+
+        $this->assertSame(2.0, (float) $log->payload['quantity']);
+        $this->assertSame(10.0, (float) $log->payload['stock_before']);
+        $this->assertSame(8.0, (float) $log->payload['stock_after']);
     }
 
     public function test_waste_allows_missing_designer_and_ignores_machine_id(): void

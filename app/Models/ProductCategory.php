@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Decimal;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -60,5 +61,32 @@ class ProductCategory extends Model
     {
         return $this->hasMany(ProductCategoryDiscount::class, 'product_category_id')
             ->orderBy('min_qty');
+    }
+
+    /**
+     * Stable audit snapshot; reads the tiers fresh so update/delete see current rows.
+     *
+     * @return array{
+     *     name: string,
+     *     calculation_archetype: string,
+     *     allowed_attribute_types: array<int, string>,
+     *     discount_tiers: array<int, array{min_qty: int, discount_percent: string}>
+     * }
+     */
+    public function auditSnapshot(): array
+    {
+        return [
+            'name' => $this->name,
+            'calculation_archetype' => $this->calculation_archetype,
+            'allowed_attribute_types' => $this->allowed_attribute_types ?? [],
+            'discount_tiers' => $this->discountTiers()
+                ->get()
+                ->map(static fn (ProductCategoryDiscount $tier): array => [
+                    'min_qty' => (int) $tier->min_qty,
+                    'discount_percent' => Decimal::money($tier->discount_percent),
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 }
