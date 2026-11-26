@@ -25,6 +25,7 @@ final class ProductionQueueResource extends JsonResource
             'ordered_at' => $this->ordered_at,
             'status' => $this->status,
             'pickup_status' => $this->pickup_status,
+            'has_waste' => (bool) ($this->wasted_materials_exists ?? $this->wastedMaterials()->exists()),
             'invoice' => $this->invoice ? [
                 'id' => $this->invoice->id,
                 'invoice_number' => $this->invoice->invoice_number,

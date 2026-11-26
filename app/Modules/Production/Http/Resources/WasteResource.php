@@ -25,6 +25,7 @@ final class WasteResource extends JsonResource
             'material' => $this->material ? [
                 'id' => $this->material->id,
                 'name' => $this->material->name,
+                'unit' => $this->material->unit,
             ] : null,
             'order_id' => $this->order_id,
             'designer' => $this->designer ? [

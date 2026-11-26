@@ -156,11 +156,12 @@ final class ReportController extends Controller
             'material' => $waste->material ? [
                 'id' => $waste->material->id,
                 'name' => $waste->material->name,
+                'unit' => $waste->material->unit,
                 'cost' => Decimal::money($waste->material->cost),
             ] : null,
             'quantity' => $waste->quantity,
             'wasted_cost' => Decimal::money(
-                (float) $waste->quantity * (float) $waste->material->cost
+                (float) $waste->quantity * (float) ($waste->material ? $waste->material->cost : 0)
             ),
             'logged_at' => $waste->logged_at,
             'operator' => $waste->operator?->name,

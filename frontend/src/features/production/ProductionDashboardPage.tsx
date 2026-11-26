@@ -10,6 +10,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
+import { wasteByUnitLabel } from '../../lib/units';
 
 export function ProductionDashboardPage() {
     const query = useQuery({
@@ -23,7 +24,7 @@ export function ProductionDashboardPage() {
             <PageBanner
                 eyebrow="Produksi"
                 title="Dasbor Produksi"
-                description="Antrean cetak aktif, pekerjaan selesai, dan sisa bahan."
+                description="Antrean cetak aktif, pekerjaan selesai, dan bahan terbuang."
             />
 
             {query.isLoading ? (
@@ -50,7 +51,7 @@ export function ProductionDashboardPage() {
                         <StatCard label="Pekerjaan dalam Antrean" value={String(data.queued)} />
                         <StatCard label="Sedang Dicetak" value={String(data.processing)} />
                         <StatCard label="Selesai Hari Ini" value={String(data.completed_today)} />
-                        <StatCard label="Sisa Bahan Hari Ini" value={String(data.waste_today)} />
+                        <StatCard label="Bahan Terbuang Hari Ini" value={wasteByUnitLabel(data.waste_today_by_unit)} />
                     </div>
 
                     <Card>

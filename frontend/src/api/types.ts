@@ -47,6 +47,7 @@ export interface Customer {
     phone: string | null;
     email: string | null;
     address: string | null;
+    institution: string;
     type: string | null;
 }
 
@@ -103,6 +104,7 @@ export interface Material {
     name: string;
     type: string | null;
     dimensions: string | null;
+    unit: string;
     cost: string;
     price: string;
     category: { id: string; name: string } | null;
@@ -117,18 +119,11 @@ export interface ProductionMaterial {
     name: string;
     type: string | null;
     dimensions: string | null;
+    unit: string;
     category: { id: string; name: string } | null;
     current_stock: string | null;
     min_stock: string | null;
     is_low_stock: boolean | null;
-}
-
-export interface Machine {
-    id: string;
-    name: string;
-    cost: string;
-    branch_id: string | null;
-    branch: { id: string; name: string } | null;
 }
 
 export interface Pricing {
@@ -147,7 +142,7 @@ export interface StockLedger {
     id: string;
     branch_id: string | null;
     branch: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     type: string | null;
     reason: string | null;
     user: { id: string; name: string } | null;
@@ -164,7 +159,7 @@ export interface StockLedger {
 
 export interface PurchaseItem {
     id: string;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     quantity: string;
     unit_cost: string;
     subtotal: string;
@@ -258,6 +253,7 @@ export interface ProductionQueueItem {
     ordered_at: string;
     status: number;
     pickup_status: number;
+    has_waste: boolean;
     invoice: {
         id: string;
         invoice_number: string;
@@ -272,7 +268,7 @@ export interface ProductionQueueItem {
 export interface Waste {
     id: string;
     branch: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     order_id: string | null;
     designer: { id: string; name: string } | null;
     operator: { id: string; name: string } | null;
@@ -325,7 +321,6 @@ export interface ManagerDashboard {
     role: 'manager';
     counts: {
         materials: number;
-        machines: number;
         staff: number;
         pricing: number;
     };
@@ -356,12 +351,17 @@ export interface DesignerDashboard {
     recent_invoices: Invoice[];
 }
 
+export interface WasteByUnit {
+    unit: string;
+    quantity: number;
+}
+
 export interface ProductionDashboard {
     role: 'production';
     queued: number;
     processing: number;
     completed_today: number;
-    waste_today: number;
+    waste_today_by_unit: WasteByUnit[];
     queue: ProductionQueueItem[];
 }
 
@@ -395,7 +395,7 @@ export interface BaseCostReport {
     invoices: Invoice[];
     wasted_materials: Array<{
         id: string;
-        material: { id: string; name: string; cost: string } | null;
+        material: { id: string; name: string; unit: string; cost: string } | null;
         quantity: string;
         wasted_cost: string;
         logged_at: string;

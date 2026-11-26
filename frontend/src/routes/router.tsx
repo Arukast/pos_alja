@@ -8,13 +8,13 @@ import { CashierPaymentsPage } from '../features/cashier/CashierPaymentsPage';
 import { CashierPickupPage } from '../features/cashier/CashierPickupPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
 import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
+import { DesignerNewCustomerPage } from '../features/designer/DesignerNewCustomerPage';
 import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import {
     BranchesPage,
     OwnerAttributesPage,
     OwnerCategoriesPage,
-    OwnerMachinesPage,
     OwnerMaterialsPage,
     OwnerProductsPage,
     OwnerUsersPage,
@@ -30,7 +30,6 @@ import {
     ManagerFinishingPage,
     ManagerLeaderboardPage,
     ManagerLedgersPage,
-    ManagerMachinesPage,
     ManagerMaterialsPage,
     ManagerPricingPage,
     ManagerProductsPage,
@@ -80,7 +79,6 @@ export const router = createBrowserRouter([
                             { path: 'categories', element: <OwnerCategoriesPage /> },
                             { path: 'products', element: <OwnerProductsPage /> },
                             { path: 'attributes', element: <OwnerAttributesPage /> },
-                            { path: 'machines', element: <OwnerMachinesPage /> },
                             { path: 'materials', element: <OwnerMaterialsPage /> },
                             { path: 'purchases', element: <PurchasesPage /> },
                         ],
@@ -99,7 +97,6 @@ export const router = createBrowserRouter([
                             { path: 'users', element: <ManagerUsersPage /> },
                             { path: 'categories', element: <ManagerCategoriesPage /> },
                             { path: 'products', element: <ManagerProductsPage /> },
-                            { path: 'machines', element: <ManagerMachinesPage /> },
                         ],
                     },
                     {
@@ -118,6 +115,7 @@ export const router = createBrowserRouter([
                         children: [
                             { index: true, element: <DesignerDashboardPage /> },
                             { path: 'new-order', element: <DesignerNewOrderPage /> },
+                            { path: 'customers/new', element: <DesignerNewCustomerPage /> },
                             { path: 'orders', element: <DesignerOrdersPage /> },
                         ],
                     },

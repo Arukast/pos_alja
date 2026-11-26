@@ -98,6 +98,7 @@ class CatalogWriteApiTest extends TestCase
                 'name' => 'New Vinyl',
                 'product_category_id' => $this->category->id,
                 'type' => 'roll',
+                'unit' => 'roll',
                 'cost' => 1000,
                 'price' => 2000,
                 'initial_stock' => 10,
@@ -118,6 +119,92 @@ class CatalogWriteApiTest extends TestCase
         ]);
     }
 
+    public function test_material_create_requires_a_unit_from_the_fixed_set(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/materials', [
+                'name' => 'Unitless',
+                'product_category_id' => $this->category->id,
+                'type' => 'roll',
+                'cost' => 1000,
+                'price' => 2000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('unit');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/materials', [
+                'name' => 'Unknown Unit',
+                'product_category_id' => $this->category->id,
+                'type' => 'roll',
+                'unit' => 'sheet',
+                'cost' => 1000,
+                'price' => 2000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('unit');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/materials', [
+                'name' => 'Measured Vinyl',
+                'product_category_id' => $this->category->id,
+                'type' => 'roll',
+                'unit' => 'm2',
+                'cost' => 1000,
+                'price' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('material.unit', 'm2');
+
+        $this->assertDatabaseHas('materials', [
+            'name' => 'Measured Vinyl',
+            'unit' => 'm2',
+        ]);
+    }
+
+    public function test_material_update_accepts_an_optional_unit_and_rejects_unknown_units(): void
+    {
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/materials/{$this->material->id}", [
+                'name' => 'Vinyl Roll',
+                'product_category_id' => $this->category->id,
+                'type' => 'roll',
+                'cost' => 1000,
+                'price' => 2000,
+            ])
+            ->assertOk()
+            ->assertJsonPath('material.unit', 'pcs');
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/materials/{$this->material->id}", [
+                'name' => 'Vinyl Roll',
+                'product_category_id' => $this->category->id,
+                'type' => 'roll',
+                'unit' => 'kg',
+                'cost' => 1000,
+                'price' => 2000,
+            ])
+            ->assertOk()
+            ->assertJsonPath('material.unit', 'kg');
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/materials/{$this->material->id}", [
+                'name' => 'Vinyl Roll',
+                'product_category_id' => $this->category->id,
+                'type' => 'roll',
+                'unit' => 'sheet',
+                'cost' => 1000,
+                'price' => 2000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('unit');
+
+        $this->assertDatabaseHas('materials', [
+            'id' => $this->material->id,
+            'unit' => 'kg',
+        ]);
+    }
+
     public function test_manager_creates_material_only_for_own_branch(): void
     {
         $response = $this->actingAs($this->manager)
@@ -125,6 +212,7 @@ class CatalogWriteApiTest extends TestCase
                 'name' => 'Manager Vinyl',
                 'product_category_id' => $this->category->id,
                 'type' => 'roll',
+                'unit' => 'roll',
                 'cost' => 1000,
                 'price' => 2000,
                 'initial_stock' => 4,
@@ -145,6 +233,7 @@ class CatalogWriteApiTest extends TestCase
             ->postJson('/api/v1/materials', [
                 'name' => 'Nope',
                 'product_category_id' => $this->category->id,
+                'unit' => 'pcs',
             ])
             ->assertForbidden();
     }
@@ -261,44 +350,6 @@ class CatalogWriteApiTest extends TestCase
         $ownerRow = collect($ownerResponse->json('data'))->firstWhere('id', $this->material->id);
 
         $this->assertCount(2, $ownerRow['stocks']);
-    }
-
-    public function test_machine_crud_is_branch_scoped_for_managers(): void
-    {
-        $ownerMachine = $this->actingAs($this->owner)
-            ->postJson('/api/v1/machines', [
-                'name' => 'Branch Two Printer',
-                'branch_id' => $this->branchTwo->id,
-                'cost' => 1000,
-            ])
-            ->assertCreated()
-            ->json('machine');
-
-        $managerMachine = $this->actingAs($this->manager)
-            ->postJson('/api/v1/machines', [
-                'name' => 'Branch One Printer',
-                'branch_id' => $this->branchTwo->id,
-                'cost' => 2000,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('machine.branch_id', $this->branchOne->id)
-            ->json('machine');
-
-        $this->actingAs($this->manager)
-            ->putJson("/api/v1/machines/{$ownerMachine['id']}", [
-                'name' => 'Nope',
-                'branch_id' => $this->branchTwo->id,
-                'cost' => 1,
-            ])
-            ->assertForbidden();
-
-        $this->actingAs($this->manager)
-            ->deleteJson("/api/v1/machines/{$managerMachine['id']}")
-            ->assertNoContent();
-
-        $this->actingAs($this->manager)
-            ->postJson("/api/v1/machines/{$managerMachine['id']}/restore")
-            ->assertOk();
     }
 
     public function test_category_attribute_type_and_attribute_crud(): void
@@ -451,7 +502,7 @@ class CatalogWriteApiTest extends TestCase
 
     public function test_catalog_write_endpoints_require_authentication(): void
     {
-        foreach (['/materials', '/machines', '/categories', '/attribute-types', '/attributes', '/pricing'] as $path) {
+        foreach (['/materials', '/categories', '/attribute-types', '/attributes', '/pricing'] as $path) {
             $this->postJson('/api/v1'.$path, [])->assertUnauthorized();
         }
     }

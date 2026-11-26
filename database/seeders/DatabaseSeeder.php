@@ -7,8 +7,6 @@ use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Machine;
-use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
@@ -119,10 +117,10 @@ class DatabaseSeeder extends Seeder
 
         // 4. Materials
         $materials = [
-            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000],
-            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000],
-            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500],
-            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500],
+            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 8000, 'price' => 15000],
+            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 15000, 'price' => 30000],
+            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'unit' => 'lembar', 'cost' => 1200, 'price' => 3500],
+            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'unit' => 'lembar', 'cost' => 150, 'price' => 500],
         ];
 
         $stocksMap = [
@@ -146,18 +144,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 5. Machines
-        $machines = [
-            ['name' => 'Konica Minolta C1085', 'branch_id' => $branchMain->id],
-            ['name' => 'Challenger FY-3208R', 'branch_id' => $branchMain->id],
-        ];
-
-        $machineModels = [];
-        foreach ($machines as $mac) {
-            $machineModels[$mac['name']] = Machine::create($mac);
-        }
-
-        // 6. Attributes (Finishing, Cuts, Displays)
+        // 5. Attributes (Finishing, Cuts, Displays)
         $attributes = [
             ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branchMain->id],
             ['name' => 'Laminating Doff', 'type' => 'finishing', 'branch_id' => $branchMain->id],
@@ -172,7 +159,7 @@ class DatabaseSeeder extends Seeder
             $attributeModels[$a['name']] = Attribute::create($a);
         }
 
-        // 7. Customers
+        // 6. Customers
         $customerReguler = Customer::create([
             'name' => 'Budi Santoso',
             'phone' => '081234567890',
@@ -189,7 +176,7 @@ class DatabaseSeeder extends Seeder
             'type' => 'Mitra',
         ]);
 
-        // 8. Pricing
+        // 7. Pricing
         // Large Format (Pricing type = area)
         $p1 = Pricing::create([
             'branch_id' => $branchMain->id,
@@ -200,16 +187,6 @@ class DatabaseSeeder extends Seeder
             'profit' => 10000,
             'min_qty' => 1,
             'customer_type' => 'Reguler',
-        ]);
-
-        // Machine pricing modifier
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p1->id,
-            'machine_id' => $machineModels['Challenger FY-3208R']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
         ]);
 
         // Attribute pricing modifier
@@ -234,15 +211,6 @@ class DatabaseSeeder extends Seeder
             'customer_type' => 'Reguler',
         ]);
 
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p2->id,
-            'machine_id' => $machineModels['Challenger FY-3208R']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
         AttributePricing::create([
             'branch_id' => $branchMain->id,
             'pricing_id' => $p2->id,
@@ -262,15 +230,6 @@ class DatabaseSeeder extends Seeder
             'profit' => 3000,
             'min_qty' => 1,
             'customer_type' => 'Reguler',
-        ]);
-
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p3->id,
-            'machine_id' => $machineModels['Konica Minolta C1085']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
         ]);
 
         AttributePricing::create([
@@ -294,15 +253,6 @@ class DatabaseSeeder extends Seeder
             'customer_type' => 'Reguler',
         ]);
 
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p4->id,
-            'machine_id' => $machineModels['Konica Minolta C1085']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
         AttributePricing::create([
             'branch_id' => $branchMain->id,
             'pricing_id' => $p4->id,
@@ -312,7 +262,7 @@ class DatabaseSeeder extends Seeder
             'profit' => 0,
         ]);
 
-        // 9. Sample Transactions
+        // 8. Sample Transactions
         $designerUser = User::where('role', 'designer')->first();
         $cashierUser = User::where('role', 'cashier')->first();
 

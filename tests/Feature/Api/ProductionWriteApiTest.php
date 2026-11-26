@@ -77,6 +77,7 @@ class ProductionWriteApiTest extends TestCase
             'name' => 'Vinyl Roll',
             'product_category_id' => $category->id,
             'type' => 'roll',
+            'unit' => 'm2',
             'cost' => 10000,
             'price' => 15000,
         ]);
@@ -134,6 +135,81 @@ class ProductionWriteApiTest extends TestCase
             ->where('type', 'usage')
             ->where('reference_id', $this->order->id)
             ->count());
+    }
+
+    public function test_start_deducts_quantity_for_non_area_units(): void
+    {
+        ['material' => $material, 'order' => $order] = $this->unitOrder('lembar', 3, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->assertSame(8.0, (float) $material->stocks()->first()?->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage',
+            'reference_type' => 'order',
+            'reference_id' => $order->id,
+            'used_stock' => 2,
+            'remaining_stock' => 8,
+        ]);
+    }
+
+    public function test_start_rejects_an_m2_material_on_an_order_without_area(): void
+    {
+        ['material' => $material, 'order' => $order] = $this->unitOrder('m2', 0, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('area');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 0,
+            'operator_id' => null,
+        ]);
+        $this->assertDatabaseCount('order_status_logs', 0);
+        $this->assertSame(10.0, (float) $material->stocks()->first()?->current_stock);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_start_returns_a_validation_error_when_the_priced_material_is_soft_deleted(): void
+    {
+        $this->material->delete();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/start")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $this->order->id,
+            'status' => 0,
+            'operator_id' => null,
+        ]);
+        $this->assertDatabaseCount('order_status_logs', 0);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_start_falls_back_to_quantity_for_materials_with_the_default_unit(): void
+    {
+        // Only m2 materials require an area; this order has none.
+        ['material' => $material, 'order' => $order] = $this->unitOrder(null, 0, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->assertSame(8.0, (float) $material->stocks()->first()?->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage',
+            'reference_id' => $order->id,
+            'used_stock' => 2,
+            'remaining_stock' => 8,
+        ]);
     }
 
     public function test_complete_requires_processing_and_sets_completed(): void
@@ -376,12 +452,55 @@ class ProductionWriteApiTest extends TestCase
         $this->actingAs($this->production)
             ->getJson('/api/v1/production/summary')
             ->assertOk()
-            ->assertJsonPath('waste_today', 2);
+            ->assertJsonPath('waste_today_by_unit.0', ['unit' => 'm2', 'quantity' => 2])
+            ->assertJsonMissingPath('waste_today');
 
         $this->actingAs($this->production)
             ->getJson('/api/v1/dashboard')
             ->assertOk()
-            ->assertJsonPath('waste_today', 2);
+            ->assertJsonPath('waste_today_by_unit.0', ['unit' => 'm2', 'quantity' => 2])
+            ->assertJsonMissingPath('waste_today');
+    }
+
+    /**
+     * @return array{material: Material, order: Order}
+     */
+    private function unitOrder(?string $unit, float $area, float $quantity): array
+    {
+        $attributes = [
+            'name' => 'Bahan '.($unit ?? 'default'),
+            'product_category_id' => $this->material->product_category_id,
+            'type' => 'roll',
+        ];
+
+        if ($unit !== null) {
+            $attributes['unit'] = $unit;
+        }
+
+        $material = Material::create($attributes);
+
+        MaterialBranchStock::create([
+            'material_id' => $material->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 10,
+            'min_stock' => 1,
+        ]);
+
+        $pricing = Pricing::create([
+            'branch_id' => $this->branchOne->id,
+            'product_id' => $this->pricing->product_id,
+            'material_id' => $material->id,
+            'customer_type' => 'Reguler',
+            'min_qty' => 1,
+            'price' => 50000,
+            'cost' => 10000,
+            'profit' => 40000,
+        ]);
+
+        return [
+            'material' => $material,
+            'order' => $this->order($this->invoice, $pricing, $area, $quantity),
+        ];
     }
 
     private function branch(string $name): Branch

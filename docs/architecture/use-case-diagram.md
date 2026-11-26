@@ -169,7 +169,7 @@ Notes:
 - **Kasir `Data Stok`:** no stock access. Purchases and adjustments are Owner/Branch Manager; stock visibility is Owner/Branch Manager/Production.
 - **Production `Data Stok`** is read plus usage/waste updates.
 - **Invoice and receipt print** are denied to Production because both contain money. Production uses the queue.
-- **Machine management** is removed; machine cost is folded into material cost.
+- **Machine management** is removed; there is no machine selection or machine cost in the current build.
 - **Quantity discounts** are configured per product category by the Owner, not per pricing-matrix row.
 
 ## Notes

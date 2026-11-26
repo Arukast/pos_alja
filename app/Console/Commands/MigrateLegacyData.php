@@ -176,22 +176,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Materials migrated: '.count($legacyMaterials));
 
-        // 5. Migrate mesin -> machines
-        $this->info('Migrating machines...');
-        $legacyMachines = DB::connection('mysql_migration')->table('mesin')->get();
-        DB::table('machines')->truncate();
-        foreach ($legacyMachines as $mc) {
-            DB::table('machines')->insert([
-                'id' => $mc->mesin_id,
-                'branch_id' => 1,
-                'name' => $mc->mesin_nama,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-        }
-        $this->info('Machines migrated: '.count($legacyMachines));
-
-        // 6. Migrate jenis_finishing -> finishings
+        // 5. Migrate jenis_finishing -> finishings
         $this->info('Migrating finishings...');
         $legacyFinishings = DB::connection('mysql_migration')->table('jenis_finishing')->get();
         DB::table('finishings')->truncate();
@@ -205,7 +190,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Finishings migrated: '.count($legacyFinishings));
 
-        // 7. Migrate jenis_potong -> cuts
+        // 6. Migrate jenis_potong -> cuts
         $this->info('Migrating cuts...');
         $legacyCuts = DB::connection('mysql_migration')->table('jenis_potong')->get();
         DB::table('cuts')->truncate();
@@ -219,7 +204,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Cuts migrated: '.count($legacyCuts));
 
-        // 8. Migrate jenis_display -> displays
+        // 7. Migrate jenis_display -> displays
         $this->info('Migrating displays...');
         $legacyDisplays = DB::connection('mysql_migration')->table('jenis_display')->get();
         DB::table('displays')->truncate();
@@ -233,7 +218,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Displays migrated: '.count($legacyDisplays));
 
-        // 9. Migrate harga_jual -> pricing_matrices
+        // 8. Migrate harga_jual -> pricing_matrices
         $this->info('Migrating pricing matrices...');
         $legacyMatrices = DB::connection('mysql_migration')->table('harga_jual')->get();
         DB::table('pricing_matrices')->truncate();
@@ -250,7 +235,6 @@ class MigrateLegacyData extends Command
                 'branch_id' => 1,
                 'product_id' => $hm->hj_produk,
                 'material_id' => $hm->hj_bahan,
-                'machine_id' => $hm->hj_mesin ?: 0,
                 'finishing_id' => $hm->hj_finishing ?: 0,
                 'cut_id' => $hm->hj_potong ?: 0,
                 'dimensions' => $hm->hj_ukuran,
@@ -268,7 +252,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Pricing matrices migrated: '.$migratedCount);
 
-        // 10. Migrate invoice -> invoices
+        // 9. Migrate invoice -> invoices
         $this->info('Migrating invoices (this may take a few seconds)...');
         $legacyInvoices = DB::connection('mysql_migration')->table('invoice')->get();
         DB::table('invoices')->truncate();
@@ -324,7 +308,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Invoices migrated: '.count($legacyInvoices));
 
-        // 11. Migrate orderan -> orders
+        // 10. Migrate orderan -> orders
         $this->info('Migrating order items...');
         $legacyOrders = DB::connection('mysql_migration')->table('orderan')->get();
         DB::table('orders')->truncate();
@@ -368,7 +352,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Orders migrated: '.$migratedOrdersCount);
 
-        // 12. Migrate pengeluaran -> expenses
+        // 11. Migrate pengeluaran -> expenses
         $this->info('Migrating expenses...');
         $legacyExpenses = DB::connection('mysql_migration')->table('pengeluaran')->get();
         DB::table('expenses')->truncate();
@@ -387,7 +371,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Expenses migrated: '.count($legacyExpenses));
 
-        // 13. Migrate bahan_gagal -> wasted_materials
+        // 12. Migrate bahan_gagal -> wasted_materials
         $this->info('Migrating wasted materials...');
         $legacyWasted = DB::connection('mysql_migration')->table('bahan_gagal')->get();
         DB::table('wasted_materials')->truncate();
@@ -401,7 +385,6 @@ class MigrateLegacyData extends Command
                 'branch_id' => 1,
                 'logged_at' => $this->parseDate($w->gagal_tanggal) ?: $now->toDateString(),
                 'material_id' => $w->gagal_bahan_id,
-                'machine_id' => 0,
                 'quantity' => floatval($w->gagal_qty),
                 'dimensions' => null,
                 'designer_name' => $w->gagal_pic,
@@ -414,7 +397,7 @@ class MigrateLegacyData extends Command
         }
         $this->info('Wasted materials migrated: '.$wastedCount);
 
-        // 14. Migrate stok -> stock_ledgers
+        // 13. Migrate stok -> stock_ledgers
         $this->info('Migrating stock ledgers...');
         $legacyStock = DB::connection('mysql_migration')->table('stok')->get();
         DB::table('stock_ledgers')->truncate();

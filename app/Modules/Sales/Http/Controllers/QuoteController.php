@@ -38,7 +38,6 @@ final class QuoteController extends Controller
             $result = $quote->execute([
                 'product_id' => $data['product_id'],
                 'material_id' => $data['material_id'],
-                'machine_id' => $data['machine_id'] ?? null,
                 'selected_attributes' => $data['selected_attributes'] ?? [],
                 'quantity' => $data['quantity'],
                 'width' => $data['width'] ?? 0,

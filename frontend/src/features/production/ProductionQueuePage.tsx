@@ -5,6 +5,7 @@ import { api } from '../../api/queries';
 import type { ProductionQueueItem } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { OrderStatusBadge } from '../../components/StatusBadge';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -16,20 +17,27 @@ import { Toast } from '../../components/ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { errorMessage } from '../../lib/errors';
 import { formatDate } from '../../lib/dates';
+import { formatQuantity } from '../../lib/money';
+import { FailProductionModal } from './FailProductionModal';
 import { ProductionWasteModal } from './ProductionWasteModal';
+import { needsWasteReminder } from './wasteReminder';
 
 interface ProductionSummary {
     queued: number;
     processing: number;
     completed_today: number;
-    waste_today: number;
+    failed: number;
 }
 
 export function ProductionQueuePage() {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
-    const [notice, setNotice] = useState<string | null>(null);
+    const [notice, setNotice] = useState<{
+        message: string;
+        tone: 'success' | 'error';
+    } | null>(null);
     const [wasteOrder, setWasteOrder] = useState<ProductionQueueItem | null>(null);
+    const [failOrder, setFailOrder] = useState<ProductionQueueItem | null>(null);
 
     const query = useQuery({
         queryKey: ['production', 'queue', page],
@@ -43,25 +51,33 @@ export function ProductionQueuePage() {
     const refresh = () => {
         void queryClient.invalidateQueries({ queryKey: ['production'] });
         void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        void queryClient.invalidateQueries({ queryKey: ['waste'] });
     };
 
     const start = useMutation({
         mutationFn: (id: string) => api.startOrder(id),
         onSuccess: () => {
             refresh();
-            setNotice('Produksi dimulai dan stok telah dikurangi.');
+            setNotice({ message: 'Produksi dimulai dan stok telah dikurangi.', tone: 'success' });
         },
-        onError: (error) => setNotice(errorMessage(error)),
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const complete = useMutation({
         mutationFn: (id: string) => api.completeOrder(id),
         onSuccess: () => {
             refresh();
-            setNotice('Pesanan ditandai selesai.');
+            setNotice({ message: 'Pesanan ditandai selesai.', tone: 'success' });
         },
-        onError: (error) => setNotice(errorMessage(error)),
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
+
+    const reopen = useMutation({
+        mutationFn: (id: string) => api.reopenOrder(id),
+        onSuccess: () => {
+            refresh();
+            setNotice({ message: 'Pesanan dikembalikan ke antrean.', tone: 'success' });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     return (
@@ -69,23 +85,39 @@ export function ProductionQueuePage() {
             <PageBanner
                 eyebrow="Produksi"
                 title="Antrean Cetak"
-                description="Antrean pekerjaan cetak diurutkan berdasarkan tenggat."
+                description="Antrean pekerjaan cetak diurutkan berdasarkan waktu masuk."
             />
 
-            <div className="grid gap-4 sm:grid-cols-3">
-                <StatCard
-                    label="Antrean"
-                    value={summary.isSuccess ? String(summary.data.queued) : '—'}
+            {summary.isError ? (
+                <EmptyState
+                    title="Antrean cetak gagal dimuat"
+                    description="Periksa koneksi lalu coba lagi."
+                    action={
+                        <Button variant="secondary" onClick={() => summary.refetch()}>
+                            Coba lagi
+                        </Button>
+                    }
                 />
-                <StatCard
-                    label="Sedang Cetak"
-                    value={summary.isSuccess ? String(summary.data.processing) : '—'}
-                />
-                <StatCard
-                    label="Selesai Hari Ini"
-                    value={summary.isSuccess ? String(summary.data.completed_today) : '—'}
-                />
-            </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    <StatCard
+                        label="Antrean"
+                        value={summary.isSuccess ? String(summary.data.queued) : '—'}
+                    />
+                    <StatCard
+                        label="Sedang Cetak"
+                        value={summary.isSuccess ? String(summary.data.processing) : '—'}
+                    />
+                    <StatCard
+                        label="Selesai Hari Ini"
+                        value={summary.isSuccess ? String(summary.data.completed_today) : '—'}
+                    />
+                    <StatCard
+                        label="Gagal"
+                        value={summary.isSuccess ? String(summary.data.failed) : '—'}
+                    />
+                </div>
+            )}
 
             <Card>
                 <CardHeader>
@@ -117,15 +149,15 @@ export function ProductionQueuePage() {
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Invoice</TableHeaderCell>
-                                        <TableHeaderCell className="hidden sm:table-cell">Pelanggan</TableHeaderCell>
+                                        <TableHeaderCell className="hidden lg:table-cell">Pelanggan</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Item</TableHeaderCell>
                                         <TableHeaderCell className="text-right">Jml</TableHeaderCell>
                                         <TableHeaderCell className="hidden lg:table-cell">Area</TableHeaderCell>
                                         <TableHeaderCell className="hidden lg:table-cell">Operator</TableHeaderCell>
                                         <TableHeaderCell className="hidden xl:table-cell">Diterima</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Tenggat</TableHeaderCell>
-                                        <TableHeaderCell>Status</TableHeaderCell>
-                                        <TableHeaderCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
+                                        <TableHeaderCell className="hidden sm:table-cell">Status</TableHeaderCell>
+                                        <TableHeaderCell className="bg-light-surface border-light-border max-lg:sticky max-lg:right-0 max-lg:shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] border-l dark:border-surface-300 dark:bg-surface-700">
                                             Aksi
                                         </TableHeaderCell>
                                     </TableRow>
@@ -137,23 +169,54 @@ export function ProductionQueuePage() {
                                         (query.data?.data ?? []).map((order) => {
                                             const invoiceNumber =
                                                 order.invoice?.invoice_number ?? '-';
+                                            const itemLabel = order.file_name
+                                                ? `${invoiceNumber} ${order.file_name}`
+                                                : invoiceNumber;
 
                                             return (
                                                 <TableRow key={order.id}>
-                                                    <TableCell className="font-medium whitespace-nowrap">
+                                                    <TableCell className="font-medium break-all sm:whitespace-nowrap">
                                                         {invoiceNumber}
+                                                        {needsWasteReminder(order) ? (
+                                                            <span className="mt-1 block">
+                                                                <Badge tone="warning">
+                                                                    Belum ada bahan terbuang
+                                                                </Badge>
+                                                            </span>
+                                                        ) : null}
+                                                        <span className="mt-1 block sm:hidden">
+                                                            <OrderStatusBadge status={order.status} />
+                                                        </span>
+                                                        {order.file_name ? (
+                                                            <span className="text-light-muted mt-1 block text-xs break-words sm:hidden">
+                                                                {order.file_name}
+                                                            </span>
+                                                        ) : null}
+                                                        <span className="text-light-muted mt-1 block text-xs whitespace-nowrap sm:hidden">
+                                                            Tenggat:{' '}
+                                                            {order.invoice?.deadline
+                                                                ? formatDate(order.invoice.deadline)
+                                                                : '-'}
+                                                        </span>
                                                     </TableCell>
-                                                    <TableCell className="hidden sm:table-cell">
+                                                    <TableCell className="hidden lg:table-cell">
                                                         {order.invoice?.customer?.name ?? '-'}
                                                     </TableCell>
                                                     <TableCell className="hidden sm:table-cell">
-                                                        {order.file_name ?? '-'}
+                                                        <span
+                                                            className="block max-w-[8rem] truncate lg:max-w-none"
+                                                            title={order.file_name ?? undefined}
+                                                        >
+                                                            {order.file_name ?? '-'}
+                                                        </span>
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums whitespace-nowrap">
                                                         {order.quantity}
                                                     </TableCell>
                                                     <TableCell className="hidden tabular-nums whitespace-nowrap lg:table-cell">
-                                                        {Number(order.area) > 0 ? `${Number(order.area)} m²` : '-'}
+                                                        {Number(order.area) > 0
+                                                            ? `${formatQuantity(order.area)} m²`
+                                                            : '-'}
                                                     </TableCell>
                                                     <TableCell className="hidden lg:table-cell">
                                                         {order.operator?.name ?? '-'}
@@ -166,41 +229,70 @@ export function ProductionQueuePage() {
                                                             ? formatDate(order.invoice.deadline)
                                                             : '-'}
                                                     </TableCell>
-                                                    <TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
                                                         <OrderStatusBadge status={order.status} />
                                                     </TableCell>
-                                                    <TableCell className="bg-light-surface border-light-border lg:sticky lg:right-0 border-l dark:border-surface-300 dark:bg-surface-700">
-                                                        <div className="flex flex-wrap gap-2">
+                                                    <TableCell className="bg-light-surface border-light-border max-lg:sticky max-lg:right-0 max-lg:shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] border-l dark:border-surface-300 dark:bg-surface-700">
+                                                        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
                                                             {order.status === 0 ? (
                                                                 <Button
                                                                     size="sm"
-                                                                    aria-label={`Mulai ${invoiceNumber}`}
-                                                                    loading={start.isPending}
+                                                                    aria-label={`Mulai ${itemLabel}`}
+                                                                    loading={
+                                                                        start.isPending &&
+                                                                        start.variables === order.id
+                                                                    }
                                                                     onClick={() => start.mutate(order.id)}
                                                                 >
                                                                     Mulai
                                                                 </Button>
-                                                            ) : (
+                                                            ) : null}
+                                                            {order.status === 1 ? (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="secondary"
-                                                                    aria-label={`Selesaikan ${invoiceNumber}`}
-                                                                    loading={complete.isPending}
+                                                                    aria-label={`Selesaikan ${itemLabel}`}
+                                                                    loading={
+                                                                        complete.isPending &&
+                                                                        complete.variables === order.id
+                                                                    }
                                                                     onClick={() => complete.mutate(order.id)}
                                                                 >
                                                                     Selesaikan
                                                                 </Button>
-                                                            )}
-                                                            {order.status === 0 || order.status === 1 ? (
+                                                            ) : null}
+                                                            {order.status === 1 ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="danger"
+                                                                    aria-label={`Gagal ${itemLabel}`}
+                                                                    onClick={() => setFailOrder(order)}
+                                                                >
+                                                                    Gagal
+                                                                </Button>
+                                                            ) : null}
+                                                            {order.status === 3 ? (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="secondary"
-                                                                    aria-label={`Sisa Bahan ${invoiceNumber}`}
-                                                                    onClick={() => setWasteOrder(order)}
+                                                                    aria-label={`Proses Ulang ${itemLabel}`}
+                                                                    loading={
+                                                                        reopen.isPending &&
+                                                                        reopen.variables === order.id
+                                                                    }
+                                                                    onClick={() => reopen.mutate(order.id)}
                                                                 >
-                                                                    Sisa Bahan
+                                                                    Proses Ulang
                                                                 </Button>
                                                             ) : null}
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                aria-label={`Bahan Terbuang ${itemLabel}`}
+                                                                onClick={() => setWasteOrder(order)}
+                                                            >
+                                                                Bahan Terbuang
+                                                            </Button>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -222,7 +314,19 @@ export function ProductionQueuePage() {
                     )}
                 </CardBody>
             </Card>
-            {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
+            {failOrder ? (
+                <FailProductionModal
+                    order={failOrder}
+                    onClose={() => setFailOrder(null)}
+                    onFailed={(failed) => {
+                        setFailOrder(null);
+                        setWasteOrder(failed);
+                    }}
+                />
+            ) : null}
             {wasteOrder ? (
                 <ProductionWasteModal order={wasteOrder} onClose={() => setWasteOrder(null)} />
             ) : null}

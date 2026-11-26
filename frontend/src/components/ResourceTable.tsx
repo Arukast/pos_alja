@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Fragment, useState, type ReactNode } from 'react';
 
 import type { Paginated } from '../api/types';
 import { PageBanner } from './PageBanner';
@@ -25,6 +26,7 @@ export function ResourceTable<T extends { id: string }>({
     columns,
     actions,
     emptyMessage = 'Belum ada data.',
+    expandedRow,
 }: {
     title: string;
     description?: string;
@@ -34,8 +36,11 @@ export function ResourceTable<T extends { id: string }>({
     columns: ResourceColumn<T>[];
     actions?: ReactNode;
     emptyMessage?: string;
+    expandedRow?: (row: T) => ReactNode;
 }) {
     const [page, setPage] = useState(1);
+    const [expanded, setExpanded] = useState<string | null>(null);
+    const columnCount = columns.length + (expandedRow ? 1 : 0);
     const query = useQuery({
         queryKey: [...queryKey, page],
         queryFn: () => queryFn(page),
@@ -51,9 +56,7 @@ export function ResourceTable<T extends { id: string }>({
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
-                    ) : null}
-
-                    {query.isError ? (
+                    ) : query.isError ? (
                         <EmptyState
                             title="Data gagal dimuat"
                             description="Periksa koneksi lalu coba lagi."
@@ -63,9 +66,7 @@ export function ResourceTable<T extends { id: string }>({
                                 </Button>
                             }
                         />
-                    ) : null}
-
-                    {query.data ? (
+                    ) : query.data ? (
                         <>
                             <Table ariaLabel={title}>
                                 <TableHead>
@@ -75,21 +76,62 @@ export function ResourceTable<T extends { id: string }>({
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
+                                        {expandedRow ? (
+                                            <TableHeaderCell className="text-right">
+                                                <span className="sr-only">Rincian</span>
+                                            </TableHeaderCell>
+                                        ) : null}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {query.data.data.length === 0 ? (
-                                        <TableEmpty colSpan={columns.length}>{emptyMessage}</TableEmpty>
+                                        <TableEmpty colSpan={columnCount}>{emptyMessage}</TableEmpty>
                                     ) : (
-                                        query.data.data.map((row) => (
-                                            <TableRow key={row.id}>
-                                                {columns.map((column) => (
-                                                    <TableCell key={column.header} className={column.className}>
-                                                        {column.cell(row)}
-                                                    </TableCell>
-                                                ))}
-                                            </TableRow>
-                                        ))
+                                        query.data.data.map((row) => {
+                                            const isExpanded = expanded === row.id;
+
+                                            return (
+                                                <Fragment key={row.id}>
+                                                    <TableRow>
+                                                        {columns.map((column) => (
+                                                            <TableCell key={column.header} className={column.className}>
+                                                                {column.cell(row)}
+                                                            </TableCell>
+                                                        ))}
+                                                        {expandedRow ? (
+                                                            <TableCell className="text-right">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    aria-expanded={isExpanded}
+                                                                    aria-label={
+                                                                        isExpanded
+                                                                            ? 'Sembunyikan rincian'
+                                                                            : 'Tampilkan rincian'
+                                                                    }
+                                                                    onClick={() =>
+                                                                        setExpanded(isExpanded ? null : row.id)
+                                                                    }
+                                                                >
+                                                                    {isExpanded ? (
+                                                                        <ChevronDown className="h-4 w-4" />
+                                                                    ) : (
+                                                                        <ChevronRight className="h-4 w-4" />
+                                                                    )}
+                                                                </Button>
+                                                            </TableCell>
+                                                        ) : null}
+                                                    </TableRow>
+                                                    {expandedRow && isExpanded ? (
+                                                        <tr className="bg-light-surface-2/40 dark:bg-surface-600/30">
+                                                            <TableCell colSpan={columnCount}>
+                                                                {expandedRow ? expandedRow(row) : null}
+                                                            </TableCell>
+                                                        </tr>
+                                                    ) : null}
+                                                </Fragment>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>

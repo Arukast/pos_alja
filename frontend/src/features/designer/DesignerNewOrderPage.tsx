@@ -6,6 +6,7 @@ import { api } from '../../api/queries';
 import type { Quote } from '../../api/queries';
 import type { Customer } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -13,24 +14,54 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { Toast } from '../../components/ui/Toast';
+import { Toast, type ToastTone } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 
+/**
+ * Representasi satu baris item pesanan yang sudah dihitung penawarannya di keranjang.
+ */
 interface CartLine {
     quote: Quote;
+    product_name: string;
+    material_name: string;
+    attribute_labels: string[];
+    selected_attributes: string[];
     file_name: string;
     notes: string;
-    machine_id: string;
     width: number;
     length: number;
     quantity: number;
 }
 
-const emptyItem = {
+/**
+ * State formulir draf item sebelum ditambahkan ke keranjang.
+ */
+interface DraftItemState {
+    product_id: string;
+    material_id: string;
+    finishing_id: string;
+    display_id: string;
+    quantity: number;
+    width: number;
+    length: number;
+    file_name: string;
+    notes: string;
+}
+
+/**
+ * State notifikasi toast beserta tingkat nadanya.
+ */
+interface NoticeState {
+    message: string;
+    tone: ToastTone;
+}
+
+const emptyItem: DraftItemState = {
     product_id: '',
     material_id: '',
-    machine_id: '',
+    finishing_id: '',
+    display_id: '',
     quantity: 1,
     width: 1,
     length: 1,
@@ -38,49 +69,122 @@ const emptyItem = {
     notes: '',
 };
 
+/**
+ * Halaman pembuatan pesanan baru untuk peran desainer (FR8 / PB-02).
+ *
+ * Menyediakan pencarian pelanggan sebagai alur bawaan beserta pembuatan pelanggan baru,
+ * alur pemilihan Produk -> Bahan -> Finishing -> Display, pratinjau penawaran server-side,
+ * dan pengiriman invoice dalam satu transaksi.
+ */
 export function DesignerNewOrderPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const optionsQuery = useQuery({ queryKey: ['quote-options'], queryFn: api.quoteOptions });
 
     const [customer, setCustomer] = useState<Customer | null>(null);
-    const [customerForm, setCustomerForm] = useState({ name: '', phone: '', type: 'Reguler' });
-    const [customerErrors, setCustomerErrors] = useState<Record<string, string>>({});
-    const [item, setItem] = useState(emptyItem);
+    const [customerSearch, setCustomerSearch] = useState('');
+
+    const [item, setItem] = useState<DraftItemState>(emptyItem);
+    const [itemError, setItemError] = useState<string | null>(null);
     const [quote, setQuote] = useState<Quote | null>(null);
     const [cart, setCart] = useState<CartLine[]>([]);
-    const [notice, setNotice] = useState<string | null>(null);
+    const [deadline, setDeadline] = useState('');
+    const [source, setSource] = useState<'Offline' | 'Online'>('Offline');
+    const [notice, setNotice] = useState<NoticeState | null>(null);
     const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({});
 
-    const options = optionsQuery.data;
-
-    const createCustomer = useMutation({
-        mutationFn: () => api.createCustomer(customerForm),
-        onSuccess: (response) => {
-            setCustomer(response.customer);
-            setCustomerErrors({});
-            setNotice('Pelanggan dibuat dan dipilih.');
-        },
-        onError: (error) => {
-            setCustomerErrors(mapApiErrors(error));
-            setNotice(errorMessage(error));
-        },
+    const customersQuery = useQuery({
+        queryKey: ['customers', 'search', customerSearch.trim()],
+        queryFn: () => api.customers({ search: customerSearch.trim() }),
+        enabled: !customer,
     });
 
+    const options = optionsQuery.data;
+    const selectedProduct = (options?.products ?? []).find((product) => product.id === item.product_id);
+    const selectedCategory = (options?.categories ?? []).find(
+        (category) => category.id === selectedProduct?.category?.id
+    );
+    const archetype = selectedProduct?.category?.calculation_archetype ?? 'surface_area';
+    const needsWidth = archetype === 'surface_area';
+    const needsLength = archetype === 'surface_area' || archetype === 'linear_dimension';
+    const allowedAttributeTypes = selectedCategory?.allowed_attribute_types ?? [];
+
+    const finishingOptions = (options?.attributes ?? []).filter(
+        (attribute) =>
+            attribute.type === 'finishing' &&
+            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('finishing'))
+    );
+    const displayOptions = (options?.attributes ?? []).filter(
+        (attribute) =>
+            attribute.type === 'display' &&
+            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('display'))
+    );
+
+    const customerList = customersQuery.data?.data ?? [];
+
+    /**
+     * Memilih pelanggan dari hasil pencarian atau pembuatan baru serta menyetel ulang penawaran stale.
+     */
+    const handleSelectCustomer = (selected: Customer) => {
+        if (cart.length > 0 && selected.type !== customer?.type) {
+            setNotice({
+                message: 'Pelanggan dipilih. Harga akhir invoice akan dihitung ulang di server sesuai tipe pelanggan.',
+                tone: 'info',
+            });
+        }
+        setCustomer(selected);
+        setQuote(null);
+        setSubmitErrors({});
+    };
+
+    /**
+     * Memperbarui state draf item dan menghapus penawaran lama saat parameter harga berubah.
+     */
+    const updatePricingItem = (patch: Partial<DraftItemState>) => {
+        setItem((current) => ({ ...current, ...patch }));
+        setQuote(null);
+        setItemError(null);
+    };
+
     const calculate = useMutation({
-        mutationFn: () =>
-            api.quote({
+        mutationFn: () => {
+            if (!item.product_id || !item.material_id) {
+                throw new Error('Pilih produk dan bahan terlebih dahulu.');
+            }
+
+            if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+                throw new Error('Jumlah pesanan harus lebih besar dari nol.');
+            }
+
+            if (needsWidth && (!Number.isFinite(item.width) || item.width <= 0)) {
+                throw new Error('Lebar harus lebih besar dari nol untuk produk berbasis luas.');
+            }
+
+            if (needsLength && (!Number.isFinite(item.length) || item.length <= 0)) {
+                throw new Error('Panjang harus lebih besar dari nol untuk produk ini.');
+            }
+
+            const selectedAttributes = [item.finishing_id, item.display_id].filter(Boolean);
+
+            return api.quote({
                 product_id: item.product_id,
                 material_id: item.material_id,
-                machine_id: item.machine_id || null,
+                selected_attributes: selectedAttributes,
                 quantity: item.quantity,
-                width: item.width,
-                length: item.length,
-            }),
-        onSuccess: (response) => setQuote(response.quote),
+                width: needsWidth ? item.width : undefined,
+                length: needsLength ? item.length : undefined,
+                customer_type: customer?.type ?? 'Reguler',
+            });
+        },
+        onSuccess: (response) => {
+            setItemError(null);
+            setQuote(response.quote);
+        },
         onError: (error) => {
+            const message = errorMessage(error);
             setQuote(null);
-            setNotice(errorMessage(error));
+            setItemError(message);
+            setNotice({ message, tone: 'error' });
         },
     });
 
@@ -93,16 +197,16 @@ export function DesignerNewOrderPage() {
             return api.createInvoice({
                 customer_id: customer.id,
                 discount: 0,
-                deadline: null,
-                source: 'Offline',
+                deadline: deadline || null,
+                source,
                 items: cart.map((line) => ({
                     pricing_id: line.quote.pricing_id,
-                    file_name: line.file_name,
-                    notes: line.notes,
+                    file_name: line.file_name.trim() || null,
+                    notes: line.notes.trim() || null,
                     quantity: line.quantity,
-                    width: line.width,
-                    length: line.length,
-                    machine_id: line.machine_id || null,
+                    width: line.width > 0 ? line.width : undefined,
+                    length: line.length > 0 ? line.length : undefined,
+                    selected_attributes: line.selected_attributes,
                     is_manual_price: false,
                 })),
             });
@@ -110,41 +214,67 @@ export function DesignerNewOrderPage() {
         onSuccess: (response) => {
             void queryClient.invalidateQueries({ queryKey: ['invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['designer', 'invoices'] });
+            void queryClient.invalidateQueries({ queryKey: ['cashier', 'invoices'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setNotice(`Invoice ${response.invoice.invoice_number} dibuat.`);
+            setNotice({
+                message: `Invoice ${response.invoice.invoice_number} dibuat.`,
+                tone: 'success',
+            });
             setCart([]);
             setQuote(null);
             setItem(emptyItem);
+            setDeadline('');
+            setSource('Offline');
+            setSubmitErrors({});
             navigate('/designer/orders');
         },
         onError: (error) => {
             setSubmitErrors(mapApiErrors(error));
-            setNotice(errorMessage(error));
+            setNotice({ message: errorMessage(error), tone: 'error' });
         },
     });
 
+    /**
+     * Menambahkan hasil kalkulasi penawaran saat ini ke dalam daftar keranjang pesanan.
+     */
     const addLine = () => {
         if (!quote) {
-            setNotice('Hitung penawaran sebelum menambah item.');
+            setNotice({ message: 'Hitung penawaran sebelum menambah item.', tone: 'error' });
             return;
         }
+
+        const productName = selectedProduct?.name ?? 'Produk';
+        const materialName =
+            (options?.materials ?? []).find((material) => material.id === item.material_id)?.name ?? 'Bahan';
+        const selectedAttributes = [item.finishing_id, item.display_id].filter(Boolean);
+        const attributeLabels = selectedAttributes
+            .map((id) => (options?.attributes ?? []).find((attribute) => attribute.id === id)?.name)
+            .filter((name): name is string => Boolean(name));
 
         setCart((current) => [
             ...current,
             {
                 quote,
+                product_name: productName,
+                material_name: materialName,
+                attribute_labels: attributeLabels,
+                selected_attributes: selectedAttributes,
                 file_name: item.file_name,
                 notes: item.notes,
-                machine_id: item.machine_id,
-                width: item.width,
-                length: item.length,
+                width: needsWidth ? item.width : 0,
+                length: needsLength ? item.length : 0,
                 quantity: item.quantity,
             },
         ]);
         setQuote(null);
+        setItemError(null);
+        setSubmitErrors({});
         setItem({ ...emptyItem, file_name: '', notes: '' });
     };
 
+    /**
+     * Menghapus baris item tertentu dari keranjang berdasarkan indeks.
+     */
     const removeLine = (index: number) => {
         setCart((current) => current.filter((_, position) => position !== index));
     };
@@ -156,7 +286,7 @@ export function DesignerNewOrderPage() {
             <PageBanner
                 eyebrow="Desainer"
                 title="Pesanan Baru"
-                description="Buat pelanggan, atur item, pratinjau harga, lalu kirim invoice."
+                description="Cari atau buat pelanggan, atur item, pratinjau harga, lalu kirim invoice."
             />
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
@@ -164,58 +294,116 @@ export function DesignerNewOrderPage() {
                     <Card className="min-w-0">
                         <CardHeader>
                             <h2 className="font-semibold">Pelanggan</h2>
+                            {!customer ? (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => navigate('/designer/customers/new')}
+                                >
+                                    Tambah Pelanggan
+                                </Button>
+                            ) : null}
                         </CardHeader>
                         <CardBody className="space-y-4">
                             {customer ? (
-                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-light-border bg-light-surface-2 px-4 py-3 dark:border-surface-300 dark:bg-surface-600">
-                                    <div className="min-w-0">
-                                        <p className="font-medium">{customer.name}</p>
+                                <div className="border-light-border bg-light-surface-2 dark:border-surface-300 dark:bg-surface-600 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
+                                    <div className="min-w-0 space-y-0.5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="font-medium">{customer.name}</p>
+                                            <Badge tone={customer.type === 'Reseller' ? 'brand' : 'neutral'}>
+                                                {customer.type ?? 'Reguler'}
+                                            </Badge>
+                                        </div>
                                         <p className="text-light-muted-strong text-sm dark:text-gray-400">
-                                            {customer.phone ?? 'Tanpa telepon'} · {customer.type ?? 'Reguler'}
+                                            {customer.phone ?? 'Tanpa telepon'}
+                                            {customer.address ? ` · ${customer.address}` : ''}
                                         </p>
                                     </div>
-                                    <Button variant="secondary" size="sm" onClick={() => setCustomer(null)}>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => {
+                                            setCustomer(null);
+                                            setQuote(null);
+                                        }}
+                                    >
                                         Ubah
                                     </Button>
                                 </div>
                             ) : (
-                                <>
-                                    <div className="grid gap-3 sm:grid-cols-3">
-                                        <Input
-                                            label="Nama"
-                                            value={customerForm.name}
-                                            error={customerErrors.name}
-                                            onChange={(event) =>
-                                                setCustomerForm({ ...customerForm, name: event.target.value })
+                                <div className="space-y-3">
+                                    <Input
+                                        label="Cari pelanggan"
+                                        placeholder="Ketik nama atau nomor telepon..."
+                                        value={customerSearch}
+                                        onChange={(event) => setCustomerSearch(event.target.value)}
+                                    />
+                                    {customersQuery.isLoading ? (
+                                        <div role="status" className="flex justify-center py-4">
+                                            <Spinner className="text-brand-primary h-5 w-5" />
+                                        </div>
+                                    ) : customersQuery.isError ? (
+                                        <EmptyState
+                                            title="Daftar pelanggan gagal dimuat"
+                                            description="Periksa koneksi lalu coba lagi."
+                                            action={
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => customersQuery.refetch()}
+                                                >
+                                                    Coba lagi
+                                                </Button>
                                             }
                                         />
-                                        <Input
-                                            label="Telepon"
-                                            value={customerForm.phone}
-                                            error={customerErrors.phone}
-                                            onChange={(event) =>
-                                                setCustomerForm({ ...customerForm, phone: event.target.value })
-                                            }
-                                        />
-                                        <Select
-                                            label="Tipe"
-                                            value={customerForm.type}
-                                            onChange={(event) =>
-                                                setCustomerForm({ ...customerForm, type: event.target.value })
-                                            }
-                                        >
-                                            <option value="Reguler">Reguler</option>
-                                            <option value="Reseller">Reseller</option>
-                                        </Select>
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        loading={createCustomer.isPending}
-                                        onClick={() => createCustomer.mutate()}
-                                    >
-                                        Buat pelanggan
-                                    </Button>
-                                </>
+                                    ) : customerList.length === 0 ? (
+                                        <div className="border-light-border dark:border-surface-300 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3 text-sm">
+                                            <span className="text-light-muted-strong dark:text-gray-400">
+                                                Pelanggan tidak ditemukan.
+                                            </span>
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => navigate('/designer/customers/new')}
+                                            >
+                                                Buat pelanggan baru
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <ul className="divide-light-border border-light-border dark:divide-surface-300 dark:border-surface-300 divide-y rounded-xl border">
+                                            {customerList.map((entry) => (
+                                                <li
+                                                    key={entry.id}
+                                                    className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="font-medium">{entry.name}</span>
+                                                            <Badge
+                                                                tone={
+                                                                    entry.type === 'Reseller' ? 'brand' : 'neutral'
+                                                                }
+                                                            >
+                                                                {entry.type ?? 'Reguler'}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-light-muted-strong truncate text-xs dark:text-gray-400">
+                                                            {entry.phone ?? 'Tanpa telepon'}
+                                                            {entry.address ? ` · ${entry.address}` : ''}
+                                                        </p>
+                                                    </div>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => handleSelectCustomer(entry)}
+                                                    >
+                                                        Pilih
+                                                    </Button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
                             )}
                         </CardBody>
                     </Card>
@@ -246,7 +434,11 @@ export function DesignerNewOrderPage() {
                                             label="Produk"
                                             value={item.product_id}
                                             onChange={(event) =>
-                                                setItem({ ...item, product_id: event.target.value })
+                                                updatePricingItem({
+                                                    product_id: event.target.value,
+                                                    finishing_id: '',
+                                                    display_id: '',
+                                                })
                                             }
                                         >
                                             <option value="">Pilih produk</option>
@@ -260,7 +452,7 @@ export function DesignerNewOrderPage() {
                                             label="Bahan"
                                             value={item.material_id}
                                             onChange={(event) =>
-                                                setItem({ ...item, material_id: event.target.value })
+                                                updatePricingItem({ material_id: event.target.value })
                                             }
                                         >
                                             <option value="">Pilih bahan</option>
@@ -270,49 +462,71 @@ export function DesignerNewOrderPage() {
                                                 </option>
                                             ))}
                                         </Select>
-                                        <Select
-                                            label="Mesin"
-                                            value={item.machine_id}
-                                            onChange={(event) =>
-                                                setItem({ ...item, machine_id: event.target.value })
-                                            }
-                                        >
-                                            <option value="">Tanpa mesin</option>
-                                            {(options?.machines ?? []).map((machine) => (
-                                                <option key={machine.id} value={machine.id}>
-                                                    {machine.name}
-                                                </option>
-                                            ))}
-                                        </Select>
+                                        {finishingOptions.length > 0 ? (
+                                            <Select
+                                                label="Finishing"
+                                                value={item.finishing_id}
+                                                onChange={(event) =>
+                                                    updatePricingItem({ finishing_id: event.target.value })
+                                                }
+                                            >
+                                                <option value="">Tanpa finishing</option>
+                                                {finishingOptions.map((attribute) => (
+                                                    <option key={attribute.id} value={attribute.id}>
+                                                        {attribute.name}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        ) : null}
+                                        {displayOptions.length > 0 ? (
+                                            <Select
+                                                label="Display"
+                                                value={item.display_id}
+                                                onChange={(event) =>
+                                                    updatePricingItem({ display_id: event.target.value })
+                                                }
+                                            >
+                                                <option value="">Tanpa display</option>
+                                                {displayOptions.map((attribute) => (
+                                                    <option key={attribute.id} value={attribute.id}>
+                                                        {attribute.name}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        ) : null}
                                         <Input
                                             label="Jml"
                                             type="number"
                                             min="1"
                                             value={item.quantity}
                                             onChange={(event) =>
-                                                setItem({ ...item, quantity: Number(event.target.value) })
+                                                updatePricingItem({ quantity: Number(event.target.value) })
                                             }
                                         />
-                                        <Input
-                                            label="Lebar (m)"
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            value={item.width}
-                                            onChange={(event) =>
-                                                setItem({ ...item, width: Number(event.target.value) })
-                                            }
-                                        />
-                                        <Input
-                                            label="Panjang (m)"
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            value={item.length}
-                                            onChange={(event) =>
-                                                setItem({ ...item, length: Number(event.target.value) })
-                                            }
-                                        />
+                                        {needsWidth ? (
+                                            <Input
+                                                label="Lebar (m)"
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                value={item.width}
+                                                onChange={(event) =>
+                                                    updatePricingItem({ width: Number(event.target.value) })
+                                                }
+                                            />
+                                        ) : null}
+                                        {needsLength ? (
+                                            <Input
+                                                label="Panjang (m)"
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                value={item.length}
+                                                onChange={(event) =>
+                                                    updatePricingItem({ length: Number(event.target.value) })
+                                                }
+                                            />
+                                        ) : null}
                                         <Input
                                             label="Nama file"
                                             value={item.file_name}
@@ -329,11 +543,17 @@ export function DesignerNewOrderPage() {
                                         />
                                     </div>
 
-                                    <div className="rounded-xl border border-light-border bg-light-surface-2/60 px-4 py-3 dark:border-surface-300 dark:bg-surface-600/40">
+                                    {itemError ? (
+                                        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+                                            {itemError}
+                                        </p>
+                                    ) : null}
+
+                                    <div className="border-light-border bg-light-surface-2/60 dark:border-surface-300 dark:bg-surface-600/40 rounded-xl border px-4 py-3">
                                         <div className="flex flex-wrap items-center justify-between gap-4">
                                             <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
                                                 <div>
-                                                    <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                                    <dt className="text-light-muted text-[10px] font-semibold tracking-wider uppercase dark:text-gray-400">
                                                         Subtotal
                                                     </dt>
                                                     <dd className="text-light-text text-lg font-extrabold tabular-nums dark:text-gray-100">
@@ -341,7 +561,7 @@ export function DesignerNewOrderPage() {
                                                     </dd>
                                                 </div>
                                                 <div>
-                                                    <dt className="text-light-muted text-[10px] font-semibold uppercase tracking-wider dark:text-gray-400">
+                                                    <dt className="text-light-muted text-[10px] font-semibold tracking-wider uppercase dark:text-gray-400">
                                                         Area
                                                     </dt>
                                                     <dd className="text-light-muted-strong text-sm font-semibold tabular-nums dark:text-gray-300">
@@ -374,6 +594,27 @@ export function DesignerNewOrderPage() {
                         <h2 className="font-semibold">Keranjang</h2>
                     </CardHeader>
                     <CardBody className="space-y-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <Input
+                                label="Tenggat selesai"
+                                type="date"
+                                value={deadline}
+                                error={submitErrors.deadline}
+                                onChange={(event) => setDeadline(event.target.value)}
+                            />
+                            <Select
+                                label="Sumber pesanan"
+                                value={source}
+                                error={submitErrors.source}
+                                onChange={(event) =>
+                                    setSource(event.target.value === 'Online' ? 'Online' : 'Offline')
+                                }
+                            >
+                                <option value="Offline">Offline</option>
+                                <option value="Online">Online</option>
+                            </Select>
+                        </div>
+
                         <Table>
                             <TableHead>
                                 <TableRow>
@@ -389,11 +630,21 @@ export function DesignerNewOrderPage() {
                                 ) : (
                                     cart.map((line, index) => (
                                         <TableRow key={`${line.quote.pricing_id}-${index}`}>
-                                            <TableCell>{line.file_name || `Item ${index + 1}`}</TableCell>
-                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                            <TableCell>
+                                                <p className="font-medium">
+                                                    {line.file_name || line.product_name}
+                                                </p>
+                                                <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                    {line.product_name} · {line.material_name}
+                                                    {line.attribute_labels.length > 0
+                                                        ? ` · ${line.attribute_labels.join(', ')}`
+                                                        : ''}
+                                                </p>
+                                            </TableCell>
+                                            <TableCell className="text-right whitespace-nowrap tabular-nums">
                                                 {line.quantity}
                                             </TableCell>
-                                            <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                            <TableCell className="text-right whitespace-nowrap tabular-nums">
                                                 {formatMoney(line.quote.subtotal)}
                                             </TableCell>
                                             <TableCell>
@@ -409,7 +660,7 @@ export function DesignerNewOrderPage() {
                                     ))
                                 )}
                             </TableBody>
-                            <tfoot className="border-t border-light-border dark:border-surface-300">
+                            <tfoot className="border-light-border dark:border-surface-300 border-t">
                                 <TableRow>
                                     <td
                                         colSpan={2}
@@ -419,7 +670,7 @@ export function DesignerNewOrderPage() {
                                     </td>
                                     <td
                                         colSpan={2}
-                                        className="text-brand-fill dark:text-brand-primary-light px-3 py-2 text-right align-middle text-lg font-bold tabular-nums whitespace-nowrap"
+                                        className="text-brand-fill dark:text-brand-primary-light px-3 py-2 text-right align-middle text-lg font-bold whitespace-nowrap tabular-nums"
                                     >
                                         {formatMoney(cartTotal)}
                                     </td>
@@ -443,7 +694,9 @@ export function DesignerNewOrderPage() {
                 </Card>
             </div>
 
-            {notice ? <Toast message={notice} onClose={() => setNotice(null)} /> : null}
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
         </div>
     );
 }

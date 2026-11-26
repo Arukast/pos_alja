@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
+import type { WasteByUnit } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
@@ -12,7 +13,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { apiFetch } from '../../lib/api';
 import { formatDate } from '../../lib/dates';
-import { formatQuantity } from '../../lib/money';
+import { quantityWithUnit, wasteByUnitLabel } from '../../lib/units';
 
 export function ProductionWastePage() {
     const [page, setPage] = useState(1);
@@ -20,15 +21,15 @@ export function ProductionWastePage() {
     const listQuery = useQuery({ queryKey: ['waste', 'list', page], queryFn: () => api.waste({ page }) });
     const summary = useQuery({
         queryKey: ['production', 'summary'],
-        queryFn: () => apiFetch<{ waste_today: number }>('/production/summary'),
+        queryFn: () => apiFetch<{ waste_today_by_unit: WasteByUnit[] }>('/production/summary'),
     });
 
     return (
         <div className="space-y-6">
             <PageBanner
                 eyebrow="Produksi"
-                title="Riwayat Sisa Bahan"
-                description="Catatan sisa bahan dari antrean produksi."
+                title="Riwayat Bahan Terbuang"
+                description="Catatan bahan terbuang dari antrean produksi."
             />
 
             <div className="grid gap-4 sm:max-w-xs">
@@ -38,7 +39,7 @@ export function ProductionWastePage() {
                     </div>
                 ) : summary.isError ? (
                     <EmptyState
-                        title="Ringkasan sisa bahan gagal dimuat"
+                        title="Ringkasan bahan terbuang gagal dimuat"
                         description="Periksa koneksi lalu coba lagi."
                         action={
                             <Button variant="secondary" onClick={() => summary.refetch()}>
@@ -48,15 +49,15 @@ export function ProductionWastePage() {
                     />
                 ) : (
                     <StatCard
-                        label="Sisa Bahan Hari Ini"
-                        value={summary.data ? String(summary.data.waste_today) : '—'}
+                        label="Bahan Terbuang Hari Ini"
+                        value={summary.data ? wasteByUnitLabel(summary.data.waste_today_by_unit) : '—'}
                     />
                 )}
             </div>
 
             <Card>
                 <CardHeader>
-                    <h2 className="font-semibold">Riwayat sisa bahan</h2>
+                    <h2 className="font-semibold">Riwayat bahan terbuang</h2>
                     {listQuery.data ? (
                         <span className="bg-light-surface-2 text-light-muted-strong rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums dark:bg-surface-600 dark:text-gray-300">
                             {listQuery.data.meta.total} catatan
@@ -70,7 +71,7 @@ export function ProductionWastePage() {
                         </div>
                     ) : listQuery.isError ? (
                         <EmptyState
-                            title="Riwayat sisa bahan gagal dimuat"
+                            title="Riwayat bahan terbuang gagal dimuat"
                             description="Periksa koneksi lalu coba lagi."
                             action={
                                 <Button variant="secondary" onClick={() => listQuery.refetch()}>
@@ -80,19 +81,19 @@ export function ProductionWastePage() {
                         />
                     ) : (
                         <>
-                            <Table ariaLabel="Riwayat sisa bahan">
+                            <Table ariaLabel="Riwayat bahan terbuang">
                                 <TableHead>
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Desainer</TableHeaderCell>
-                                        <TableHeaderCell className="text-right">Jml</TableHeaderCell>
+                                        <TableHeaderCell className="text-right whitespace-nowrap">Jml</TableHeaderCell>
                                         <TableHeaderCell className="hidden sm:table-cell">Dimensi</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(listQuery.data?.data ?? []).length === 0 ? (
-                                        <TableEmpty colSpan={5}>Belum ada sisa bahan tercatat.</TableEmpty>
+                                        <TableEmpty colSpan={5}>Belum ada bahan terbuang tercatat.</TableEmpty>
                                     ) : (
                                         (listQuery.data?.data ?? []).map((waste) => (
                                             <TableRow key={waste.id}>
@@ -100,12 +101,15 @@ export function ProductionWastePage() {
                                                     {formatDate(waste.logged_at)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="font-medium">
+                                                    <span
+                                                        className="block max-w-[9rem] truncate font-medium sm:max-w-none"
+                                                        title={waste.material?.name ?? undefined}
+                                                    >
                                                         {waste.material?.name ?? '-'}
                                                     </span>
                                                     {waste.notes ? (
                                                         <p
-                                                            className="text-light-muted max-w-[16rem] truncate text-xs dark:text-gray-400"
+                                                            className="text-light-muted max-w-[9rem] truncate text-xs sm:max-w-[16rem] dark:text-gray-400"
                                                             title={waste.notes}
                                                         >
                                                             {waste.notes}
@@ -113,8 +117,8 @@ export function ProductionWastePage() {
                                                     ) : null}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.designer?.name ?? '-'}</TableCell>
-                                                <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                                    {formatQuantity(waste.quantity)}
+                                                <TableCell className="text-right tabular-nums whitespace-normal sm:whitespace-nowrap">
+                                                    {quantityWithUnit(waste.quantity, waste.material?.unit)}
                                                 </TableCell>
                                                 <TableCell className="hidden sm:table-cell">{waste.dimensions ?? '-'}</TableCell>
                                             </TableRow>

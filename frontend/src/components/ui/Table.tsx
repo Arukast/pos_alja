@@ -12,7 +12,12 @@ export function Table({
     ariaLabel?: string;
 }) {
     return (
-        <div className="overflow-x-auto">
+        <div
+            role="region"
+            aria-label={ariaLabel}
+            tabIndex={0}
+            className="focus:outline-brand-fill overflow-x-auto focus:outline-2 focus:outline-offset-2"
+        >
             <table
                 aria-label={ariaLabel}
                 className={cn('w-full min-w-full text-left text-sm tabular-nums', className)}
@@ -59,8 +64,20 @@ export function TableHeaderCell({
     );
 }
 
-export function TableCell({ className, children }: { className?: string; children: ReactNode }) {
-    return <td className={cn('px-2 py-2 align-middle sm:px-3', className)}>{children}</td>;
+export function TableCell({
+    className,
+    children,
+    colSpan,
+}: {
+    className?: string;
+    children: ReactNode;
+    colSpan?: number;
+}) {
+    return (
+        <td colSpan={colSpan} className={cn('px-2 py-2 align-middle sm:px-3', className)}>
+            {children}
+        </td>
+    );
 }
 
 export function TableEmpty({ colSpan, children }: { colSpan: number; children: ReactNode }) {

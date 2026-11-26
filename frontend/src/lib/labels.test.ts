@@ -88,9 +88,10 @@ describe('ledgerTypeLabel', () => {
         expect(ledgerTypeLabel('initial')).toBe('Stok Awal');
         expect(ledgerTypeLabel('purchase')).toBe('Pembelian');
         expect(ledgerTypeLabel('usage')).toBe('Pemakaian');
-        expect(ledgerTypeLabel('waste')).toBe('Sisa Bahan');
+        expect(ledgerTypeLabel('waste')).toBe('Bahan Terbuang');
         expect(ledgerTypeLabel('adjustment')).toBe('Koreksi');
         expect(ledgerTypeLabel('restock')).toBe('Tambah Stok');
+        expect(ledgerTypeLabel('usage_reversal')).toBe('Pengembalian Pemakaian');
     });
 
     it('falls back to the input for an unknown type', () => {

@@ -34,6 +34,16 @@ final class OrderPolicy
         return $user->role === 'production' && $this->sameBranch($user, $order);
     }
 
+    public function fail(User $user, Order $order): bool
+    {
+        return $user->role === 'production' && $this->sameBranch($user, $order);
+    }
+
+    public function reopen(User $user, Order $order): bool
+    {
+        return $user->role === 'production' && $this->sameBranch($user, $order);
+    }
+
     private function sameBranch(User $user, Order $order): bool
     {
         return $user->branch_id !== null

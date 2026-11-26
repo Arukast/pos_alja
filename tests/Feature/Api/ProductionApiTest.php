@@ -63,7 +63,9 @@ class ProductionApiTest extends TestCase
         $branchOneOrder = $this->order($invoiceOne, 0);
         $this->order($invoiceOne, 1);
         $this->order($invoiceOne, 2);
+        $this->order($invoiceOne, 3);
         $branchTwoOrder = $this->order($invoiceTwo, 0);
+        $this->order($invoiceTwo, 3);
 
         $this->materialOne = Material::create([
             'name' => 'Vinyl Roll',
@@ -72,6 +74,7 @@ class ProductionApiTest extends TestCase
                 'calculation_archetype' => 'surface_area',
             ])->id,
             'type' => 'roll',
+            'unit' => 'm2',
             'cost' => 10000,
             'price' => 15000,
         ]);
@@ -133,13 +136,15 @@ class ProductionApiTest extends TestCase
             ->assertJsonMissingPath('data.0.profit')
             ->assertJsonMissingPath('data.0.invoice.grand_total');
 
-        $this->assertCount(2, $profileResponse->json('data'));
+        $this->assertCount(3, $profileResponse->json('data'));
+        $this->assertContains(3, collect($profileResponse->json('data'))->pluck('status')->all());
+        $this->assertMoneyFree($profileResponse->json('data'));
 
         $ownerResponse = $this->actingAs($this->owner)
             ->getJson('/api/v1/production/queue')
             ->assertOk();
 
-        $this->assertCount(3, $ownerResponse->json('data'));
+        $this->assertCount(5, $ownerResponse->json('data'));
 
         $this->actingAs($this->cashier)
             ->getJson('/api/v1/production/queue')
@@ -149,16 +154,27 @@ class ProductionApiTest extends TestCase
 
     public function test_summary_counts_match_fixtures_and_are_production_only(): void
     {
-        $this->actingAs($this->production)
+        $response = $this->actingAs($this->production)
             ->getJson('/api/v1/production/summary')
             ->assertOk()
             ->assertJsonPath('queued', 1)
             ->assertJsonPath('processing', 1)
-            ->assertJsonPath('completed_today', 1);
+            ->assertJsonPath('completed_today', 1)
+            ->assertJsonPath('failed', 1)
+            ->assertJsonPath('waste_today_by_unit.0.unit', 'm2')
+            ->assertJsonMissingPath('waste_today');
 
-        $this->assertEquals(2, (float) $this->actingAs($this->production)
+        $this->assertEquals([['unit' => 'm2', 'quantity' => 2]], $response->json('waste_today_by_unit'));
+
+        $otherResponse = $this->actingAs($this->otherProduction)
             ->getJson('/api/v1/production/summary')
-            ->json('waste_today'));
+            ->assertOk()
+            ->assertJsonPath('queued', 1)
+            ->assertJsonPath('processing', 0)
+            ->assertJsonPath('completed_today', 0)
+            ->assertJsonPath('failed', 1);
+
+        $this->assertEquals([['unit' => 'pcs', 'quantity' => 5]], $otherResponse->json('waste_today_by_unit'));
 
         $this->actingAs($this->owner)
             ->getJson('/api/v1/production/summary')
@@ -167,6 +183,53 @@ class ProductionApiTest extends TestCase
         $this->actingAs($this->cashier)
             ->getJson('/api/v1/production/summary')
             ->assertForbidden();
+    }
+
+    public function test_waste_kpi_groups_by_unit_and_keeps_soft_deleted_units(): void
+    {
+        $lembar = Material::create([
+            'name' => 'Sticker Sheet',
+            'product_category_id' => $this->materialOne->product_category_id,
+            'type' => 'sheet',
+            'unit' => 'lembar',
+            'cost' => 1000,
+            'price' => 2000,
+        ]);
+
+        WastedMaterial::create([
+            'branch_id' => $this->branchOne->id,
+            'logged_at' => now(),
+            'material_id' => $lembar->id,
+            'designer_id' => $this->designer->id,
+            'operator_id' => $this->production->id,
+            'quantity' => 1.5,
+            'notes' => 'Trim waste',
+        ]);
+
+        $expected = [
+            ['unit' => 'lembar', 'quantity' => 1.5],
+            ['unit' => 'm2', 'quantity' => 2],
+        ];
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/summary')
+            ->assertOk()
+            ->assertJsonPath('waste_today_by_unit.0.unit', 'lembar')
+            ->assertJsonPath('waste_today_by_unit.1.unit', 'm2');
+
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/summary')
+            ->assertOk()
+            ->assertJsonMissingPath('waste_today');
+
+        $this->assertEquals($expected, $response->json('waste_today_by_unit'));
+
+        $this->materialOne->delete();
+
+        $this->assertEquals($expected, $this->actingAs($this->production)
+            ->getJson('/api/v1/production/summary')
+            ->assertOk()
+            ->json('waste_today_by_unit'));
     }
 
     public function test_waste_list_is_branch_scoped_and_production_only(): void
@@ -179,10 +242,82 @@ class ProductionApiTest extends TestCase
 
         $this->assertCount(1, $response->json('data'));
         $this->assertSame($this->materialOne->id, $response->json('data.0.material.id'));
+        $this->assertSame('m2', $response->json('data.0.material.unit'));
         $this->assertNotNull($response->json('data.0.order_id'));
 
         foreach ([$this->owner, $this->manager, $this->cashier, $this->designer] as $user) {
             $this->actingAs($user)->getJson('/api/v1/waste')->assertForbidden();
+        }
+    }
+
+    public function test_waste_list_returns_a_null_material_when_it_is_soft_deleted(): void
+    {
+        $this->materialOne->delete();
+
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/waste')
+            ->assertOk();
+
+        $this->assertCount(1, $response->json('data'));
+        $this->assertNull($response->json('data.0.material'));
+    }
+
+    public function test_queue_marks_a_failed_order_without_waste_as_has_waste_false(): void
+    {
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $failed = collect($response->json('data'))->firstWhere('status', 3);
+
+        $this->assertNotNull($failed);
+        $this->assertArrayHasKey('has_waste', $failed);
+        $this->assertFalse($failed['has_waste']);
+    }
+
+    public function test_queue_marks_has_waste_true_after_waste_is_recorded_for_the_failed_order(): void
+    {
+        $queue = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $failed = collect($queue->json('data'))->firstWhere('status', 3);
+
+        $this->assertNotNull($failed);
+
+        WastedMaterial::create([
+            'branch_id' => $this->branchOne->id,
+            'logged_at' => now(),
+            'material_id' => $this->materialOne->id,
+            'order_id' => $failed['id'],
+            'designer_id' => $this->designer->id,
+            'operator_id' => $this->production->id,
+            'quantity' => 1,
+        ]);
+
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $row = collect($response->json('data'))->firstWhere('id', $failed['id']);
+
+        $this->assertNotNull($row);
+        $this->assertTrue($row['has_waste']);
+    }
+
+    public function test_waste_on_a_non_failed_order_does_not_mark_other_orders(): void
+    {
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $rows = collect($response->json('data'));
+
+        foreach ([0 => true, 1 => false, 3 => false] as $status => $hasWaste) {
+            $row = $rows->firstWhere('status', $status);
+
+            $this->assertNotNull($row);
+            $this->assertSame($hasWaste, $row['has_waste']);
         }
     }
 
@@ -199,7 +334,26 @@ class ProductionApiTest extends TestCase
         $designerIds = collect($response->json('designers'))->pluck('id')->all();
 
         $this->assertSame([$this->materialOne->id], $materialIds);
+        $this->assertSame('m2', $response->json('materials.0.unit'));
         $this->assertSame([$this->designer->id], $designerIds);
+    }
+
+    private function assertMoneyFree(mixed $payload): void
+    {
+        if (! is_array($payload)) {
+            return;
+        }
+
+        foreach ($payload as $key => $value) {
+            if (is_string($key)) {
+                $this->assertDoesNotMatchRegularExpression(
+                    '/price|cost|profit|discount|receivable|payment|total|subtotal|dp_amount|grand_total/i',
+                    $key
+                );
+            }
+
+            $this->assertMoneyFree($value);
+        }
     }
 
     private function branch(string $name): Branch

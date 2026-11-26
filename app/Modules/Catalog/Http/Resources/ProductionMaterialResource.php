@@ -23,6 +23,7 @@ final class ProductionMaterialResource extends JsonResource
             'name' => $this->name,
             'type' => $this->type,
             'dimensions' => $this->dimensions,
+            'unit' => $this->unit,
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,

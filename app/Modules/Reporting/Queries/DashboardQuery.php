@@ -6,17 +6,16 @@ namespace App\Modules\Reporting\Queries;
 
 use App\Models\Expense;
 use App\Models\Invoice;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Pricing;
 use App\Models\StockLedger;
 use App\Models\User;
-use App\Models\WastedMaterial;
 use App\Modules\Catalog\Http\Resources\StockLedgerResource;
 use App\Modules\Production\Http\Resources\ProductionQueueResource;
 use App\Modules\Production\Queries\ProductionQueue;
+use App\Modules\Production\Queries\WasteByUnit;
 use App\Modules\Sales\Http\Resources\ExpenseResource;
 use App\Modules\Sales\Http\Resources\InvoiceResource;
 use App\Support\Decimal;
@@ -29,6 +28,7 @@ final class DashboardQuery
         private readonly SparklineQuery $sparkline,
         private readonly LeaderboardQuery $leaderboard,
         private readonly ProductionQueue $productionQueue,
+        private readonly WasteByUnit $wasteByUnit,
     ) {}
 
     /**
@@ -82,9 +82,6 @@ final class DashboardQuery
         $counts = [
             'materials' => $branchId === null ? 0 : Material::query()
                 ->whereHas('branchStocks', fn ($query) => $query->where('branch_id', $branchId))
-                ->count(),
-            'machines' => $branchId === null ? 0 : Machine::query()
-                ->where('branch_id', $branchId)
                 ->count(),
             'staff' => $branchId === null ? 0 : User::query()
                 ->where('branch_id', $branchId)
@@ -239,11 +236,6 @@ final class DashboardQuery
             fn ($query) => $query->where('branch_id', $branchId)
         );
 
-        $wasteToday = WastedMaterial::query()
-            ->where('branch_id', $branchId)
-            ->whereBetween('logged_at', [now()->startOfDay(), now()->endOfDay()])
-            ->sum('quantity');
-
         return [
             'role' => 'production',
             'queued' => (clone $orders)->where('status', 0)->count(),
@@ -252,7 +244,7 @@ final class DashboardQuery
                 ->where('status', 2)
                 ->whereDate('updated_at', now()->toDateString())
                 ->count(),
-            'waste_today' => (float) $wasteToday,
+            'waste_today_by_unit' => $this->wasteByUnit->forBranch($branchId),
             'queue' => ProductionQueueResource::collection($this->productionQueue->paginate($actor, [])),
         ];
     }

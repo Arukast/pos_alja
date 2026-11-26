@@ -7,8 +7,6 @@ namespace App\Services;
 use App\Exceptions\PricingNotFoundException;
 use App\Models\AttributePricing;
 use App\Models\Branch;
-use App\Models\Machine;
-use App\Models\MachinePricing;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -26,7 +24,6 @@ class PricingService
     {
         $productId = $params['product_id'] ?? null;
         $materialId = $params['material_id'] ?? null;
-        $machineId = $params['machine_id'] ?? null;
         $finishingId = $params['finishing_id'] ?? null;
         $cutId = $params['cut_id'] ?? null;
         $displayId = $params['display_id'] ?? null;
@@ -75,32 +72,6 @@ class PricingService
             );
         }
 
-        // Fetch additive machine pricing modifier if machine is selected
-        $machinePrice = 0.0;
-        $machineCost = 0.0;
-        if (! empty($machineId)) {
-            $machineBranchId = $branchId ?: (auth()->check() ? auth()->user()->branch_id : null);
-            $machine = $machineBranchId
-                ? Machine::query()->where('branch_id', $machineBranchId)->find($machineId)
-                : null;
-
-            if ($machine) {
-                $machineCost = (float) $machine->cost;
-
-                $machinePricing = MachinePricing::where('pricing_id', $pricing->id)
-                    ->where('machine_id', $machineId)
-                    ->first();
-
-                if ($machinePricing) {
-                    $machinePrice = (float) $machinePricing->price;
-
-                    if ((float) $machinePricing->cost > 0.0) {
-                        $machineCost = (float) $machinePricing->cost;
-                    }
-                }
-            }
-        }
-
         // Fetch additive attribute modifier pricings dynamically using selected_attributes list
         $attributePriceSum = 0.0;
         $attributeCostSum = 0.0;
@@ -138,8 +109,8 @@ class PricingService
             }
         }
 
-        $unitPrice = $basePrice + $machinePrice + $attributePriceSum;
-        $unitCost = $baseCost + $machineCost + $attributeCostSum;
+        $unitPrice = $basePrice + $attributePriceSum;
+        $unitCost = $baseCost + $attributeCostSum;
         $area = 0.0;
 
         switch ($category->calculation_archetype) {

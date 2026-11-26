@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Machine, Material, Pricing, UserRecord } from '../../api/types';
+import type { Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
@@ -23,7 +23,10 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney } from '../../lib/money';
+import { ledgerQuantity, quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
+
+const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
 export function ManagerUsersPage() {
     const { user } = useAuth();
@@ -60,6 +63,7 @@ export function ManagerUsersPage() {
                 { header: 'Peran', cell: (user) => <Badge tone="brand">{roleLabel(user.role)}</Badge> },
             ]}
             fields={fields}
+            rowLabel={(user) => user.name}
             create={(values) =>
                 api.admin.createUser({ ...values, branch_id: user?.branch?.id })
             }
@@ -79,10 +83,6 @@ export function ManagerMaterialsPage() {
         queryKey: ['manager', 'materials', 'count'],
         queryFn: () => api.materials({ page: 1, per_page: 1 }),
     });
-    const machineCount = useQuery({
-        queryKey: ['manager', 'machines', 'count'],
-        queryFn: () => api.machines({ page: 1, per_page: 1 }),
-    });
     const ledgers = useQuery({
         queryKey: ['manager', 'materials', 'ledgers'],
         queryFn: () => api.stockLedgers({ page: 1 }),
@@ -96,10 +96,19 @@ export function ManagerMaterialsPage() {
     const fields: Array<CrudField<Material>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'product_category_id', label: 'Kategori', type: 'select', options, getValue: (material) => material.category?.id ?? '' },
-        { key: 'type', label: 'Jenis' },
-        { key: 'dimensions', label: 'Dimensi' },
-        { key: 'cost', label: 'Biaya', type: 'number' },
-        { key: 'price', label: 'Harga', type: 'number' },
+        { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
+        {
+            key: 'cost',
+            label: 'Biaya',
+            type: 'number',
+            labelFor: (values) => `Biaya per ${unitLabelFor(values)}`,
+        },
+        {
+            key: 'price',
+            label: 'Harga',
+            type: 'number',
+            labelFor: (values) => `Harga per ${unitLabelFor(values)}`,
+        },
         { key: 'initial_stock', label: 'Stok awal', type: 'number', hideOnEdit: true },
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
@@ -115,7 +124,7 @@ export function ManagerMaterialsPage() {
             queryKey={['manager', 'materials', lowStock]}
             queryFn={(page) => api.materials({ page, low_stock: lowStock ? 1 : undefined })}
             summary={
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <StatCard
                         label="Bahan Aktif"
                         value={materialCount.isSuccess ? String(materialCount.data.meta.total) : '—'}
@@ -123,10 +132,6 @@ export function ManagerMaterialsPage() {
                     <StatCard
                         label="Kategori"
                         value={categories.isSuccess ? String(categories.data.data.length) : '—'}
-                    />
-                    <StatCard
-                        label="Mesin Aktif"
-                        value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
                     />
                 </div>
             }
@@ -151,11 +156,19 @@ export function ManagerMaterialsPage() {
                     header: 'Bahan',
                     cell: (material) => (
                         <div>
-                            <span className="font-medium">{material.name}</span>
-                            {material.type || material.dimensions ? (
-                                <p className="text-light-muted text-xs dark:text-gray-400">
-                                    {[material.type, material.dimensions].filter(Boolean).join(' · ')}
-                                </p>
+                            <span className="block font-medium">{material.name}</span>
+                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                {[material.type, material.dimensions, unitLabel(material.unit)]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                                <span className="sm:hidden">
+                                    {' · '}Min {quantityWithUnit(material.min_stock, material.unit)}
+                                </span>
+                            </p>
+                            {material.is_low_stock === true ? (
+                                <span className="mt-1 block sm:hidden">
+                                    <Badge tone="warning">Menipis</Badge>
+                                </span>
                             ) : null}
                         </div>
                     ),
@@ -164,12 +177,12 @@ export function ManagerMaterialsPage() {
                 {
                     header: 'Stok',
                     className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => formatQuantity(material.current_stock),
+                    cell: (material) => quantityWithUnit(material.current_stock, material.unit),
                 },
                 {
                     header: 'Minimum',
-                    className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => formatQuantity(material.min_stock),
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    cell: (material) => quantityWithUnit(material.min_stock, material.unit),
                 },
                 {
                     header: 'Biaya',
@@ -190,6 +203,7 @@ export function ManagerMaterialsPage() {
                 },
             ]}
             fields={fields}
+            rowLabel={(material) => material.name}
             create={(values) => api.admin.createMaterial(values)}
             rowActions={(material) => (
                 <>
@@ -224,7 +238,7 @@ export function ManagerMaterialsPage() {
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
-                                        <TableHeaderCell>Ditambahkan</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Ditambahkan</TableHeaderCell>
                                         <TableHeaderCell>Digunakan</TableHeaderCell>
                                         <TableHeaderCell>Tersisa</TableHeaderCell>
                                     </TableRow>
@@ -241,9 +255,9 @@ export function ManagerMaterialsPage() {
                                                     {formatDate(ledger.logged_at)}
                                                 </TableCell>
                                                 <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.added_stock)}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.used_stock)}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.remaining_stock)}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{ledgerQuantity(ledger.added_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell>{ledgerQuantity(ledger.used_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell>{quantityWithUnit(ledger.remaining_stock, ledger.material?.unit)}</TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -266,50 +280,39 @@ export function ManagerLedgersPage() {
             queryKey={['manager', 'ledgers']}
             queryFn={(page) => api.stockLedgers({ page })}
             columns={[
-                { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
-                { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
+                { header: 'Tanggal', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => formatDate(ledger.logged_at) },
+                {
+                    header: 'Bahan',
+                    cell: (ledger) => (
+                        <div>
+                            <span
+                                className="block max-w-[7rem] truncate font-medium sm:max-w-none"
+                                title={ledger.material?.name ?? undefined}
+                            >
+                                {ledger.material?.name ?? '-'}
+                            </span>
+                            <span className="text-light-muted text-xs whitespace-nowrap sm:hidden">
+                                {formatDate(ledger.logged_at)}
+                            </span>
+                        </div>
+                    ),
+                },
                 { header: 'Tipe', cell: (ledger) => ledgerTypeLabel(ledger.type) },
                 {
                     header: 'Alasan',
-                    className: 'hidden lg:table-cell',
+                    className: 'hidden md:table-cell',
                     cell: (ledger) => (
-                        <span className="block max-w-[18rem] truncate" title={ledger.reason ?? undefined}>
+                        <span className="block max-w-[9rem] truncate" title={ledger.reason ?? undefined}>
                             {ledger.reason ?? '-'}
                         </span>
                     ),
                 },
-                { header: 'Pengguna', className: 'hidden sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
-                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.added_stock) },
-                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.used_stock) },
-                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.wasted_stock) },
-                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.remaining_stock) },
+                { header: 'Pengguna', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
+                { header: 'Ditambahkan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.added_stock, ledger.material?.unit) },
+                { header: 'Digunakan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.used_stock, ledger.material?.unit) },
+                { header: 'Bahan Terbuang', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.wasted_stock, ledger.material?.unit) },
+                { header: 'Tersisa', className: 'text-right tabular-nums sm:whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.remaining_stock, ledger.material?.unit) },
             ]}
-        />
-    );
-}
-
-export function ManagerMachinesPage() {
-    const fields: Array<CrudField<Machine>> = [
-        { key: 'name', label: 'Nama', required: true },
-        { key: 'cost', label: 'Biaya Dasar', type: 'number' },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Konfigurasi"
-            title="Mesin Cetak"
-            description="Data mesin dan biaya dasar untuk cabang Anda."
-            queryKey={['manager', 'machines']}
-            queryFn={(page) => api.machines({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createMachine(values)}
-            update={(id, values) => api.admin.updateMachine(id, values)}
-            remove={(id) => api.admin.deleteMachine(id)}
-            createLabel="Tambah mesin"
         />
     );
 }
@@ -377,6 +380,9 @@ export function ManagerPricingPage() {
                     { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.cost) },
                 ]}
                 fields={fields}
+                rowLabel={(pricing) =>
+                    `${pricing.product?.name ?? '-'} / ${pricing.material?.name ?? '-'}`
+                }
                 create={(values) => api.admin.createPricing(values)}
                 update={(id, values) => api.admin.updatePricing(id, values)}
                 remove={(id) => api.admin.deletePricing(id)}
@@ -463,7 +469,7 @@ export function ManagerLeaderboardPage() {
             <PageBanner
                 eyebrow="Ringkasan"
                 title="Papan Peringkat Desainer"
-                description="Pendapatan, jumlah pesanan, dan akurasi sisa bahan bulan ini."
+                description="Pendapatan, jumlah pesanan, dan akurasi bahan terbuang bulan ini."
             />
             <Card>
                 <CardBody>
@@ -490,7 +496,7 @@ export function ManagerLeaderboardPage() {
                                     <TableHeaderCell>Pesanan</TableHeaderCell>
                                     <TableHeaderCell className="text-right whitespace-nowrap">Pendapatan</TableHeaderCell>
                                     <TableHeaderCell className="text-right whitespace-nowrap">Rata-rata pesanan</TableHeaderCell>
-                                    <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
+                                    <TableHeaderCell>Catatan bahan terbuang</TableHeaderCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>

@@ -26,6 +26,7 @@ final class StockLedgerResource extends JsonResource
             'material' => $this->material ? [
                 'id' => $this->material->id,
                 'name' => $this->material->name,
+                'unit' => $this->material->unit,
             ] : null,
             'type' => $this->type,
             'reason' => $this->reason,

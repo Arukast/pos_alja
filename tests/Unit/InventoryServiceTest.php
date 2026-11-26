@@ -470,6 +470,45 @@ class InventoryServiceTest extends TestCase
         $this->assertDatabaseCount('stock_ledgers', 1);
     }
 
+    public function test_usage_reversal_increases_stock_and_records_added_stock(): void
+    {
+        $material = $this->material();
+        $this->seedStock($material, 10.0);
+        $orderId = (string) Str::uuid();
+
+        $this->inventoryService->applyMovement(
+            $material->id,
+            $this->branchId,
+            'usage',
+            6.0,
+            referenceType: 'order',
+            referenceId: $orderId,
+        );
+
+        $result = $this->inventoryService->applyMovement(
+            $material->id,
+            $this->branchId,
+            'usage_reversal',
+            6.0,
+            referenceType: 'order',
+            referenceId: $orderId,
+        );
+
+        $this->assertSame(4.0, $result['old_stock']);
+        $this->assertSame(10.0, $result['new_stock']);
+        $this->assertSame(10.0, (float) $this->stockRow($material)->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage_reversal',
+            'reference_type' => 'order',
+            'reference_id' => $orderId,
+            'added_stock' => 6,
+            'used_stock' => 0,
+            'wasted_stock' => 0,
+            'remaining_stock' => 10,
+        ]);
+    }
+
     public function test_apply_movement_rejects_unknown_type(): void
     {
         $material = $this->material();

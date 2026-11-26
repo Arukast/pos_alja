@@ -72,6 +72,7 @@ class ReportApiTest extends TestCase
             'name' => 'Vinyl Roll',
             'product_category_id' => $category->id,
             'type' => 'roll',
+            'unit' => 'm2',
             'cost' => 10000,
             'price' => 15000,
         ]);
@@ -137,7 +138,7 @@ class ReportApiTest extends TestCase
             ->getJson('/api/v1/dashboard')
             ->assertOk()
             ->assertJsonPath('role', 'production')
-            ->assertJsonStructure(['queued', 'processing', 'completed_today', 'waste_today', 'queue'])
+            ->assertJsonStructure(['queued', 'processing', 'completed_today', 'waste_today_by_unit', 'queue'])
             ->assertJsonMissingPath('finance')
             ->assertJsonMissingPath('queue.data.0.unit_price')
             ->assertJsonMissingPath('queue.data.0.invoice.grand_total');
@@ -185,13 +186,33 @@ class ReportApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('total_hpp', '80000.00')
             ->assertJsonPath('invoice_cost_total', '60000.00')
-            ->assertJsonPath('wasted_cost_total', '20000.00');
+            ->assertJsonPath('wasted_cost_total', '20000.00')
+            ->assertJsonPath('wasted_materials.0.material.unit', 'm2');
 
         $this->actingAs($this->owner)
             ->getJson('/api/v1/reports/expenses?branch_id='.$this->branchOne->id.'&start_date='.now()->toDateString().'&end_date='.now()->toDateString())
             ->assertOk()
             ->assertJsonPath('expenses_total', '10000.00')
             ->assertJsonPath('by_category.Supplies', '10000.00');
+    }
+
+    public function test_owner_reports_tolerate_waste_from_a_soft_deleted_material(): void
+    {
+        $this->material->delete();
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/base-cost?branch_id='.$this->branchOne->id.'&start_date='.now()->toDateString().'&end_date='.now()->toDateString())
+            ->assertOk()
+            ->assertJsonPath('total_hpp', '60000.00')
+            ->assertJsonPath('wasted_cost_total', '0.00')
+            ->assertJsonPath('wasted_materials.0.material', null);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/reports/net-profit?branch_id='.$this->branchOne->id.'&start_date='.now()->toDateString().'&end_date='.now()->toDateString())
+            ->assertOk()
+            ->assertJsonPath('total_hpp', '60000.00')
+            ->assertJsonPath('net_profit', '30000.00')
+            ->assertJsonPath('wasted_materials.0.material', null);
     }
 
     public function test_sparkline_returns_period_shapes(): void

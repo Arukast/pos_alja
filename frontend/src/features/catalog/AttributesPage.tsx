@@ -126,6 +126,7 @@ export function AttributesPage({
                     },
                 ]}
                 fields={attributeFields}
+                rowLabel={(attribute) => attribute.name}
                 create={
                     readOnly
                         ? undefined
@@ -174,6 +175,7 @@ export function AttributesPage({
                     },
                 ]}
                 fields={typeFields}
+                rowLabel={(type) => type.name}
                 create={readOnly ? undefined : (values) => api.admin.createAttributeType(values)}
                 remove={readOnly ? undefined : (id) => api.admin.deleteAttributeType(id)}
                 createLabel="Tambah tipe atribut"

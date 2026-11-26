@@ -6,8 +6,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\Branch;
 use App\Models\Customer;
-use App\Models\Machine;
-use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\Pricing;
 use App\Models\Product;
@@ -36,8 +34,6 @@ class CreateInvoiceApiTest extends TestCase
     private Product $product;
 
     private Material $material;
-
-    private Machine $machine;
 
     private Pricing $pricing;
 
@@ -88,21 +84,6 @@ class CreateInvoiceApiTest extends TestCase
             'cost' => 20000,
             'profit' => 30000,
         ]);
-
-        $this->machine = Machine::create([
-            'branch_id' => $this->branchOne->id,
-            'name' => 'Printer A',
-            'cost' => 0,
-        ]);
-
-        MachinePricing::create([
-            'branch_id' => $this->branchOne->id,
-            'pricing_id' => $this->pricing->id,
-            'machine_id' => $this->machine->id,
-            'price' => 5000,
-            'cost' => 3000,
-            'profit' => 2000,
-        ]);
     }
 
     public function test_designer_creates_invoice_with_server_recomputed_prices(): void
@@ -115,9 +96,9 @@ class CreateInvoiceApiTest extends TestCase
         $response = $this->actingAs($this->designer)
             ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
             ->assertCreated()
-            ->assertJsonPath('invoice.grand_total', '660000.00')
-            ->assertJsonPath('invoice.orders.0.unit_price', '55000.00')
-            ->assertJsonPath('invoice.orders.0.subtotal', '660000.00')
+            ->assertJsonPath('invoice.grand_total', '600000.00')
+            ->assertJsonPath('invoice.orders.0.unit_price', '50000.00')
+            ->assertJsonPath('invoice.orders.0.subtotal', '600000.00')
             ->assertJsonMissingPath('invoice.total_cost')
             ->assertJsonMissingPath('invoice.total_profit')
             ->assertJsonMissingPath('invoice.orders.0.cost')
@@ -130,8 +111,8 @@ class CreateInvoiceApiTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'invoice_id' => $response->json('invoice.id'),
-            'unit_price' => 55000,
-            'subtotal' => 660000,
+            'unit_price' => 50000,
+            'subtotal' => 600000,
             'is_manual_price' => false,
         ]);
     }
@@ -165,22 +146,6 @@ class CreateInvoiceApiTest extends TestCase
             ->postJson('/api/v1/invoices', $this->payload(['items' => [$invalid]]))
             ->assertStatus(422)
             ->assertJsonValidationErrors('items.0.unit_price');
-    }
-
-    public function test_cross_branch_machine_is_rejected(): void
-    {
-        $otherMachine = Machine::create([
-            'branch_id' => $this->branchTwo->id,
-            'name' => 'Printer B',
-            'cost' => 0,
-        ]);
-
-        $this->actingAs($this->designer)
-            ->postJson('/api/v1/invoices', $this->payload([
-                'items' => [$this->item(['machine_id' => $otherMachine->id])],
-            ]))
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.machine_id');
     }
 
     public function test_pricing_failure_maps_to_422_instead_of_500(): void
@@ -296,6 +261,7 @@ class CreateInvoiceApiTest extends TestCase
             ->postJson('/api/v1/customers', [
                 'name' => 'New Customer',
                 'phone' => '0812000000',
+                'institution' => 'Masyarakat/Retail',
                 'type' => 'Reguler',
             ])
             ->assertCreated()
@@ -328,7 +294,8 @@ class CreateInvoiceApiTest extends TestCase
             'quantity' => 2,
             'width' => 2,
             'length' => 3,
-            'machine_id' => $this->machine->id,
+            // Legacy clients may still send machine_id; it must be ignored.
+            'machine_id' => (string) Str::uuid(),
             'is_manual_price' => false,
         ], $overrides);
     }

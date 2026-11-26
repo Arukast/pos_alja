@@ -7,6 +7,8 @@
 
 ## Summary
 
+Sprint Review 1 Sales acceptance: customer registration is separate from new-order search; institution is required while phone, email, and address remain optional. Designer item configuration follows Product -> Material -> Finishing -> Display. Cashiers have no expense-entry screen; invoice print is the customer-facing print flow.
+
 | ID | Module | Roles |
 | :--- | :--- | :--- |
 | FR1 | Autentikasi | All |
@@ -88,17 +90,19 @@
 ## 2. Products
 
 ### FR6 Manage products, categories, materials, and prices
-- **Requirement:** Owner SHALL manage products, product categories, materials, finishing/display options, and quantity discounts. Branch Manager SHALL read the catalog and manage branch stock.
+- **Requirement:** Owner SHALL manage products, product categories, materials, finishing/display options, and quantity discounts. Branch Manager SHALL read products and categories, manage global attribute types and own-branch attributes and pricing rows, create materials, and manage branch stock.
 - **Acceptance criteria:**
   - Product CRUD includes name, category, pricing type (`unit` or `area`), and active status.
-  - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`).
-  - Material master includes name, category, unit (`m2`, `sheet`, `pcs`), type, base cost, and base price. Materials are created by the Owner in the material master and mapped to a product category.
-  - Finishing and display options store `price` and `cost`. Each order item may select at most one finishing and one display option.
-  - The base price is the material price plus the selected finishing/display prices. For a Reseller customer, the branch reseller discount is applied to the base price before the category quantity discount. The customer type is read from the customer record, never from the client. The resulting customer type and reseller percentage are stored on the order as a snapshot.
-  - `branches.reseller_discount_percent` is the only source of the reseller discount: decimal `0–100`, default `0`, editable by the Owner. The invoice branch's value applies.
-  - The category quantity discount uses the tier with the highest `min_qty` less than or equal to the item quantity.
-  - The pricing matrix and machine masters are not part of the target.
-  - Global catalog changes are Owner-only and written to the audit log; branch stock changes are branch-scoped.
+  - Category CRUD includes name, calculation archetype, allowed finishing/display types, and quantity discount tiers (`min_qty`, `discount_percent`). The tiers are configured but not applied to quotes or invoices.
+  - Material master includes name, category, unit, type, dimensions, base cost, and base price. The allowed units are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; `m2` displays as `m²`. Create requires `unit`; update accepts it optionally. The column defaults to `pcs`.
+  - Existing materials are backfilled by `MaterialUnit::backfill()`. The first match wins: material name keywords (`banner`, `vinyl`, `flexi`, `backdrop`, `spandex`, `spanduk` -> `m2`; `kertas`, `paper`, `hvs`, `art paper`, `sticker`, `stiker` -> `lembar`; `tinta`, `ink`, `solvent`, `pelarut` -> `liter`), then the same keyword sets against the category name, then a `surface_area` category archetype -> `m2`, otherwise `pcs`. A null or legacy value reads as `pcs`.
+  - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form offers finishing/display selection, while invoice creation does not persist a selection.
+  - The current price source is the pricing matrix: a quote selects a `pricing` row by product, material, customer type, and `min_qty`, then adds the selected `attribute_pricing` modifiers. The target model (material price + finishing/display price + reseller discount + category quantity discount) is not implemented.
+  - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.settings.reseller_discount_percent` and applied when a Reseller quote falls back to the Reguler pricing row.
+  - `branches.settings.reseller_discount_percent` is the current source of the reseller discount. It is API-only, has no SPA field, and is currently uncapped. The target `branches.reseller_discount_percent` column is not implemented. The invoice branch's value applies.
+  - The category quantity discount would use the tier with the highest `min_qty` less than or equal to the item quantity; the current quote/invoice path does not apply it.
+  - Machine masters and machine selection are removed; the `machines` and `machine_pricing` tables are dropped. The pricing matrix is a target removal and remains the current price source.
+  - Category, product, and discount changes are Owner-only and written to the audit log. Managers manage global attribute types and own-branch attributes and pricing rows; branch stock changes are branch-scoped.
 - **Traceability:** NFR1, NFR7, PB-01.
 
 ### FR7 Search, filter, and paginate products
@@ -120,10 +124,11 @@
   - Customer search is the default. A new customer is created on a separate screen.
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
-  - Each item stores product, material, finishing (one), display (one), quantity, dimensions, price, cost, profit, and file reference.
-  - Item entry follows Product -> Material -> Finishing -> Display. There is no machine selection.
+  - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. There is no finishing/display snapshot.
+  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone.
+  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]`. There is no `order_attributes` table and no persistence of the selection; the designer form now offers finishing/display selection.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
-  - Submission creates one invoice, its orders, order attribute selections, initial status logs, and an activity log in one transaction.
+  - Submission creates one invoice, its orders, initial status logs, and an activity log in one transaction. No order attribute rows are written.
   - Invoice number follows `INV-{branch prefix}-{YYYYMMDD}-{NNNN}`.
   - A printable A4 invoice is available. The invoice is the single customer document; the production queue is the production work list and never exposes money.
 - **Traceability:** NFR3, NFR9, PB-02.
@@ -209,13 +214,16 @@
 
 ### FR16 Record material usage on an order
 - **Requirement:** Production SHALL record material usage on an order, and stock SHALL decrease automatically. Failed prints SHALL be recorded from the production queue.
-- **Status:** Built (PB-05/PB-07, 2026-11-24).
+- **Status:** Built (PB-05/PB-07 follow-up, 2026-11-25).
 - **Acceptance criteria:**
   - Usage references the order, material, quantity, and operator.
+  - Production start deducts by the material unit: `m2` deducts `area * quantity` and returns 422 when the order area is not greater than zero; every other unit deducts `quantity`.
   - A failed print is recorded from the queue row, not from a separate page. It references the order, material, quantity, operator, optional designer, and notes.
-  - Machine references are removed; machine cost is part of material cost.
-  - Stock decrement and ledger entry happen in one transaction.
-  - Ledger type is `usage` or `waste`, with an order reference.
+  - Waste is allowed on order status `0`, `1`, or `3`; a completed order (status `2`) is rejected with 422.
+  - Failing a processing order (`1 -> 3`) reverses the net usage per `(material_id, branch_id)` across `usage` and `usage_reversal` ledger rows and writes one `usage_reversal` row per material with positive net usage. Reopening (`3 -> 0`) clears the operator and returns the order to the queue.
+  - Machine references are removed; there is no machine selection or machine cost.
+  - Stock decrement, reversal, and ledger entry happen in one transaction.
+  - Ledger type is `usage`, `usage_reversal`, or `waste`, with an order reference.
 - **Traceability:** NFR9, PB-07.
 
 ### FR17 View branch stock and low-stock warnings
@@ -247,21 +255,24 @@
 ### FR19 Production queue sorted by deadline and priority
 - **Requirement:** Owner, Branch Manager, Cashier, Designer, and Production SHALL view a production queue ordered by target completion date and priority, with a status filter.
 - **Acceptance criteria:**
-  - Sort: `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`.
-  - Filter by status (`queued`, `processing`, `completed`); owner may also filter by branch.
-  - Each row shows order, customer, deadline, priority, status, designer, and operator.
+  - Sort: `created_at ASC`, then `id`. The target rule is `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`; it is not implemented.
+  - The implemented queue returns status `0`, `1`, and `3`; status `2` is excluded. No status filter is implemented; the target is a status filter, and the owner may also filter by branch.
+  - Each row shows order, customer, deadline, status, designer, and operator.
   - Branch-bound users see only their branch; owner may view all or one branch.
-  - Statuses: `queued` (Antre Produksi), `processing` (Diproses), `completed` (Selesai).
-  - The queue is the production work list and contains no money fields.
+  - Statuses: `0` (Antre Produksi), `1` (Diproses), `3` (Gagal). Status `2` (Selesai) is not queued.
+  - The queue is the production work list and contains no money fields. Failed rows offer `Proses Ulang`; waste can be recorded after a failure.
+  - A failed row with no `wasted_materials` row exposes `has_waste: false` and shows a `Belum ada bahan terbuang` warning badge. Closing its auto-opened waste modal asks `Belum ada bahan terbuang. Tetap tutup?`; saving waste clears the badge after the queue refetches.
 - **Traceability:** NFR1, NFR4, PB-06.
 
 ### FR20 Update production status
 - **Requirement:** Production SHALL update the order status through the production stages from an explicit status control.
 - **Acceptance criteria:**
-  - Transitions: `queued -> processing -> completed`.
+  - Transitions: `0 -> 1` (start), `1 -> 2` (complete), `1 -> 3` (fail), and `3 -> 0` (reopen).
+  - Start requires status `0`; complete and fail require status `1`; reopen requires status `3`. Any other source status returns 422 with no status change and no stock movement.
+  - Fail requires a `note` of 3–255 characters, keeps the operator, and reverses net usage. Reopen takes no body, clears the operator, and writes the status-log note `Production reopened`.
   - Each transition writes `order_status_logs` with actor and timestamp.
-  - Stock usage is recorded when processing starts.
-  - `OrderUpdated` is dispatched.
+  - Stock usage is recorded when processing starts, using the material unit.
+  - `OrderUpdated` is dispatched after commit for every transition.
 - **Traceability:** NFR9, PB-06.
 
 ### FR21 Mark order as picked up
@@ -281,6 +292,7 @@
 - **Requirement:** Owner and Branch Manager SHALL see a dashboard summary with revenue, expenses, order count, and production status. Owner may view all branches or one branch.
 - **Acceptance criteria:**
   - Cards: gross revenue, expenses, receivables, order count, queued/processing/completed counts.
+  - The production summary exposes `failed` (orders currently in status `3`). The summary and production dashboard expose `waste_today_by_unit`, an array of `{ unit, quantity }` for today grouped by material unit. Mixed units are never summed; an empty result renders as `-`.
   - Period filter: daily, weekly, monthly.
   - Branch filter for owner; manager is fixed to their branch.
   - Data refreshes on `OrderUpdated`.
@@ -350,3 +362,4 @@
 | Date | Source | Changes |
 | :--- | :--- | :--- |
 | 2026-11-24 | Sprint Review 1 | FR6, FR8, FR9, FR13, FR14, FR16, FR18, FR19, FR20, and FR25 revised. PB-08 moved to Sprint 1. Details: `docs/requirements/sprint-review-1.md`. |
+| 2026-11-25 | PB-05/PB-07 follow-up | FR6 material units and pricing-source truth; FR8 finishing/display truth; FR16 unit-aware usage and reversal; FR19 queue statuses; FR20 fail/reopen transitions; FR22 per-unit waste KPI. Machine masters and tables removed. |

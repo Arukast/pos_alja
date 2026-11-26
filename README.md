@@ -12,15 +12,15 @@ API-first point-of-sale for a digital printing shop. The Laravel backend owns th
 
 - Username/password session login, profile, password, and CSRF protection.
 - Owner, manager, cashier, designer, and production dashboards.
-- Branches, users, customers, products, materials, machines, attributes, and pricing matrices.
+- Branches, users, customers, products, materials, attributes, and pricing matrices.
 - Designer quotes, invoices, work-order tickets, and receipt printing.
 - Cashier down payments, settlements, pickup queue, and expenses.
-- Production queue, start/complete transitions, waste logging, and stock ledgers.
+- Production queue, start/complete/fail/reopen transitions, waste logging, and stock ledgers.
 - Owner finance reports, manager designer leaderboard, and audit trail.
 - Role and branch isolation on every endpoint; money redaction for production.
 - Private realtime channels for branch and owner updates.
 
-FR7, FR9, FR10, FR15, FR18, FR24, and FR26 remain future sprints. See `docs/requirements/implementation-gaps.md`.
+FR9, FR10, FR24, and FR26 remain future sprints. See `docs/requirements/implementation-gaps.md`.
 
 ## Requirements
 

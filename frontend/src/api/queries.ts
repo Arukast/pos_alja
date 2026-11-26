@@ -13,7 +13,6 @@ import type {
     GrossRevenueReport,
     Invoice,
     LeaderboardReport,
-    Machine,
     Material,
     NetProfitReport,
     Paginated,
@@ -59,7 +58,6 @@ export interface QuoteOptions {
     categories: Category[];
     products: Product[];
     materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null }>;
-    machines: Array<{ id: string; name: string }>;
     attributes: Attribute[];
 }
 
@@ -102,9 +100,6 @@ export const api = {
 
     materials: <T = Material>(params: QueryParams = {}) =>
         apiFetch<Paginated<T>>(`/materials${queryString(params)}`),
-
-    machines: (params: QueryParams = {}) =>
-        apiFetch<Paginated<Machine>>(`/machines${queryString(params)}`),
 
     pricing: (params: QueryParams = {}) =>
         apiFetch<Paginated<Pricing>>(`/pricing${queryString(params)}`),
@@ -202,9 +197,15 @@ export const api = {
     completeOrder: (orderId: string) =>
         mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/complete`, 'POST'),
 
+    failOrder: (orderId: string, data: { note: string }) =>
+        mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/fail`, 'POST', data),
+
+    reopenOrder: (orderId: string) =>
+        mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/reopen`, 'POST'),
+
     wasteOptions: () =>
         apiFetch<{
-            materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null }>;
+            materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null; unit: string }>;
             designers: Array<{ id: string; name: string }>;
         }>('/waste/options'),
 
@@ -243,14 +244,6 @@ export const api = {
             mutate<{ material: Material }>(`/materials/${id}/stock`, 'POST', data),
         activateMaterial: (id: string, data: MutationBody) =>
             mutate<{ material: Material }>(`/materials/${id}/activate`, 'POST', data),
-
-        createMachine: (data: MutationBody) =>
-            mutate<{ machine: Machine }>('/machines', 'POST', data),
-        updateMachine: (id: string, data: MutationBody) =>
-            mutate<{ machine: Machine }>(`/machines/${id}`, 'PUT', data),
-        deleteMachine: (id: string) => mutate<void>(`/machines/${id}`, 'DELETE'),
-        restoreMachine: (id: string) =>
-            mutate<{ machine: Machine }>(`/machines/${id}/restore`, 'POST'),
 
         createCategory: (data: MutationBody) =>
             mutate<{ category: Category }>('/categories', 'POST', data),
