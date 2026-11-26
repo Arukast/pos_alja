@@ -11,7 +11,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
+import { Toast } from '../../components/ui/Toast';
 import { useBranches } from '../../hooks/useBranches';
+import { useReportExport } from '../../hooks/useReportExport';
 import { formatDate, todayIso } from '../../lib/dates';
 import { paymentMethodLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
@@ -21,6 +23,7 @@ export function GrossRevenuePage() {
     const { user } = useAuth();
     const isOwner = user?.role === 'owner';
     const branchesQuery = useBranches(isOwner);
+    const { exporting, notice, clearNotice, exportReport } = useReportExport('gross-revenue');
     const [draft, setDraft] = useState<ReportDraft>({
         period: 'daily',
         start: today,
@@ -29,15 +32,16 @@ export function GrossRevenuePage() {
     });
     const [applied, setApplied] = useState(draft);
 
+    const reportParams = {
+        period: applied.period,
+        ...(isOwner ? { branch_id: applied.branch } : {}),
+        start_date: applied.start,
+        end_date: applied.end,
+    };
+
     const query = useQuery({
         queryKey: ['report', 'gross-revenue', isOwner ? 'owner' : 'manager', applied],
-        queryFn: () =>
-            api.report.grossRevenue({
-                period: applied.period,
-                ...(isOwner ? { branch_id: applied.branch } : {}),
-                start_date: applied.start,
-                end_date: applied.end,
-            }),
+        queryFn: () => api.report.grossRevenue(reportParams),
     });
 
     return (
@@ -52,8 +56,10 @@ export function GrossRevenuePage() {
                 branches={branchesQuery.data?.data ?? []}
                 loading={query.isFetching}
                 showBranch={isOwner}
+                exporting={exporting}
                 onChange={setDraft}
                 onApply={(next) => setApplied(next ?? draft)}
+                onExport={(format) => void exportReport(format, reportParams)}
             />
 
             {query.isLoading ? (
@@ -123,6 +129,10 @@ export function GrossRevenuePage() {
                         </CardBody>
                     </Card>
                 </>
+            ) : null}
+
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={clearNotice} />
             ) : null}
         </div>
     );

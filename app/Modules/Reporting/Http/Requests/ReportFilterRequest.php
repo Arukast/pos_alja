@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
-final class ReportFilterRequest extends FormRequest
+class ReportFilterRequest extends FormRequest
 {
     public function authorize(): bool
     {

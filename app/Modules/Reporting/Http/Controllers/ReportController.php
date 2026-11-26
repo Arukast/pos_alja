@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\WastedMaterial;
+use App\Modules\Reporting\Actions\ExportReport;
+use App\Modules\Reporting\Http\Requests\ExportReportRequest;
 use App\Modules\Reporting\Http\Requests\ReportFilterRequest;
 use App\Modules\Reporting\Queries\BaseCostQuery;
 use App\Modules\Reporting\Queries\ExpensesQuery;
@@ -21,7 +23,9 @@ use App\Support\Decimal;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ReportController extends Controller
 {
@@ -118,6 +122,29 @@ final class ReportController extends Controller
         }
 
         return response()->json($query->forManager($actor));
+    }
+
+    public function export(
+        ExportReportRequest $request,
+        ExportReport $export
+    ): StreamedResponse|Response {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        [$startDate, $endDate] = $request->dateRange();
+
+        return $export->execute(
+            $actor,
+            $request->reportType(),
+            $request->exportFormat(),
+            $request->period(),
+            $request->resolvedBranchId(),
+            $startDate,
+            $endDate,
+        );
     }
 
     /**

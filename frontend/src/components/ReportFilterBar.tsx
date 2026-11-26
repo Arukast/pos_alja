@@ -1,3 +1,4 @@
+import type { ReportExportFormat } from '../api/queries';
 import type { Branch } from '../api/types';
 import { periodRange, type Period } from '../lib/dates';
 import { Button } from './ui/Button';
@@ -25,15 +26,19 @@ export function ReportFilterBar({
     branches,
     loading = false,
     showBranch = true,
+    exporting = null,
     onChange,
     onApply,
+    onExport,
 }: {
     draft: ReportDraft;
     branches: Branch[];
     loading?: boolean;
     showBranch?: boolean;
+    exporting?: ReportExportFormat | null;
     onChange: (draft: ReportDraft) => void;
     onApply: (nextDraft?: ReportDraft) => void;
+    onExport?: (format: ReportExportFormat) => void;
 }) {
     const selectPreset = (preset: ReportPeriodPreset) => {
         if (preset === 'custom') {
@@ -110,6 +115,26 @@ export function ReportFilterBar({
                 <Button loading={loading} onClick={() => onApply()}>
                     Terapkan
                 </Button>
+                {onExport ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            variant="secondary"
+                            loading={exporting === 'xlsx'}
+                            disabled={exporting !== null && exporting !== 'xlsx'}
+                            onClick={() => onExport('xlsx')}
+                        >
+                            Ekspor Excel
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            loading={exporting === 'pdf'}
+                            disabled={exporting !== null && exporting !== 'pdf'}
+                            onClick={() => onExport('pdf')}
+                        >
+                            Ekspor PDF
+                        </Button>
+                    </div>
+                ) : null}
             </div>
         </div>
     );
