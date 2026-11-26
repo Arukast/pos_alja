@@ -11,6 +11,7 @@ import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -157,14 +158,27 @@ export function ManagerMaterialsPage() {
                     cell: (material) => (
                         <div>
                             <span className="block font-medium">{material.name}</span>
+                            {material.category && !material.category.is_active ? (
+                                <Badge tone="warning" className="mt-1">
+                                    Kategori nonaktif
+                                </Badge>
+                            ) : null}
                             <p className="text-light-muted text-xs dark:text-gray-400">
                                 {[material.type, material.dimensions, unitLabel(material.unit)]
                                     .filter(Boolean)
                                     .join(' · ')}
-                                <span className="sm:hidden">
-                                    {' · '}Min {quantityWithUnit(material.min_stock, material.unit)}
-                                </span>
                             </p>
+                            <div className="text-light-muted mt-1 flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 sm:hidden">
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    Min
+                                </span>
+                                <MinimumStockInline
+                                    materialId={material.id}
+                                    label="cabang ini"
+                                    value={material.min_stock ?? '0'}
+                                    unit={material.unit}
+                                />
+                            </div>
                             {material.is_low_stock === true ? (
                                 <span className="mt-1 block sm:hidden">
                                     <Badge tone="warning">Menipis</Badge>
@@ -182,7 +196,14 @@ export function ManagerMaterialsPage() {
                 {
                     header: 'Minimum',
                     className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
-                    cell: (material) => quantityWithUnit(material.min_stock, material.unit),
+                    cell: (material) => (
+                        <MinimumStockInline
+                            materialId={material.id}
+                            label="cabang ini"
+                            value={material.min_stock ?? '0'}
+                            unit={material.unit}
+                        />
+                    ),
                 },
                 {
                     header: 'Biaya',

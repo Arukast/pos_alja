@@ -8,6 +8,7 @@ import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
@@ -248,6 +249,11 @@ export function OwnerMaterialsPage() {
                         >
                             {material.name}
                         </span>
+                        {material.category && !material.category.is_active ? (
+                            <Badge tone="warning" className="mt-1">
+                                Kategori nonaktif
+                            </Badge>
+                        ) : null}
                         <p className="text-light-muted text-xs dark:text-gray-400">
                             {[material.type, material.dimensions, unitLabel(material.unit)]
                                 .filter(Boolean)
@@ -271,9 +277,16 @@ export function OwnerMaterialsPage() {
                                         <span className="block tabular-nums">
                                             {quantityWithUnit(stock.current_stock, material.unit)}
                                         </span>
-                                        <span className="text-light-muted block text-xs tabular-nums dark:text-gray-400">
-                                            min {quantityWithUnit(stock.min_stock, material.unit)}
-                                        </span>
+                                        <div className="text-light-muted flex flex-wrap items-center gap-1 text-xs dark:text-gray-400">
+                                            <span>min</span>
+                                            <MinimumStockInline
+                                                materialId={material.id}
+                                                branchId={stock.branch_id}
+                                                label={stock.branch_name ?? 'cabang'}
+                                                value={stock.min_stock}
+                                                unit={material.unit}
+                                            />
+                                        </div>
                                         {stock.is_low_stock ? (
                                             <span className="block font-semibold text-amber-700 dark:text-amber-300">
                                                 menipis
