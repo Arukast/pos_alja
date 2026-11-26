@@ -71,16 +71,16 @@ export function ResourceTable<T extends { id: string }>({
                             <Table ariaLabel={title}>
                                 <TableHead>
                                     <TableRow>
-                                        {expandedRow ? (
-                                            <TableHeaderCell>
-                                                <span className="sr-only">Rincian</span>
-                                            </TableHeaderCell>
-                                        ) : null}
                                         {columns.map((column) => (
                                             <TableHeaderCell key={column.header} className={column.className}>
                                                 {column.header}
                                             </TableHeaderCell>
                                         ))}
+                                        {expandedRow ? (
+                                            <TableHeaderCell className="text-right">
+                                                <span className="sr-only">Rincian</span>
+                                            </TableHeaderCell>
+                                        ) : null}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -93,8 +93,13 @@ export function ResourceTable<T extends { id: string }>({
                                             return (
                                                 <Fragment key={row.id}>
                                                     <TableRow>
+                                                        {columns.map((column) => (
+                                                            <TableCell key={column.header} className={column.className}>
+                                                                {column.cell(row)}
+                                                            </TableCell>
+                                                        ))}
                                                         {expandedRow ? (
-                                                            <TableCell>
+                                                            <TableCell className="text-right">
                                                                 <Button
                                                                     size="sm"
                                                                     variant="ghost"
@@ -116,11 +121,6 @@ export function ResourceTable<T extends { id: string }>({
                                                                 </Button>
                                                             </TableCell>
                                                         ) : null}
-                                                        {columns.map((column) => (
-                                                            <TableCell key={column.header} className={column.className}>
-                                                                {column.cell(row)}
-                                                            </TableCell>
-                                                        ))}
                                                     </TableRow>
                                                     {expandedRow && isExpanded ? (
                                                         <tr className="bg-light-surface-2/40 dark:bg-surface-600/30">
