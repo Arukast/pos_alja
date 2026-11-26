@@ -8,6 +8,7 @@ import {
     pricingTypeLabel,
     ledgerTypeLabel,
     roleLabel,
+    roleTone,
     usernameLabel,
 } from './labels';
 
@@ -23,6 +24,21 @@ describe('roleLabel', () => {
 
     it('falls back to the input for an unknown role', () => {
         expect(roleLabel('auditor')).toBe('auditor');
+    });
+});
+
+describe('roleTone', () => {
+    it('maps every stored role to a badge tone', () => {
+        expect(roleTone('owner')).toBe('brand');
+        expect(roleTone('manager')).toBe('info');
+        expect(roleTone('cashier')).toBe('success');
+        expect(roleTone('designer')).toBe('violet');
+        expect(roleTone('production')).toBe('warning');
+        expect(roleTone('system')).toBe('neutral');
+    });
+
+    it('falls back to neutral for an unknown role', () => {
+        expect(roleTone('auditor')).toBe('neutral');
     });
 });
 
