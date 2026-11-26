@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { api } from '../../api/queries';
 import type { Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
+import { ActiveToggleButton } from '../../components/admin/ActiveToggleButton';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { RoleBadge } from '../../components/RoleBadge';
 import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
@@ -22,15 +24,32 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
+import { Toast } from '../../components/ui/Toast';
 import { ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
+import { errorMessage } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { ledgerQuantity, quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
 const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
 export function ManagerUsersPage() {
-    const { user } = useAuth();
+    const { user: authUser } = useAuth();
+    const queryClient = useQueryClient();
+    const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'error' } | null>(
+        null
+    );
+
+    const toggleStatus = useMutation({
+        mutationFn: (id: string) => api.admin.toggleUser(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'users'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            setNotice({ message: 'Status pengguna diperbarui.', tone: 'success' });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
+
     const fields: Array<CrudField<UserRecord>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'username', label: 'Nama Pengguna', required: true },
@@ -52,28 +71,51 @@ export function ManagerUsersPage() {
     ];
 
     return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Manajemen Pengguna"
-            description="Akun staf cabang dan penugasan peran."
-            queryKey={['manager', 'users']}
-            queryFn={(page) => api.users({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
-                { header: 'Nama Pengguna', cell: (user) => user.username },
-                { header: 'Peran', cell: (user) => <Badge tone="brand">{roleLabel(user.role)}</Badge> },
-            ]}
-            fields={fields}
-            rowLabel={(user) => user.name}
-            create={(values) =>
-                api.admin.createUser({ ...values, branch_id: user?.branch?.id })
-            }
-            update={(id, values) =>
-                api.admin.updateUser(id, { ...values, branch_id: user?.branch?.id })
-            }
-            remove={(id) => api.admin.deleteUser(id)}
-            createLabel="Tambah akun staf"
-        />
+        <>
+            <CrudPage
+                eyebrow="Administrasi"
+                title="Manajemen Pengguna"
+                description="Akun staf cabang dan penugasan peran."
+                queryKey={['manager', 'users']}
+                queryFn={(page) => api.users({ page })}
+                columns={[
+                    { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
+                    { header: 'Nama Pengguna', cell: (user) => user.username },
+                    { header: 'Peran', cell: (user) => <RoleBadge role={user.role} /> },
+                    {
+                        header: 'Status',
+                        cell: (user) => (
+                            <Badge tone={user.is_active ? 'success' : 'neutral'}>
+                                {user.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        ),
+                    },
+                ]}
+                fields={fields}
+                rowLabel={(user) => user.name}
+                create={(values) =>
+                    api.admin.createUser({ ...values, branch_id: authUser?.branch?.id })
+                }
+                update={(id, values) =>
+                    api.admin.updateUser(id, { ...values, branch_id: authUser?.branch?.id })
+                }
+                rowActions={(user) =>
+                    user.id === authUser?.id ? null : (
+                        <ActiveToggleButton
+                            active={user.is_active}
+                            pending={toggleStatus.isPending && toggleStatus.variables === user.id}
+                            confirmMessage="Nonaktifkan akun ini? Pengguna akan langsung kehilangan akses pada permintaan berikutnya dan tidak dapat masuk sampai diaktifkan kembali."
+                            ariaLabel={`${user.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${user.name}`}
+                            onClick={() => toggleStatus.mutate(user.id)}
+                        />
+                    )
+                }
+                createLabel="Tambah akun staf"
+            />
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
+        </>
     );
 }
 

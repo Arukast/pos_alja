@@ -245,6 +245,8 @@ export const api = {
             mutate<{ user: UserRecord }>('/users', 'POST', data),
         updateUser: (id: string, data: MutationBody) =>
             mutate<{ user: UserRecord }>(`/users/${id}`, 'PUT', data),
+        toggleUser: (id: string) =>
+            mutate<{ user: UserRecord }>(`/users/${id}/status`, 'PATCH'),
         deleteUser: (id: string) => mutate<void>(`/users/${id}`, 'DELETE'),
         restoreUser: (id: string) =>
             mutate<{ user: UserRecord }>(`/users/${id}/restore`, 'POST'),

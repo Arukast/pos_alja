@@ -1,9 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
 import type { Branch, Material, UserRecord } from '../../api/types';
+import { useAuth } from '../../auth/useAuth';
+import { ActiveToggleButton } from '../../components/admin/ActiveToggleButton';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { RoleBadge } from '../../components/RoleBadge';
 import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
@@ -15,7 +18,9 @@ import { Card, CardBody } from '../../components/ui/Card';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { Toast } from '../../components/ui/Toast';
 import { useBranches } from '../../hooks/useBranches';
+import { errorMessage } from '../../lib/errors';
 import { roleLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 import { quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
@@ -31,17 +36,32 @@ const roleOptions = ['owner', 'manager', 'cashier', 'designer', 'production'].ma
 const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
 export function OwnerUsersPage() {
+    const { user: authUser } = useAuth();
+    const queryClient = useQueryClient();
     const branches = useBranches();
     const options = branchOptions(branches.data?.data ?? []);
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
     const [role, setRole] = useState('');
+    const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'error' } | null>(
+        null
+    );
 
     useEffect(() => {
         const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
 
         return () => window.clearTimeout(timer);
     }, [searchInput]);
+
+    const toggleStatus = useMutation({
+        mutationFn: (id: string) => api.admin.toggleUser(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['owner', 'users'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            setNotice({ message: 'Status pengguna diperbarui.', tone: 'success' });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
 
     const fields: Array<CrudField<UserRecord>> = [
         { key: 'name', label: 'Nama', required: true },
@@ -56,59 +76,80 @@ export function OwnerUsersPage() {
     ];
 
     return (
-        <CrudPage
-            pageResetKey={`${search}:${role}`}
-            eyebrow="Pemilik"
-            title="Manajemen Pengguna"
-            description="Akun staf, peran, dan penugasan cabang untuk semua cabang."
-            queryKey={['owner', 'users', search, role]}
-            queryFn={(page) =>
-                api.users({ page, include_deleted: 1, search, role })
-            }
-            summary={
-                <Card>
-                    <CardBody>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="w-full sm:max-w-xs">
-                                <Input
-                                    label="Cari pengguna"
-                                    type="search"
-                                    placeholder="Nama atau nama pengguna"
-                                    value={searchInput}
-                                    onChange={(event) => setSearchInput(event.target.value)}
-                                />
+        <>
+            <CrudPage
+                pageResetKey={`${search}:${role}`}
+                eyebrow="Pemilik"
+                title="Manajemen Pengguna"
+                description="Akun staf, peran, dan penugasan cabang untuk semua cabang."
+                queryKey={['owner', 'users', search, role]}
+                queryFn={(page) => api.users({ page, search, role })}
+                summary={
+                    <Card>
+                        <CardBody>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                <div className="w-full sm:max-w-xs">
+                                    <Input
+                                        label="Cari pengguna"
+                                        type="search"
+                                        placeholder="Nama atau nama pengguna"
+                                        value={searchInput}
+                                        onChange={(event) => setSearchInput(event.target.value)}
+                                    />
+                                </div>
+                                <div className="w-full sm:w-48">
+                                    <Select
+                                        label="Peran"
+                                        value={role}
+                                        onChange={(event) => setRole(event.target.value)}
+                                    >
+                                        <option value="">Semua peran</option>
+                                        {roleOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="w-full sm:w-48">
-                                <Select
-                                    label="Peran"
-                                    value={role}
-                                    onChange={(event) => setRole(event.target.value)}
-                                >
-                                    <option value="">Semua peran</option>
-                                    {roleOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </Select>
-                            </div>
-                        </div>
-                    </CardBody>
-                </Card>
-            }
-            columns={[
-                { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
-                { header: 'Nama Pengguna', className: 'hidden sm:table-cell', cell: (user) => user.username },
-                { header: 'Peran', cell: (user) => <Badge tone="neutral">{roleLabel(user.role)}</Badge> },
-                { header: 'Cabang', className: 'hidden sm:table-cell', cell: (user) => user.branch?.name ?? 'Global' },
-            ]}
-            fields={fields}
-            rowLabel={(user) => user.name}
-            create={(values) => api.admin.createUser(values)}
-            update={(id, values) => api.admin.updateUser(id, values)}
-            remove={(id) => api.admin.deleteUser(id)}
-            createLabel="Tambah pengguna"
-        />
+                        </CardBody>
+                    </Card>
+                }
+                columns={[
+                    { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
+                    { header: 'Nama Pengguna', className: 'hidden sm:table-cell', cell: (user) => user.username },
+                    { header: 'Peran', cell: (user) => <RoleBadge role={user.role} /> },
+                    {
+                        header: 'Status',
+                        cell: (user) => (
+                            <Badge tone={user.is_active ? 'success' : 'neutral'}>
+                                {user.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        ),
+                    },
+                    { header: 'Cabang', className: 'hidden sm:table-cell', cell: (user) => user.branch?.name ?? 'Global' },
+                ]}
+                fields={fields}
+                rowLabel={(user) => user.name}
+                create={(values) => api.admin.createUser(values)}
+                update={(id, values) => api.admin.updateUser(id, values)}
+                rowActions={(user) =>
+                    user.id === authUser?.id ? null : (
+                        <ActiveToggleButton
+                            active={user.is_active}
+                            pending={toggleStatus.isPending && toggleStatus.variables === user.id}
+                            confirmMessage="Nonaktifkan akun ini? Pengguna akan langsung kehilangan akses pada permintaan berikutnya dan tidak dapat masuk sampai diaktifkan kembali."
+                            ariaLabel={`${user.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${user.name}`}
+                            onClick={() => toggleStatus.mutate(user.id)}
+                        />
+                    )
+                }
+                createLabel="Tambah pengguna"
+            />
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            ) : null}
+        </>
     );
 }
 
