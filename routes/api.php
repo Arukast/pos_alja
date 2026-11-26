@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login']);
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'active'])->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::put('/auth/profile', [AuthController::class, 'updateProfile']);

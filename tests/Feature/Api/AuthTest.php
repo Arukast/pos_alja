@@ -96,6 +96,77 @@ class AuthTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_login_rejects_inactive_user(): void
+    {
+        $this->user('cashier', ['username' => 'inactive', 'is_active' => false]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'inactive',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('username')
+            ->assertJsonPath('errors.username.0', trans('auth.failed'));
+
+        $this->assertGuest();
+    }
+
+    public function test_login_rejects_user_of_inactive_branch(): void
+    {
+        $this->user('cashier', ['username' => 'inactive-branch']);
+        $this->branch->update(['is_active' => false]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'inactive-branch',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('username')
+            ->assertJsonPath('errors.username.0', trans('auth.failed'));
+
+        $this->assertGuest();
+    }
+
+    public function test_login_rejects_user_of_trashed_branch(): void
+    {
+        $this->user('cashier', ['username' => 'trashed-branch']);
+        $this->branch->delete();
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'trashed-branch',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('username')
+            ->assertJsonPath('errors.username.0', trans('auth.failed'));
+
+        $this->assertGuest();
+    }
+
+    public function test_owner_without_branch_and_owner_on_inactive_branch_can_log_in(): void
+    {
+        $this->user('owner', ['username' => 'owner-null', 'branch_id' => null]);
+        $this->branch->update(['is_active' => false]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'owner-null',
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->user('owner', ['username' => 'owner-inactive-branch']);
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'owner-inactive-branch',
+            'password' => 'password',
+        ])->assertOk();
+    }
+
+    public function test_non_owner_without_branch_can_log_in(): void
+    {
+        $this->user('cashier', ['username' => 'cashier-null', 'branch_id' => null]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'cashier-null',
+            'password' => 'password',
+        ])->assertOk();
+    }
+
     public function test_login_is_throttled_after_five_attempts(): void
     {
         $this->user('cashier', ['username' => 'throttled']);
