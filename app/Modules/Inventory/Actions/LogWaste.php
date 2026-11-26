@@ -50,12 +50,13 @@ final class LogWaste
             $designerInBranch = User::query()
                 ->whereKey($data['designer_id'])
                 ->where('role', 'designer')
+                ->where('is_active', true)
                 ->where('branch_id', $branchId)
                 ->exists();
 
             if (! $designerInBranch) {
                 throw ValidationException::withMessages([
-                    'designer_id' => 'Desainer ini milik cabang lain.',
+                    'designer_id' => 'Desainer ini tidak aktif atau bukan milik cabang Anda.',
                 ]);
             }
         }

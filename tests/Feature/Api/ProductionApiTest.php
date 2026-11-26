@@ -417,6 +417,20 @@ class ProductionApiTest extends TestCase
         $this->assertSame([$this->designer->id], $designerIds);
     }
 
+    public function test_waste_options_exclude_inactive_designers(): void
+    {
+        $this->designer->update(['is_active' => false]);
+
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/waste/options')
+            ->assertOk();
+
+        $this->assertNotContains(
+            $this->designer->id,
+            collect($response->json('designers'))->pluck('id')->all()
+        );
+    }
+
     private function assertMoneyFree(mixed $payload): void
     {
         if (! is_array($payload)) {

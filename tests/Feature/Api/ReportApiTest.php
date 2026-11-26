@@ -266,6 +266,34 @@ class ReportApiTest extends TestCase
         $this->assertArrayNotHasKey('grand_total', $response->json('leaders.0'));
     }
 
+    public function test_manager_staff_count_excludes_inactive_users(): void
+    {
+        User::factory()->create([
+            'role' => 'cashier',
+            'branch_id' => $this->branchOne->id,
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('counts.staff', 3);
+    }
+
+    public function test_leaderboard_keeps_historical_inactive_designers(): void
+    {
+        $this->designer->update(['is_active' => false]);
+
+        $response = $this->actingAs($this->manager)
+            ->getJson('/api/v1/reports/designer-leaderboard')
+            ->assertOk();
+
+        $this->assertContains(
+            $this->designer->id,
+            collect($response->json('leaders'))->pluck('id')->all()
+        );
+    }
+
     private function branch(string $name): Branch
     {
         return Branch::create([
