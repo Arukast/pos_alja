@@ -102,6 +102,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/quotes', [QuoteController::class, 'store']);
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::post('/invoices', [InvoiceController::class, 'store']);
+        Route::put('/invoices/{invoice}/items', [InvoiceController::class, 'updateItems']);
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
         Route::get('/invoices/{invoice}/ticket', [InvoiceController::class, 'ticket']);
         Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);

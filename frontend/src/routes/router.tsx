@@ -3,10 +3,11 @@ import { createBrowserRouter } from 'react-router';
 import { RequireAuth, RequireRole, RoleRedirect } from '../auth/RequireAuth';
 import { AppShell } from '../components/AppShell';
 import { CashierDashboardPage } from '../features/cashier/CashierDashboardPage';
-import { CashierExpensesPage } from '../features/cashier/CashierExpensesPage';
 import { CashierPaymentsPage } from '../features/cashier/CashierPaymentsPage';
 import { CashierPickupPage } from '../features/cashier/CashierPickupPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
+import { DesignerEditOrderPage } from '../features/designer/DesignerEditOrderPage';
+import { DesignerNewCustomerPage } from '../features/designer/DesignerNewCustomerPage';
 import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
 import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
@@ -103,7 +104,6 @@ export const router = createBrowserRouter([
                             { index: true, element: <CashierDashboardPage /> },
                             { path: 'payments', element: <CashierPaymentsPage /> },
                             { path: 'pickup', element: <CashierPickupPage /> },
-                            { path: 'expenses', element: <CashierExpensesPage /> },
                         ],
                     },
                     {
@@ -112,7 +112,9 @@ export const router = createBrowserRouter([
                         children: [
                             { index: true, element: <DesignerDashboardPage /> },
                             { path: 'new-order', element: <DesignerNewOrderPage /> },
+                            { path: 'customers/new', element: <DesignerNewCustomerPage /> },
                             { path: 'orders', element: <DesignerOrdersPage /> },
+                            { path: 'orders/:id/edit', element: <DesignerEditOrderPage /> },
                         ],
                     },
                     {

@@ -124,7 +124,7 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 | GET | `/quotes/options` | designer |
 | POST | `/quotes` | designer |
 | POST | `/invoices` | designer with a branch |
-| PUT | `/invoices/{invoice}` | designer, branch-scoped; only before production and not fully paid |
+| PUT | `/invoices/{invoice}/items` | designer, branch-scoped; only before production and not fully paid |
 | GET | `/invoices` | all roles, branch-scoped |
 | GET | `/invoices/{invoice}` | all roles, branch-scoped |
 | GET | `/invoices/{invoice}/print` | owner, manager, cashier, designer; branch-scoped |
@@ -140,7 +140,7 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 
 `POST /quotes` accepts `customer_id?`, `product_id`, `material_id`, `finishing_id?`, `display_id?`, `quantity`, `width?`, `length?`. It returns `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` is after the reseller adjustment and before the category quantity discount. Cost and profit are not returned to the designer. When `customer_id` is present, the customer type is read from the customer record; otherwise it defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes; it does not return machines.
 
-`POST /invoices` and `PUT /invoices/{invoice}` accept `customer_id`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `product_id`, `material_id`, `finishing_id?`, `display_id?`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `is_manual_price`, `unit_price?`, and `cost?`.
+`POST /invoices` accepts `customer_id`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with pricing and quote inputs. `PUT /invoices/{invoice}/items` replaces the desired item list. Each update item accepts `id?` for an existing order, `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `machine_id?`, and `selected_attributes[]?`.
 
 Server rules:
 
@@ -152,9 +152,9 @@ Server rules:
 - Machine ids are no longer accepted.
 - Discount cannot exceed the computed subtotal.
 - Invoice numbers use the unique branch code and a per-branch daily sequence.
-- Creation, update, and manual-price audit entries are atomic.
-- An invoice update is rejected with 409 when any order is already in production or the invoice is fully paid.
-- An invoice update is rejected with 422 when the new total is less than the amount already paid.
+- Invoice creation and item updates lock the invoice and its order rows in a transaction. Item updates recalculate line quotes and invoice totals on the server, preserve payment rows, and audit before/after totals and item IDs.
+- An invoice item update is rejected with 409 when any order is already in production or the invoice is fully paid.
+- An invoice item update is rejected with 422 when the discount exceeds the new subtotal or the new total is less than the amount already paid.
 - Production may read the invoice detail only with money fields redacted; invoice and receipt print are denied.
 
 Customer input requires `name` and `institution`; `phone`, `email`, `address`, and `type` are optional. `type` defaults to `Reguler` and accepts `Reguler` or `Reseller`. Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.

@@ -21,7 +21,11 @@ class Order extends Model
         'preview_path',
         'notes',
         'area',
+        'width',
+        'length',
         'quantity',
+        'machine_id',
+        'selected_attributes',
         'unit_price',
         'subtotal',
         'cost',
@@ -31,6 +35,10 @@ class Order extends Model
         'pickup_status',
         'pickup_date',
         'is_manual_price',
+    ];
+
+    protected $casts = [
+        'selected_attributes' => 'array',
     ];
 
     /**

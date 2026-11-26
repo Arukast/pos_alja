@@ -336,6 +336,7 @@ erDiagram
     - `materials.unit` for `m2`, `sheet`, and `pcs`; still target-only and not implemented (see `docs/requirements/implementation-gaps.md`).
     - `attributes.price` and `attributes.cost`.
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - The transitional order quote-input columns `width`, `length`, `machine_id`, and `selected_attributes` are added by `2026_11_26_100000_add_order_edit_specifications.php` so pre-production invoice edits can be repriced using their saved specifications. `machine_id` remains transitional under the machine-removal decision.
     - `customers.institution` and `attributes.is_active`.
     - `order_attributes` for finishing/display snapshots.
     - `expenses.user_id` and `recorded_by_name`.

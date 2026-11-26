@@ -22,6 +22,7 @@ interface CartLine {
     file_name: string;
     notes: string;
     machine_id: string;
+    selected_attributes: string[];
     width: number;
     length: number;
     quantity: number;
@@ -31,6 +32,8 @@ const emptyItem = {
     product_id: '',
     material_id: '',
     machine_id: '',
+    finishing_id: '',
+    display_id: '',
     quantity: 1,
     width: 1,
     length: 1,
@@ -38,14 +41,15 @@ const emptyItem = {
     notes: '',
 };
 
+/** Creates an invoice after selecting a customer and confirming server quotes. */
+/** Starts the new-order flow with customer search before item configuration. */
 export function DesignerNewOrderPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const optionsQuery = useQuery({ queryKey: ['quote-options'], queryFn: api.quoteOptions });
 
     const [customer, setCustomer] = useState<Customer | null>(null);
-    const [customerForm, setCustomerForm] = useState({ name: '', phone: '', type: 'Reguler' });
-    const [customerErrors, setCustomerErrors] = useState<Record<string, string>>({});
+    const [customerSearch, setCustomerSearch] = useState('');
     const [item, setItem] = useState(emptyItem);
     const [quote, setQuote] = useState<Quote | null>(null);
     const [cart, setCart] = useState<CartLine[]>([]);
@@ -53,18 +57,22 @@ export function DesignerNewOrderPage() {
     const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({});
 
     const options = optionsQuery.data;
-
-    const createCustomer = useMutation({
-        mutationFn: () => api.createCustomer(customerForm),
-        onSuccess: (response) => {
-            setCustomer(response.customer);
-            setCustomerErrors({});
-            setNotice('Pelanggan dibuat dan dipilih.');
-        },
-        onError: (error) => {
-            setCustomerErrors(mapApiErrors(error));
-            setNotice(errorMessage(error));
-        },
+    const selectedProduct = (options?.products ?? []).find((product) => product.id === item.product_id);
+    const allowedAttributeTypes = (options?.categories ?? []).find(
+        (category) => category.id === selectedProduct?.category?.id
+    )?.allowed_attribute_types ?? [];
+    const finishingOptions = (options?.attributes ?? []).filter(
+        (attribute) => attribute.type === 'finishing' &&
+            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('finishing'))
+    );
+    const displayOptions = (options?.attributes ?? []).filter(
+        (attribute) => attribute.type === 'display' &&
+            (allowedAttributeTypes.length === 0 || allowedAttributeTypes.includes('display'))
+    );
+    const customersQuery = useQuery({
+        queryKey: ['customers', 'search', customerSearch.trim()],
+        queryFn: () => api.customers({ search: customerSearch.trim() }),
+        enabled: !customer,
     });
 
     const calculate = useMutation({
@@ -73,6 +81,7 @@ export function DesignerNewOrderPage() {
                 product_id: item.product_id,
                 material_id: item.material_id,
                 machine_id: item.machine_id || null,
+                selected_attributes: [item.finishing_id, item.display_id].filter(Boolean),
                 quantity: item.quantity,
                 width: item.width,
                 length: item.length,
@@ -103,6 +112,7 @@ export function DesignerNewOrderPage() {
                     width: line.width,
                     length: line.length,
                     machine_id: line.machine_id || null,
+                    selected_attributes: line.selected_attributes,
                     is_manual_price: false,
                 })),
             });
@@ -136,6 +146,7 @@ export function DesignerNewOrderPage() {
                 file_name: item.file_name,
                 notes: item.notes,
                 machine_id: item.machine_id,
+                selected_attributes: [item.finishing_id, item.display_id].filter(Boolean),
                 width: item.width,
                 length: item.length,
                 quantity: item.quantity,
@@ -156,7 +167,7 @@ export function DesignerNewOrderPage() {
             <PageBanner
                 eyebrow="Desainer"
                 title="Pesanan Baru"
-                description="Buat pelanggan, atur item, pratinjau harga, lalu kirim invoice."
+                description="Cari pelanggan, atur item, pratinjau harga, lalu kirim invoice."
             />
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
@@ -164,6 +175,11 @@ export function DesignerNewOrderPage() {
                     <Card className="min-w-0">
                         <CardHeader>
                             <h2 className="font-semibold">Pelanggan</h2>
+                            {!customer ? (
+                                <Button variant="ghost" size="sm" onClick={() => navigate('/designer/customers/new')}>
+                                    Pelanggan baru
+                                </Button>
+                            ) : null}
                         </CardHeader>
                         <CardBody className="space-y-4">
                             {customer ? (
@@ -179,43 +195,42 @@ export function DesignerNewOrderPage() {
                                     </Button>
                                 </div>
                             ) : (
-                                <>
-                                    <div className="grid gap-3 sm:grid-cols-3">
-                                        <Input
-                                            label="Nama"
-                                            value={customerForm.name}
-                                            error={customerErrors.name}
-                                            onChange={(event) =>
-                                                setCustomerForm({ ...customerForm, name: event.target.value })
-                                            }
+                                <div className="space-y-3">
+                                    <Input
+                                        label="Cari Pelanggan"
+                                        placeholder="Ketik nama atau nomor telepon..."
+                                        value={customerSearch}
+                                        onChange={(event) => setCustomerSearch(event.target.value)}
+                                    />
+                                    {customersQuery.isLoading ? (
+                                        <div role="status" className="flex justify-center py-4">
+                                            <Spinner className="text-brand-primary h-5 w-5" />
+                                        </div>
+                                    ) : customersQuery.isError ? (
+                                        <EmptyState
+                                            title="Daftar pelanggan gagal dimuat"
+                                            description="Periksa koneksi lalu coba lagi."
+                                            action={<Button variant="secondary" size="sm" onClick={() => customersQuery.refetch()}>Coba lagi</Button>}
                                         />
-                                        <Input
-                                            label="Telepon"
-                                            value={customerForm.phone}
-                                            error={customerErrors.phone}
-                                            onChange={(event) =>
-                                                setCustomerForm({ ...customerForm, phone: event.target.value })
-                                            }
-                                        />
-                                        <Select
-                                            label="Tipe"
-                                            value={customerForm.type}
-                                            onChange={(event) =>
-                                                setCustomerForm({ ...customerForm, type: event.target.value })
-                                            }
-                                        >
-                                            <option value="Reguler">Reguler</option>
-                                            <option value="Reseller">Reseller</option>
-                                        </Select>
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        loading={createCustomer.isPending}
-                                        onClick={() => createCustomer.mutate()}
-                                    >
-                                        Buat pelanggan
-                                    </Button>
-                                </>
+                                    ) : (customersQuery.data?.data ?? []).length === 0 ? (
+                                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-light-border px-4 py-3 text-sm dark:border-surface-300">
+                                            <span className="text-light-muted-strong dark:text-gray-400">Pelanggan tidak ditemukan.</span>
+                                            <Button variant="secondary" size="sm" onClick={() => navigate('/designer/customers/new')}>Buat pelanggan baru</Button>
+                                        </div>
+                                    ) : (
+                                        <ul className="divide-y divide-light-border rounded-xl border border-light-border dark:divide-surface-300 dark:border-surface-300">
+                                            {(customersQuery.data?.data ?? []).map((entry) => (
+                                                <li key={entry.id} className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5">
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium">{entry.name}</p>
+                                                        <p className="truncate text-xs text-light-muted-strong dark:text-gray-400">{entry.phone ?? 'Tanpa telepon'}{entry.address ? ` · ${entry.address}` : ''}</p>
+                                                    </div>
+                                                    <Button variant="secondary" size="sm" onClick={() => setCustomer(entry)}>Pilih</Button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
                             )}
                         </CardBody>
                     </Card>
@@ -242,11 +257,28 @@ export function DesignerNewOrderPage() {
                             ) : (
                                 <>
                                     <div className="grid gap-3 sm:grid-cols-2">
+                                        {(options?.machines ?? []).length > 0 ? (
+                                            <Select
+                                                label="Mesin"
+                                                value={item.machine_id}
+                                                onChange={(event) => setItem({ ...item, machine_id: event.target.value })}
+                                            >
+                                                <option value="">Pilih mesin</option>
+                                                {(options?.machines ?? []).map((machine) => (
+                                                    <option key={machine.id} value={machine.id}>{machine.name}</option>
+                                                ))}
+                                            </Select>
+                                        ) : null}
                                         <Select
                                             label="Produk"
                                             value={item.product_id}
                                             onChange={(event) =>
-                                                setItem({ ...item, product_id: event.target.value })
+                                                setItem({
+                                                    ...item,
+                                                    product_id: event.target.value,
+                                                    finishing_id: '',
+                                                    display_id: '',
+                                                })
                                             }
                                         >
                                             <option value="">Pilih produk</option>
@@ -270,20 +302,18 @@ export function DesignerNewOrderPage() {
                                                 </option>
                                             ))}
                                         </Select>
-                                        <Select
-                                            label="Mesin"
-                                            value={item.machine_id}
-                                            onChange={(event) =>
-                                                setItem({ ...item, machine_id: event.target.value })
-                                            }
-                                        >
-                                            <option value="">Tanpa mesin</option>
-                                            {(options?.machines ?? []).map((machine) => (
-                                                <option key={machine.id} value={machine.id}>
-                                                    {machine.name}
-                                                </option>
-                                            ))}
-                                        </Select>
+                                        {finishingOptions.length > 0 ? (
+                                            <Select label="Finishing" value={item.finishing_id} onChange={(event) => setItem({ ...item, finishing_id: event.target.value })}>
+                                                <option value="">Tanpa finishing</option>
+                                                {finishingOptions.map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}</option>)}
+                                            </Select>
+                                        ) : null}
+                                        {displayOptions.length > 0 ? (
+                                            <Select label="Display" value={item.display_id} onChange={(event) => setItem({ ...item, display_id: event.target.value })}>
+                                                <option value="">Tanpa display</option>
+                                                {displayOptions.map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}</option>)}
+                                            </Select>
+                                        ) : null}
                                         <Input
                                             label="Jml"
                                             type="number"

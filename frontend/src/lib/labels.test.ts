@@ -6,8 +6,21 @@ import {
     expenseTypeLabel,
     ledgerTypeLabel,
     paymentMethodLabel,
+    productionStatusTransition,
     roleLabel,
 } from './labels';
+
+describe('productionStatusTransition', () => {
+    it('labels each production status and advances only to the next status', () => {
+        expect(productionStatusTransition(0)).toEqual({ label: 'Antre', nextStatus: 1 });
+        expect(productionStatusTransition(1)).toEqual({ label: 'Diproses', nextStatus: 2 });
+        expect(productionStatusTransition(2)).toEqual({ label: 'Selesai', nextStatus: null });
+    });
+
+    it('returns a safe fallback for an unknown status', () => {
+        expect(productionStatusTransition(9)).toEqual({ label: 'Tidak diketahui', nextStatus: null });
+    });
+});
 
 describe('roleLabel', () => {
     it('labels every stored role', () => {

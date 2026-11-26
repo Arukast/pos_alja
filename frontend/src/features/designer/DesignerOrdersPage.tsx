@@ -6,6 +6,7 @@ import { InvoiceStatusBadge } from '../../components/StatusBadge';
 import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 
+/** Lists designer invoices and provides the printable invoice action. */
 export function DesignerOrdersPage() {
     return (
         <ResourceTable
@@ -28,6 +29,19 @@ export function DesignerOrdersPage() {
                     cell: (invoice) => <InvoiceStatusBadge status={invoice.status} />,
                 },
                 {
+                    header: 'Ubah Item',
+                    cell: (invoice) => invoice.status === 2 ? (
+                        <span className="text-light-muted text-sm">Terkunci</span>
+                    ) : (
+                        <Link
+                            className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                            to={`/designer/orders/${invoice.id}/edit`}
+                        >
+                            Edit
+                        </Link>
+                    ),
+                },
+                {
                     header: 'Total',
                     className: 'text-right tabular-nums whitespace-nowrap',
                     cell: (invoice) => formatMoney(invoice.grand_total),
@@ -37,9 +51,9 @@ export function DesignerOrdersPage() {
                     cell: (invoice) => (
                         <Link
                             className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                            to={`/orders/${invoice.id}/ticket`}
+                            to={`/orders/${invoice.id}/receipt`}
                         >
-                            Tiket
+                            Cetak Invoice
                         </Link>
                     ),
                 },

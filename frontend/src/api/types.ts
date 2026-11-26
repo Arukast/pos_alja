@@ -46,6 +46,7 @@ export interface Customer {
     phone: string | null;
     email: string | null;
     address: string | null;
+    institution: string;
     type: string | null;
 }
 
@@ -172,10 +173,15 @@ export interface Purchase {
 export interface Order {
     id: string;
     pricing_id: string | null;
+    pricing?: { product: string | null; material: string | null } | null;
     file_name: string | null;
     notes: string | null;
     area: string;
+    width: string | null;
+    length: string | null;
     quantity: string;
+    machine_id: string | null;
+    selected_attributes: string[];
     unit_price?: string;
     subtotal?: string;
     cost?: string;

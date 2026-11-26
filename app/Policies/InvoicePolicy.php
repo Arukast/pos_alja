@@ -21,6 +21,14 @@ final class InvoicePolicy
         return $user->role === 'designer' && $user->branch_id !== null;
     }
 
+    /** Designers may update invoices only in their assigned branch. */
+    public function update(User $user, Invoice $invoice): bool
+    {
+        return $user->role === 'designer'
+            && $user->branch_id !== null
+            && $invoice->branch_id === $user->branch_id;
+    }
+
     public function pay(User $user, Invoice $invoice): bool
     {
         return $user->role === 'cashier' && $this->sameBranch($user, $invoice);

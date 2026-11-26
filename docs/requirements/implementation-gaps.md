@@ -16,12 +16,12 @@
 | FR5 | Implemented | Policies, `BranchScope`, cross-branch tests, production money redaction; `FoundationTest`, `InvoiceApiTest`, `CatalogApiTest`. |
 | FR6 | Partial | Product read, search, filter, and pagination exist. Product create/update/delete routes and UI are missing; `ProductController` only has `index`. Pricing still uses the matrix and machine modifiers; category quantity discounts, reseller discount config, material units, and attribute prices are missing. |
 | FR7 | Implemented | `ProductController::index`, `CatalogQueries::products()`, 20-row pagination; `CatalogApiTest`. |
-| FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, quote/customer/cart flow, server-recomputed prices; `CreateInvoiceApiTest`. Missing: customer search as the default UI, separate customer page, institution, finishing/display selection and persistence, one invoice print, machine removal. |
-| FR9 | Target | No invoice update route or `UpdateInvoice` action. Order items cannot be changed after submission. |
+| FR8 | Partial | `InvoiceController::store`, `CreateInvoice`, server-side quotes, customer search default, separate customer form, institution/address fields, and the invoice receipt print path. Finishing/display persistence and the revised pricing model remain incomplete. |
+| FR9 | Implemented | `PUT /invoices/{invoice}/items`, `UpdateInvoiceItems`, locked pre-production eligibility, server-side quote recalculation, preserved payments, receivable guard, activity/status logs, `OrderUpdated`, and DP update tests. |
 | FR10 | Target | No `design_status`, `design_approved_at`, or `design_approved_by` columns or actions. |
 | FR11 | Implemented | `RegisterDownPayment`, `SettleInvoice`, receivable and overpay guards; `PaymentApiTest`. |
 | FR12 | Implemented | Multiple DP accumulate; full DP marks paid; over-limit and double-settlement tests; `PaymentApiTest`. |
-| FR13 | Partial | Receipt route, `InvoiceController::receipt`, and `ReceiptPage`; production is denied. The A4 invoice print replaces the ticket and is not implemented. |
+| FR13 | Partial | Receipt route, `InvoiceController::receipt`, and `ReceiptPage` provide printable payment details. A dedicated A4 invoice layout remains incomplete. |
 | FR14 | Partial | `ExpenseController`, branch scope, cashier-only write; `ExpenseApiTest`. Needs Owner/Manager write, Cashier removal, fixed category dropdown, and `recorded_by_name`. |
 | FR15 | Implemented | `purchases`/`purchase_items` migrations and models, `PurchaseController` index/store, `RecordPurchase`, `PurchaseList`, `PurchasePolicy`, and `/owner/purchases` + `/manager/purchases`; `PurchaseApiTest`. Same-branch `idempotency_key` replay returns 200 without new stock or ledger rows; caps, stock increments, missing stock rows, and soft-deleted material rejection are tested. |
 | FR16 | Implemented | `InventoryService::applyMovement` writes typed ledger rows with actor and reference; production start writes one `usage` row with the order reference; waste writes `waste` with the order reference, requires a queue order, makes the designer optional, and drops the machine reference; queue waste modal plus read-only `/production/waste` history; `InventoryServiceTest`, `ProductionWriteApiTest`. |
@@ -42,7 +42,7 @@
 | :--- | :--- | :--- |
 | NFR1 | Partial | Pagination exists; no benchmark on a 10k-product/50k-order dataset. |
 | NFR2 | Partial | Owner reports exist; export is missing and report performance is unmeasured. |
-| NFR3 | Partial | DP arithmetic and multiple-DP tests pass; quantity-discount and order-edit arithmetic are not implemented. |
+| NFR3 | Partial | DP arithmetic and order-edit receivable recalculation are tested; the quantity-discount redesign remains incomplete. |
 | NFR4 | Partial | Responsive layouts exist; no formal WCAG audit or usability test; invoice print and queue filters are missing. |
 | NFR5 | Partial | Policies, branch scope, and money redaction are tested; expense-role changes, customer PII, HTTPS, and OWASP controls are not verified in this repository. |
 | NFR6 | Partial | Compose and CI exist; backup/restore is FR26 and still missing. |
@@ -60,7 +60,7 @@ Mapping follows `docs/requirements/product-backlog.md`. Sprint numbers are backl
 | Sprint 0 | Platform foundation, SPA shell | — | Done | Auth foundation, RBAC, branch scope, SPA shell, API, CI/CD, private channels | Docker/deploy validation |
 | Sprint 1 | PB-08 | FR1–FR5 | Done | Auth, RBAC, branch scope, user management | HTTPS/OWASP formal verification |
 | Sprint 1 | PB-01 | FR6, FR7 | Partial | Product read/search/filter/pagination, category, legacy pricing matrix (transitional) | Product CRUD, material units, attribute prices, category discounts, reseller discount config, pricing redesign, machine removal |
-| Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Order create, customer, quote, cart, legacy ticket (to be replaced) | Customer search UI, institution, finishing/display, order update, design status, invoice print |
+| Sprint 1 | PB-02 | FR8, FR9, FR10 | Partial | Customer search, separate customer creation, institution and address data, order create, quote, cart, DP order-item edits and invoice receipt print | Finishing/display snapshots, design status, dedicated A4 invoice |
 | Sprint 1 | PB-03 | FR11, FR12 | Done | DP, settlement, multiple DP, overpay guard | — |
 | Sprint 1 | PB-04 | FR13, FR14 | Partial | Receipt, operational expenses | A4 invoice print, expense role change, category dropdown |
 | Sprint 2 | PB-05 | FR15, FR17, FR18 | Done | Stock read, restock, stock ledger, purchase records, reason-required adjustment, low-stock filter | — |
@@ -83,7 +83,7 @@ Priority order:
 1. **Pricing redesign**: material price + finishing/display price + branch reseller discount + category quantity discount; remove the pricing matrix and machine UI; migrate data.
 2. **FR6** product create/update/delete and product admin UI; material unit and attribute price fields.
 3. **FR8** customer search UI, separate customer creation, institution, finishing/display selection and persistence, A4 invoice print, machine removal.
-4. **FR9** order update before production and while not fully paid; **FR10** design status.
+4. **FR10** design status.
 5. **FR14** expense Owner/Manager access and fixed category dropdown.
 6. **FR19** deadline/priority sorting, status filter, all-role queue UI; **FR21** order-level pickup propagation.
 7. **FR22/FR23** manager dashboard/report completeness; **FR24** Excel/PDF export.

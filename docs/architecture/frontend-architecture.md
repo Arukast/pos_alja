@@ -32,6 +32,7 @@
 | `/designer/new-order` | designer | Customer search, quote, cart, invoice |
 | `/designer/customers/new` | designer | Create customer on a separate page |
 | `/designer/orders` | designer | Invoice list and print links |
+| `/designer/orders/:id/edit` | designer | Edit invoice items while unpaid and before production |
 | `/queue` | owner, manager, cashier, designer | Read-only production queue with owner branch filter |
 | `/production` | production | Production dashboard |
 | `/production/materials` | production | Read-only Bahan & Stok with low-stock filter |

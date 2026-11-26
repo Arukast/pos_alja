@@ -24,6 +24,7 @@ final class StoreCustomerRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
+            'institution' => ['required', 'string', 'in:Masyarakat/Retail,Sekolah,Universitas,Pemerintahan'],
             'type' => ['nullable', 'string', 'max:50'],
         ];
     }

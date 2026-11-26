@@ -11,6 +11,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
 
+/** Shows production-only workload counts and queue fields without invoice financial data. */
 export function ProductionDashboardPage() {
     const query = useQuery({
         queryKey: ['dashboard', 'production'],

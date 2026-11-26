@@ -170,6 +170,9 @@ export const api = {
     createInvoice: (data: MutationBody) =>
         mutate<{ invoice: Invoice }>('/invoices', 'POST', data),
 
+    updateInvoiceItems: (invoiceId: string, data: MutationBody) =>
+        mutate<{ invoice: Invoice }>(`/invoices/${invoiceId}/items`, 'PUT', data),
+
     downPayment: (invoiceId: string, data: MutationBody) =>
         mutate<{ payment: Payment; invoice: Invoice }>(
             `/invoices/${invoiceId}/down-payments`,

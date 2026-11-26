@@ -66,3 +66,16 @@ export function ledgerTypeLabel(type: string | null | undefined): string {
 
     return ledgerTypes[type] ?? type;
 }
+
+/** Maps production status codes to Indonesian labels and their allowed next state. */
+export function productionStatusTransition(
+    status: number
+): { label: string; nextStatus: number | null } {
+    const transitions: Record<number, { label: string; nextStatus: number | null }> = {
+        0: { label: 'Antre', nextStatus: 1 },
+        1: { label: 'Diproses', nextStatus: 2 },
+        2: { label: 'Selesai', nextStatus: null },
+    };
+
+    return transitions[status] ?? { label: 'Tidak diketahui', nextStatus: null };
+}
