@@ -48,7 +48,7 @@ export function PurchasesPage() {
                 queryKey={['purchases']}
                 queryFn={(page) => api.purchases({ page })}
                 columns={columns}
-                actions={<Button onClick={() => setOpen(true)}>Catat Pembelian</Button>}
+                cardActions={<Button onClick={() => setOpen(true)}>Catat Pembelian</Button>}
                 emptyMessage="Belum ada pembelian."
                 expandedRow={(purchase) => (
                     <div className="max-sm:max-w-[18rem] space-y-2 py-1">

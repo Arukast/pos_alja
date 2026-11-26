@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pin, PinOff } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { api } from '../../api/queries';
 import type { Backup, BackupSettings } from '../../api/types';
@@ -81,9 +81,11 @@ function formFromSettings(settings: BackupSettings): SettingsForm {
 function SettingsCard({
     settings,
     onNotice,
+    action,
 }: {
     settings: BackupSettings;
     onNotice: (message: string, tone: ToastTone) => void;
+    action?: ReactNode;
 }) {
     const queryClient = useQueryClient();
     const [form, setForm] = useState<SettingsForm>(() => formFromSettings(settings));
@@ -155,7 +157,7 @@ function SettingsCard({
 
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="flex-wrap">
                 <div>
                     <h2 className="text-light-text text-sm font-semibold dark:text-gray-100">
                         Pengaturan Backup
@@ -166,6 +168,7 @@ function SettingsCard({
                         lama dan tidak dapat dibatalkan.
                     </p>
                 </div>
+                {action ? <div className="ml-auto shrink-0">{action}</div> : null}
             </CardHeader>
             <CardBody className="space-y-6">
                 <div className="space-y-1">
@@ -441,15 +444,6 @@ export function BackupPage() {
                 eyebrow="Administrasi"
                 title="Backup Data"
                 description="Jalankan backup manual, atur jadwal dan retensi, unduh arsip database."
-                actions={
-                    <Button
-                        loading={create.isPending}
-                        disabled={blocked}
-                        onClick={() => create.mutate()}
-                    >
-                        Jalankan Backup
-                    </Button>
-                }
             />
 
             {settings.isLoading ? (
@@ -469,7 +463,19 @@ export function BackupPage() {
                     }
                 />
             ) : settings.data ? (
-                <SettingsCard settings={settings.data.settings} onNotice={notify} />
+                <SettingsCard
+                    settings={settings.data.settings}
+                    onNotice={notify}
+                    action={
+                        <Button
+                            loading={create.isPending}
+                            disabled={blocked}
+                            onClick={() => create.mutate()}
+                        >
+                            Jalankan Backup
+                        </Button>
+                    }
+                />
             ) : null}
 
             <Card>

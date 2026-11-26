@@ -5,7 +5,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import type { Paginated } from '../api/types';
 import { PageBanner } from './PageBanner';
 import { Button } from './ui/Button';
-import { Card, CardBody } from './ui/Card';
+import { Card, CardBody, CardHeader } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { Pagination } from './ui/Pagination';
 import { Spinner } from './ui/Spinner';
@@ -24,7 +24,7 @@ export function ResourceTable<T extends { id: string }>({
     queryKey,
     queryFn,
     columns,
-    actions,
+    cardActions,
     emptyMessage = 'Belum ada data.',
     expandedRow,
 }: {
@@ -34,7 +34,7 @@ export function ResourceTable<T extends { id: string }>({
     queryKey: readonly unknown[];
     queryFn: (page: number) => Promise<Paginated<T>>;
     columns: ResourceColumn<T>[];
-    actions?: ReactNode;
+    cardActions?: ReactNode;
     emptyMessage?: string;
     expandedRow?: (row: T) => ReactNode;
 }) {
@@ -48,9 +48,14 @@ export function ResourceTable<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            <PageBanner eyebrow={eyebrow} title={title} description={description} actions={actions} />
+            <PageBanner eyebrow={eyebrow} title={title} description={description} />
 
             <Card>
+                {cardActions ? (
+                    <CardHeader>
+                        <div className="ml-auto flex flex-wrap items-center gap-2">{cardActions}</div>
+                    </CardHeader>
+                ) : null}
                 <CardBody>
                     {query.isLoading ? (
                         <div className="flex justify-center py-10">

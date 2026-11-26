@@ -35,9 +35,11 @@ export function Sidebar({
                 {!collapsed ? (
                     <div className="min-w-0">
                         <p className="truncate text-sm font-bold">Alja POS</p>
-                        <p className="text-light-muted truncate text-xs dark:text-gray-400">
-                            {user.branch?.name ?? 'Semua cabang'}
-                        </p>
+                        {user.branch?.name ? (
+                            <p className="text-light-muted truncate text-xs dark:text-gray-400">
+                                {user.branch.name}
+                            </p>
+                        ) : null}
                     </div>
                 ) : null}
             </div>

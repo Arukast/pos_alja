@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 import { useAuth } from '../auth/useAuth';
 import { cn } from '../lib/cn';
 
@@ -38,13 +36,11 @@ export function PageBanner({
     eyebrow = 'Ruang Kerja',
     title,
     description,
-    actions,
     tone,
 }: {
     eyebrow?: string;
     title: string;
     description?: string;
-    actions?: ReactNode;
     tone?: RoleTone;
 }) {
     const { user } = useAuth();
@@ -80,9 +76,6 @@ export function PageBanner({
                     ) : null}
                 </div>
             </div>
-            {actions ? (
-                <div className="relative z-10 flex flex-wrap items-center gap-2">{actions}</div>
-            ) : null}
         </header>
     );
 }

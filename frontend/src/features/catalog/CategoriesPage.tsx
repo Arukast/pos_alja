@@ -6,7 +6,7 @@ import type { Category } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody } from '../../components/ui/Card';
+import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
@@ -112,16 +112,16 @@ export function CategoriesPage({
                 eyebrow={eyebrow}
                 title="Kategori Produk"
                 description="Kelola kategori produk, deskripsi, dan status aktif."
-                actions={
-                    readOnly ? null : (
-                        <Button size="sm" onClick={openCreate}>
-                            Tambah kategori
-                        </Button>
-                    )
-                }
             />
 
             <Card>
+                {readOnly ? null : (
+                    <CardHeader>
+                        <Button size="sm" className="ml-auto" onClick={openCreate}>
+                            Tambah kategori
+                        </Button>
+                    </CardHeader>
+                )}
                 <CardBody>
                     {query.isLoading ? (
                         <div className="flex justify-center py-10">

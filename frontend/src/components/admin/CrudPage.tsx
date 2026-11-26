@@ -53,7 +53,6 @@ export function CrudPage<T extends { id: string }>({
     rowClassName,
     footer,
     paginated = true,
-    hideBanner = false,
 }: {
     eyebrow: string;
     title: string;
@@ -75,7 +74,6 @@ export function CrudPage<T extends { id: string }>({
     rowClassName?: (row: T) => string | undefined;
     footer?: ReactNode;
     paginated?: boolean;
-    hideBanner?: boolean;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -191,39 +189,18 @@ export function CrudPage<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            {hideBanner ? null : (
-                <PageBanner
-                    eyebrow={eyebrow}
-                    title={title}
-                    description={description}
-                    actions={
-                        create ? (
-                            <Button size="sm" onClick={openCreate}>
-                                {createLabel}
-                            </Button>
-                        ) : null
-                    }
-                />
-            )}
+            <PageBanner eyebrow={eyebrow} title={title} description={description} />
 
             {summary}
 
             {toolbar}
 
             <Card>
-                {hideBanner ? (
+                {create ? (
                     <CardHeader>
-                        <div className="space-y-1">
-                            <h2 className="text-light-text text-base font-bold dark:text-gray-100">{title}</h2>
-                            {description ? (
-                                <p className="text-light-muted-strong text-sm dark:text-gray-400">{description}</p>
-                            ) : null}
-                        </div>
-                        {create ? (
-                            <Button size="sm" onClick={openCreate}>
-                                {createLabel}
-                            </Button>
-                        ) : null}
+                        <Button size="sm" className="ml-auto" onClick={openCreate}>
+                            {createLabel}
+                        </Button>
                     </CardHeader>
                 ) : null}
                 <CardBody>

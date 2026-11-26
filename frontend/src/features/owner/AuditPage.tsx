@@ -5,7 +5,7 @@ import { api } from '../../api/queries';
 import type { ActivityLog } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody } from '../../components/ui/Card';
+import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
@@ -41,43 +41,47 @@ export function AuditPage() {
                 eyebrow="Analitik Pemilik"
                 title="Jejak Audit"
                 description="Catatan perubahan penting pada sistem yang dapat dicari."
-                actions={
-                    <>
-                        <div className="w-56">
-                            <Input
-                                aria-label="Cari jejak audit"
-                                placeholder="Cari pengguna, aksi, deskripsi"
-                                value={search}
-                                onChange={(event) => {
-                                    setSearch(event.target.value);
-                                    setPage(1);
-                                }}
-                            />
-                        </div>
-                        <Select
-                            aria-label="Urutkan berdasarkan"
-                            value={sort}
-                            onChange={(event) => setSort(event.target.value)}
-                        >
-                            <option value="created_at">Terbaru</option>
-                            <option value="username">Nama Pengguna</option>
-                            <option value="role">Peran</option>
-                            <option value="action">Aksi</option>
-                        </Select>
-                        <Select
-                            aria-label="Arah urutan"
-                            value={direction}
-                            onChange={(event) => setDirection(event.target.value)}
-                        >
-                            <option value="desc">Menurun</option>
-                            <option value="asc">Menaik</option>
-                        </Select>
-                    </>
-                }
             />
 
             <Card>
+                <CardHeader>
+                    <div className="ml-auto w-full sm:w-72">
+                        <Input
+                            aria-label="Cari jejak audit"
+                            placeholder="Cari pengguna, aksi, deskripsi"
+                            value={search}
+                            onChange={(event) => {
+                                setSearch(event.target.value);
+                                setPage(1);
+                            }}
+                        />
+                    </div>
+                </CardHeader>
                 <CardBody>
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="sm:w-48">
+                            <Select
+                                aria-label="Urutkan berdasarkan"
+                                value={sort}
+                                onChange={(event) => setSort(event.target.value)}
+                            >
+                                <option value="created_at">Terbaru</option>
+                                <option value="username">Nama Pengguna</option>
+                                <option value="role">Peran</option>
+                                <option value="action">Aksi</option>
+                            </Select>
+                        </div>
+                        <div className="sm:w-40">
+                            <Select
+                                aria-label="Arah urutan"
+                                value={direction}
+                                onChange={(event) => setDirection(event.target.value)}
+                            >
+                                <option value="desc">Menurun</option>
+                                <option value="asc">Menaik</option>
+                            </Select>
+                        </div>
+                    </div>
                     {query.isLoading ? (
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />

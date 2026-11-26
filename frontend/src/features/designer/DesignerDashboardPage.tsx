@@ -27,10 +27,11 @@ export function DesignerDashboardPage() {
                 eyebrow="Desainer"
                 title="Dasbor Desainer"
                 description="Pesanan masuk hari ini, beban draf, dan invoice terbaru."
-                actions={
-                    <Button onClick={() => navigate('/designer/new-order')}>Pesanan Baru</Button>
-                }
             />
+
+            <div className="flex justify-end">
+                <Button onClick={() => navigate('/designer/new-order')}>Pesanan Baru</Button>
+            </div>
 
             {query.isLoading ? (
                 <div className="flex justify-center py-16">

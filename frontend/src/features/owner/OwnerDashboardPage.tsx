@@ -76,35 +76,38 @@ export function OwnerDashboardPage() {
                 eyebrow="Pemilik"
                 title="Dasbor Pemilik"
                 description="Pendapatan, biaya, laba, dan pengeluaran lintas cabang."
-                actions={
-                    <>
-                        <Select
-                            aria-label="Cabang"
-                            value={branchId}
-                            onChange={(event) => updateParam('branch_id', event.target.value)}
-                            className="h-9 py-1.5"
-                        >
-                            <option value="all">Semua cabang</option>
-                            {(branchesQuery.data?.data ?? []).map((branch) => (
-                                <option key={branch.id} value={branch.id}>
-                                    {branch.name}
-                                </option>
-                            ))}
-                        </Select>
-                        {(['daily', 'weekly', 'monthly'] as const).map((value) => (
-                            <Button
-                                key={value}
-                                size="sm"
-                                variant={period === value ? 'primary' : 'secondary'}
-                                aria-pressed={period === value}
-                                onClick={() => updateParam('period', value)}
-                            >
-                                {periodLabels[value]}
-                            </Button>
-                        ))}
-                    </>
-                }
             />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <div className="w-full sm:w-56">
+                    <Select
+                        aria-label="Cabang"
+                        value={branchId}
+                        onChange={(event) => updateParam('branch_id', event.target.value)}
+                        className="h-9 py-1.5"
+                    >
+                        <option value="all">Semua cabang</option>
+                        {(branchesQuery.data?.data ?? []).map((branch) => (
+                            <option key={branch.id} value={branch.id}>
+                                {branch.name}
+                            </option>
+                        ))}
+                    </Select>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {(['daily', 'weekly', 'monthly'] as const).map((value) => (
+                        <Button
+                            key={value}
+                            size="sm"
+                            variant={period === value ? 'primary' : 'secondary'}
+                            aria-pressed={period === value}
+                            onClick={() => updateParam('period', value)}
+                        >
+                            {periodLabels[value]}
+                        </Button>
+                    ))}
+                </div>
+            </div>
 
             {dashboardQuery.isLoading ? (
                 <Card>
