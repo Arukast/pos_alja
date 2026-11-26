@@ -322,7 +322,7 @@ export function ManagerCategoriesPage() {
 }
 
 export function ManagerFinishingPage() {
-    return <AttributesPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
+    return <AttributesPage eyebrow="Konfigurasi" queryKeyPrefix="manager" />;
 }
 
 export function ManagerProductsPage() {

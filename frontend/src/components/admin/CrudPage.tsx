@@ -42,6 +42,8 @@ export function CrudPage<T extends { id: string }>({
     create,
     update,
     remove,
+    canEditRow,
+    canDeleteRow,
     pageResetKey,
     rowActions,
     rowLabel,
@@ -63,6 +65,8 @@ export function CrudPage<T extends { id: string }>({
     create?: (values: FormValues) => Promise<unknown>;
     update?: (id: string, values: FormValues) => Promise<unknown>;
     remove?: (id: string) => Promise<unknown>;
+    canEditRow?: (row: T) => boolean;
+    canDeleteRow?: (row: T) => boolean;
     pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
     rowLabel?: (row: T) => string;
@@ -263,6 +267,10 @@ export function CrudPage<T extends { id: string }>({
                                     ) : (
                                         (query.data?.data ?? []).map((row) => {
                                             const label = rowLabel?.(row) ?? (row as { name?: string }).name;
+                                            const showEdit =
+                                                update !== undefined && (canEditRow?.(row) ?? true);
+                                            const showDelete =
+                                                remove !== undefined && (canDeleteRow?.(row) ?? true);
 
                                             return (
                                                 <TableRow key={row.id} className={rowClassName?.(row)}>
@@ -275,7 +283,7 @@ export function CrudPage<T extends { id: string }>({
                                                         <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
                                                             <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
                                                                 {rowActions?.(row)}
-                                                                {update ? (
+                                                                {showEdit ? (
                                                                     <Button
                                                                         size="sm"
                                                                         variant="secondary"
@@ -285,7 +293,7 @@ export function CrudPage<T extends { id: string }>({
                                                                         Ubah
                                                                     </Button>
                                                                 ) : null}
-                                                                {remove ? (
+                                                                {showDelete ? (
                                                                     <Button
                                                                         size="sm"
                                                                         variant="danger"
