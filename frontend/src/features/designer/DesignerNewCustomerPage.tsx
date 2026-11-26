@@ -14,7 +14,7 @@ import { errorMessage, mapApiErrors } from '../../lib/errors';
 export function DesignerNewCustomerPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', institution: 'Masyarakat/Retail' });
+    const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', institution: 'Masyarakat/Retail', type: 'Reguler' });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const mutation = useMutation({
         mutationFn: () => api.createCustomer({ ...form, name: form.name.trim(), phone: form.phone.trim() || null, email: form.email.trim() || null, address: form.address.trim() || null }),
@@ -38,6 +38,9 @@ export function DesignerNewCustomerPage() {
                 <Input label="Nama" value={form.name} error={errors.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
                 <Select label="Institusi" value={form.institution} error={errors.institution} onChange={(event) => setForm({ ...form, institution: event.target.value })}>
                     <option value="Masyarakat/Retail">Masyarakat/Retail</option><option value="Sekolah">Sekolah</option><option value="Universitas">Universitas</option><option value="Pemerintahan">Pemerintahan</option>
+                </Select>
+                <Select label="Tipe" value={form.type} error={errors.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+                    <option value="Reguler">Reguler</option><option value="Reseller">Reseller</option>
                 </Select>
                 <Input label="Nomor Telepon" value={form.phone} error={errors.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
                 <Input label="Email" value={form.email} error={errors.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />

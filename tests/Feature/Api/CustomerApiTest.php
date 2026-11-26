@@ -49,6 +49,32 @@ final class CustomerApiTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors(['name', 'institution']);
     }
 
+    /** The customer type is limited to the supported pricing tiers. */
+    public function test_customer_type_must_be_reguler_or_reseller(): void
+    {
+        $branch = Branch::create(['name' => 'Type Branch', 'code' => 'TYPE']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Mitra Contoh',
+            'institution' => 'Sekolah',
+            'type' => 'Mitra',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['type']);
+    }
+
+    /** A reseller customer keeps the type that drives the reseller discount path. */
+    public function test_designer_creates_reseller_customer(): void
+    {
+        $branch = Branch::create(['name' => 'Reseller Branch', 'code' => 'RSL']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Toko Reseller',
+            'institution' => 'Masyarakat/Retail',
+            'type' => 'Reseller',
+        ])->assertCreated()->assertJsonPath('customer.type', 'Reseller');
+    }
+
     /** Production cannot create or search customer records. */
     public function test_production_cannot_create_customer(): void
     {

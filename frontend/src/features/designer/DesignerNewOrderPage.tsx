@@ -300,7 +300,7 @@ export function DesignerNewOrderPage() {
                                     size="sm"
                                     onClick={() => navigate('/designer/customers/new')}
                                 >
-                                    Cari Pelanggan
+                                    Tambah Pelanggan
                                 </Button>
                             ) : null}
                         </CardHeader>

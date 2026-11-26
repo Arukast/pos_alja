@@ -179,12 +179,6 @@ export function DesignerOrdersPage() {
                                                             className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
                                                             to={`/orders/${invoice.id}/receipt`}
                                                         >
-                                                            Cetak Invoice
-                                                        </Link>
-                                                        <Link
-                                                            className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                                                            to={`/orders/${invoice.id}/receipt`}
-                                                        >
                                                             Nota
                                                         </Link>
                                                     </div>
@@ -216,12 +210,6 @@ export function DesignerOrdersPage() {
                     <>
                         {detail ? (
                             <>
-                                <Link
-                                    className="border-light-muted bg-light-surface text-light-text hover:bg-light-surface-2 dark:bg-surface-600 dark:hover:bg-surface-500 inline-flex h-10 items-center rounded-xl border px-4 text-sm font-semibold dark:text-gray-100"
-                                    to={`/orders/${detail.id}/receipt`}
-                                >
-                                    Cetak Invoice
-                                </Link>
                                 <Link
                                     className="border-light-muted bg-light-surface text-light-text hover:bg-light-surface-2 dark:bg-surface-600 dark:hover:bg-surface-500 inline-flex h-10 items-center rounded-xl border px-4 text-sm font-semibold dark:text-gray-100"
                                     to={`/orders/${detail.id}/receipt`}

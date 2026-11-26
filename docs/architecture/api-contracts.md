@@ -24,11 +24,6 @@
 
 ## 2. Authentication
 
-### Customers (Sales)
-
-- `GET /customers?search=` returns customer records including `name`, optional `phone`, `email`, `address`, required `institution`, and the pricing `type`.
-- `POST /customers` requires `name` and `institution` (`Masyarakat/Retail`, `Sekolah`, `Universitas`, or `Pemerintahan`). Phone, email, and address are optional.
-
 | Method | Path | Access | Purpose |
 | :--- | :--- | :--- | :--- |
 | POST | `/auth/login` | guest | Username, password, remember. 422 on failure, 429 when throttled. |
@@ -147,6 +142,11 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 | PATCH | `/orders/{order}/design-status` | designer own branch; owner all; manager own branch override |
 | GET | `/expenses` | owner all; manager own branch |
 | POST | `/expenses` | owner, manager |
+
+### Customers
+
+- `GET /customers?search=` returns customer records including `name`, optional `phone`, `email`, `address`, required `institution`, and the pricing `type`.
+- `POST /customers` requires `name` and `institution` (`Masyarakat/Retail`, `Sekolah`, `Universitas`, or `Pemerintahan`). Phone, email, and address are optional.
 
 ### Quote And Invoice Input
 
