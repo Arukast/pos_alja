@@ -89,8 +89,9 @@ width 1600px.
   Rows that contain an action render about 48px because `Button size="sm"` is 32px tall plus 8px vertical
   cell padding. Numeric columns are right-aligned and tabular, with two exceptions: the production dashboard
   queue table renders `Jml` left-aligned, and the manager materials movements panel (`Pergerakan stok
-  terbaru`) renders its stock counts left-aligned. The action column is sticky on the right only at `lg:` and
-  above.
+  terbaru`) renders its stock counts left-aligned. In the CRUD tables the action column is sticky on the right
+  at every width; in the production queue the action column and in purchases the total column are sticky only
+  below `lg:` (`max-lg:sticky`).
 - Pagination: Indonesian copy. `Menampilkan X–Y dari Z` when a total is known, `Menampilkan X dari Z` when
   the window is a single row, and `Halaman X dari Y` for lists whose total cannot be stated honestly
   (client-side filtered lists that only know the current page). Buttons are `Sebelumnya` and `Berikutnya`.

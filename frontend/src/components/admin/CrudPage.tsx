@@ -44,6 +44,7 @@ export function CrudPage<T extends { id: string }>({
     remove,
     pageResetKey,
     rowActions,
+    rowLabel,
     createLabel = 'Tambah data',
     summary,
     toolbar,
@@ -64,6 +65,7 @@ export function CrudPage<T extends { id: string }>({
     remove?: (id: string) => Promise<unknown>;
     pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
+    rowLabel?: (row: T) => string;
     createLabel?: string;
     summary?: ReactNode;
     toolbar?: ReactNode;
@@ -254,48 +256,54 @@ export function CrudPage<T extends { id: string }>({
                                             Belum ada data.
                                         </TableEmpty>
                                     ) : (
-                                        (query.data?.data ?? []).map((row) => (
-                                            <TableRow key={row.id} className={rowClassName?.(row)}>
-                                                {columns.map((column) => (
-                                                    <TableCell key={column.header} className={column.className}>
-                                                        {column.cell(row)}
-                                                    </TableCell>
-                                                ))}
-                                                {hasActions ? (
-                                                    <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
-                                                        <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
-                                                            {rowActions?.(row)}
-                                                            {update ? (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="secondary"
-                                                                    onClick={() => openEdit(row)}
-                                                                >
-                                                                    Ubah
-                                                                </Button>
-                                                            ) : null}
-                                                            {remove ? (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="danger"
-                                                                    onClick={() => {
-                                                                        if (
-                                                                            window.confirm(
-                                                                                'Hapus data ini?'
-                                                                            )
-                                                                        ) {
-                                                                            destroy.mutate(row.id);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    Hapus
-                                                                </Button>
-                                                            ) : null}
-                                                        </div>
-                                                    </TableCell>
-                                                ) : null}
-                                            </TableRow>
-                                        ))
+                                        (query.data?.data ?? []).map((row) => {
+                                            const label = rowLabel?.(row) ?? (row as { name?: string }).name;
+
+                                            return (
+                                                <TableRow key={row.id} className={rowClassName?.(row)}>
+                                                    {columns.map((column) => (
+                                                        <TableCell key={column.header} className={column.className}>
+                                                            {column.cell(row)}
+                                                        </TableCell>
+                                                    ))}
+                                                    {hasActions ? (
+                                                        <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
+                                                            <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
+                                                                {rowActions?.(row)}
+                                                                {update ? (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        aria-label={label ? `Ubah ${label}` : undefined}
+                                                                        onClick={() => openEdit(row)}
+                                                                    >
+                                                                        Ubah
+                                                                    </Button>
+                                                                ) : null}
+                                                                {remove ? (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="danger"
+                                                                        aria-label={label ? `Hapus ${label}` : undefined}
+                                                                        onClick={() => {
+                                                                            if (
+                                                                                window.confirm(
+                                                                                    'Hapus data ini?'
+                                                                                )
+                                                                            ) {
+                                                                                destroy.mutate(row.id);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        Hapus
+                                                                    </Button>
+                                                                ) : null}
+                                                            </div>
+                                                        </TableCell>
+                                                    ) : null}
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
@@ -321,6 +329,16 @@ export function CrudPage<T extends { id: string }>({
                 open={open}
                 onClose={closeModal}
                 title={editing ? 'Ubah data' : createLabel}
+                footer={
+                    <>
+                        <Button variant="secondary" disabled={save.isPending} onClick={closeModal}>
+                            Batal
+                        </Button>
+                        <Button loading={save.isPending} onClick={() => save.mutate()}>
+                            Simpan
+                        </Button>
+                    </>
+                }
             >
                 <div className="space-y-4">
                     {fields.map((field) => {
@@ -356,6 +374,7 @@ export function CrudPage<T extends { id: string }>({
                                     label={label}
                                     value={String(value)}
                                     error={error}
+                                    required={field.required}
                                     onChange={(event) =>
                                         setValues({ ...values, [field.key]: event.target.value })
                                     }
@@ -377,6 +396,7 @@ export function CrudPage<T extends { id: string }>({
                                 type={field.type ?? 'text'}
                                 value={String(value)}
                                 error={error}
+                                required={field.required}
                                 onChange={(event) =>
                                     setValues({ ...values, [field.key]: event.target.value })
                                 }
@@ -384,14 +404,6 @@ export function CrudPage<T extends { id: string }>({
                         );
                     })}
 
-                    <div className="flex justify-end gap-2">
-                        <Button variant="secondary" disabled={save.isPending} onClick={closeModal}>
-                            Batal
-                        </Button>
-                        <Button loading={save.isPending} onClick={() => save.mutate()}>
-                            Simpan
-                        </Button>
-                    </div>
                 </div>
             </Modal>
 

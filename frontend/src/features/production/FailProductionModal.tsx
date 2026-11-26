@@ -60,7 +60,13 @@ export function FailProductionModal({
             open={order !== null}
             onClose={close}
             title="Tandai Pesanan Gagal"
-            description={order?.invoice ? `Invoice ${order.invoice.invoice_number}` : undefined}
+            description={
+                order?.invoice
+                    ? `Invoice ${order.invoice.invoice_number}${
+                          order.file_name ? ` · ${order.file_name}` : ''
+                      }`
+                    : undefined
+            }
             initialFocusSelector="textarea"
             footer={
                 <>

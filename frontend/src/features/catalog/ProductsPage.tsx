@@ -149,6 +149,7 @@ export function ProductsPage({
                 },
             ]}
             fields={fields}
+            rowLabel={(product) => product.name}
             create={
                 readOnly
                     ? undefined

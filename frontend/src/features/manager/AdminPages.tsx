@@ -24,7 +24,7 @@ import { collectionAsPage } from '../../lib/pagination';
 import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
-import { quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
+import { ledgerQuantity, quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
 const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
@@ -63,6 +63,7 @@ export function ManagerUsersPage() {
                 { header: 'Peran', cell: (user) => <Badge tone="brand">{roleLabel(user.role)}</Badge> },
             ]}
             fields={fields}
+            rowLabel={(user) => user.name}
             create={(values) =>
                 api.admin.createUser({ ...values, branch_id: user?.branch?.id })
             }
@@ -204,6 +205,7 @@ export function ManagerMaterialsPage() {
                 },
             ]}
             fields={fields}
+            rowLabel={(material) => material.name}
             create={(values) => api.admin.createMaterial(values)}
             rowActions={(material) => (
                 <>
@@ -255,8 +257,8 @@ export function ManagerMaterialsPage() {
                                                     {formatDate(ledger.logged_at)}
                                                 </TableCell>
                                                 <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                <TableCell className="hidden sm:table-cell">{quantityWithUnit(ledger.added_stock, ledger.material?.unit)}</TableCell>
-                                                <TableCell>{quantityWithUnit(ledger.used_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{ledgerQuantity(ledger.added_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell>{ledgerQuantity(ledger.used_stock, ledger.material?.unit)}</TableCell>
                                                 <TableCell>{quantityWithUnit(ledger.remaining_stock, ledger.material?.unit)}</TableCell>
                                             </TableRow>
                                         ))
@@ -308,9 +310,9 @@ export function ManagerLedgersPage() {
                     ),
                 },
                 { header: 'Pengguna', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
-                { header: 'Ditambahkan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => quantityWithUnit(ledger.added_stock, ledger.material?.unit) },
-                { header: 'Digunakan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => quantityWithUnit(ledger.used_stock, ledger.material?.unit) },
-                { header: 'Sisa Bahan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => quantityWithUnit(ledger.wasted_stock, ledger.material?.unit) },
+                { header: 'Ditambahkan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.added_stock, ledger.material?.unit) },
+                { header: 'Digunakan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.used_stock, ledger.material?.unit) },
+                { header: 'Sisa Bahan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.wasted_stock, ledger.material?.unit) },
                 { header: 'Tersisa', className: 'text-right tabular-nums sm:whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.remaining_stock, ledger.material?.unit) },
             ]}
         />
@@ -364,6 +366,7 @@ export function ManagerFinishingPage() {
                     { header: 'Tipe', cell: (attribute) => attributeTypeLabel(attribute.type) },
                 ]}
                 fields={attributeFields}
+                rowLabel={(attribute) => attribute.name}
                 create={(values) => api.admin.createAttribute(values)}
                 update={(id, values) => api.admin.updateAttribute(id, values)}
                 remove={(id) => api.admin.deleteAttribute(id)}
@@ -382,6 +385,7 @@ export function ManagerFinishingPage() {
                     { header: 'Arketipe', cell: (type) => archetypeLabel(type.calculation_archetype) },
                 ]}
                 fields={typeFields}
+                rowLabel={(type) => type.name}
                 create={(values) => api.admin.createAttributeType(values)}
                 remove={(id) => api.admin.deleteAttributeType(id)}
                 createLabel="Tambah tipe atribut"
@@ -447,6 +451,9 @@ export function ManagerPricingPage() {
                     { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.cost) },
                 ]}
                 fields={fields}
+                rowLabel={(pricing) =>
+                    `${pricing.product?.name ?? '-'} / ${pricing.material?.name ?? '-'}`
+                }
                 create={(values) => api.admin.createPricing(values)}
                 update={(id, values) => api.admin.updatePricing(id, values)}
                 remove={(id) => api.admin.deletePricing(id)}

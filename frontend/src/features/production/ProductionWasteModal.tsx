@@ -86,13 +86,20 @@ export function ProductionWasteModal({
             open={order !== null}
             onClose={close}
             title="Catat Sisa Bahan"
-            description={order?.invoice ? `Invoice ${order.invoice.invoice_number}` : undefined}
+            description={
+                order?.invoice
+                    ? `Invoice ${order.invoice.invoice_number}${
+                          order.file_name ? ` · ${order.file_name}` : ''
+                      }`
+                    : undefined
+            }
+            initialFocusSelector="#waste-material"
             footer={
-                canSubmit ? (
-                    <>
-                        <Button variant="secondary" disabled={create.isPending} onClick={close}>
-                            Batal
-                        </Button>
+                <>
+                    <Button variant="secondary" disabled={create.isPending} onClick={close}>
+                        Batal
+                    </Button>
+                    {canSubmit ? (
                         <Button
                             disabled={!form.material_id}
                             loading={create.isPending}
@@ -100,8 +107,8 @@ export function ProductionWasteModal({
                         >
                             Simpan
                         </Button>
-                    </>
-                ) : undefined
+                    ) : null}
+                </>
             }
         >
             <div className="space-y-4">
@@ -136,6 +143,7 @@ export function ProductionWasteModal({
                     <>
                         <div className="grid gap-3 sm:grid-cols-2">
                             <Select
+                                id="waste-material"
                                 label="Bahan"
                                 value={form.material_id}
                                 error={errors.material_id}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { quantityWithUnit, unitLabel, unitOptions, wasteByUnitLabel } from './units';
+import { ledgerQuantity, quantityWithUnit, unitLabel, unitOptions, wasteByUnitLabel } from './units';
 
 describe('unitOptions', () => {
     it('lists the seven stored units in a fixed order', () => {
@@ -48,6 +48,18 @@ describe('quantityWithUnit', () => {
         expect(quantityWithUnit(undefined, 'pcs')).toBe('-');
         expect(quantityWithUnit('', 'kg')).toBe('-');
         expect(quantityWithUnit('not-a-number', 'roll')).toBe('-');
+    });
+});
+
+describe('ledgerQuantity', () => {
+    it('renders a zero movement as a dash', () => {
+        expect(ledgerQuantity('0.00', 'lembar')).toBe('-');
+        expect(ledgerQuantity(0, 'm2')).toBe('-');
+    });
+
+    it('renders nonzero movements like quantityWithUnit', () => {
+        expect(ledgerQuantity('2.50', 'm2')).toBe('2,5 m²');
+        expect(ledgerQuantity(null, 'kg')).toBe('-');
     });
 });
 

@@ -25,6 +25,7 @@ export function PurchasesPage() {
             ? [
                   {
                       header: 'Cabang',
+                      className: 'hidden sm:table-cell',
                       cell: (purchase: Purchase) => purchase.branch?.name ?? '-',
                   },
               ]
@@ -70,6 +71,7 @@ export function PurchasesPage() {
                             </ul>
                         )}
                         <p className="text-light-muted text-xs break-words dark:text-gray-400">
+                            {isOwner ? `Cabang: ${purchase.branch?.name ?? '-'} · ` : ''}
                             Catatan: {purchase.notes ?? '-'} · Dicatat oleh {purchase.user?.name ?? '-'}
                         </p>
                     </div>

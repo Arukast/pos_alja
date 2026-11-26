@@ -28,6 +28,13 @@ export function quantityWithUnit(
     return quantity === '-' ? '-' : `${quantity} ${unitLabel(unit)}`;
 }
 
+export function ledgerQuantity(
+    value: string | number | null | undefined,
+    unit: string | null | undefined,
+): string {
+    return formatQuantity(value) === '0' ? '-' : quantityWithUnit(value, unit);
+}
+
 export function wasteByUnitLabel(entries: WasteByUnit[]): string {
     return entries.map((entry) => quantityWithUnit(entry.quantity, entry.unit)).join(' · ') || '-';
 }

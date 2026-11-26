@@ -56,9 +56,7 @@ export function ResourceTable<T extends { id: string }>({
                         <div className="flex justify-center py-10">
                             <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
-                    ) : null}
-
-                    {query.isError ? (
+                    ) : query.isError ? (
                         <EmptyState
                             title="Data gagal dimuat"
                             description="Periksa koneksi lalu coba lagi."
@@ -68,9 +66,7 @@ export function ResourceTable<T extends { id: string }>({
                                 </Button>
                             }
                         />
-                    ) : null}
-
-                    {query.data ? (
+                    ) : query.data ? (
                         <>
                             <Table ariaLabel={title}>
                                 <TableHead>

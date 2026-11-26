@@ -12,7 +12,12 @@ export function Table({
     ariaLabel?: string;
 }) {
     return (
-        <div className="overflow-x-auto">
+        <div
+            role="region"
+            aria-label={ariaLabel}
+            tabIndex={0}
+            className="focus:outline-brand-fill overflow-x-auto focus:outline-2 focus:outline-offset-2"
+        >
             <table
                 aria-label={ariaLabel}
                 className={cn('w-full min-w-full text-left text-sm tabular-nums', className)}

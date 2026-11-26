@@ -16,6 +16,7 @@ import { Toast } from '../../components/ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { errorMessage } from '../../lib/errors';
 import { formatDate } from '../../lib/dates';
+import { formatQuantity } from '../../lib/money';
 import { FailProductionModal } from './FailProductionModal';
 import { ProductionWasteModal } from './ProductionWasteModal';
 
@@ -85,24 +86,36 @@ export function ProductionQueuePage() {
                 description="Antrean pekerjaan cetak diurutkan berdasarkan waktu masuk."
             />
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard
-                    label="Antrean"
-                    value={summary.isSuccess ? String(summary.data.queued) : '—'}
+            {summary.isError ? (
+                <EmptyState
+                    title="Antrean cetak gagal dimuat"
+                    description="Periksa koneksi lalu coba lagi."
+                    action={
+                        <Button variant="secondary" onClick={() => summary.refetch()}>
+                            Coba lagi
+                        </Button>
+                    }
                 />
-                <StatCard
-                    label="Sedang Cetak"
-                    value={summary.isSuccess ? String(summary.data.processing) : '—'}
-                />
-                <StatCard
-                    label="Selesai Hari Ini"
-                    value={summary.isSuccess ? String(summary.data.completed_today) : '—'}
-                />
-                <StatCard
-                    label="Gagal"
-                    value={summary.isSuccess ? String(summary.data.failed) : '—'}
-                />
-            </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    <StatCard
+                        label="Antrean"
+                        value={summary.isSuccess ? String(summary.data.queued) : '—'}
+                    />
+                    <StatCard
+                        label="Sedang Cetak"
+                        value={summary.isSuccess ? String(summary.data.processing) : '—'}
+                    />
+                    <StatCard
+                        label="Selesai Hari Ini"
+                        value={summary.isSuccess ? String(summary.data.completed_today) : '—'}
+                    />
+                    <StatCard
+                        label="Gagal"
+                        value={summary.isSuccess ? String(summary.data.failed) : '—'}
+                    />
+                </div>
+            )}
 
             <Card>
                 <CardHeader>
@@ -165,6 +178,17 @@ export function ProductionQueuePage() {
                                                         <span className="mt-1 block sm:hidden">
                                                             <OrderStatusBadge status={order.status} />
                                                         </span>
+                                                        {order.file_name ? (
+                                                            <span className="text-light-muted mt-1 block text-xs break-words sm:hidden">
+                                                                {order.file_name}
+                                                            </span>
+                                                        ) : null}
+                                                        <span className="text-light-muted mt-1 block text-xs whitespace-nowrap sm:hidden">
+                                                            Tenggat:{' '}
+                                                            {order.invoice?.deadline
+                                                                ? formatDate(order.invoice.deadline)
+                                                                : '-'}
+                                                        </span>
                                                     </TableCell>
                                                     <TableCell className="hidden lg:table-cell">
                                                         {order.invoice?.customer?.name ?? '-'}
@@ -181,7 +205,9 @@ export function ProductionQueuePage() {
                                                         {order.quantity}
                                                     </TableCell>
                                                     <TableCell className="hidden tabular-nums whitespace-nowrap lg:table-cell">
-                                                        {Number(order.area) > 0 ? `${Number(order.area)} m²` : '-'}
+                                                        {Number(order.area) > 0
+                                                            ? `${formatQuantity(order.area)} m²`
+                                                            : '-'}
                                                     </TableCell>
                                                     <TableCell className="hidden lg:table-cell">
                                                         {order.operator?.name ?? '-'}
@@ -203,7 +229,10 @@ export function ProductionQueuePage() {
                                                                 <Button
                                                                     size="sm"
                                                                     aria-label={`Mulai ${itemLabel}`}
-                                                                    loading={start.isPending}
+                                                                    loading={
+                                                                        start.isPending &&
+                                                                        start.variables === order.id
+                                                                    }
                                                                     onClick={() => start.mutate(order.id)}
                                                                 >
                                                                     Mulai
@@ -214,7 +243,10 @@ export function ProductionQueuePage() {
                                                                     size="sm"
                                                                     variant="secondary"
                                                                     aria-label={`Selesaikan ${itemLabel}`}
-                                                                    loading={complete.isPending}
+                                                                    loading={
+                                                                        complete.isPending &&
+                                                                        complete.variables === order.id
+                                                                    }
                                                                     onClick={() => complete.mutate(order.id)}
                                                                 >
                                                                     Selesaikan
@@ -235,7 +267,10 @@ export function ProductionQueuePage() {
                                                                     size="sm"
                                                                     variant="secondary"
                                                                     aria-label={`Proses Ulang ${itemLabel}`}
-                                                                    loading={reopen.isPending}
+                                                                    loading={
+                                                                        reopen.isPending &&
+                                                                        reopen.variables === order.id
+                                                                    }
                                                                     onClick={() => reopen.mutate(order.id)}
                                                                 >
                                                                     Proses Ulang

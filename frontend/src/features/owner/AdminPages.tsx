@@ -101,6 +101,7 @@ export function OwnerUsersPage() {
                 { header: 'Cabang', className: 'hidden sm:table-cell', cell: (user) => user.branch?.name ?? 'Global' },
             ]}
             fields={fields}
+            rowLabel={(user) => user.name}
             create={(values) => api.admin.createUser(values)}
             update={(id, values) => api.admin.updateUser(id, values)}
             remove={(id) => api.admin.deleteUser(id)}
@@ -139,6 +140,7 @@ export function BranchesPage() {
                 },
             ]}
             fields={fields}
+            rowLabel={(branch) => branch.name}
             create={(values) => api.admin.createBranch(values)}
             update={(id, values) => api.admin.updateBranch(id, values)}
             remove={(id) => api.admin.deleteBranch(id)}
@@ -212,7 +214,7 @@ export function OwnerMaterialsPage() {
                 { header: 'Bahan', cell: (material) => (
                     <div>
                         <span
-                            className="block max-w-[6rem] truncate font-medium sm:max-w-none"
+                            className="block font-medium break-words"
                             title={material.name}
                         >
                             {material.name}
@@ -231,16 +233,16 @@ export function OwnerMaterialsPage() {
                         material.stocks.length === 0 ? (
                             '-'
                         ) : (
-                            <ul className="space-y-2">
+                            <ul className="min-w-[9rem] space-y-2">
                                 {material.stocks.map((stock) => (
-                                    <li key={stock.branch_id} className="break-words">
+                                    <li key={stock.branch_id} className="whitespace-nowrap">
                                         <span className="block font-medium">
                                             {stock.branch_name ?? '-'}
                                         </span>
-                                        <span className="block">
+                                        <span className="block tabular-nums">
                                             {quantityWithUnit(stock.current_stock, material.unit)}
                                         </span>
-                                        <span className="text-light-muted block text-xs dark:text-gray-400">
+                                        <span className="text-light-muted block text-xs tabular-nums dark:text-gray-400">
                                             min {quantityWithUnit(stock.min_stock, material.unit)}
                                         </span>
                                         {stock.is_low_stock ? (
@@ -257,6 +259,7 @@ export function OwnerMaterialsPage() {
                 { header: 'Harga', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.price) },
             ]}
             fields={fields}
+            rowLabel={(material) => material.name}
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
             remove={(id) => api.admin.deleteMaterial(id)}

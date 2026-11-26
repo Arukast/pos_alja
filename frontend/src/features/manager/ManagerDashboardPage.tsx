@@ -11,7 +11,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
-import { quantityWithUnit } from '../../lib/units';
+import { ledgerQuantity, quantityWithUnit } from '../../lib/units';
 
 const panelLink =
     'text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none';
@@ -89,10 +89,10 @@ export function ManagerDashboardPage() {
                                                     </TableCell>
                                                     <TableCell>{ledger.material?.name ?? '-'}</TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {quantityWithUnit(ledger.added_stock, ledger.material?.unit)}
+                                                        {ledgerQuantity(ledger.added_stock, ledger.material?.unit)}
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums">
-                                                        {quantityWithUnit(ledger.used_stock, ledger.material?.unit)}
+                                                        {ledgerQuantity(ledger.used_stock, ledger.material?.unit)}
                                                     </TableCell>
                                                     <TableCell className="text-right tabular-nums">
                                                         {quantityWithUnit(ledger.remaining_stock, ledger.material?.unit)}
