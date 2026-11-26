@@ -6,6 +6,7 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\User;
 use App\Modules\Sales\Actions\CreateCustomer;
 use App\Modules\Sales\Http\Requests\StoreCustomerRequest;
 use App\Modules\Sales\Http\Resources\CustomerResource;
@@ -41,7 +42,13 @@ final class CustomerController extends Controller
         StoreCustomerRequest $request,
         CreateCustomer $action
     ): JsonResponse {
-        $customer = $action->execute($request->validated());
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $customer = $action->execute($request->validated(), $actor);
 
         return response()->json([
             'customer' => new CustomerResource($customer),
