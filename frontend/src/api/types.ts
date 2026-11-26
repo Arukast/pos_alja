@@ -176,7 +176,11 @@ export interface Purchase {
 export interface Order {
     id: string;
     pricing_id: string | null;
-    pricing?: { product: string | null; material: string | null } | null;
+    pricing?: {
+        product: string | null;
+        material: string | null;
+        calculation_archetype: string | null;
+    } | null;
     file_name: string | null;
     notes: string | null;
     area: string;

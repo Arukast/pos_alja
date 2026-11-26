@@ -13,6 +13,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
+import { hasMissingLinearLength } from './orderSpecs';
 
 interface EditableOrderItem {
     id?: string;
@@ -62,6 +63,10 @@ export function DesignerEditOrderPage() {
 
     if (!canEdit) {
         return <EmptyState title="Invoice tidak dapat diubah" description="Invoice sudah lunas, item sudah masuk produksi, atau data tarif item belum tersedia untuk dihitung ulang." action={<Link className="text-brand-fill-hover font-semibold hover:underline" to="/designer/orders">Kembali ke pesanan</Link>} />;
+    }
+
+    if ((invoice.orders ?? []).some(hasMissingLinearLength)) {
+        return <EmptyState title="Item tidak dapat diubah" description="Pesanan lama ini tidak menyimpan panjang atau luas, sehingga harga tidak dapat dihitung ulang tanpa menebak. Buat pesanan baru atau hubungi admin." action={<Link className="text-brand-fill-hover font-semibold hover:underline" to="/designer/orders">Kembali ke pesanan</Link>} />;
     }
 
     return <DesignerEditOrderForm key={invoice.id} invoice={invoice} invoiceId={id} />;

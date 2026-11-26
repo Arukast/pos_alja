@@ -27,6 +27,7 @@ final class OrderResource extends JsonResource
             'pricing' => $this->when($this->relationLoaded('pricing'), fn (): ?array => $this->pricing === null ? null : [
                 'product' => $this->pricing->product?->name,
                 'material' => $this->pricing->material?->name,
+                'calculation_archetype' => $this->pricing->product?->category?->calculation_archetype,
             ]),
             'file_name' => $this->file_name,
             'notes' => $this->notes,

@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 final class ProductionQueue
 {
@@ -30,10 +31,14 @@ final class ProductionQueue
 
             $query->where(function (Builder $query) use ($search): void {
                 $query->where('file_name', 'like', "%{$search}%")
-                    ->orWhere('id', $search)
                     ->orWhereHas('invoice', function (Builder $query) use ($search): void {
                         $query->where('invoice_number', 'like', "%{$search}%");
                     });
+
+                // PostgreSQL rejects a non-UUID value in the UUID id column.
+                if (Str::isUuid($search)) {
+                    $query->orWhere('id', $search);
+                }
             });
         }
 

@@ -57,6 +57,12 @@ final class UpdateInvoiceItems
                 throw new HttpException(409, 'Invoice lunas atau pesanan sudah masuk produksi.');
             }
 
+            if ($existingOrders->contains(
+                static fn (Order $order): bool => (bool) $order->is_manual_price
+            )) {
+                throw new HttpException(409, 'Invoice dengan harga manual tidak dapat diubah.');
+            }
+
             $customerType = $lockedInvoice->customer()->value('type') ?: 'Reguler';
             $lines = [];
             $subtotal = 0.0;
@@ -211,7 +217,11 @@ final class UpdateInvoiceItems
             }
 
             $receivable = round($grandTotal - $totalPaid, 2);
-            $lockedInvoice->deadline = $data['deadline'] ?? null;
+
+            if (array_key_exists('deadline', $data)) {
+                $lockedInvoice->deadline = $data['deadline'];
+            }
+
             $lockedInvoice->grand_total = $grandTotal;
             $lockedInvoice->total_cost = round($totalCost, 2);
             $lockedInvoice->total_profit = round($grandTotal - $totalCost, 2);

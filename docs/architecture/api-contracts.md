@@ -154,7 +154,9 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 
 `POST /invoices` accepts `customer_id`, `discount?`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `selected_attributes[]?`, `is_manual_price`, `unit_price?`, and `cost?`. Order rows persist `width`, `length`, and `selected_attributes` so later edits can reprice from the saved specifications.
 
-`PUT /invoices/{invoice}/items` (designer, own branch) replaces the desired item list. Each update item accepts `id?` for an existing order, `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, and `selected_attributes[]?`. The action also accepts an optional `deadline`.
+`PUT /invoices/{invoice}/items` (designer, own branch) replaces the desired item list. Each update item accepts `id?` for an existing order, `pricing_id`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, and `selected_attributes[]?`. The action also accepts an optional `deadline`; when the key is absent the stored deadline is preserved, while an explicit `null` clears it.
+
+`GET /invoices/{invoice}` includes each order's `pricing` object with `product` name, `material` name, and the product category `calculation_archetype` for non-production roles. Production responses load the orders without pricing.
 
 Server rules:
 
@@ -162,11 +164,11 @@ Server rules:
 - Invoice creation reads the customer type from the customer record. The branch reseller discount is applied only when a Reseller quote falls back to the Reguler pricing row.
 - Category quantity discount tiers are configured but not applied to the invoice total.
 - Manual lines require both `unit_price` and `cost`; `unit_price` must be positive, `cost` must be non-negative, and `cost` must not exceed `unit_price`.
-- `selected_attributes[]` adds `attribute_pricing` modifiers to the pricing-matrix row. No finishing/display selection is persisted; `order_attributes` does not exist.
+- `selected_attributes[]` adds `attribute_pricing` modifiers to the pricing-matrix row. The selection is persisted on `orders.selected_attributes`; there is no `order_attributes` snapshot table.
 - Discount cannot exceed the computed subtotal.
 - Invoice numbers use the unique branch code and a per-branch daily sequence.
 - Invoice creation and item updates lock the invoice and its order rows in a transaction. Item updates recalculate line quotes and invoice totals on the server, preserve payment rows, and audit before/after totals and item IDs.
-- An invoice item update is rejected with 409 when any order is already in production or the invoice is fully paid.
+- An invoice item update is rejected with 409 when any order is already in production, the invoice is fully paid, or any existing order has `is_manual_price` set; manual lines are never repriced at list price.
 - An invoice item update is rejected with 422 when the discount exceeds the new subtotal or the new total is less than the amount already paid.
 - Production may read the invoice detail only with money fields redacted; invoice and receipt print are denied.
 
@@ -201,7 +203,7 @@ Customer input requires `name` and `institution`; `phone`, `email`, `address`, a
 | POST | `/waste` | production, branch-scoped |
 | GET | `/waste/options` | production, branch-scoped |
 
-The queue returns statuses `0`, `1`, and `3` (Gagal), and for owner filters by `branch_id`. Each item includes `has_waste`, which is `true` when at least one `wasted_materials` row references the order and is eager-loaded so the queue does not run per-row queries. It currently orders by `created_at`, then `id`; deadline/priority sorting and a status filter are not implemented. Starting an order requires status 0 and deducts material stock once by unit: `m2` deducts `area * quantity` and 422s when `area <= 0`; every other unit deducts `quantity`. It sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
+The queue returns statuses `0`, `1`, and `3` (Gagal), accepts an optional `status` (`0`, `1`, or `3`; any other value returns 422) and an optional `search` (matched against the invoice number, file name, or exact order UUID), and for owner filters by `branch_id`. A non-UUID `search` value never touches the UUID `id` column. Each item includes `has_waste`, which is `true` when at least one `wasted_materials` row references the order and is eager-loaded so the queue does not run per-row queries. It currently orders by `created_at`, then `id`; deadline/priority sorting is not implemented. Starting an order requires status 0 and deducts material stock once by unit: `m2` deducts `area * quantity` and 422s when `area <= 0`; every other unit deducts `quantity`. It sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
 
 `GET /production/summary` is production-only and branch-scoped. It returns `queued`, `processing`, `completed_today`, `failed` (orders currently in status `3`), and `waste_today_by_unit`, an array of `{ unit, quantity }` for today grouped by material unit, including soft-deleted materials. The old flat waste number no longer exists.
 

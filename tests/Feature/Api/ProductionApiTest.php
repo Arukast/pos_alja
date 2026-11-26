@@ -213,6 +213,24 @@ class ProductionApiTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_queue_search_guards_the_uuid_id_column_from_non_uuid_text(): void
+    {
+        $orderId = (string) Order::query()->where('file_name', 'job-1.pdf')->value('id');
+
+        $this->assertNotSame('', $orderId);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?search=not-a-uuid')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue?search='.$orderId)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $orderId);
+    }
+
     public function test_summary_counts_match_fixtures_and_are_production_only(): void
     {
         $response = $this->actingAs($this->production)

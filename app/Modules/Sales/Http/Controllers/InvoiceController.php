@@ -121,7 +121,15 @@ final class InvoiceController extends Controller
 
         $relations = $actor->role === 'production'
             ? ['customer', 'designer', 'branch', 'orders']
-            : ['customer', 'designer', 'branch', 'orders', 'payments'];
+            : [
+                'customer',
+                'designer',
+                'branch',
+                'orders',
+                'orders.pricing.product.category',
+                'orders.pricing.material',
+                'payments',
+            ];
 
         $invoice->load($relations);
 
@@ -165,14 +173,7 @@ final class InvoiceController extends Controller
 
         Gate::authorize('receipt', $invoice);
 
-        $invoice->load([
-            'customer',
-            'designer',
-            'branch',
-            'orders.pricing.product',
-            'orders.pricing.material',
-            'payments',
-        ]);
+        $invoice->load(['customer', 'designer', 'branch', 'orders', 'payments']);
 
         return response()->json([
             'invoice' => new InvoiceResource($invoice),

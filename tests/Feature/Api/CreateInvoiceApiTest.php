@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\Attribute;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -240,6 +241,117 @@ class CreateInvoiceApiTest extends TestCase
             'action' => 'UPDATE',
             'model_id' => $invoiceId,
         ]);
+    }
+
+    public function test_invoice_creation_persists_width_length_and_selected_attributes(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item([
+                    'width' => 2.5,
+                    'length' => 4,
+                    'selected_attributes' => [$attribute->id],
+                ])],
+            ]))
+            ->assertCreated();
+
+        $order = Order::query()->where('invoice_id', $response->json('invoice.id'))->firstOrFail();
+
+        $this->assertEquals(2.5, (float) $order->width);
+        $this->assertEquals(4, (float) $order->length);
+        $this->assertSame([$attribute->id], $order->selected_attributes);
+    }
+
+    public function test_invoice_item_update_persists_width_length_and_selected_attributes(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $orderId = (string) $invoiceResponse->json('invoice.orders.0.id');
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'items' => [$this->item([
+                    'id' => $orderId,
+                    'width' => 1.5,
+                    'length' => 2.5,
+                    'selected_attributes' => [$attribute->id],
+                ])],
+            ])
+            ->assertOk();
+
+        $order = Order::query()->findOrFail($orderId);
+
+        $this->assertEquals(1.5, (float) $order->width);
+        $this->assertEquals(2.5, (float) $order->length);
+        $this->assertSame([$attribute->id], $order->selected_attributes);
+    }
+
+    public function test_invoice_item_update_preserves_an_omitted_deadline_and_clears_an_explicit_null(): void
+    {
+        $deadline = now()->addDays(5)->toDateString();
+
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['deadline' => $deadline]))
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $orderId = (string) $invoiceResponse->json('invoice.orders.0.id');
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'items' => [$this->item(['id' => $orderId])],
+            ])
+            ->assertOk();
+
+        $this->assertSame($deadline, Invoice::query()->findOrFail($invoiceId)->deadline);
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'deadline' => null,
+                'items' => [$this->item(['id' => $orderId])],
+            ])
+            ->assertOk();
+
+        $this->assertNull(Invoice::query()->findOrFail($invoiceId)->deadline);
+    }
+
+    public function test_invoice_item_update_rejects_manual_price_orders(): void
+    {
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item([
+                    'is_manual_price' => true,
+                    'unit_price' => 60000,
+                    'cost' => 25000,
+                ])],
+            ]))
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $orderId = (string) $invoiceResponse->json('invoice.orders.0.id');
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'items' => [$this->item(['id' => $orderId])],
+            ])
+            ->assertStatus(409);
+
+        $order = Order::query()->findOrFail($orderId);
+
+        $this->assertTrue((bool) $order->is_manual_price);
+        $this->assertEquals(60000, (float) $order->unit_price);
     }
 
     /** A designer can append a line and later remove it while keeping the invoice payment history. */

@@ -124,11 +124,11 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Customer search is the default. A new customer is created on a separate screen.
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
-  - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. There is no finishing/display snapshot.
+  - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. Finishing and display selections are persisted in `orders.selected_attributes`; there is no `order_attributes` price/cost snapshot.
   - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone.
-  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]`. There is no `order_attributes` table and no persistence of the selection; the designer form now offers finishing/display selection.
+  - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]` and stores it on the order.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
-  - Submission creates one invoice, its orders, initial status logs, and an activity log in one transaction. No order attribute rows are written.
+  - Submission creates one invoice, its orders (including `width`, `length`, and `selected_attributes`), initial status logs, and an activity log in one transaction. No `order_attributes` rows are written.
   - Invoice number follows `INV-{branch prefix}-{YYYYMMDD}-{NNNN}`.
   - A printable A4 invoice is available. The invoice is the single customer document; the production queue is the production work list and never exposes money.
 - **Traceability:** NFR3, NFR9, PB-02.
@@ -137,8 +137,8 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Requirement:** Designer SHALL update an order that has not entered production and is not fully paid, including orders that have a down payment, with a change trail.
 - **Acceptance criteria:**
   - Allowed only while every order on the invoice has `status = 0` and the invoice status is `0` or `1`.
-  - A request on a fully paid invoice (`status = 2`) or after production starts is rejected with HTTP 409.
-  - The Designer may add, remove, or change items, quantities, specifications, and the deadline.
+  - A request on a fully paid invoice (`status = 2`), after production starts, or for an invoice containing an `is_manual_price` order is rejected with HTTP 409.
+  - The Designer may add, remove, or change items, quantities, specifications, and the deadline. An omitted `deadline` preserves the stored value; an explicit `null` clears it.
   - Invoice `grand_total`, `total_cost`, `total_profit`, quantity discounts, and `accounts_receivable` are recalculated; existing payments are preserved.
   - Invoice status is recalculated: `2` when the receivable is zero, `1` when a receivable remains after a payment.
   - The remaining receivable cannot become negative. If the new total is less than the total already paid, the request is rejected with HTTP 422.
