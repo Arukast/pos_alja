@@ -15,6 +15,7 @@ import type {
     Invoice,
     LeaderboardReport,
     Material,
+    MaterialPage,
     NetProfitReport,
     Paginated,
     Payment,
@@ -98,7 +99,7 @@ export const api = {
         apiFetch<Paginated<Product>>(`/products${queryString(params)}`),
 
     materials: <T = Material>(params: QueryParams = {}) =>
-        apiFetch<Paginated<T>>(`/materials${queryString(params)}`),
+        apiFetch<MaterialPage<T>>(`/materials${queryString(params)}`),
 
     pricing: (params: QueryParams = {}) =>
         apiFetch<Paginated<Pricing>>(`/pricing${queryString(params)}`),
@@ -266,6 +267,17 @@ export const api = {
             mutate<{ material: Material }>(`/materials/${id}/activate`, 'POST', data),
         setMaterialMinimumStock: (id: string, data: MutationBody) =>
             mutate<{ material: Material }>(`/materials/${id}/min-stock`, 'PATCH', data),
+        setMaterialActive: (id: string, data: { is_active: boolean }) =>
+            mutate<{ material: Material }>(`/materials/${id}/active`, 'PATCH', data),
+        setMaterialBranchAvailability: (
+            id: string,
+            data: { branch_id?: string; is_active: boolean }
+        ) =>
+            mutate<{ material: Material }>(
+                `/materials/${id}/branch-availability`,
+                'PATCH',
+                data
+            ),
 
         createCategory: (data: MutationBody) =>
             mutate<{ category: Category }>('/categories', 'POST', data),
