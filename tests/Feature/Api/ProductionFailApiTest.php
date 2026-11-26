@@ -16,6 +16,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockLedger;
 use App\Models\User;
+use App\Models\WastedMaterial;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -451,7 +452,8 @@ class ProductionFailApiTest extends TestCase
         $this->actingAs($this->production)
             ->postJson("/api/v1/orders/{$order->id}/fail", ['note' => 'Bahan rusak'])
             ->assertOk()
-            ->assertJsonPath('order.status', 3);
+            ->assertJsonPath('order.status', 3)
+            ->assertJsonPath('order.has_waste', false);
 
         $this->assertSame(10.0, $this->currentStock());
         $this->assertDatabaseCount('stock_ledgers', 0);
@@ -460,6 +462,27 @@ class ProductionFailApiTest extends TestCase
             'status' => 3,
             'notes' => 'Bahan rusak',
         ]);
+    }
+
+    public function test_fail_reports_waste_already_recorded_for_the_order(): void
+    {
+        $order = $this->order($this->invoice, 1, $this->production->id);
+
+        WastedMaterial::create([
+            'branch_id' => $this->branchOne->id,
+            'logged_at' => now(),
+            'material_id' => $this->material->id,
+            'order_id' => $order->id,
+            'designer_id' => $this->production->id,
+            'operator_id' => $this->production->id,
+            'quantity' => 1,
+        ]);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/fail", ['note' => 'Bahan rusak'])
+            ->assertOk()
+            ->assertJsonPath('order.status', 3)
+            ->assertJsonPath('order.has_waste', true);
     }
 
     public function test_reopen_restores_pending_and_clears_the_operator(): void

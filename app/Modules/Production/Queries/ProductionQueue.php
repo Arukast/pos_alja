@@ -18,6 +18,7 @@ final class ProductionQueue
     {
         $query = Order::query()
             ->with(['invoice.customer', 'invoice.designer', 'operator'])
+            ->withExists('wastedMaterials')
             ->whereIn('status', [0, 1, 3]);
 
         if ($actor->role === 'owner') {

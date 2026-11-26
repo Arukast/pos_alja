@@ -11,6 +11,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { unitLabel } from '../../lib/units';
+import { needsWasteReminder } from './wasteReminder';
 
 const emptyForm = {
     material_id: '',
@@ -76,9 +77,19 @@ export function ProductionWasteModal({
     const canSubmit = optionsQuery.isSuccess && materials.length > 0;
 
     const close = () => {
-        if (!create.isPending) {
-            onClose();
+        if (create.isPending) {
+            return;
         }
+
+        if (
+            order &&
+            needsWasteReminder(order) &&
+            !window.confirm('Belum ada sisa bahan. Tutup tetap?')
+        ) {
+            return;
+        }
+
+        onClose();
     };
 
     return (

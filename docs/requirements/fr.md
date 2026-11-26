@@ -259,6 +259,7 @@
   - Branch-bound users see only their branch; owner may view all or one branch.
   - Statuses: `0` (Antre Produksi), `1` (Diproses), `3` (Gagal). Status `2` (Selesai) is not queued.
   - The queue is the production work list and contains no money fields. Failed rows offer `Proses Ulang`; waste can be recorded after a failure.
+  - A failed row with no `wasted_materials` row exposes `has_waste: false` and shows a `Belum ada sisa bahan` warning badge. Closing its auto-opened waste modal asks `Belum ada sisa bahan. Tutup tetap?`; saving waste clears the badge after the queue refetches.
 - **Traceability:** NFR1, NFR4, PB-06.
 
 ### FR20 Update production status

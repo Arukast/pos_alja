@@ -262,6 +262,65 @@ class ProductionApiTest extends TestCase
         $this->assertNull($response->json('data.0.material'));
     }
 
+    public function test_queue_marks_a_failed_order_without_waste_as_has_waste_false(): void
+    {
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $failed = collect($response->json('data'))->firstWhere('status', 3);
+
+        $this->assertNotNull($failed);
+        $this->assertArrayHasKey('has_waste', $failed);
+        $this->assertFalse($failed['has_waste']);
+    }
+
+    public function test_queue_marks_has_waste_true_after_waste_is_recorded_for_the_failed_order(): void
+    {
+        $queue = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $failed = collect($queue->json('data'))->firstWhere('status', 3);
+
+        $this->assertNotNull($failed);
+
+        WastedMaterial::create([
+            'branch_id' => $this->branchOne->id,
+            'logged_at' => now(),
+            'material_id' => $this->materialOne->id,
+            'order_id' => $failed['id'],
+            'designer_id' => $this->designer->id,
+            'operator_id' => $this->production->id,
+            'quantity' => 1,
+        ]);
+
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $row = collect($response->json('data'))->firstWhere('id', $failed['id']);
+
+        $this->assertNotNull($row);
+        $this->assertTrue($row['has_waste']);
+    }
+
+    public function test_waste_on_a_non_failed_order_does_not_mark_other_orders(): void
+    {
+        $response = $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk();
+
+        $rows = collect($response->json('data'));
+
+        foreach ([0 => true, 1 => false, 3 => false] as $status => $hasWaste) {
+            $row = $rows->firstWhere('status', $status);
+
+            $this->assertNotNull($row);
+            $this->assertSame($hasWaste, $row['has_waste']);
+        }
+    }
+
     public function test_waste_options_exclude_money_and_ignore_cross_branch_filter(): void
     {
         $response = $this->actingAs($this->production)
