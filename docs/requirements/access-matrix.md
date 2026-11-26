@@ -31,7 +31,9 @@
 | Minimum stock threshold | all branches | own branch | no | no | no |
 | Receipt | all | branch | branch | branch | no |
 | Dashboard | full | branch | branch | branch | branch |
-| Owner financial reports | all | no | no | no | no |
+| Financial reports (gross revenue, base cost, net profit, expenses) | all | own branch | no | no | no |
+| Report export (Excel/PDF) | all | own branch | no | no | no |
+| Revenue sparkline | all | no | no | no | no |
 | Designer leaderboard | no | own branch | no | no | no |
 | Audit trail | all | no | no | no | no |
 | Backup page (history, run) | all | no | no | no | no |
@@ -63,4 +65,4 @@
 
 ## Revision Note
 
-Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`. The PB-05/PB-07 follow-up dropped the machine tables and endpoints, added unit-aware production with fail/reopen, and allows waste on failed orders; the pricing matrix remains. The Unit A catalog cleanup removed category discount tiers and attribute types, made categories retire-only with `description`/`is_active`, allowed Manager own-branch attributes, and added branch minimum-stock editing without a stock ledger or audit row. PB-10 adds owner-only backup page, download, pin/unpin, and settings; the audit trail stays owner-only and global.
+Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`. The PB-05/PB-07 follow-up dropped the machine tables and endpoints, added unit-aware production with fail/reopen, and allows waste on failed orders; the pricing matrix remains. The Unit A catalog cleanup removed category discount tiers and attribute types, made categories retire-only with `description`/`is_active`, allowed Manager own-branch attributes, and added branch minimum-stock editing without a stock ledger or audit row. PB-10 adds owner-only backup page, download, pin/unpin, and settings; the audit trail stays owner-only and global. PB-09 opens periodic financial reports and server-side Excel/PDF exports to Branch Managers strictly scoped to `auth()->user()->branch_id` (`403` when passing `branch_id=all` or another branch); sparkline remains Owner-only.

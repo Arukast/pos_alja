@@ -222,10 +222,11 @@ Production responses omit all money fields. Quantities are numeric. The queue is
 | Method | Path | Access |
 | :--- | :--- | :--- |
 | GET | `/dashboard` | all roles; role-shaped payload |
-| GET | `/reports/gross-revenue` | owner |
-| GET | `/reports/base-cost` | owner |
-| GET | `/reports/net-profit` | owner |
-| GET | `/reports/expenses` | owner |
+| GET | `/reports/gross-revenue` | owner, manager (own branch) |
+| GET | `/reports/base-cost` | owner, manager (own branch) |
+| GET | `/reports/net-profit` | owner, manager (own branch) |
+| GET | `/reports/expenses` | owner, manager (own branch) |
+| GET | `/reports/{type}/export` | owner, manager (own branch) |
 | GET | `/reports/sparkline?period=daily|weekly|monthly` | owner |
 | GET | `/reports/designer-leaderboard` | manager |
 | GET | `/audit-logs` | owner |
@@ -237,7 +238,12 @@ Production responses omit all money fields. Quantities are numeric. The queue is
 | GET | `/backup-settings` | owner |
 | PUT | `/backup-settings` | owner |
 
-Report filters: `branch_id`, `start_date`, `end_date`. `end_date` must be on or after `start_date`. Owner net profit subtracts invoice HPP, wasted material cost, and operating expenses. The production dashboard payload returns `queued`, `processing`, `completed_today`, `waste_today_by_unit`, and the queue; `failed` is returned by `/production/summary`.
+Dashboard and report scoping:
+
+- `GET /dashboard` (`DashboardRequest`): accepts `period` (`daily|weekly|monthly`, default `daily`) and `branch_id` (owner only; defaults to `all`). Non-owner users without a branch or non-owners sending `branch_id=all` or another branch's UUID receive `403`. Both `owner` and `manager` receive `period`, `finance.receivables`, `order_count`, and `production` (`queued`, `processing`, `completed`, `failed`); `manager` also receives branch `finance` (`gross_revenue`, `expenses`, `receivables`), `counts`, `stock_ledgers`, `expenses`, and `leaderboard`.
+- The production dashboard payload returns `queued`, `processing`, `completed_today`, `waste_today_by_unit`, and the queue; `failed` is returned by `/production/summary`.
+- Financial reports (`gross-revenue`, `base-cost`, `net-profit`, `expenses`) use `ReportFilterRequest`: `period` (`daily|weekly|monthly|custom`), `branch_id` (owner only; managers are locked to their own branch and receive `403` on `branch_id=all` or another branch), `start_date`, and `end_date` (`after_or_equal:start_date`). Preset periods (`daily`, `weekly`, `monthly`) derive `start_date`/`end_date` automatically when omitted; `custom` requires both dates. Net profit subtracts invoice HPP, wasted material cost, and operating expenses.
+- `GET /reports/{type}/export` (`ExportReportRequest`, `ExportReport` action): `type` in `gross-revenue`, `base-cost`, `net-profit`, `expenses`; required `format` in `xlsx|pdf` (`422` otherwise); same period, date, and branch authorization rules as financial reports. Generates `.xlsx` via streaming `openspout/openspout` (`ExcelReportExporter`) or printable A4 `.pdf` via `dompdf/dompdf` (`PdfReportExporter`, detail tables capped at 200 rows per section) with `Content-Disposition: attachment; filename="laporan-{type}-{scope}-{start_date}_{end_date}.{xlsx|pdf}"`. Records an `EXPORT` `ActivityLog` entry via `AuditLogger` before streaming starts.
 
 Audit logs support `search`, `sort` (`created_at`, `username`, `role`, `action`), `direction`, and pagination.
 
@@ -295,10 +301,11 @@ Audit logs support `search`, `sort` (`created_at`, `username`, `role`, `action`)
 - The update writes one `UPDATE` audit row with `before` and `after` for the submitted fields and returns `{ "settings": ... }`.
 - Changes apply on the next `backup:tick`; no scheduler restart is needed. A time moved earlier than now catches up on the next tick if today's run has not happened.
 
-### Backup Audit Actions
+### Reporting And Backup Audit Actions
 
 | Action | Subject | Payload | Notes |
 | :--- | :--- | :--- | :--- |
+| `EXPORT` | None (`model_type`/`model_id` null) | `report_type`, `format`, `period`, `branch_id`, `start_date`, `end_date` | Written via `AuditLogger` before streaming; `activity_logs.branch_id` is null when owner exports `all` branches. |
 | `BACKUP` | `Backup` | `backup_id`, `trigger`, `destination`, `status`, `filename`, `local_path`, `remote_path`, `size`, `error`, `meta` | One row per run. Scheduled runs use the system actor. `RunBackup::failed()` is idempotent by checking for an existing row. |
 | `DOWNLOAD` | `Backup` | `backup_id`, `filename`, `source` (`local` or `remote`) | Written before streaming; it records the attempt, not completion. |
 | `PIN` / `UNPIN` | `Backup` | `backup_id`, `is_pinned_before`, `is_pinned_after` | Inside the pin transaction. |

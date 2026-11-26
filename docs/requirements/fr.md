@@ -299,6 +299,9 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Branch filter for owner; manager is fixed to their branch.
   - Data refreshes on `OrderUpdated`.
 - **Traceability:** NFR1, NFR4, PB-09.
+- **Implementation note (PB-09, 2026-11-27):**
+  - `DashboardRequest` validates `period` (`daily|weekly|monthly`) and enforces `403` when a non-owner has no branch or passes `branch_id=all` / another branch.
+  - `DashboardQuery` returns `period`, `finance.receivables`, `order_count`, and `production` (`queued`, `processing`, `completed`, `failed`) for both `owner` and `manager` (alongside manager `finance` `gross_revenue` and `expenses`); `OwnerDashboardPage` and `ManagerDashboardPage` render these metrics and refresh via `OrderUpdated`.
 
 ### FR23 Periodic financial reports
 - **Requirement:** Owner and Branch Manager SHALL view periodic financial reports filtered by period and branch.
@@ -308,6 +311,9 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Owner may view all branches or one branch; manager is branch-scoped.
   - Values reconcile with payments, invoices, waste, and expenses.
 - **Traceability:** NFR1, NFR2, NFR3, PB-09.
+- **Implementation note (PB-09, 2026-11-27):**
+  - `ReportPolicy::viewFinancialReports` and `ReportFilterRequest` open `/reports/gross-revenue`, `/reports/base-cost`, `/reports/net-profit`, and `/reports/expenses` to both Owner (`branch_id=all` or single branch) and Branch Manager (own branch only; `403` when branchless or targeting `all`/another branch). `/reports/sparkline` remains Owner-only.
+  - `ReportFilterBar` provides quick `Harian`, `Mingguan`, `Bulanan`, and `Kustom` presets and hides the branch selector for managers; manager sidebar and routes expose `/manager/{revenue,base-cost,net-profit,expenses}`.
 
 ### FR24 Export reports to Excel or PDF
 - **Requirement:** Owner and Branch Manager SHALL export filtered reports to Excel or PDF.
@@ -318,6 +324,10 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Export of 10,000 rows completes within the NFR2 target.
   - Export actions are written to the audit log.
 - **Traceability:** NFR2, PB-09.
+- **Implementation note (PB-09, 2026-11-27):**
+  - `GET /api/v1/reports/{type}/export` (`ExportReportRequest`, `ExportReport` action) exports `gross-revenue`, `base-cost`, `net-profit`, and `expenses` to `.xlsx` via streaming `openspout/openspout` (`ExcelReportExporter`) or A4 `.pdf` via `dompdf/dompdf` (`PdfReportExporter`, capping PDF detail tables at 200 rows per section with an Excel guidance note).
+  - Filenames follow `laporan-{type}-{scope}-{start_date}_{end_date}.{xlsx|pdf}`. `AuditLogger` records an `EXPORT` row before streaming starts (`branch_id = null` for owner `all`, or the branch UUID).
+  - The 10,000-row staging benchmark remains unmeasured in this environment (see `docs/requirements/nfr.md`).
 
 ---
 
@@ -335,7 +345,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Implementation note (PB-10, 2026-11-26):**
   - `App\Services\AuditLogger` is the single write path. It records actor, role, branch, action, `model_type`, `model_id`, payload, and timestamp; a null actor writes `username = system`, `role = system`, `user_id = null`, and `branch_id = null`. Descriptions are capped at 255 characters; payload keys such as `password`, `token`, and `secret` are dropped.
   - Eloquent updates and deletes throw `LogicException`. Query-builder mass updates and raw SQL still bypass the guard, by convention. `activity_logs.branch_id` is `nullOnDelete`, and `activity_logs.created_at` is indexed.
-  - Covered actions: invoice create/update/manual price, down payment/settlement, pickup, production start/complete/fail/reopen, expense, customer create, category create/update/delete, product create/update/delete/restore, material create/update/delete/restore/stock, stock adjustment, waste, user and branch writes, and backup operations. `ACTIVATE` records branch-stock creation and initial stock; `materials` has no `is_active` column (user-approved deviation).
+  - Covered actions: invoice create/update/manual price, down payment/settlement, pickup, production start/complete/fail/reopen, expense, customer create, category create/update/delete, product create/update/delete/restore, material create/update/delete/restore/stock, stock adjustment, waste, user and branch writes, report exports (`EXPORT`), and backup operations. `ACTIVATE` records branch-stock creation and initial stock; `materials` has no `is_active` column (user-approved deviation).
   - Not covered: design status (its endpoint and columns do not exist), customer update (no endpoint), and pricing/attribute master writes.
   - The owner list/search/sort stays global and owner-only. The SPA adds a "Lihat" detail modal over the list payload; there is no extra detail fetch. Audit rows are kept in full: retention and archive-then-delete are deferred until the first real backup size is known.
 
@@ -385,3 +395,4 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 | 2026-11-25 | PB-05/PB-07 follow-up | FR6 material units and pricing-source truth; FR8 finishing/display truth; FR16 unit-aware usage and reversal; FR19 queue statuses; FR20 fail/reopen transitions; FR22 per-unit waste KPI. Machine masters and tables removed. |
 | 2026-11-26 | Unit A catalog cleanup | FR6 category description/active status with no hard delete, attribute types removed, Manager own-branch attributes; FR8/FR9 order-history and inactive-attribute edits; FR17 minimum stock editable per branch; FR25 minimum-stock audit debt. Category quantity-discount tiers removed; product-level tiers move to Unit B. |
 | 2026-11-26 | PB-10 | FR25 audit coverage and append-only guard; FR26 three backup types, owner schedules and retention, download, pinning, quota warning. Acceptance text unchanged; implementation notes added. |
+| 2026-11-27 | PB-09 | FR22 owner/manager dashboard receivables, order count, and production summary; FR23 branch-scoped financial reports and period presets for managers; FR24 server-side Excel/PDF exports with `AuditLogger` (`EXPORT`). |

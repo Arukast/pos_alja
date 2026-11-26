@@ -7,7 +7,7 @@
 | ID | Characteristic | Target | Verification |
 | :--- | :--- | :--- | :--- |
 | NFR1 | Performance efficiency | API p95 < 2 s for operational lists; SPA first meaningful paint < 3 s on office broadband; 10–20 rows per page (10 products per page for product catalog) | Browser measurements and query logs |
-| NFR2 | Performance efficiency | Reports p95 < 3 s at 10k invoices; export < 10 s (export is FR24, target) | Staging dataset benchmark |
+| NFR2 | Performance efficiency | Reports p95 < 3 s at 10k invoices; export < 10 s (FR24 export implemented with OpenSpout and Dompdf; benchmark pending) | Staging dataset benchmark |
 | NFR3 | Functional suitability | DP/settlement arithmetic reconciles to 2 decimals; unit-aware stock deduction and reversal reconcile to 2 decimals; no client-trusted prices | PHPUnit payment, reseller-discount, order-edit, order-history resolution, minimum-stock, and production fail/reopen tests |
 | NFR4 | Interaction capability | WCAG 2.1 AA intent; 390/768/1440 px; keyboard-operable dialogs; dark mode | `agent-browser` checks and UI review, including invoice print and queue filters |
 | NFR5 | Security | 100% role and branch checks; Sanctum cookie + CSRF; production money redaction; validated input | Feature tests + `security-code-reviewer`; expense-role and customer-PII checks |
