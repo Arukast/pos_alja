@@ -102,6 +102,7 @@ final class DashboardQuery
             'materials' => $this->materials->availableCount($actor, null),
             'staff' => $branchId === null ? 0 : User::query()
                 ->where('branch_id', $branchId)
+                ->where('is_active', true)
                 ->whereIn('role', ['cashier', 'designer', 'production'])
                 ->count(),
             'pricing' => $branchId === null ? 0 : Pricing::query()

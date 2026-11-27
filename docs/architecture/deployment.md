@@ -6,7 +6,7 @@
 - PostgreSQL 16.
 - `postgresql-client-16` from the PGDG apt repository, so `pg_dump` and `pg_restore` match the server major version. Debian bookworm's default client is 15, which refuses a PostgreSQL 16 server.
 - A queue `worker` and a `scheduler` run the same app image as `app`. Scheduled backups need the scheduler, and every queued run needs the worker.
-- Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM, with 600-second FastCGI timeouts on `/api` and `/sanctum` for large backup downloads.
+- Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM, with 600-second FastCGI timeouts on `/api` and `/sanctum` for large backup downloads. An exact location serves `/site.webmanifest` with `application/manifest+json`; `try_files $uri =404` keeps a missing manifest a 404, and the generic `location /` still provides the SPA fallback for client routes.
 - Laravel Reverb runs on container port 8080 and host port 8084.
 
 ## 2. Deployment Modes
@@ -205,6 +205,8 @@ PB-10 implements FR26. There are three independent run types, all recorded in `b
 ### 7.3 Image And Compose
 
 - The app image adds the PGDG repository and `postgresql-client-16`, then creates `storage/app/backups` and `storage/app/backup-tmp` before the `www-data` chown. `pg_dump` and `pg_restore` must be on `PATH` for `www-data`.
+- Application code stays root-owned and read-only at runtime; the image normalizes it with `chmod -R a+rX,go-w` so `www-data` can read and traverse it, and only `storage` and `bootstrap/cache` are chowned to `www-data` for writes.
+- The web stage normalizes `/usr/share/nginx/html` the same way, because build contexts with a restrictive umask produce 600 files that nginx workers cannot read.
 - `worker` runs `php artisan queue:work --sleep=3 --tries=1 --timeout=600` and mounts the `backupdata` volume at `/var/www/html/storage/app/backups`. A backup is queued, never inline; without a worker the row stays `queued`.
 - `scheduler` runs `php artisan schedule:work` and does not mount the volume.
 - `DB_QUEUE_RETRY_AFTER=900` must exceed the job timeout (`BACKUP_TIMEOUT=600`).

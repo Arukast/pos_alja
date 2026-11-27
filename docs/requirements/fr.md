@@ -46,6 +46,8 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Requirement:** A user SHALL log in with `username` and `password`, with an optional remember-me flag.
 - **Acceptance criteria:**
   - Valid credentials create an authenticated session; invalid credentials return a generic error.
+  - Login rejects an inactive user and a non-owner user whose assigned branch is inactive, trashed, or missing, all through the generic `auth.failed` response.
+  - Owners skip the branch check. A non-owner with no branch keeps the current behavior: login is allowed and branch-scoped actions keep their documented denial or empty results.
   - Login is rate limited to 5 attempts per username and IP.
   - After login, `/dashboard` renders the dashboard for the user's role.
 - **Traceability:** NFR5, PB-08.
@@ -67,12 +69,15 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Traceability:** NFR5, PB-08.
 
 ### FR4 Update user, role, and deactivate account
-- **Requirement:** Owner and Branch Manager SHALL update user data, assign roles, and deactivate accounts. A manager SHALL only manage branch staff.
+- **Requirement:** Owner and Branch Manager SHALL update user data, assign roles, and activate or deactivate accounts. A manager SHALL only manage branch staff.
 - **Acceptance criteria:**
-  - Owner may manage all users; a primary owner is required to manage owner accounts.
+  - Only an owner can manage owner accounts; Owner may manage all users.
   - Manager may manage cashier, designer, and production users in their own branch only.
-  - Deactivation is a soft delete; accounts can be restored.
-  - Password is optional on update; audit payloads exclude it.
+  - Deactivation sets `users.is_active = false` and keeps the row; an owner can reactivate the account. Deactivation blocks new logins and takes effect on the user's next authenticated `/api/v1` request.
+  - A manager may toggle own-branch staff status but cannot delete or restore users. Soft delete and restore remain owner-only administrative APIs with no normal UI.
+  - The last active owner (`role = owner`, `is_active = true`, not trashed) cannot be deactivated, deleted, or demoted: profile deactivation, `DELETE /users/{user}`, and demotion through `PUT /users/{user}` return 422 with `Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.` The status route cannot emit that guard message: a sole owner toggling themselves hits the self-toggle rule, and any other target implies a second active owner.
+  - A user cannot deactivate their own account through the user management status route. Profile deactivation remains available with the current password.
+  - Status changes are audited with before/after `is_active`. Password is optional on update; audit payloads exclude it.
 - **Traceability:** NFR5, PB-08.
 
 ### FR5 Role-based access control
@@ -401,5 +406,6 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 | 2026-11-26 | Unit A catalog cleanup | FR6 category description/active status with no hard delete, attribute types removed, Manager own-branch attributes; FR8/FR9 order-history and inactive-attribute edits; FR17 minimum stock editable per branch; FR25 minimum-stock audit debt. Category quantity-discount tiers removed; product-level tiers move to Unit B. |
 | 2026-11-26 | PB-10 | FR25 audit coverage and append-only guard; FR26 three backup types, owner schedules and retention, download, pinning, quota warning. Acceptance text unchanged; implementation notes added. |
 | 2026-11-26 | B1a material retirement | FR6 material `is_active` and branch-stock availability toggles with no stock or ledger effect, Hapus removal, `available_total` counts, and designer attribute `cost` omission; FR8 new-line availability enforcement; FR9 invoice-edit allowance for an already-used inactive material; FR17 manager available count; FR25 global toggle audit and branch-availability audit debt. |
+| 2026-11-26 | Admin active lifecycle | FR1 login rejection for inactive users and inactive/trashed branches with owner exemption and unchanged null-branch behavior; FR4 active/inactive toggle, owner-only delete/restore, last-active-owner guard on every path, profile deactivation, and status audit. |
 | 2026-11-27 | PB-09 | FR22 owner/manager dashboard receivables, order count, and production summary; FR23 branch-scoped financial reports and period presets for managers; FR24 server-side Excel/PDF exports with `AuditLogger` (`EXPORT`). |
 | 2026-11-27 | B1b attribute types | FR6 attribute types (Owner CRUD, Manager read), generated immutable slugs, no delete, seed/backfill, `exists` validation, `type_name`, and cut as a first-class type; FR8 dynamic one-per-type selection with no fixed cap and inactive selections preserved on edit; FR9 invoice-wide inactive attribute/type allowance from locked orders; FR25 attribute-type audit debt. |

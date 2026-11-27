@@ -87,6 +87,7 @@ erDiagram
         string password
         string role
         uuid branch_id FK
+        boolean is_active
         string phone
         text address
         timestamp deleted_at
@@ -427,6 +428,7 @@ erDiagram
     - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`; implemented by `2026_11_24_000001_add_traceability_to_stock_ledgers_table.php`.
     - `purchases` and `purchase_items` for raw-material purchases; implemented by `2026_11_24_000002_create_purchases_table.php` and `2026_11_24_000003_create_purchase_items_table.php`. `purchases.user_id` is the actor (Owner or Branch Manager), and `purchases.idempotency_key` is unique per branch.
+    - `users.is_active` (boolean, default `true`, non-null) by `2026_11_26_140000_add_is_active_to_users_and_convert_trashed_branches.php`. The same migration converts soft-deleted branches to visible inactive rows (`deleted_at = null`, `is_active = false`); `down()` drops only `users.is_active`, so the branch conversion is one-way.
     - `backups` and `backup_settings` for PB-10; implemented by the 2026-11-26 migrations, with `backups.filename` made nullable by a follow-up migration. `activity_logs` gains a `nullOnDelete` branch FK and a `created_at` index.
 15. **The machine master is gone.** `wasted_materials.machine_id` was dropped by `2026_11_24_000004_drop_machine_id_from_wasted_materials_table.php`; the `machines` and `machine_pricing` tables and their endpoints were dropped by `2026_11_25_000002_drop_machines_tables.php`. The rows are unrecoverable, and `down()` recreates empty tables only. The `pricing` and `attribute_pricing` tables remain. `wasted_materials.order_id` stays nullable for legacy rows, but the API requires it for all new waste.
 16. **Order priority is target-only.** There is no `priority` column; the implemented queue orders by `created_at`, then `id`. The target semantics are higher `priority` first, then `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`, with default priority 0.
@@ -440,6 +442,7 @@ erDiagram
 24. **Retention deletes files, not history.** When a dump file is pruned, the matching `local_path` or `remote_path` is set to `null` and the row remains. Pinned filenames are exempt from selection; the newest file on each destination is always kept. `ACTIVATE` audit payloads record branch-stock creation and initial stock; the global material active toggle writes one `UPDATE` row with the flag before/after and inherits the actor's `branch_id`.
 25. **Material retirement is two-level.** `materials.is_active` (default true) is the global retire flag; `material_branch_stock.is_active` (default true) is branch availability. Neither changes `current_stock` nor writes `stock_ledgers`. A material is available for new quote/invoice lines only when both flags are true and a branch-stock row exists; a missing row means unavailable, not inactive. An invoice edit may reuse an inactive material already on the locked invoice, while a soft-deleted material is never available, even when an order used it. `POST /materials/{material}/activate` sets an existing inactive stock row active; it creates a missing row as before.
 26. **`attribute_types` is master data, not a lookup foreign key.** `name` and `slug` are each unique and capped at 100 characters; `slug` is generated from the name on create, is immutable on update, and is the route key. There is no delete endpoint (a 404 tombstone); `is_active = false` is retirement. The migration seeds Finishing, Potong (`cut`), and Display at sort order 1/2/3, then backfills every other non-empty legacy `attributes.type` with its exact slug and a headline name. Attribute creation requires an active type; updates keep the current type even when inactive and require an active type when the type changes.
+27. **`users.is_active` is the account lifecycle flag; `deleted_at` stays administrative.** Default `true`. Deactivation keeps the row, blocks login, and rejects the account on its next authenticated `/api/v1` request; an owner can reactivate it. Soft-deleted users stay hidden by default, and restore sets `is_active = true`. `users.is_active` is not accepted by user store/update requests.
 
 ---
 

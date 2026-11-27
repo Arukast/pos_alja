@@ -206,7 +206,7 @@ export function ProfilePage() {
                                 Nonaktifkan akun
                             </h2>
                             <p className="text-light-muted text-sm dark:text-gray-400">
-                                Akun akan dihapus sementara dan dapat dipulihkan oleh pemilik.
+                                Akun akan dinonaktifkan dan dapat diaktifkan kembali oleh pemilik.
                             </p>
                         </div>
                     </CardHeader>
@@ -222,7 +222,7 @@ export function ProfilePage() {
                 open={deleteOpen}
                 onClose={() => setDeleteOpen(false)}
                 title="Nonaktifkan akun"
-                description="Anda akan keluar dan akun Anda dihapus sementara."
+                description="Anda akan keluar dan akun Anda dinonaktifkan."
                 footer={
                     <>
                         <Button variant="secondary" onClick={() => setDeleteOpen(false)}>

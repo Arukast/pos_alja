@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\BroadcastApiChange;
+use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: BroadcastApiChange::class);
         $middleware->alias([
             'role' => RoleMiddleware::class,
+            'active' => EnsureAccountIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

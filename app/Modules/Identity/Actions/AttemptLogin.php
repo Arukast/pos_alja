@@ -37,8 +37,16 @@ final class AttemptLogin
             $this->fail($credentials['username']);
         }
 
-        if ($user->branch !== null && ! $user->branch->is_active) {
+        if (! $user->is_active) {
             $this->fail($credentials['username']);
+        }
+
+        if ($user->role !== 'owner' && $user->branch_id !== null) {
+            $branch = $user->branch()->first();
+
+            if ($branch === null || ! $branch->is_active) {
+                $this->fail($credentials['username']);
+            }
         }
 
         RateLimiter::clear($this->throttleKey($credentials['username']));

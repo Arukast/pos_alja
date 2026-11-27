@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,6 +95,90 @@ class AuthTest extends TestCase
             ->assertJsonPath('errors.username.0', trans('auth.failed'));
 
         $this->assertGuest();
+    }
+
+    public function test_login_rejects_inactive_user(): void
+    {
+        $this->user('cashier', ['username' => 'inactive', 'is_active' => false]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'inactive',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('username')
+            ->assertJsonPath('errors.username.0', trans('auth.failed'));
+
+        $this->assertGuest();
+    }
+
+    public function test_login_rejects_user_of_inactive_branch(): void
+    {
+        $this->user('cashier', ['username' => 'inactive-branch']);
+        $this->branch->update(['is_active' => false]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'inactive-branch',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('username')
+            ->assertJsonPath('errors.username.0', trans('auth.failed'));
+
+        $this->assertGuest();
+    }
+
+    public function test_login_rejects_user_of_trashed_branch(): void
+    {
+        $this->user('cashier', ['username' => 'trashed-branch']);
+        $this->branch->delete();
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'trashed-branch',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('username')
+            ->assertJsonPath('errors.username.0', trans('auth.failed'));
+
+        $this->assertGuest();
+    }
+
+    public function test_owner_without_branch_and_owner_on_inactive_branch_can_log_in(): void
+    {
+        $this->user('owner', ['username' => 'owner-null', 'branch_id' => null]);
+        $this->branch->update(['is_active' => false]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'owner-null',
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->user('owner', ['username' => 'owner-inactive-branch']);
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'owner-inactive-branch',
+            'password' => 'password',
+        ])->assertOk();
+    }
+
+    public function test_owner_on_trashed_branch_can_log_in(): void
+    {
+        $this->user('owner', ['username' => 'owner-trashed-branch']);
+        $this->branch->delete();
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'owner-trashed-branch',
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->assertAuthenticated();
+    }
+
+    public function test_non_owner_without_branch_can_log_in(): void
+    {
+        $this->user('cashier', ['username' => 'cashier-null', 'branch_id' => null]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'cashier-null',
+            'password' => 'password',
+        ])->assertOk();
     }
 
     public function test_login_is_throttled_after_five_attempts(): void
@@ -264,16 +349,40 @@ class AuthTest extends TestCase
         $this->assertNotNull(session('auth.password_confirmed_at'));
     }
 
-    public function test_owner_can_delete_own_account(): void
+    public function test_owner_can_deactivate_own_account(): void
     {
-        $user = $this->user('owner');
+        $owner = $this->user('owner');
+        $this->user('owner'); // second active owner
 
-        $this->actingAs($user)
+        $this->actingAs($owner)
             ->deleteJson('/api/v1/auth/profile', ['password' => 'password'])
             ->assertNoContent();
 
-        $this->assertSoftDeleted('users', ['id' => $user->id]);
+        $this->assertDatabaseHas('users', ['id' => $owner->id, 'is_active' => false]);
+        $this->assertNotSoftDeleted('users', ['id' => $owner->id]);
         $this->assertGuest('web');
+
+        $log = ActivityLog::query()->where('model_id', $owner->id)->where('action', 'UPDATE')->first();
+        $this->assertNotNull($log);
+        $this->assertSame("Menonaktifkan akun sendiri: {$owner->username}", $log->description);
+        $this->assertSame(['before' => ['is_active' => true], 'after' => ['is_active' => false]], $log->payload);
+    }
+
+    public function test_last_owner_cannot_deactivate_own_account(): void
+    {
+        $owner = $this->user('owner');
+
+        $this->actingAs($owner)
+            ->deleteJson('/api/v1/auth/profile', ['password' => 'password'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('is_active')
+            ->assertJsonPath(
+                'errors.is_active.0',
+                'Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.'
+            );
+
+        $this->assertTrue($owner->refresh()->is_active);
+        $this->assertAuthenticatedAs($owner);
     }
 
     public function test_cashier_cannot_delete_own_account(): void
@@ -285,6 +394,7 @@ class AuthTest extends TestCase
             ->assertForbidden();
 
         $this->assertNotSoftDeleted('users', ['id' => $user->id]);
+        $this->assertTrue($user->refresh()->is_active);
     }
 
     public function test_delete_requires_the_current_password(): void
@@ -297,6 +407,7 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors('password');
 
         $this->assertNotSoftDeleted('users', ['id' => $user->id]);
+        $this->assertTrue($user->refresh()->is_active);
     }
 
     private function user(string $role, array $overrides = []): User

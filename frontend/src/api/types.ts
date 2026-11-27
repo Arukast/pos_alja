@@ -40,6 +40,7 @@ export interface UserRecord {
     email: string | null;
     email_verified_at: string | null;
     role: string;
+    is_active: boolean;
     phone: string | null;
     address: string | null;
     branch: { id: string; name: string; code: string | null } | null;

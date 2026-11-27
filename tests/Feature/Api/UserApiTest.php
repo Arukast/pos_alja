@@ -177,7 +177,8 @@ class UserApiTest extends TestCase
                 'branch_id' => $this->branchOne->id,
             ])
             ->assertCreated()
-            ->assertJsonPath('user.username', 'new.cashier');
+            ->assertJsonPath('user.username', 'new.cashier')
+            ->assertJsonPath('user.is_active', true);
 
         $userId = $created->json('user.id');
 
@@ -202,6 +203,74 @@ class UserApiTest extends TestCase
             ->postJson("/api/v1/users/{$userId}/restore")
             ->assertOk()
             ->assertJsonPath('user.deleted_at', null);
+    }
+
+    public function test_user_resource_exposes_active_flag_and_ignores_client_is_active_on_update(): void
+    {
+        $owner = $this->user('owner', null);
+        $inactive = $this->user('cashier', $this->branchOne, ['is_active' => false]);
+
+        $this->actingAs($owner)->getJson('/api/v1/users')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $inactive->id, 'is_active' => false]);
+
+        $this->actingAs($owner)->putJson("/api/v1/users/{$inactive->id}", [
+            'name' => 'Still Inactive',
+            'username' => $inactive->username,
+            'email' => $inactive->email,
+            'role' => 'cashier',
+            'branch_id' => $this->branchOne->id,
+            'is_active' => true,
+        ])->assertOk()->assertJsonPath('user.is_active', false);
+    }
+
+    public function test_restore_sets_user_active(): void
+    {
+        $owner = $this->user('owner', null);
+        $removed = $this->user('cashier', $this->branchOne, ['is_active' => false]);
+        $removed->delete();
+
+        $this->actingAs($owner)->postJson("/api/v1/users/{$removed->id}/restore")
+            ->assertOk()
+            ->assertJsonPath('user.is_active', true);
+    }
+
+    public function test_user_branch_must_not_be_trashed_but_may_be_inactive(): void
+    {
+        $owner = $this->user('owner', null);
+        $inactive = $this->branch('Inactive');
+        $inactive->update(['is_active' => false]);
+
+        $created = $this->actingAs($owner)->postJson('/api/v1/users', [
+            'name' => 'Inactive Branch User',
+            'username' => 'inactive.branch',
+            'email' => 'inactive.branch@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'cashier',
+            'branch_id' => $inactive->id,
+        ])->assertCreated()->assertJsonPath('user.branch.id', $inactive->id)->json('user');
+
+        $trashed = $this->branch('Trashed');
+        $trashed->delete();
+
+        $this->actingAs($owner)->putJson("/api/v1/users/{$created['id']}", [
+            'name' => 'Inactive Branch User',
+            'username' => 'inactive.branch',
+            'email' => 'inactive.branch@example.com',
+            'role' => 'cashier',
+            'branch_id' => $trashed->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('branch_id');
+
+        $this->actingAs($owner)->postJson('/api/v1/users', [
+            'name' => 'Trashed Branch User',
+            'username' => 'trashed.branch',
+            'email' => 'trashed.branch@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'cashier',
+            'branch_id' => $trashed->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('branch_id');
     }
 
     public function test_manager_can_create_branch_staff_but_not_privileged_or_cross_branch_users(): void
@@ -265,6 +334,45 @@ class UserApiTest extends TestCase
         $this->actingAs($manager)
             ->deleteJson("/api/v1/users/{$otherCashier->id}")
             ->assertForbidden();
+    }
+
+    public function test_manager_cannot_delete_or_restore_own_branch_staff(): void
+    {
+        $manager = $this->user('manager', $this->branchOne);
+        $cashier = $this->user('cashier', $this->branchOne);
+
+        $this->actingAs($manager)
+            ->deleteJson("/api/v1/users/{$cashier->id}")
+            ->assertForbidden();
+
+        $this->assertNotSoftDeleted('users', ['id' => $cashier->id]);
+
+        $cashier->delete();
+
+        $this->actingAs($manager)
+            ->postJson("/api/v1/users/{$cashier->id}/restore")
+            ->assertForbidden();
+
+        $this->assertSoftDeleted('users', ['id' => $cashier->id]);
+    }
+
+    public function test_guest_cannot_delete_user(): void
+    {
+        $cashier = $this->user('cashier', $this->branchOne);
+
+        $this->deleteJson("/api/v1/users/{$cashier->id}")->assertUnauthorized();
+
+        $this->assertNotSoftDeleted('users', ['id' => $cashier->id]);
+    }
+
+    public function test_guest_cannot_restore_user(): void
+    {
+        $cashier = $this->user('cashier', $this->branchOne);
+        $cashier->delete();
+
+        $this->postJson("/api/v1/users/{$cashier->id}/restore")->assertUnauthorized();
+
+        $this->assertSoftDeleted('users', ['id' => $cashier->id]);
     }
 
     public function test_audit_payload_does_not_include_passwords(): void

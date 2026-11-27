@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast } from '../ui/Toast';
 import type { ResourceColumn } from '../ResourceTable';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { listCardTitle } from '../../lib/labels';
 
 export interface CrudField<T> {
     key: string;
@@ -35,6 +36,7 @@ type FormValues = Record<string, string | number | boolean | string[]>;
 export function CrudPage<T extends { id: string }>({
     eyebrow,
     title,
+    cardTitle,
     description,
     queryKey,
     queryFn,
@@ -54,9 +56,12 @@ export function CrudPage<T extends { id: string }>({
     footer,
     paginated = true,
     hideBanner = false,
+    notice,
+    onNoticeChange,
 }: {
     eyebrow: string;
     title: string;
+    cardTitle?: string;
     description?: string;
     queryKey: readonly unknown[];
     queryFn: (page: number) => Promise<Paginated<T>>;
@@ -76,6 +81,8 @@ export function CrudPage<T extends { id: string }>({
     footer?: ReactNode;
     paginated?: boolean;
     hideBanner?: boolean;
+    notice?: { message: string; tone: 'success' | 'error' } | null;
+    onNoticeChange?: (notice: { message: string; tone: 'success' | 'error' } | null) => void;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -88,10 +95,12 @@ export function CrudPage<T extends { id: string }>({
     const [editing, setEditing] = useState<T | null>(null);
     const [values, setValues] = useState<FormValues>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [notice, setNotice] = useState<{
+    const [internalNotice, setInternalNotice] = useState<{
         message: string;
         tone: 'success' | 'error';
     } | null>(null);
+    const activeNotice = notice !== undefined ? notice : internalNotice;
+    const updateNotice = onNoticeChange ?? setInternalNotice;
 
     const query = useQuery({
         queryKey: [...queryKey, page],
@@ -138,14 +147,14 @@ export function CrudPage<T extends { id: string }>({
             invalidate();
             setOpen(false);
             setEditing(null);
-            setNotice({
+            updateNotice({
                 message: editing ? 'Data diperbarui.' : 'Data ditambahkan.',
                 tone: 'success',
             });
         },
         onError: (error) => {
             setErrors(mapApiErrors(error));
-            setNotice({ message: errorMessage(error), tone: 'error' });
+            updateNotice({ message: errorMessage(error), tone: 'error' });
         },
     });
 
@@ -159,9 +168,9 @@ export function CrudPage<T extends { id: string }>({
         },
         onSuccess: () => {
             invalidate();
-            setNotice({ message: 'Data dihapus.', tone: 'success' });
+            updateNotice({ message: 'Data dihapus.', tone: 'success' });
         },
-        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+        onError: (error) => updateNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const openCreate = () => {
@@ -192,18 +201,7 @@ export function CrudPage<T extends { id: string }>({
     return (
         <div className="space-y-6">
             {hideBanner ? null : (
-                <PageBanner
-                    eyebrow={eyebrow}
-                    title={title}
-                    description={description}
-                    actions={
-                        create ? (
-                            <Button size="sm" onClick={openCreate}>
-                                {createLabel}
-                            </Button>
-                        ) : null
-                    }
-                />
+                <PageBanner eyebrow={eyebrow} title={title} description={description} />
             )}
 
             {summary}
@@ -211,16 +209,11 @@ export function CrudPage<T extends { id: string }>({
             {toolbar}
 
             <Card>
-                {hideBanner ? (
+                {create || hideBanner ? (
                     <CardHeader>
-                        <div className="space-y-1">
-                            <h2 className="text-light-text text-base font-bold dark:text-gray-100">{title}</h2>
-                            {description ? (
-                                <p className="text-light-muted-strong text-sm dark:text-gray-400">{description}</p>
-                            ) : null}
-                        </div>
+                        <h2 className="font-semibold">{cardTitle ?? listCardTitle(title)}</h2>
                         {create ? (
-                            <Button size="sm" onClick={openCreate}>
+                            <Button size="sm" className="ml-auto" onClick={openCreate}>
                                 {createLabel}
                             </Button>
                         ) : null}
@@ -469,8 +462,12 @@ export function CrudPage<T extends { id: string }>({
                 </div>
             </Modal>
 
-            {notice ? (
-                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            {activeNotice ? (
+                <Toast
+                    message={activeNotice.message}
+                    tone={activeNotice.tone}
+                    onClose={() => updateNotice(null)}
+                />
             ) : null}
         </div>
     );

@@ -38,7 +38,8 @@ WORKDIR /var/www/html
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=vendor /usr/bin/composer /usr/bin/composer
 COPY . .
-RUN mkdir -p storage/app/backups storage/app/backup-tmp \
+RUN chmod -R a+rX,go-w /var/www/html \
+    && mkdir -p storage/app/backups storage/app/backup-tmp \
     && composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \
     && chown -R www-data:www-data storage bootstrap/cache
@@ -48,3 +49,4 @@ FROM nginx:1.27-alpine AS web
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=frontend /app/frontend/dist /usr/share/nginx/html
+RUN chmod -R a+rX,go-w /usr/share/nginx/html

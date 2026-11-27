@@ -46,22 +46,23 @@ export function ManagerDashboardPage() {
                 eyebrow="Manajer Cabang"
                 title="Dasbor Cabang"
                 description="Ringkasan keuangan, produksi, inventaris, staf, dan kinerja desainer cabang."
-                actions={
-                    <>
-                        {(['daily', 'weekly', 'monthly'] as const).map((value) => (
-                            <Button
-                                key={value}
-                                size="sm"
-                                variant={period === value ? 'primary' : 'secondary'}
-                                aria-pressed={period === value}
-                                onClick={() => updatePeriod(value)}
-                            >
-                                {periodLabels[value]}
-                            </Button>
-                        ))}
-                    </>
-                }
             />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <div className="flex flex-wrap gap-2">
+                    {(['daily', 'weekly', 'monthly'] as const).map((value) => (
+                        <Button
+                            key={value}
+                            size="sm"
+                            variant={period === value ? 'primary' : 'secondary'}
+                            aria-pressed={period === value}
+                            onClick={() => updatePeriod(value)}
+                        >
+                            {periodLabels[value]}
+                        </Button>
+                    ))}
+                </div>
+            </div>
 
             {query.isLoading ? (
                 <Card>
