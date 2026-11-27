@@ -147,6 +147,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Acceptance criteria:**
   - Allowed only while every order on the invoice has `status = 0` and the invoice status is `0` or `1`.
   - A request on a fully paid invoice (`status = 2`), after production starts, or for an invoice containing an `is_manual_price` order is rejected with HTTP 409.
+  - The designer list and edit page share one eligibility check with exactly four Indonesian lock reasons: `lunas`, `sudah diproduksi`, `tarif tidak tersedia`, and `harga manual`. The list shows `Terkunci — <reason>` instead of the `Edit` link when locked, and the edit page shows the `Invoice tidak dapat diubah` empty state; the backend 409 rule is unchanged.
   - The Designer may add, remove, or change items, quantities, specifications, and the deadline. An omitted `deadline` preserves the stored value; an explicit `null` clears it.
   - Invoice `grand_total`, `total_cost`, `total_profit`, and `accounts_receivable` are recalculated; existing payments are preserved.
   - Invoice status is recalculated: `2` when the receivable is zero, `1` when a receivable remains after a payment.

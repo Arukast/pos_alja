@@ -16,6 +16,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
 import { formatMoney, formatQuantity } from '../../lib/money';
+import { editEligibility } from './editEligibility';
 
 /**
  * Halaman daftar pesanan dan invoice cabang untuk peran desainer (FR8 / PB-02).
@@ -144,63 +145,67 @@ export function DesignerOrdersPage() {
                                     {invoices.length === 0 ? (
                                         <TableEmpty colSpan={8}>Belum ada pesanan yang cocok.</TableEmpty>
                                     ) : (
-                                        invoices.map((invoice) => (
-                                            <TableRow key={invoice.id}>
-                                                <TableCell>
-                                                    <button
-                                                        type="button"
-                                                        className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill rounded-sm text-left font-medium hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                                                        onClick={() => setSelectedInvoiceId(invoice.id)}
-                                                    >
-                                                        {invoice.invoice_number}
-                                                    </button>
-                                                </TableCell>
-                                                <TableCell className="hidden sm:table-cell">
-                                                    {invoice.customer?.name ?? '-'}
-                                                </TableCell>
-                                                <TableCell className="hidden md:table-cell">
-                                                    {formatDate(invoice.deadline ?? '-')}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <InvoiceStatusBadge status={invoice.status} />
-                                                </TableCell>
-                                                <TableCell>
-                                                    {invoice.status === 2 ? (
-                                                        <span className="text-light-muted text-sm">Terkunci</span>
-                                                    ) : (
-                                                        <Link
-                                                            className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                                                            to={`/designer/orders/${invoice.id}/edit`}
-                                                        >
-                                                            Edit
-                                                        </Link>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="hidden lg:table-cell">
-                                                    <PickupStatusBadge status={invoice.pickup_status} />
-                                                </TableCell>
-                                                <TableCell className="text-right whitespace-nowrap tabular-nums">
-                                                    {formatMoney(invoice.grand_total)}
-                                                </TableCell>
-                                                <TableCell className="bg-light-surface border-light-border dark:border-surface-300 dark:bg-surface-700 border-l lg:sticky lg:right-0">
-                                                    <div className="flex flex-wrap items-center gap-3">
+                                        invoices.map((invoice) => {
+                                            const eligibility = editEligibility({ status: invoice.status, orders: invoice.orders });
+
+                                            return (
+                                                <TableRow key={invoice.id}>
+                                                    <TableCell>
                                                         <button
                                                             type="button"
-                                                            className="text-light-text dark:text-gray-200 focus-visible:ring-brand-fill rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                                                            className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill rounded-sm text-left font-medium hover:underline focus-visible:ring-2 focus-visible:outline-none"
                                                             onClick={() => setSelectedInvoiceId(invoice.id)}
                                                         >
-                                                            Detail
+                                                            {invoice.invoice_number}
                                                         </button>
-                                                        <Link
-                                                            className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                                                            to={`/orders/${invoice.id}/receipt`}
-                                                        >
-                                                            Nota
-                                                        </Link>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                                    </TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        {invoice.customer?.name ?? '-'}
+                                                    </TableCell>
+                                                    <TableCell className="hidden md:table-cell">
+                                                        {formatDate(invoice.deadline ?? '-')}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <InvoiceStatusBadge status={invoice.status} />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {eligibility.editable ? (
+                                                            <Link
+                                                                className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                                                                to={`/designer/orders/${invoice.id}/edit`}
+                                                            >
+                                                                Edit
+                                                            </Link>
+                                                        ) : (
+                                                            <span className="text-light-muted text-sm">Terkunci{eligibility.reason ? ` — ${eligibility.reason}` : ''}</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden lg:table-cell">
+                                                        <PickupStatusBadge status={invoice.pickup_status} />
+                                                    </TableCell>
+                                                    <TableCell className="text-right whitespace-nowrap tabular-nums">
+                                                        {formatMoney(invoice.grand_total)}
+                                                    </TableCell>
+                                                    <TableCell className="bg-light-surface border-light-border dark:border-surface-300 dark:bg-surface-700 border-l lg:sticky lg:right-0">
+                                                        <div className="flex flex-wrap items-center gap-3">
+                                                            <button
+                                                                type="button"
+                                                                className="text-light-text dark:text-gray-200 focus-visible:ring-brand-fill rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                                                                onClick={() => setSelectedInvoiceId(invoice.id)}
+                                                            >
+                                                                Detail
+                                                            </button>
+                                                            <Link
+                                                                className="text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                                                                to={`/orders/${invoice.id}/receipt`}
+                                                            >
+                                                                Nota
+                                                            </Link>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>

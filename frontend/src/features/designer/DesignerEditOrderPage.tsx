@@ -14,6 +14,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
+import { editEligibility } from './editEligibility';
 import { hasMissingLinearLength } from './orderSpecs';
 
 interface EditableOrderItem {
@@ -50,9 +51,7 @@ export function DesignerEditOrderPage() {
     const invoiceQuery = useQuery({ queryKey: ['invoice', 'detail', id], queryFn: () => api.invoice(id), enabled: id !== '' });
     const invoice = invoiceQuery.data?.invoice;
 
-    const canEdit = invoice !== undefined
-        && invoice.status !== 2
-        && (invoice.orders ?? []).every((order) => order.status === 0 && order.pricing_id !== null);
+    const eligibility = invoice !== undefined ? editEligibility({ status: invoice.status, orders: invoice.orders }) : null;
 
     if (invoiceQuery.isLoading) {
         return <div role="status" className="flex min-h-48 items-center justify-center"><Spinner className="text-brand-primary h-6 w-6" /></div>;
@@ -62,7 +61,7 @@ export function DesignerEditOrderPage() {
         return <EmptyState title="Invoice tidak dapat dimuat" description="Periksa koneksi dan hak akses, lalu coba lagi." action={<Button variant="secondary" onClick={() => invoiceQuery.refetch()}>Coba lagi</Button>} />;
     }
 
-    if (!canEdit) {
+    if (eligibility !== null && !eligibility.editable) {
         return <EmptyState title="Invoice tidak dapat diubah" description="Invoice sudah lunas, item sudah masuk produksi, atau data tarif item belum tersedia untuk dihitung ulang." action={<Link className="text-brand-fill-hover font-semibold hover:underline" to="/designer/orders">Kembali ke pesanan</Link>} />;
     }
 
