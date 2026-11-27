@@ -17,8 +17,9 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast, type ToastTone } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { defaultInstitution, institutionOptions } from '../../lib/institutions';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, quantityDiscountLabel } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
+import { materialForProduct } from './materialOptions';
 
 /**
  * Representasi satu baris item pesanan yang sudah dihitung penawarannya di keranjang.
@@ -469,17 +470,9 @@ export function DesignerNewOrderPage() {
                                                 const nextProduct = (options?.products ?? []).find(
                                                     (product) => product.id === nextProductId
                                                 );
-                                                const nextRequiresMaterial = nextProduct?.requires_material ?? true;
-                                                const nextAllowedIds = nextProduct?.material_ids ?? [];
-                                                const keepMaterial = nextRequiresMaterial
-                                                    && (nextAllowedIds.length === 0
-                                                        || nextAllowedIds.includes(item.material_id));
-
                                                 updateDraftItem({
                                                     product_id: nextProductId,
-                                                    material_id: keepMaterial
-                                                        ? item.material_id
-                                                        : '',
+                                                    material_id: materialForProduct(nextProduct, item.material_id) ?? '',
                                                     selected_attributes: [],
                                                 });
                                             }}
@@ -614,6 +607,11 @@ export function DesignerNewOrderPage() {
                                                         {quote ? `${quote.area} m²` : '-'}
                                                     </dd>
                                                 </div>
+                                                {quantityDiscountLabel(quote?.quantity_discount_percent) ? (
+                                                    <div className="text-light-muted-strong w-full text-xs dark:text-gray-400">
+                                                        {quantityDiscountLabel(quote?.quantity_discount_percent)}
+                                                    </div>
+                                                ) : null}
                                             </dl>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Button
@@ -687,6 +685,11 @@ export function DesignerNewOrderPage() {
                                                         ? ` · ${line.attribute_labels.join(', ')}`
                                                         : ''}
                                                 </p>
+                                                {quantityDiscountLabel(line.quote.quantity_discount_percent) ? (
+                                                    <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                        {quantityDiscountLabel(line.quote.quantity_discount_percent)}
+                                                    </p>
+                                                ) : null}
                                             </TableCell>
                                             <TableCell className="text-right whitespace-nowrap tabular-nums">
                                                 {line.quantity}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatMoney, formatQuantity } from './money';
+import { formatMoney, formatQuantity, quantityDiscountLabel } from './money';
 
 describe('formatMoney', () => {
     it('formats whole rupiah values', () => {
@@ -45,5 +45,18 @@ describe('formatQuantity', () => {
         expect(formatQuantity('not-a-number')).toBe('-');
         expect(formatQuantity(Number.NaN)).toBe('-');
         expect(formatQuantity(Number.POSITIVE_INFINITY)).toBe('-');
+    });
+});
+
+describe('quantityDiscountLabel', () => {
+    it('names the applied quantity discount without trailing zeros', () => {
+        expect(quantityDiscountLabel('5.00')).toBe('Diskon jumlah (5%)');
+        expect(quantityDiscountLabel('12.50')).toBe('Diskon jumlah (12,5%)');
+        expect(quantityDiscountLabel(7)).toBe('Diskon jumlah (7%)');
+    });
+
+    it('stays empty when no discount was applied', () => {
+        expect(quantityDiscountLabel('0.00')).toBe('');
+        expect(quantityDiscountLabel(undefined)).toBe('');
     });
 });

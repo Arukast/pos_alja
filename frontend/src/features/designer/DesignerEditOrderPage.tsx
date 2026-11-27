@@ -14,7 +14,8 @@ import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
-import { hasMissingLinearLength, isOrderEditable } from './orderSpecs';
+import { materialForProduct, materialOptionsForEdit } from './materialOptions';
+import { isOrderEditable } from './orderSpecs';
 
 interface EditableOrderItem {
     id?: string;
@@ -66,10 +67,6 @@ export function DesignerEditOrderPage() {
 
     if (!canEdit) {
         return <EmptyState title="Invoice tidak dapat diubah" description="Invoice sudah lunas, item sudah masuk produksi, atau data tarif item belum tersedia untuk dihitung ulang." action={<Link className="text-brand-fill-hover font-semibold hover:underline" to="/designer/orders">Kembali ke pesanan</Link>} />;
-    }
-
-    if ((invoice.orders ?? []).some(hasMissingLinearLength)) {
-        return <EmptyState title="Item tidak dapat diubah" description="Pesanan lama ini tidak menyimpan panjang atau luas, sehingga harga tidak dapat dihitung ulang tanpa menebak. Buat pesanan baru atau hubungi admin." action={<Link className="text-brand-fill-hover font-semibold hover:underline" to="/designer/orders">Kembali ke pesanan</Link>} />;
     }
 
     return <DesignerEditOrderForm key={invoice.id} invoice={invoice} invoiceId={id} />;
@@ -179,6 +176,7 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
                     uses_attributes: product?.uses_attributes ?? true,
                     attribute_type_ids: product?.attribute_type_ids ?? [],
                     attribute_ids: product?.attribute_ids ?? [],
+                    material_ids: product?.material_ids ?? [],
                 },
             }];
         })).values());
@@ -201,14 +199,45 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
                 <CardBody className="space-y-5">
                     {items.map((item, index) => {
                         const meta = productOptions.find((configuration) => configuration.id === item.product_id)?.meta;
+                        const allowedMaterialIds = meta?.material_ids ?? [];
 
                         return (
                             <section key={item.id ?? `new-${index}`} className="space-y-3 border-b border-light-border pb-5 last:border-0 dark:border-surface-300">
                                 <div className="flex items-center justify-between"><h3 className="font-medium">Item {index + 1}</h3><Button variant="ghost" size="sm" disabled={items.length <= 1} onClick={() => handleRemoveItem(index)}>Hapus</Button></div>
-                                <Select label={meta?.requires_material === false ? 'Produk' : 'Produk dan bahan'} value={item.product_id} error={errors[`items.${index}.product_id`]} onChange={(event) => handleItemChange(index, { product_id: event.target.value, material_id: null, selected_attributes: [] })}>
-                                    {productOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
-                                </Select>
                                 <div className="grid gap-3 sm:grid-cols-2">
+                                    <Select label="Produk" value={item.product_id} error={errors[`items.${index}.product_id`]} onChange={(event) => {
+                                        const nextProductId = event.target.value;
+
+                                        handleItemChange(index, {
+                                            product_id: nextProductId,
+                                            material_id: materialForProduct(products.find((product) => product.id === nextProductId), item.material_id),
+                                            selected_attributes: [],
+                                        });
+                                    }}>
+                                        {productOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
+                                    </Select>
+                                    {meta?.requires_material === false ? null : (
+                                        <Select
+                                            label="Bahan"
+                                            value={item.material_id ?? ''}
+                                            error={errors[`items.${index}.material_id`]}
+                                            onChange={(event) => handleItemChange(index, { material_id: event.target.value || null })}
+                                        >
+                                            <option value="">Pilih bahan</option>
+                                            {materialOptionsForEdit(
+                                                optionsQuery.data?.materials ?? [],
+                                                allowedMaterialIds,
+                                                item.material_id === null
+                                                    ? null
+                                                    : {
+                                                        id: item.material_id,
+                                                        name: invoice.orders?.[index]?.material ?? 'Bahan tersimpan',
+                                                    }
+                                            ).map((material) => (
+                                                <option key={material.id} value={material.id}>{material.label}</option>
+                                            ))}
+                                        </Select>
+                                    )}
                                     <Input label="Nama file / item" value={item.file_name} error={errors[`items.${index}.file_name`]} onChange={(event) => handleItemChange(index, { file_name: event.target.value })} />
                                     <Input label="Jumlah" type="number" min="0.01" step="0.01" value={item.quantity} error={errors[`items.${index}.quantity`]} onChange={(event) => handleItemChange(index, { quantity: event.target.value })} />
                                     <Input label="Lebar (m)" type="number" min="0.01" step="0.01" value={item.width} error={errors[`items.${index}.width`]} onChange={(event) => handleItemChange(index, { width: event.target.value })} />

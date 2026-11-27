@@ -27,6 +27,11 @@ final class ProductController extends Controller
     {
         Gate::authorize('viewProducts', Product::class);
 
+        $validated = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+        $perPage = (int) ($validated['per_page'] ?? 10);
+
         $actor = $request->user();
         $search = trim($request->string('search')->toString());
         $categoryId = $request->query('category_id');
@@ -45,6 +50,7 @@ final class ProductController extends Controller
             'category_id' => is_string($categoryId) && trim($categoryId) !== '' ? trim($categoryId) : null,
             'is_active' => $isActive,
             'include_deleted' => $includeDeleted,
+            'per_page' => $perPage,
         ]));
     }
 

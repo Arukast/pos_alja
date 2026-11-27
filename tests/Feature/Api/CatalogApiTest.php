@@ -337,6 +337,29 @@ class CatalogApiTest extends TestCase
         $this->assertCount(25, array_unique([...$pageOneIds, ...$pageTwoIds, ...$pageThreeIds]));
     }
 
+    public function test_products_accept_a_per_page_bounded_to_one_hundred(): void
+    {
+        for ($index = 1; $index <= 12; $index++) {
+            Product::create([
+                'name' => sprintf('Produk Opsi %02d', $index),
+                'selling_unit' => 'pcs',
+                'product_category_id' => $this->category->id,
+            ]);
+        }
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?is_active=1&per_page=100')
+            ->assertOk()
+            ->assertJsonCount(14, 'data')
+            ->assertJsonPath('meta.per_page', 100)
+            ->assertJsonPath('meta.last_page', 1);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?per_page=101')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
+    }
+
     public function test_product_search_is_case_insensitive_and_filters_by_category_and_active_status(): void
     {
         $secondCategory = ProductCategory::create([

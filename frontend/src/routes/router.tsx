@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 
 import { RequireAuth, RequireRole, RoleRedirect } from '../auth/RequireAuth';
 import { AppShell } from '../components/AppShell';
@@ -108,6 +108,10 @@ export const router = createBrowserRouter([
                             { path: 'purchases', element: <PurchasesPage /> },
                             { path: 'ledgers', element: <ManagerLedgersPage /> },
                             { path: 'finishing', element: <ManagerFinishingPage /> },
+                            {
+                                path: 'pricing',
+                                element: <Navigate to="/manager/quantity-tiers" replace />,
+                            },
                             { path: 'quantity-tiers', element: <ManagerQuantityTiersPage /> },
                             { path: 'leaderboard', element: <ManagerLeaderboardPage /> },
                             { path: 'users', element: <ManagerUsersPage /> },

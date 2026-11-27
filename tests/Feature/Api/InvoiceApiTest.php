@@ -258,6 +258,8 @@ class InvoiceApiTest extends TestCase
             ->assertJsonMissingPath('invoice.total_profit')
             ->assertJsonMissingPath('invoice.orders.0.unit_price')
             ->assertJsonMissingPath('invoice.orders.0.subtotal')
+            ->assertJsonMissingPath('invoice.orders.0.quantity_discount_percent')
+            ->assertJsonMissingPath('invoice.orders.0.discount_amount')
             ->assertJsonMissingPath('invoice.orders.0.cost')
             ->assertJsonMissingPath('invoice.orders.0.profit');
     }
@@ -272,6 +274,8 @@ class InvoiceApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('invoice.orders.0.unit_price', '50000.00')
             ->assertJsonPath('invoice.orders.0.subtotal', '100000.00')
+            ->assertJsonPath('invoice.orders.0.quantity_discount_percent', '0.00')
+            ->assertJsonPath('invoice.orders.0.discount_amount', '0.00')
             ->assertJsonMissingPath('invoice.orders.0.cost')
             ->assertJsonMissingPath('invoice.orders.0.profit')
             ->assertJsonMissingPath('invoice.total_cost')

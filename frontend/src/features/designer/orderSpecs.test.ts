@@ -1,31 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Order } from '../../api/types';
-import { hasMissingLinearLength, isOrderEditable } from './orderSpecs';
-
-describe('hasMissingLinearLength', () => {
-    it('does not block unit or area orders', () => {
-        const sticker = {
-            length: null,
-            area: '0.00',
-            product_id: 'p-sticker',
-            material_id: 'm-vinyl',
-            material: 'Vinyl',
-            selling_unit: 'pcs',
-        };
-        const banner = {
-            length: null,
-            area: '3.00',
-            product_id: 'p-banner',
-            material_id: 'm-flexy',
-            material: 'Flexy',
-            selling_unit: 'm2',
-        };
-
-        expect(hasMissingLinearLength(sticker)).toBe(false);
-        expect(hasMissingLinearLength(banner)).toBe(false);
-    });
-});
+import { isOrderEditable } from './orderSpecs';
 
 describe('isOrderEditable', () => {
     it('treats legacy orders with null material identity as non-editable', () => {

@@ -207,7 +207,8 @@ export interface Order {
     material_id: string | null;
     material: string | null;
     customer_type: string;
-    discount_amount: string;
+    quantity_discount_percent?: string;
+    discount_amount?: string;
     file_name: string | null;
     notes: string | null;
     area: string;

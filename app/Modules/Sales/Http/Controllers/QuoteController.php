@@ -81,6 +81,8 @@ final class QuoteController extends Controller
                 'unit_price' => Decimal::money($result['unit_price']),
                 'area' => $result['area'],
                 'quantity' => $result['quantity'],
+                'quantity_discount_percent' => Decimal::money($result['quantity_discount_percent']),
+                'discount_amount' => Decimal::money($result['discount_amount']),
                 'subtotal' => Decimal::money($result['subtotal']),
             ],
         ]);

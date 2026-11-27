@@ -55,7 +55,7 @@ final class CatalogQueries
     }
 
     /**
-     * @param  array{search?: string|null, category_id?: string|null, is_active?: bool|null, include_deleted?: bool}  $filters
+     * @param  array{search?: string|null, category_id?: string|null, is_active?: bool|null, include_deleted?: bool, per_page?: int}  $filters
      */
     public function products(array $filters): LengthAwarePaginator
     {
@@ -98,7 +98,7 @@ final class CatalogQueries
             )
             ->orderBy('name')
             ->orderBy('id')
-            ->paginate(10)
+            ->paginate($filters['per_page'] ?? 10)
             ->withQueryString();
     }
 

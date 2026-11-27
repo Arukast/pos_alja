@@ -11,6 +11,7 @@ use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -429,9 +430,33 @@ class QuoteApiTest extends TestCase
             ->assertJsonPath('quote.unit_price', '25000.00')
             ->assertJsonPath('quote.area', 6)
             ->assertJsonPath('quote.subtotal', '300000.00')
+            ->assertJsonPath('quote.quantity_discount_percent', '0.00')
+            ->assertJsonPath('quote.discount_amount', '0.00')
             ->assertJsonMissingPath('quote.unit_cost')
             ->assertJsonMissingPath('quote.cost')
             ->assertJsonMissingPath('quote.profit');
+    }
+
+    public function test_quote_publishes_the_applied_quantity_discount(): void
+    {
+        ProductQuantityDiscount::create([
+            'product_id' => $this->product->id,
+            'min_qty' => 10,
+            'discount_percent' => 5,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'quantity' => 10,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.quantity_discount_percent', '5.00')
+            ->assertJsonPath('quote.discount_amount', '75000.00')
+            ->assertJsonPath('quote.subtotal', '1425000.00');
     }
 
     public function test_quote_returns_validation_error_for_an_unknown_material(): void

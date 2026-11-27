@@ -30,6 +30,10 @@ final class OrderResource extends JsonResource
             'material' => $this->when($this->relationLoaded('material'),
                 fn (): ?string => $this->material?->name),
             'customer_type' => $this->customer_type,
+            'quantity_discount_percent' => $this->when(
+                $showSell,
+                fn (): string => Decimal::money($this->quantity_discount_percent)
+            ),
             'discount_amount' => $this->when($showSell, fn (): string => Decimal::money($this->discount_amount)),
             'file_name' => $this->file_name,
             'notes' => $this->notes,

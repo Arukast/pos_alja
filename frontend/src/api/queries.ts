@@ -73,6 +73,8 @@ export interface Quote {
     unit_price: string;
     area: number;
     quantity: number;
+    quantity_discount_percent: string;
+    discount_amount: string;
     subtotal: string;
 }
 

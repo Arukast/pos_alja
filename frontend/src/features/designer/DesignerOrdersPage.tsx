@@ -15,7 +15,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney, formatQuantity, quantityDiscountLabel } from '../../lib/money';
 
 /**
  * Halaman daftar pesanan dan invoice cabang untuk peran desainer (FR8 / PB-02).
@@ -298,11 +298,16 @@ export function DesignerOrdersPage() {
                                 ) : (
                                     (detail.orders ?? []).map((order) => (
                                         <TableRow key={order.id}>
-                                            <TableCell>
+                                            <TableCell className="[overflow-wrap:anywhere]">
                                                 <p className="font-medium">{order.file_name ?? 'Item'}</p>
                                                 {order.product || order.material ? (
                                                     <p className="text-light-muted-strong text-xs dark:text-gray-400">
                                                         {[order.product, order.material].filter(Boolean).join(' · ')}
+                                                    </p>
+                                                ) : null}
+                                                {quantityDiscountLabel(order.quantity_discount_percent) ? (
+                                                    <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                        {quantityDiscountLabel(order.quantity_discount_percent)}
                                                     </p>
                                                 ) : null}
                                                 {order.notes ? (

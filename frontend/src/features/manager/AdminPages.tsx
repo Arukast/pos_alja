@@ -16,7 +16,7 @@ import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
 import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
-import { QuantityTiersPage } from '../owner/AdminPages';
+import { QuantityTiersPage } from '../catalog/QuantityTiersPage';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
