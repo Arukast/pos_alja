@@ -314,6 +314,11 @@ export const api = {
         updateAttribute: (id: string, data: MutationBody) =>
             mutate<{ attribute: Attribute }>(`/attributes/${id}`, 'PUT', data),
 
+        createAttributeType: (data: MutationBody) =>
+            mutate<{ attribute_type: AttributeType }>('/attribute-types', 'POST', data),
+        updateAttributeType: (slug: string, data: MutationBody) =>
+            mutate<{ attribute_type: AttributeType }>(`/attribute-types/${slug}`, 'PUT', data),
+
         createPricing: (data: MutationBody) =>
             mutate<{ pricing: Pricing }>('/pricing', 'POST', data),
         updatePricing: (id: string, data: MutationBody) =>
