@@ -3,7 +3,6 @@ import { Navigate, useNavigate } from 'react-router';
 
 import { useAuth } from '../../auth/useAuth';
 import { roleHome } from '../../auth/roleHome';
-import { LogoMark } from '../../components/LogoMark';
 import { Button } from '../../components/ui/Button';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { Input } from '../../components/ui/Input';
@@ -42,12 +41,15 @@ export function LoginPage() {
             <section className="w-full max-w-md overflow-hidden rounded-2xl border border-light-border bg-light-surface shadow-card dark:border-surface-300 dark:bg-surface-700 dark:shadow-none">
                 <div className="brand-stripe-bar" />
                 <div className="p-8">
-                    <div className="flex items-center gap-3">
-                        <LogoMark className="h-10 w-10" decorative />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <img
+                            src="/images/logo-alja.webp"
+                            alt=""
+                            width={673}
+                            height={371}
+                            className="h-auto w-40"
+                        />
                         <div>
-                            <p className="text-brand-fill text-xs font-semibold uppercase tracking-[0.25em] dark:text-brand-primary-light">
-                                Alja Digital Printing
-                            </p>
                             <h1 className="text-2xl font-bold">Masuk</h1>
                         </div>
                     </div>

@@ -7,6 +7,7 @@ import {
     paymentMethodLabel,
     pricingTypeLabel,
     ledgerTypeLabel,
+    listCardTitle,
     roleLabel,
     roleTone,
     usernameLabel,
@@ -39,6 +40,29 @@ describe('roleTone', () => {
 
     it('falls back to neutral for an unknown role', () => {
         expect(roleTone('auditor')).toBe('neutral');
+    });
+});
+
+describe('listCardTitle', () => {
+    it('prefixes a short list title', () => {
+        expect(listCardTitle('Pembelian')).toBe('Daftar Pembelian');
+        expect(listCardTitle('Bahan & Stok')).toBe('Daftar Bahan & Stok');
+    });
+
+    it('strips a leading Manajemen prefix', () => {
+        expect(listCardTitle('Manajemen Pengguna')).toBe('Daftar Pengguna');
+        expect(listCardTitle('Manajemen Produk')).toBe('Daftar Produk');
+        expect(listCardTitle('Manajemen Cabang')).toBe('Daftar Cabang');
+    });
+
+    it('keeps an existing Daftar title unchanged', () => {
+        expect(listCardTitle('Daftar Pesanan')).toBe('Daftar Pesanan');
+    });
+
+    it('only strips Manajemen at the start', () => {
+        expect(listCardTitle('Bukan Manajemen Pengguna')).toBe(
+            'Daftar Bukan Manajemen Pengguna'
+        );
     });
 });
 

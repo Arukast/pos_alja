@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast } from '../ui/Toast';
 import type { ResourceColumn } from '../ResourceTable';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { listCardTitle } from '../../lib/labels';
 
 export interface CrudField<T> {
     key: string;
@@ -35,6 +36,7 @@ type FormValues = Record<string, string | number | boolean | string[]>;
 export function CrudPage<T extends { id: string }>({
     eyebrow,
     title,
+    cardTitle,
     description,
     queryKey,
     queryFn,
@@ -53,12 +55,12 @@ export function CrudPage<T extends { id: string }>({
     rowClassName,
     footer,
     paginated = true,
-    hideBanner = false,
     notice,
     onNoticeChange,
 }: {
     eyebrow: string;
     title: string;
+    cardTitle?: string;
     description?: string;
     queryKey: readonly unknown[];
     queryFn: (page: number) => Promise<Paginated<T>>;
@@ -77,7 +79,6 @@ export function CrudPage<T extends { id: string }>({
     rowClassName?: (row: T) => string | undefined;
     footer?: ReactNode;
     paginated?: boolean;
-    hideBanner?: boolean;
     notice?: { message: string; tone: 'success' | 'error' } | null;
     onNoticeChange?: (notice: { message: string; tone: 'success' | 'error' } | null) => void;
 }) {
@@ -197,39 +198,19 @@ export function CrudPage<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            {hideBanner ? null : (
-                <PageBanner
-                    eyebrow={eyebrow}
-                    title={title}
-                    description={description}
-                    actions={
-                        create ? (
-                            <Button size="sm" onClick={openCreate}>
-                                {createLabel}
-                            </Button>
-                        ) : null
-                    }
-                />
-            )}
+            <PageBanner eyebrow={eyebrow} title={title} description={description} />
 
             {summary}
 
             {toolbar}
 
             <Card>
-                {hideBanner ? (
+                {create ? (
                     <CardHeader>
-                        <div className="space-y-1">
-                            <h2 className="text-light-text text-base font-bold dark:text-gray-100">{title}</h2>
-                            {description ? (
-                                <p className="text-light-muted-strong text-sm dark:text-gray-400">{description}</p>
-                            ) : null}
-                        </div>
-                        {create ? (
-                            <Button size="sm" onClick={openCreate}>
-                                {createLabel}
-                            </Button>
-                        ) : null}
+                        <h2 className="font-semibold">{cardTitle ?? listCardTitle(title)}</h2>
+                        <Button size="sm" className="ml-auto" onClick={openCreate}>
+                            {createLabel}
+                        </Button>
                     </CardHeader>
                 ) : null}
                 <CardBody>

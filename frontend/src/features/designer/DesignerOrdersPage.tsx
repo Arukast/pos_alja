@@ -6,7 +6,7 @@ import { api } from '../../api/queries';
 import { PageBanner } from '../../components/PageBanner';
 import { InvoiceStatusBadge, OrderStatusBadge, PickupStatusBadge } from '../../components/StatusBadge';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody } from '../../components/ui/Card';
+import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -74,12 +74,15 @@ export function DesignerOrdersPage() {
                 eyebrow="Desainer"
                 title="Daftar Pesanan"
                 description="Invoice yang dibuat oleh cabang Anda."
-                actions={
-                    <Button onClick={() => navigate('/designer/new-order')}>Pesanan Baru</Button>
-                }
             />
 
             <Card>
+                <CardHeader>
+                    <h2 className="font-semibold">Pesanan</h2>
+                    <Button size="sm" className="ml-auto" onClick={() => navigate('/designer/new-order')}>
+                        Pesanan Baru
+                    </Button>
+                </CardHeader>
                 <CardBody className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
                         <Input
