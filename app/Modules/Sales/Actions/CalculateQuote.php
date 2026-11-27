@@ -7,11 +7,9 @@ namespace App\Modules\Sales\Actions;
 use App\Exceptions\InvalidAttributeSelectionException;
 use App\Exceptions\InvalidMaterialSelectionException;
 use App\Exceptions\InvalidProductAttributeSelectionException;
-use App\Exceptions\PricingNotFoundException;
 use App\Models\Attribute;
-use App\Models\Pricing;
 use App\Models\Product;
-use App\Services\PricingService;
+use App\Services\QuotePricingService;
 use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 
@@ -23,7 +21,7 @@ final class CalculateQuote
     /**
      * Membuat instance aksi kalkulasi penawaran.
      */
-    public function __construct(private readonly PricingService $pricingService) {}
+    public function __construct(private readonly QuotePricingService $pricingService) {}
 
     /**
      * Menghitung harga satuan, biaya, luas, subtotal, dan profit dari parameter penawaran.
@@ -31,7 +29,6 @@ final class CalculateQuote
      * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      *
-     * @throws PricingNotFoundException
      * @throws InvalidArgumentException
      */
     public function execute(array $params): array
@@ -151,46 +148,9 @@ final class CalculateQuote
                 }
             }
 
-            $byType = $attributes->keyBy('type');
-
-            $params['finishing_id'] = $byType->get('finishing')?->id;
-            $params['cut_id'] = $byType->get('cut')?->id;
-            $params['display_id'] = $byType->get('display')?->id;
             $params['selected_attributes'] = $selectedIds;
         }
 
-        return $this->pricingService->calculateQuote($params);
-    }
-
-    /**
-     * Menghitung penawaran untuk baris harga tertentu pada pembuatan invoice.
-     *
-     * @param  array<string, mixed>  $item
-     * @param  list<string>  $inactiveAttributeAllowance
-     * @return array<string, mixed>
-     *
-     * @throws PricingNotFoundException
-     * @throws InvalidArgumentException
-     */
-    public function forPricing(
-        Pricing $pricing,
-        array $item,
-        string $branchId,
-        string $customerType,
-        array $inactiveAttributeAllowance = [],
-        bool $skipProductCapabilityChecks = false
-    ): array {
-        return $this->execute([
-            'product_id' => $pricing->product_id,
-            'material_id' => $pricing->material_id,
-            'selected_attributes' => $item['selected_attributes'] ?? [],
-            'quantity' => $item['quantity'] ?? 1,
-            'width' => $item['width'] ?? 0,
-            'length' => $item['length'] ?? 0,
-            'customer_type' => $customerType,
-            'branch_id' => $branchId,
-            'inactive_attribute_allowance' => $inactiveAttributeAllowance,
-            'skip_product_capability_checks' => $skipProductCapabilityChecks,
-        ]);
+        return $this->pricingService->calculate($params);
     }
 }

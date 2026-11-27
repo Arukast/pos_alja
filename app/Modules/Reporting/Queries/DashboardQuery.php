@@ -8,7 +8,7 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Pricing;
+use App\Models\ProductQuantityDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
 use App\Modules\Catalog\Http\Resources\StockLedgerResource;
@@ -105,9 +105,7 @@ final class DashboardQuery
                 ->where('is_active', true)
                 ->whereIn('role', ['cashier', 'designer', 'production'])
                 ->count(),
-            'pricing' => $branchId === null ? 0 : Pricing::query()
-                ->where('branch_id', $branchId)
-                ->count(),
+            'product_quantity_discounts' => ProductQuantityDiscount::query()->count(),
         ];
 
         $stockLedgers = $branchId === null

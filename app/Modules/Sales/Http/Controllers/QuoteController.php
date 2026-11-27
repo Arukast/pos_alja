@@ -6,7 +6,6 @@ namespace App\Modules\Sales\Http\Controllers;
 
 use App\Exceptions\InvalidMaterialSelectionException;
 use App\Exceptions\InvalidProductAttributeSelectionException;
-use App\Exceptions\PricingNotFoundException;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Material;
@@ -71,7 +70,7 @@ final class QuoteController extends Controller
             throw ValidationException::withMessages([
                 'selected_attributes' => $exception->getMessage(),
             ]);
-        } catch (PricingNotFoundException|InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException $exception) {
             throw ValidationException::withMessages([
                 'quote' => $exception->getMessage(),
             ]);
@@ -79,7 +78,6 @@ final class QuoteController extends Controller
 
         return response()->json([
             'quote' => [
-                'pricing_id' => $result['pricing_id'],
                 'unit_price' => Decimal::money($result['unit_price']),
                 'area' => $result['area'],
                 'quantity' => $result['quantity'],
