@@ -32,10 +32,12 @@ final class RestoreProduct
                     'RESTORE',
                     "Memulihkan produk: {$product->name}",
                     $product,
-                    $product->toArray(),
+                    array_merge($product->toArray(), $product->auditSnapshot()),
                 );
 
-                return $product->fresh(['category', 'materials']) ?? $product->load(['category', 'materials']);
+                $relations = ['category', 'materials', 'attributeTypes', 'compatibleAttributes.typeInfo'];
+
+                return $product->fresh($relations) ?? $product->load($relations);
             });
         } catch (Throwable $exception) {
             Log::error('Product restoration failed.', [

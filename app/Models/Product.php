@@ -82,4 +82,18 @@ class Product extends Model
             'attribute_id',
         )->withTimestamps()->orderBy('attributes.name');
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function auditSnapshot(): array
+    {
+        return [
+            'requires_material' => (bool) $this->requires_material,
+            'uses_attributes' => (bool) $this->uses_attributes,
+            'material_ids' => $this->materials()->pluck('materials.id')->values()->all(),
+            'attribute_type_ids' => $this->attributeTypes()->pluck('attribute_type_product.attribute_type_id')->values()->all(),
+            'attribute_ids' => $this->compatibleAttributes()->pluck('attribute_product.attribute_id')->values()->all(),
+        ];
+    }
 }
