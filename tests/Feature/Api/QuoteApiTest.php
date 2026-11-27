@@ -59,7 +59,7 @@ class QuoteApiTest extends TestCase
 
         $this->product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
@@ -123,7 +123,7 @@ class QuoteApiTest extends TestCase
     {
         $inactive = Product::create([
             'name' => 'Inactive Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $this->product->product_category_id,
             'is_active' => false,
         ]);
@@ -168,7 +168,7 @@ class QuoteApiTest extends TestCase
 
         $inactiveProduct = Product::create([
             'name' => 'Retired Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $inactiveCategory->id,
         ]);
 
@@ -208,7 +208,7 @@ class QuoteApiTest extends TestCase
     {
         $loose = Product::create([
             'name' => 'Loose',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => null,
             'is_active' => true,
         ]);
@@ -385,7 +385,7 @@ class QuoteApiTest extends TestCase
     {
         $loose = Product::create([
             'name' => 'Loose',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => null,
             'is_active' => true,
         ]);

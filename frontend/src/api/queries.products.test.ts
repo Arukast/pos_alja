@@ -39,7 +39,7 @@ describe('api.products and admin product mutations', () => {
         const createBody = {
             name: 'Banner Vinyl',
             product_category_id: 'cat-1',
-            pricing_type: 'area',
+            selling_unit: 'm2',
             is_active: true,
             material_ids: ['mat-1'],
         };

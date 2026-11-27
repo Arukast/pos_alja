@@ -29,7 +29,7 @@ final class OrderResource extends JsonResource
             'pricing' => $this->when($this->relationLoaded('pricing'), fn (): ?array => $pricing === null ? null : [
                 'product' => $product?->name,
                 'material' => $pricing->material?->name,
-                'pricing_type' => $product?->pricing_type,
+                'selling_unit' => $product?->selling_unit,
                 'product_id' => $product?->id,
                 'requires_material' => $product === null ? true : (bool) $product->requires_material,
                 'uses_attributes' => $product === null ? true : (bool) $product->uses_attributes,

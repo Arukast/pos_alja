@@ -100,7 +100,7 @@ export function DesignerNewOrderPage() {
 
     const options = optionsQuery.data;
     const selectedProduct = (options?.products ?? []).find((product) => product.id === item.product_id);
-    const isAreaProduct = selectedProduct?.pricing_type === 'area';
+    const isAreaProduct = selectedProduct?.selling_unit === 'm2';
     const needsWidth = isAreaProduct;
     const needsLength = isAreaProduct;
     const requiresMaterial = selectedProduct?.requires_material ?? true;

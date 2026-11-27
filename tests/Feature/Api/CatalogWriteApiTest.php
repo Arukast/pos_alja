@@ -60,7 +60,7 @@ class CatalogWriteApiTest extends TestCase
 
         $this->product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $this->category->id,
         ]);
 
@@ -1171,7 +1171,7 @@ class CatalogWriteApiTest extends TestCase
             ->postJson('/api/v1/products', [
                 'name' => 'Banner Baru',
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'area',
+                'selling_unit' => 'm2',
                 'material_ids' => [$this->material->id],
             ])
             ->assertCreated()
@@ -1198,13 +1198,13 @@ class CatalogWriteApiTest extends TestCase
             ->putJson("/api/v1/products/{$created['id']}", [
                 'name' => 'Banner Baru Updated',
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
                 'is_active' => false,
                 'material_ids' => [$this->otherMaterial->id],
             ])
             ->assertOk()
             ->assertJsonPath('product.is_active', false)
-            ->assertJsonPath('product.pricing_type', 'unit')
+            ->assertJsonPath('product.selling_unit', 'pcs')
             ->assertJsonPath('product.material_ids.0', $this->otherMaterial->id);
 
         $this->assertDatabaseMissing('material_product', [
@@ -1261,7 +1261,7 @@ class CatalogWriteApiTest extends TestCase
         $payload = [
             'name' => 'Blocked Product',
             'product_category_id' => $this->category->id,
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
         ];
 
         foreach ([$this->manager, $this->cashier, $designer, $production, $branchlessManager] as $actor) {
@@ -1277,7 +1277,7 @@ class CatalogWriteApiTest extends TestCase
         $this->actingAs($this->owner)
             ->postJson('/api/v1/products', [
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('name');
@@ -1286,16 +1286,16 @@ class CatalogWriteApiTest extends TestCase
             ->postJson('/api/v1/products', [
                 'name' => 'Invalid Pricing Type',
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'weight',
+                'selling_unit' => 'weight',
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('pricing_type');
+            ->assertJsonValidationErrors('selling_unit');
 
         $this->actingAs($this->owner)
             ->postJson('/api/v1/products', [
                 'name' => 'Missing Category',
                 'product_category_id' => (string) Str::uuid(),
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('product_category_id');
@@ -1304,7 +1304,7 @@ class CatalogWriteApiTest extends TestCase
             ->putJson("/api/v1/products/{$this->product->id}", [
                 'name' => 'Invalid Active Flag',
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
                 'is_active' => 'not-a-bool',
             ])
             ->assertStatus(422)
@@ -1314,7 +1314,7 @@ class CatalogWriteApiTest extends TestCase
             ->postJson('/api/v1/products', [
                 'name' => 'Invalid Material Mapping',
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
                 'material_ids' => [(string) Str::uuid()],
             ])
             ->assertStatus(422)
@@ -1333,11 +1333,65 @@ class CatalogWriteApiTest extends TestCase
             ->putJson("/api/v1/products/{$this->product->id}", [
                 'name' => 'Deleted Material Mapping',
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
                 'material_ids' => [$deletedMaterial->id],
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('material_ids.0');
+    }
+
+    public function test_product_create_and_update_use_selling_unit(): void
+    {
+        $response = $this->actingAs($this->owner)->postJson('/api/v1/products', [
+            'name' => 'Banner Vinyl',
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'm2',
+        ])->assertCreated();
+
+        $this->assertSame('m2', $response->json('product.selling_unit'));
+        $this->assertArrayNotHasKey('pricing_type', $response->json('product'));
+
+        $updated = $this->actingAs($this->owner)
+            ->putJson('/api/v1/products/'.$response->json('product.id'), [
+                'name' => 'Banner Vinyl Baru',
+                'product_category_id' => $this->category->id,
+                'selling_unit' => 'lembar',
+            ])->assertOk();
+
+        $this->assertSame('lembar', $updated->json('product.selling_unit'));
+        $this->assertArrayNotHasKey('pricing_type', $updated->json('product'));
+    }
+
+    public function test_product_writes_reject_units_outside_material_unit_values(): void
+    {
+        foreach (['unit', 'area', 'weight', 'm²'] as $unit) {
+            $this->actingAs($this->owner)->postJson('/api/v1/products', [
+                'name' => 'Invalid Selling Unit',
+                'product_category_id' => $this->category->id,
+                'selling_unit' => $unit,
+            ])->assertStatus(422)->assertJsonValidationErrors('selling_unit');
+        }
+    }
+
+    public function test_legacy_pricing_type_key_is_ignored_and_update_keeps_stored_unit(): void
+    {
+        $this->actingAs($this->owner)->postJson('/api/v1/products', [
+            'name' => 'Old Client',
+            'product_category_id' => $this->category->id,
+            'pricing_type' => 'area',
+        ])->assertStatus(422)->assertJsonValidationErrors('selling_unit');
+
+        $this->product->update(['selling_unit' => 'roll']);
+
+        $response = $this->actingAs($this->owner)
+            ->putJson('/api/v1/products/'.$this->product->id, [
+                'name' => $this->product->name,
+                'product_category_id' => $this->category->id,
+                'pricing_type' => 'area',
+            ])->assertOk();
+
+        $this->assertSame('roll', $response->json('product.selling_unit'));
+        $this->assertArrayNotHasKey('pricing_type', $response->json('product'));
     }
 
     public function test_owner_creates_and_updates_a_category_with_description_and_active_state(): void
@@ -1470,7 +1524,7 @@ class CatalogWriteApiTest extends TestCase
             ->postJson('/api/v1/products', [
                 'name' => 'Retired Banner',
                 'product_category_id' => $inactiveCategory->id,
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
             ])
             ->assertCreated()
             ->assertJsonPath('product.is_active', true)
@@ -1486,7 +1540,7 @@ class CatalogWriteApiTest extends TestCase
 
         $inactiveProduct = Product::create([
             'name' => 'Retired Banner',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $inactiveCategory->id,
             'is_active' => true,
         ]);

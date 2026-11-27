@@ -17,6 +17,14 @@ describe('unitOptions', () => {
 });
 
 describe('unitLabel', () => {
+    it('supports the product selling-unit field with pcs default and m² label', () => {
+        expect(unitOptions.find((option) => option.value === 'pcs')).toEqual({
+            value: 'pcs',
+            label: 'pcs',
+        });
+        expect(unitLabel('m2')).toBe('m²');
+    });
+
     it('renders square metres with a superscript', () => {
         expect(unitLabel('m2')).toBe('m²');
     });

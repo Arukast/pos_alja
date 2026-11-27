@@ -6,7 +6,7 @@ import { productCompositionLabels } from './productOptions';
 const base: Product = {
     id: 'p1',
     name: 'Banner',
-    pricing_type: 'unit',
+    selling_unit: 'pcs',
     is_active: true,
     category: null,
     materials: [],
