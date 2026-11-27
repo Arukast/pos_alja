@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|float $cost
  * @property bool $is_active
  * @property-read Branch|null $branch
+ * @property-read AttributeType|null $typeInfo
  */
 class Attribute extends Model
 {
@@ -48,5 +49,13 @@ class Attribute extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /**
+     * @return BelongsTo<AttributeType, $this>
+     */
+    public function typeInfo(): BelongsTo
+    {
+        return $this->belongsTo(AttributeType::class, 'type', 'slug');
     }
 }

@@ -198,13 +198,10 @@ class CatalogApiTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_attribute_type_endpoints_and_table_are_removed(): void
+    public function test_attribute_types_table_exists(): void
     {
-        $this->getJson('/api/v1/attribute-types')->assertNotFound();
-        $this->actingAs($this->owner)->getJson('/api/v1/attribute-types')->assertNotFound();
-        $this->actingAs($this->owner)->postJson('/api/v1/attribute-types', [])->assertNotFound();
-        $this->actingAs($this->owner)->deleteJson('/api/v1/attribute-types/00000000-0000-0000-0000-000000000000')->assertNotFound();
-        $this->assertFalse(Schema::hasTable('attribute_types'));
+        $this->assertTrue(Schema::hasTable('attribute_types'));
+        $this->assertTrue(Schema::hasColumns('attribute_types', ['id', 'name', 'slug', 'sort_order', 'is_active']));
     }
 
     public function test_manager_reads_own_branch_catalog_scope(): void
