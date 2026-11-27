@@ -284,6 +284,27 @@ WHERE p.deleted_at IS NULL AND m.deleted_at IS NULL AND m.is_active
 
 Have the Owner decide whether those materials should remain orderable; no automatic data change is made. Deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API; the availability toggles require the new API, because the PATCH routes return 404 against an older API.
 
+### Attribute Types (Additive + Column Widening)
+
+`2026_11_27_000006_create_attribute_types_and_widen_attributes_type.php` widens `attributes.type` from 20 to 100 characters and creates `attribute_types` with unique `name` and `slug` (both 100), `sort_order`, `is_active`, and indexes on both. It seeds Finishing (`finishing`), Potong (`cut`), and Display (`display`) at sort orders 1/2/3, then backfills every other non-empty legacy `attributes.type` with its exact slug and a headline name, suffixing a numeric name on collision. Attribute rows are not rewritten; the seed/backfill is idempotent, while `create`/`change` are not re-runnable. `down()` drops the new table; `attributes.type` intentionally stays at 100 so stored values are not truncated.
+
+Take the usual verified pre-deploy backup, then deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API, because the only finishing/display options it sends exist as seeds.
+
+Run these read-only checks on PostgreSQL after migrating:
+
+```sql
+SELECT character_maximum_length FROM information_schema.columns
+WHERE table_name = 'attributes' AND column_name = 'type';
+-- expect 100
+SELECT count(*) FROM attribute_types; -- expect >= 3
+SELECT a.type FROM attributes a
+LEFT JOIN attribute_types t ON t.slug = a.type
+WHERE t.id IS NULL; -- expect 0 rows
+SELECT count(*) FROM attributes WHERE type = ''; -- expect 0; inspect before deploy
+```
+
+SQLite does not enforce varchar length, so the widening, the seed/backfill, and long-slug storage must be verified on PostgreSQL, not by the SQLite test suite.
+
 ## 8. Deployment Checklist
 
 1. Set production `.env` values, including HTTPS session and Sanctum domains.

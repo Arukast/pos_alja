@@ -94,12 +94,12 @@ sequenceDiagram
     participant R as Reverb
 
     alt Owner
-        A->>SPA: Create or edit product, category, material, or a global/branch finishing/display option
-        SPA->>API: POST/PUT /api/v1/products, /categories, /attributes, /materials
+        A->>SPA: Create or edit product, category, material, attribute type, or a global/branch attribute option
+        SPA->>API: POST/PUT /api/v1/products, /categories, /attribute-types, /attributes, /materials
         SPA->>API: PATCH /api/v1/materials/{id}/min-stock
-        API->>Policy: Authorize CatalogPolicy::manageCategories, manageProducts, createAttribute/updateAttribute, or MaterialPolicy::update/setMinimumStock
+        API->>Policy: Authorize CatalogPolicy::manageCategories, manageProducts, createAttribute/updateAttribute, AttributeTypePolicy::create/update, or MaterialPolicy::update/setMinimumStock
     else Manager
-        M->>SPA: Edit own-branch finishing/display or branch minimum stock
+        M->>SPA: Edit own-branch attribute option or branch minimum stock
         SPA->>API: POST/PUT /api/v1/attributes or PATCH /api/v1/materials/{id}/min-stock
         API->>Policy: Authorize CatalogPolicy::createAttribute/updateAttribute or MaterialPolicy::setMinimumStock for own branch
     end
@@ -129,7 +129,7 @@ sequenceDiagram
     participant DB
     participant R as Reverb
 
-    D->>SPA: Search customer, then choose product, material, finishing, display, specs
+    D->>SPA: Search customer, then choose product, material, one attribute per active type, specs
     SPA->>API: GET /api/v1/customers?search
     API-->>SPA: Matching customers
     opt New customer
@@ -139,7 +139,7 @@ sequenceDiagram
     SPA->>API: GET /api/v1/quotes/options
     API-->>SPA: Branch catalog, no cost/profit for designer
     SPA->>API: POST /api/v1/quotes
-    API->>PriceCalc: Material + finishing/display price, customer type, branch reseller discount
+    API->>PriceCalc: Enforce active types and one attribute per type; material + selected attribute price, customer type, branch reseller discount
     PriceCalc-->>API: Unit price, area, subtotal
     API-->>SPA: Quote
     SPA->>API: POST /api/v1/invoices
@@ -171,6 +171,7 @@ sequenceDiagram
     SPA->>API: PUT /api/v1/invoices/{id}/items
     API->>Policy: Authorize update (designer, same branch)
     API->>DB: BEGIN, lock invoice and orders
+    API->>DB: Derive invoice-wide inactive attribute allowance from the locked orders
     API->>DB: Require every order status = 0 and invoice status 0 or 1
     alt Any order in production or invoice fully paid
         API-->>SPA: 409 cannot change
