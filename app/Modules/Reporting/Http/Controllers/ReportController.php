@@ -8,6 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\WastedMaterial;
+use App\Modules\Reporting\Actions\ExportReport;
+use App\Modules\Reporting\Http\Requests\ExportReportRequest;
+use App\Modules\Reporting\Http\Requests\ReportFilterRequest;
 use App\Modules\Reporting\Queries\BaseCostQuery;
 use App\Modules\Reporting\Queries\ExpensesQuery;
 use App\Modules\Reporting\Queries\GrossRevenueQuery;
@@ -20,18 +23,18 @@ use App\Support\Decimal;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ReportController extends Controller
 {
     public function grossRevenue(
-        Request $request,
+        ReportFilterRequest $request,
         GrossRevenueQuery $query
     ): JsonResponse {
-        Gate::authorize('viewOwnerReports');
-
-        [$branchId, $startDate, $endDate] = $this->range($request);
-        $data = $query->get($branchId, $startDate, $endDate);
+        [$startDate, $endDate] = $request->dateRange();
+        $data = $query->get($request->resolvedBranchId(), $startDate, $endDate);
 
         return response()->json([
             'grand_total' => Decimal::money($data['grand_total']),
@@ -50,12 +53,10 @@ final class ReportController extends Controller
         ]);
     }
 
-    public function baseCost(Request $request, BaseCostQuery $query): JsonResponse
+    public function baseCost(ReportFilterRequest $request, BaseCostQuery $query): JsonResponse
     {
-        Gate::authorize('viewOwnerReports');
-
-        [$branchId, $startDate, $endDate] = $this->range($request);
-        $data = $query->get($branchId, $startDate, $endDate);
+        [$startDate, $endDate] = $request->dateRange();
+        $data = $query->get($request->resolvedBranchId(), $startDate, $endDate);
 
         return response()->json([
             'total_hpp' => Decimal::money($data['total_hpp']),
@@ -66,12 +67,10 @@ final class ReportController extends Controller
         ]);
     }
 
-    public function netProfit(Request $request, NetProfitQuery $query): JsonResponse
+    public function netProfit(ReportFilterRequest $request, NetProfitQuery $query): JsonResponse
     {
-        Gate::authorize('viewOwnerReports');
-
-        [$branchId, $startDate, $endDate] = $this->range($request);
-        $data = $query->get($branchId, $startDate, $endDate);
+        [$startDate, $endDate] = $request->dateRange();
+        $data = $query->get($request->resolvedBranchId(), $startDate, $endDate);
 
         return response()->json([
             'net_profit' => Decimal::money($data['net_profit']),
@@ -85,12 +84,10 @@ final class ReportController extends Controller
         ]);
     }
 
-    public function expenses(Request $request, ExpensesQuery $query): JsonResponse
+    public function expenses(ReportFilterRequest $request, ExpensesQuery $query): JsonResponse
     {
-        Gate::authorize('viewOwnerReports');
-
-        [$branchId, $startDate, $endDate] = $this->range($request);
-        $data = $query->get($branchId, $startDate, $endDate);
+        [$startDate, $endDate] = $request->dateRange();
+        $data = $query->get($request->resolvedBranchId(), $startDate, $endDate);
 
         return response()->json([
             'expenses_total' => Decimal::money($data['expenses_total']),
@@ -127,22 +124,27 @@ final class ReportController extends Controller
         return response()->json($query->forManager($actor));
     }
 
-    /**
-     * @return array{0: string, 1: string, 2: string}
-     */
-    private function range(Request $request): array
-    {
-        $data = $request->validate([
-            'branch_id' => ['nullable', 'string'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-        ]);
+    public function export(
+        ExportReportRequest $request,
+        ExportReport $export
+    ): StreamedResponse|Response {
+        $actor = $request->user();
 
-        return [
-            $data['branch_id'] ?? 'all',
-            $data['start_date'],
-            $data['end_date'],
-        ];
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        [$startDate, $endDate] = $request->dateRange();
+
+        return $export->execute(
+            $actor,
+            $request->reportType(),
+            $request->exportFormat(),
+            $request->period(),
+            $request->resolvedBranchId(),
+            $startDate,
+            $endDate,
+        );
     }
 
     /**

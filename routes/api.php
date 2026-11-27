@@ -120,6 +120,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/reports/base-cost', [ReportController::class, 'baseCost']);
         Route::get('/reports/net-profit', [ReportController::class, 'netProfit']);
         Route::get('/reports/expenses', [ReportController::class, 'expenses']);
+        Route::get('/reports/{type}/export', [ReportController::class, 'export']);
         Route::get('/reports/sparkline', [ReportController::class, 'sparkline']);
         Route::get('/reports/designer-leaderboard', [ReportController::class, 'leaderboard']);
         Route::get('/audit-logs', [AuditController::class, 'index']);
