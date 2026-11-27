@@ -99,6 +99,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::get('/customers', [CustomerController::class, 'index']);
         Route::post('/customers', [CustomerController::class, 'store']);
+        Route::put('/customers/{customer}', [CustomerController::class, 'update']);
         Route::get('/quotes/options', [QuoteOptionsController::class, 'index']);
         Route::post('/quotes', [QuoteController::class, 'store']);
         Route::get('/invoices', [InvoiceController::class, 'index']);

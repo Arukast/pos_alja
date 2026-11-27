@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Http\Requests;
 
+use App\Models\Customer;
 use App\Models\Invoice;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class StoreInvoiceRequest extends FormRequest
 {
@@ -21,6 +23,7 @@ final class StoreInvoiceRequest extends FormRequest
     {
         return [
             'customer_id' => ['required', 'uuid', 'exists:customers,id'],
+            'institution' => ['nullable', 'string', Rule::in(Customer::INSTITUTIONS)],
             'discount' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'deadline' => ['nullable', 'date'],
             'source' => ['nullable', 'string', 'in:Offline,Online'],

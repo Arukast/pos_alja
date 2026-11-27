@@ -8,7 +8,7 @@ import { CashierPaymentsPage } from '../features/cashier/CashierPaymentsPage';
 import { CashierPickupPage } from '../features/cashier/CashierPickupPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
 import { DesignerEditOrderPage } from '../features/designer/DesignerEditOrderPage';
-import { DesignerNewCustomerPage } from '../features/designer/DesignerNewCustomerPage';
+import { CustomerManagementPage } from '../features/customers/CustomerManagementPage';
 import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
 import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
@@ -67,6 +67,13 @@ export const router = createBrowserRouter([
                     { path: 'profile', element: <ProfilePage /> },
                     { path: 'dashboard', element: <LegacyDashboardRedirect /> },
                     {
+                        path: 'customers',
+                        element: (
+                            <RequireRole roles={['owner', 'manager', 'designer', 'cashier']} />
+                        ),
+                        children: [{ index: true, element: <CustomerManagementPage /> }],
+                    },
+                    {
                         path: 'owner',
                         element: <RequireRole roles={['owner']} />,
                         children: [
@@ -122,7 +129,6 @@ export const router = createBrowserRouter([
                         children: [
                             { index: true, element: <DesignerDashboardPage /> },
                             { path: 'new-order', element: <DesignerNewOrderPage /> },
-                            { path: 'customers/new', element: <DesignerNewCustomerPage /> },
                             { path: 'orders', element: <DesignerOrdersPage /> },
                             { path: 'orders/:id/edit', element: <DesignerEditOrderPage /> },
                         ],
