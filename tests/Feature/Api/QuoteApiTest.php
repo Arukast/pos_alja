@@ -365,7 +365,7 @@ class QuoteApiTest extends TestCase
             ->filter(fn (array $query): bool => str_contains($query['query'], 'attribute_types'))
             ->count();
 
-        $this->assertSame(2, $typeQueries);
+        $this->assertSame(3, $typeQueries);
     }
 
     public function test_quote_options_categories_do_not_report_a_product_count(): void

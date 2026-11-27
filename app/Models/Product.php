@@ -16,13 +16,22 @@ class Product extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
 
-    protected $fillable = ['name', 'pricing_type', 'product_category_id', 'is_active'];
+    protected $fillable = [
+        'name',
+        'pricing_type',
+        'product_category_id',
+        'is_active',
+        'requires_material',
+        'uses_attributes',
+    ];
 
     /**
      * @var array<string, string>
      */
     protected $casts = [
         'is_active' => 'boolean',
+        'requires_material' => 'boolean',
+        'uses_attributes' => 'boolean',
     ];
 
     public function pricings(): HasMany
@@ -46,5 +55,31 @@ class Product extends Model
         return $this->belongsToMany(Material::class, 'material_product', 'product_id', 'material_id')
             ->withTimestamps()
             ->orderBy('materials.name');
+    }
+
+    /**
+     * @return BelongsToMany<AttributeType, $this>
+     */
+    public function attributeTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AttributeType::class,
+            'attribute_type_product',
+            'product_id',
+            'attribute_type_id',
+        )->withTimestamps()->orderBy('attribute_types.name');
+    }
+
+    /**
+     * @return BelongsToMany<Attribute, $this>
+     */
+    public function compatibleAttributes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Attribute::class,
+            'attribute_product',
+            'product_id',
+            'attribute_id',
+        )->withTimestamps()->orderBy('attributes.name');
     }
 }

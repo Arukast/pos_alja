@@ -82,7 +82,12 @@ final class QuoteOptionsController extends Controller
                                 fn (Builder $category) => $category->where('is_active', true)
                             );
                     })
-                    ->with(['category', 'materials'])
+                    ->with([
+                        'category',
+                        'materials',
+                        'attributeTypes',
+                        'compatibleAttributes.typeInfo',
+                    ])
                     ->orderBy('name')
                     ->get()
             ),
