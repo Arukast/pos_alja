@@ -890,6 +890,78 @@ class CreateInvoiceApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_invoice_stores_the_chosen_institution(): void
+    {
+        $this->customer->update(['institutions' => ['Sekolah', 'Masyarakat/Retail']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Sekolah']))
+            ->assertCreated()
+            ->assertJsonPath('invoice.customer.institution', 'Sekolah');
+
+        $this->assertDatabaseHas('invoices', [
+            'id' => $response->json('invoice.id'),
+            'institution' => 'Sekolah',
+        ]);
+    }
+
+    public function test_invoice_rejects_institution_outside_customer_labels(): void
+    {
+        $this->customer->update(['institutions' => ['Sekolah', 'Masyarakat/Retail']]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Universitas']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('institution');
+
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_invoice_defaults_to_first_customer_institution(): void
+    {
+        $this->customer->update(['institutions' => ['Masyarakat/Retail', 'Sekolah']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+
+        $this->assertDatabaseHas('invoices', [
+            'id' => $response->json('invoice.id'),
+            'institution' => 'Masyarakat/Retail',
+        ]);
+    }
+
+    public function test_invoice_institution_snapshot_survives_customer_update(): void
+    {
+        $this->customer->update(['institutions' => ['Sekolah', 'Masyarakat/Retail']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Sekolah']))
+            ->assertCreated();
+
+        $invoiceId = (string) $response->json('invoice.id');
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/customers/{$this->customer->id}", [
+                'name' => 'Jane Customer',
+                'institutions' => ['Universitas'],
+            ])
+            ->assertOk();
+
+        $this->actingAs($this->designer)
+            ->getJson("/api/v1/invoices/{$invoiceId}")
+            ->assertOk()
+            ->assertJsonPath('invoice.customer.institution', 'Sekolah');
+    }
+
+    public function test_legacy_invalid_singular_label_request_is_422(): void
+    {
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Lainnya']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('institution');
+    }
+
     public function test_invoice_detail_exposes_product_composition_for_edit(): void
     {
         $type = AttributeType::query()->where('slug', 'finishing')->firstOrFail();
