@@ -41,7 +41,7 @@ export function AppShell() {
                             <Menu className="h-5 w-5" />
                         </button>
                         <div className="flex min-w-0 items-center gap-2">
-                            <img src="/images/logo-alja-mark.png" alt="" className="h-7 w-7 shrink-0 object-contain" />
+                            <img src="/images/logo-alja-mark-96.png" alt="" className="h-7 w-7 shrink-0" />
                             <span className="text-sm font-bold">Alja POS</span>
                         </div>
                         <ThemeToggle compact />

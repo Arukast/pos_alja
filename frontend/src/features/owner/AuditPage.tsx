@@ -5,7 +5,7 @@ import { api } from '../../api/queries';
 import type { ActivityLog } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody, CardHeader } from '../../components/ui/Card';
+import { Card, CardBody } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
@@ -44,24 +44,22 @@ export function AuditPage() {
             />
 
             <Card>
-                <CardHeader>
-                    <div className="ml-auto w-full sm:w-72">
-                        <Input
-                            aria-label="Cari jejak audit"
-                            placeholder="Cari pengguna, aksi, deskripsi"
-                            value={search}
-                            onChange={(event) => {
-                                setSearch(event.target.value);
-                                setPage(1);
-                            }}
-                        />
-                    </div>
-                </CardHeader>
                 <CardBody>
                     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="min-w-0 sm:flex-1">
+                            <Input
+                                label="Cari"
+                                placeholder="Cari pengguna, aksi, deskripsi"
+                                value={search}
+                                onChange={(event) => {
+                                    setSearch(event.target.value);
+                                    setPage(1);
+                                }}
+                            />
+                        </div>
                         <div className="sm:w-48">
                             <Select
-                                aria-label="Urutkan berdasarkan"
+                                label="Urutkan"
                                 value={sort}
                                 onChange={(event) => setSort(event.target.value)}
                             >
@@ -73,7 +71,7 @@ export function AuditPage() {
                         </div>
                         <div className="sm:w-40">
                             <Select
-                                aria-label="Arah urutan"
+                                label="Arah"
                                 value={direction}
                                 onChange={(event) => setDirection(event.target.value)}
                             >

@@ -49,7 +49,7 @@ export function PageBanner({
     return (
         <header
             className={cn(
-                'relative flex flex-wrap items-start justify-between gap-4 overflow-hidden rounded-2xl border px-5 py-5 sm:px-6',
+                'relative overflow-hidden rounded-2xl border px-5 py-5 sm:px-6',
                 toneClasses[resolvedTone],
             )}
         >
@@ -57,7 +57,7 @@ export function PageBanner({
                 aria-hidden="true"
                 className="bg-brand-primary/10 dark:bg-brand-primary/15 pointer-events-none absolute -top-10 -right-6 h-[120px] w-[120px] rounded-full blur-2xl"
             />
-            <div className="relative z-10 flex min-w-0 items-start gap-3">
+            <div className="relative z-10 flex items-start gap-3">
                 <div className="flex gap-1 pt-1">
                     <span aria-hidden="true" className="bg-brand-primary h-2 w-2 rounded-[1.5px]" />
                     <span aria-hidden="true" className="bg-brand-secondary h-2 w-2 rounded-[1.5px]" />

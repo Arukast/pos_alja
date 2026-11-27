@@ -43,7 +43,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
             <aside className="border-light-border bg-light-surface absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r shadow-xl dark:border-surface-300 dark:bg-surface-800">
                 <div className="flex h-16 shrink-0 items-center justify-between px-4">
                     <div className="flex min-w-0 items-center gap-2.5">
-                        <img src="/images/logo-alja-mark.png" alt="" className="h-8 w-8 shrink-0 object-contain" />
+                        <img src="/images/logo-alja-mark-96.png" alt="" className="h-8 w-8 shrink-0" />
                         <p className="truncate text-sm font-bold">Alja POS</p>
                     </div>
                     <button

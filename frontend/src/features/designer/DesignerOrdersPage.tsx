@@ -78,6 +78,7 @@ export function DesignerOrdersPage() {
 
             <Card>
                 <CardHeader>
+                    <h2 className="font-semibold">Pesanan</h2>
                     <Button size="sm" className="ml-auto" onClick={() => navigate('/designer/new-order')}>
                         Pesanan Baru
                     </Button>

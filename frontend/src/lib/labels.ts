@@ -98,6 +98,14 @@ export function expenseTypeLabel(type: string): string {
 export function pricingTypeLabel(type: string): string {
     return pricingTypes[type] ?? type;
 }
+
+export function listCardTitle(title: string): string {
+    if (title.startsWith('Daftar ')) {
+        return title;
+    }
+
+    return `Daftar ${title.replace(/^Manajemen /, '')}`;
+}
 export function ledgerTypeLabel(type: string | null | undefined): string {
     if (!type) {
         return '-';

@@ -11,6 +11,8 @@ export function NotFoundPage() {
                 <img
                     src="/images/logo-alja.webp"
                     alt="Alja Digital Printing"
+                    width={673}
+                    height={371}
                     className="mx-auto h-auto w-40"
                 />
                 <p className="text-brand-fill dark:text-brand-primary-light mt-5 text-sm font-semibold uppercase tracking-[0.3em]">

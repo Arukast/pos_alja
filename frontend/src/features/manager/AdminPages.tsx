@@ -389,6 +389,7 @@ export function ManagerPricingPage() {
             <CrudPage
                 eyebrow="Konfigurasi"
                 title="Matriks Harga"
+                cardTitle="Daftar Harga"
                 description="Baris harga bertingkat dan aturan penyesuaian."
                 queryKey={['manager', 'pricing']}
                 queryFn={(page) => api.pricing({ page })}

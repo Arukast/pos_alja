@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Fragment, useState, type ReactNode } from 'react';
 
 import type { Paginated } from '../api/types';
+import { listCardTitle } from '../lib/labels';
 import { PageBanner } from './PageBanner';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
@@ -53,6 +54,7 @@ export function ResourceTable<T extends { id: string }>({
             <Card>
                 {cardActions ? (
                     <CardHeader>
+                        <h2 className="font-semibold">{listCardTitle(title)}</h2>
                         <div className="ml-auto flex flex-wrap items-center gap-2">{cardActions}</div>
                     </CardHeader>
                 ) : null}

@@ -31,9 +31,9 @@ export function Sidebar({
         >
             <div className="flex h-16 shrink-0 items-center gap-3 px-4">
                 <img
-                    src="/images/logo-alja-mark.png"
+                    src="/images/logo-alja-mark-96.png"
                     alt={collapsed ? 'Alja POS' : ''}
-                    className="h-8 w-8 shrink-0 object-contain"
+                    className="h-8 w-8 shrink-0"
                 />
                 {!collapsed ? (
                     <div className="min-w-0">

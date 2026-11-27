@@ -117,6 +117,7 @@ export function CategoriesPage({
             <Card>
                 {readOnly ? null : (
                     <CardHeader>
+                        <h2 className="font-semibold">Daftar Kategori</h2>
                         <Button size="sm" className="ml-auto" onClick={openCreate}>
                             Tambah kategori
                         </Button>

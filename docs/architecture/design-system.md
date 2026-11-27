@@ -34,10 +34,12 @@ Outfit only, with tabular numerals for money and counts.
 - Page title: 28px/800 with tight tracking (`PageBanner`).
 - KPI value: 22px/800 (`StatCard`).
 - Panel heading: caller-owned. `Card` renders no title, so each caller sets the heading size. The nominal size
-  is 16px at `font-semibold` (600); the `CrudPage` card header carries only the right-aligned create action and
-  renders no section heading. Callers may deviate: the "Salin tingkat harga" panel on `/manager/pricing` uses
-  18px (`text-lg`). The 16px/700 rule in the design source is a convention for section headers, not something a
-  component enforces.
+  is 16px at `font-semibold` (600); `CrudPage` list cards that pass a `create` action render a short `Daftar`
+  list title on the left (a leading `Manajemen ` is stripped; `cardTitle` overrides it) with the small create
+  action on the right. `ResourceTable` has no `cardTitle` or create action; when given `cardActions` it
+  renders the same derived title on the left and those generic actions on the right. Callers may deviate:
+  the "Salin tingkat harga" panel on `/manager/pricing` uses 18px (`text-lg`). The 16px/700 rule in the
+  design source is a convention for section headers, not something a component enforces.
 - Body copy: 14px (`text-sm`) on cards, forms, tables, and descriptions. The base element has no global
   14px rule.
 - Table text: 14px (`text-sm`). The design source said 13px; the build uses 14px for readability.
@@ -66,7 +68,7 @@ selects, checkboxes, and the secondary button variant all use it; error controls
 ## Shell
 
 240px white sidebar (`w-60`), 64px collapsed (`w-16`), right border, and a 3px top stripe of magenta 33% /
-yellow 22% / cyan 45%. The sidebar header carries the square Alja mark (`logo-alja-mark.png`), the `Alja POS`
+yellow 22% / cyan 45%. The sidebar header carries the square Alja mark (`logo-alja-mark-96.png`), the `Alja POS`
 wordmark, and the current branch name when one is assigned. Navigation groups use 10px uppercase muted captions,
 40px rows, 12px radius, and 14px/500 labels.
 
@@ -106,9 +108,9 @@ width 1600px.
 - Chart (`Sparkline`): one magenta area series, 3px line, area gradient from 28% to transparent, three
   quarter gridlines plus a dashed zero baseline, and 3.5px point markers.
 - Login: light grey canvas (`login-mesh`) with a 4rem grid mesh, a centred 448px (`max-w-md`) white card with
-  the 3px brand stripe, the full Alja lockup above the wordmark below `sm` and beside it at `sm` and above,
-  and one primary button. This screen has no CMYK squares.
-- Brand mark: the square mark is the leading `A` glyph cropped from the source artwork's ALJA word, on a 512px opaque near-black (`#252324`) tile (`frontend/public/images/logo-alja-mark.png`). The full lockup (`frontend/public/images/logo-alja.webp`) appears on Login and 404 at 160px wide. Favicons use the mark at 16/32/48 plus an ICO; Apple 180 and PWA 192/512 use the same near-black tile with the mark inside the central 80% safe zone. Manifest theme is `#E91E8C` on `#FFFFFF`.
+  the 3px brand stripe, the full Alja lockup above the `Masuk` heading below `sm` and beside it at `sm` and
+  above, and one primary button. The lockup is decorative (`alt=""`). This screen has no CMYK squares.
+- Brand mark: the square mark is the leading `A` glyph cropped from the source artwork's ALJA word, on a 512px opaque near-black (`#252324`) tile (`frontend/public/images/logo-alja-mark.png`). The crop keeps only the white `A` (with its 1px antialias fringe) and its magenta extrusion; every other pixel is `#252324`, so no ghost hairlines or brackets survive at any size. The in-app shell uses a 96px derivative (`frontend/public/images/logo-alja-mark-96.png`). The full lockup (`frontend/public/images/logo-alja.webp`) appears on Login and 404 at 160px wide. Favicons use a flat white `A` at 16px (no extrusion or hairlines) and the detailed mark at 32/48, plus a multi-size ICO carrying the flat 16 and detailed 32/48. Apple 180 is a cleaned scale of the same near-black tile with no maskable inset; PWA 192/512 draw the mark inside the central 80% safe zone (0.85 maskable inset). Manifest theme is `#E91E8C` on `#FFFFFF`.
 
 ### Banner deviations
 

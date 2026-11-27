@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast } from '../ui/Toast';
 import type { ResourceColumn } from '../ResourceTable';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { listCardTitle } from '../../lib/labels';
 
 export interface CrudField<T> {
     key: string;
@@ -35,6 +36,7 @@ type FormValues = Record<string, string | number | boolean | string[]>;
 export function CrudPage<T extends { id: string }>({
     eyebrow,
     title,
+    cardTitle,
     description,
     queryKey,
     queryFn,
@@ -56,6 +58,7 @@ export function CrudPage<T extends { id: string }>({
 }: {
     eyebrow: string;
     title: string;
+    cardTitle?: string;
     description?: string;
     queryKey: readonly unknown[];
     queryFn: (page: number) => Promise<Paginated<T>>;
@@ -198,6 +201,7 @@ export function CrudPage<T extends { id: string }>({
             <Card>
                 {create ? (
                     <CardHeader>
+                        <h2 className="font-semibold">{cardTitle ?? listCardTitle(title)}</h2>
                         <Button size="sm" className="ml-auto" onClick={openCreate}>
                             {createLabel}
                         </Button>

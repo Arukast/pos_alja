@@ -45,12 +45,11 @@ export function LoginPage() {
                         <img
                             src="/images/logo-alja.webp"
                             alt=""
+                            width={673}
+                            height={371}
                             className="h-auto w-40"
                         />
                         <div>
-                            <p className="text-brand-fill text-xs font-semibold uppercase tracking-[0.25em] dark:text-brand-primary-light">
-                                Alja Digital Printing
-                            </p>
                             <h1 className="text-2xl font-bold">Masuk</h1>
                         </div>
                     </div>
