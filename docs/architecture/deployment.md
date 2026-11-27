@@ -205,6 +205,7 @@ PB-10 implements FR26. There are three independent run types, all recorded in `b
 ### 7.3 Image And Compose
 
 - The app image adds the PGDG repository and `postgresql-client-16`, then creates `storage/app/backups` and `storage/app/backup-tmp` before the `www-data` chown. `pg_dump` and `pg_restore` must be on `PATH` for `www-data`.
+- Application code stays root-owned and read-only at runtime; the image normalizes it with `chmod -R a+rX,go-w` so `www-data` can read and traverse it, and only `storage` and `bootstrap/cache` are chowned to `www-data` for writes.
 - `worker` runs `php artisan queue:work --sleep=3 --tries=1 --timeout=600` and mounts the `backupdata` volume at `/var/www/html/storage/app/backups`. A backup is queued, never inline; without a worker the row stays `queued`.
 - `scheduler` runs `php artisan schedule:work` and does not mount the volume.
 - `DB_QUEUE_RETRY_AFTER=900` must exceed the job timeout (`BACKUP_TIMEOUT=600`).
