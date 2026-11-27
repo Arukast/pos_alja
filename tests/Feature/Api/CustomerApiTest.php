@@ -95,6 +95,7 @@ final class CustomerApiTest extends TestCase
         $this->assertSame('audit@example.test', $log->payload['email']);
         $this->assertSame('Jalan Audit 1', $log->payload['address']);
         $this->assertSame('Sekolah', $log->payload['institution']);
+        $this->assertSame(['Sekolah'], $log->payload['institutions']);
         $this->assertSame('Reguler', $log->payload['type']);
 
         $this->assertSame(1, ActivityLog::query()
@@ -124,6 +125,7 @@ final class CustomerApiTest extends TestCase
             'name' => 'Tanpa Institusi',
         ])->assertUnprocessable();
 
+        $this->assertDatabaseCount('customers', 0);
         $this->assertDatabaseCount('activity_logs', 0);
     }
 
@@ -166,5 +168,129 @@ final class CustomerApiTest extends TestCase
         $this->actingAs($designer)->getJson('/api/v1/customers?search=Universitas')
             ->assertOk()
             ->assertJsonFragment(['id' => $customer->id, 'institution' => 'Universitas', 'address' => 'Jalan Contoh']);
+    }
+
+    /** Legacy singular payloads keep working and unknown labels 422 on the carrying field. */
+    public function test_legacy_singular_institution_still_works_and_invalid_label_is_rejected(): void
+    {
+        $branch = Branch::create(['name' => 'Legacy Branch', 'code' => 'LEG']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Legacy Sekolah',
+            'institution' => 'Sekolah',
+        ])->assertCreated()
+            ->assertJsonPath('customer.institution', 'Sekolah')
+            ->assertJsonPath('customer.institutions', ['Sekolah']);
+
+        $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Legacy Lainnya',
+            'institution' => 'Lainnya',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['institution']);
+
+        $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Array Lainnya',
+            'institutions' => ['Lainnya'],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['institutions.0']);
+    }
+
+    /** When both label fields are sent, the array wins over the legacy field. */
+    public function test_institutions_wins_when_both_fields_are_sent(): void
+    {
+        $branch = Branch::create(['name' => 'Both Branch', 'code' => 'BTH']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        $response = $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Both Fields',
+            'institution' => 'Universitas',
+            'institutions' => ['Sekolah', 'Universitas'],
+        ])->assertCreated()
+            ->assertJsonPath('customer.institution', 'Sekolah')
+            ->assertJsonPath('customer.institutions', ['Sekolah', 'Universitas']);
+
+        $customer = Customer::query()->findOrFail($response->json('customer.id'));
+        $this->assertSame(['Sekolah', 'Universitas'], $customer->institutions);
+    }
+
+    /** Labels are stored in canonical constant order regardless of request order. */
+    public function test_institutions_are_normalized_to_constant_order(): void
+    {
+        $branch = Branch::create(['name' => 'Order Branch', 'code' => 'ORD']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        $response = $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Ordered Labels',
+            'institutions' => ['Organisasi/Yayasan', 'Masyarakat/Retail'],
+        ])->assertCreated()
+            ->assertJsonPath('customer.institutions', ['Masyarakat/Retail', 'Organisasi/Yayasan']);
+
+        $customer = Customer::query()->findOrFail($response->json('customer.id'));
+        $this->assertSame(['Masyarakat/Retail', 'Organisasi/Yayasan'], $customer->institutions);
+        $this->assertSame('Masyarakat/Retail', $customer->institution);
+    }
+
+    /** At least one label must be supplied through either field. */
+    public function test_empty_or_missing_institutions_are_rejected(): void
+    {
+        $branch = Branch::create(['name' => 'Empty Branch', 'code' => 'EMP']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'Empty Labels',
+            'institutions' => [],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['institutions']);
+
+        $this->actingAs($designer)->postJson('/api/v1/customers', [
+            'name' => 'No Labels',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['institution', 'institutions']);
+    }
+
+    /** Owner and manager may create customers directly. */
+    public function test_owner_and_manager_can_create_customer(): void
+    {
+        $branch = Branch::create(['name' => 'Write Branch', 'code' => 'WRT']);
+
+        foreach (['owner', 'manager'] as $role) {
+            $user = User::factory()->create(['role' => $role, 'branch_id' => $branch->id]);
+
+            $this->actingAs($user)->postJson('/api/v1/customers', [
+                'name' => ucfirst($role).' Created',
+                'institution' => 'Sekolah',
+            ])->assertCreated()->assertJsonPath('customer.institution', 'Sekolah');
+        }
+    }
+
+    /** Cashiers have read-only customer access. */
+    public function test_cashier_cannot_create_customer(): void
+    {
+        $branch = Branch::create(['name' => 'Cashier Branch', 'code' => 'CSH']);
+        $cashier = User::factory()->create(['role' => 'cashier', 'branch_id' => $branch->id]);
+
+        $this->actingAs($cashier)->postJson('/api/v1/customers', [
+            'name' => 'Blocked By Cashier',
+            'institution' => 'Sekolah',
+        ])->assertForbidden();
+
+        $this->assertDatabaseCount('customers', 0);
+        $this->assertDatabaseCount('activity_logs', 0);
+    }
+
+    /** Guests cannot authenticate and production cannot read or create customers. */
+    public function test_guest_and_production_cannot_read_or_create_customers(): void
+    {
+        $this->getJson('/api/v1/customers')->assertUnauthorized();
+        $this->postJson('/api/v1/customers', [
+            'name' => 'Guest Create',
+            'institution' => 'Sekolah',
+        ])->assertUnauthorized();
+
+        $branch = Branch::create(['name' => 'Guard Branch', 'code' => 'GBD']);
+        $production = User::factory()->create(['role' => 'production', 'branch_id' => $branch->id]);
+
+        $this->actingAs($production)->getJson('/api/v1/customers')->assertForbidden();
+        $this->actingAs($production)->postJson('/api/v1/customers', [
+            'name' => 'Production Create',
+            'institution' => 'Sekolah',
+        ])->assertForbidden();
     }
 }
