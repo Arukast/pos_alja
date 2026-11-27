@@ -188,6 +188,67 @@ class ProductionApiTest extends TestCase
             ->assertJsonValidationErrors('status');
     }
 
+    public function test_queue_hides_orders_on_unpaid_invoices_for_branch_and_owner_all(): void
+    {
+        $customer = Customer::create(['name' => 'Unpaid Customer', 'type' => 'Reguler']);
+
+        $unpaidOne = $this->invoice($this->branchOne, $customer, 'INV-B1-UNPAID');
+        $unpaidOne->update(['status' => 0]);
+        $unpaidOrderOne = $this->order($unpaidOne, 0);
+
+        $unpaidTwo = $this->invoice($this->branchTwo, $customer, 'INV-B2-UNPAID');
+        $unpaidTwo->update(['status' => 0]);
+        $unpaidOrderTwo = $this->order($unpaidTwo, 0);
+
+        $branchIds = collect($this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')->assertOk()->json('data'))->pluck('id')->all();
+        $this->assertCount(3, $branchIds);
+        $this->assertNotContains($unpaidOrderOne->id, $branchIds);
+
+        $paidBranchTwoId = Order::query()
+            ->whereHas('invoice', fn ($query) => $query->where('branch_id', $this->branchTwo->id)->where('status', 1))
+            ->value('id');
+        $this->assertNotContains($paidBranchTwoId, $branchIds);
+
+        $ownerIds = collect($this->actingAs($this->owner)
+            ->getJson('/api/v1/production/queue')->assertOk()->json('data'))->pluck('id')->all();
+        $this->assertCount(5, $ownerIds);
+        $this->assertNotContains($unpaidOrderOne->id, $ownerIds);
+        $this->assertNotContains($unpaidOrderTwo->id, $ownerIds);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/production/queue?branch_id=all')
+            ->assertOk()->assertJsonCount(5, 'data');
+    }
+
+    public function test_summary_counts_exclude_orders_on_unpaid_invoices(): void
+    {
+        $customer = Customer::create(['name' => 'Unpaid Customer', 'type' => 'Reguler']);
+
+        $unpaidOne = $this->invoice($this->branchOne, $customer, 'INV-B1-UNPAID');
+        $unpaidOne->update(['status' => 0]);
+        foreach ([0, 1, 2, 3] as $status) {
+            $this->order($unpaidOne, $status);
+        }
+
+        $unpaidTwo = $this->invoice($this->branchTwo, $customer, 'INV-B2-UNPAID');
+        $unpaidTwo->update(['status' => 0]);
+        $this->order($unpaidTwo, 0);
+        $this->order($unpaidTwo, 3);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/summary')->assertOk()
+            ->assertJsonPath('queued', 1)
+            ->assertJsonPath('processing', 1)
+            ->assertJsonPath('completed_today', 1)
+            ->assertJsonPath('failed', 1);
+
+        $this->actingAs($this->otherProduction)
+            ->getJson('/api/v1/production/summary')->assertOk()
+            ->assertJsonPath('queued', 1)
+            ->assertJsonPath('failed', 1);
+    }
+
     public function test_queue_searches_invoice_number_and_file_name(): void
     {
         $this->actingAs($this->production)

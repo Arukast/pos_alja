@@ -5,6 +5,7 @@ import {
     expenseTypeLabel,
     modelTypeLabel,
     paymentMethodLabel,
+    paymentTypeLabel,
     ledgerTypeLabel,
     listCardTitle,
     roleLabel,
@@ -101,6 +102,14 @@ describe('paymentMethodLabel', () => {
 
     it('falls back to the input for an unknown method', () => {
         expect(paymentMethodLabel('Cheque')).toBe('Cheque');
+    });
+});
+
+describe('paymentTypeLabel', () => {
+    it('labels a down payment as DP and anything else as Pelunasan', () => {
+        expect(paymentTypeLabel('down_payment')).toBe('DP');
+        expect(paymentTypeLabel('settlement')).toBe('Pelunasan');
+        expect(paymentTypeLabel('')).toBe('Pelunasan');
     });
 });
 

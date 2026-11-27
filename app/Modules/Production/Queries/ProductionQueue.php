@@ -20,7 +20,8 @@ final class ProductionQueue
         $query = Order::query()
             ->with(['invoice.customer', 'invoice.designer', 'operator'])
             ->withExists('wastedMaterials')
-            ->whereIn('status', [0, 1, 3]);
+            ->whereIn('status', [0, 1, 3])
+            ->whereHas('invoice', fn (Builder $query) => $query->whereIn('status', [1, 2]));
 
         if (($filters['status'] ?? null) !== null) {
             $query->where('status', $filters['status']);

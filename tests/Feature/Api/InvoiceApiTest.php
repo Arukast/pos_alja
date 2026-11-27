@@ -155,6 +155,31 @@ class InvoiceApiTest extends TestCase
     }
 
     /**
+     * Memastikan daftar invoice memuat orders tanpa membocorkan field uang kepada produksi.
+     */
+    public function test_invoice_list_includes_orders_without_leaking_money_to_production(): void
+    {
+        $designer = $this->actingAs($this->designer)
+            ->getJson('/api/v1/invoices')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $this->invoiceOne->id)
+            ->assertJsonPath('data.0.orders.0.file_name', 'banner.pdf')
+            ->assertJsonPath('data.0.orders.0.is_manual_price', false);
+
+        $this->assertSame('50000.00', $designer->json('data.0.orders.0.unit_price'));
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/invoices')
+            ->assertOk()
+            ->assertJsonPath('data.0.orders.0.file_name', 'banner.pdf')
+            ->assertJsonMissingPath('data.0.orders.0.unit_price')
+            ->assertJsonMissingPath('data.0.orders.0.subtotal')
+            ->assertJsonMissingPath('data.0.orders.0.cost')
+            ->assertJsonMissingPath('data.0.orders.0.profit')
+            ->assertJsonMissingPath('data.0.grand_total');
+    }
+
+    /**
      * Memastikan owner dapat memfilter cabang, sedangkan pengguna cabang tidak dapat menembus cakupan cabangnya.
      */
     public function test_owner_can_filter_invoices_by_branch_while_non_owner_cannot_escape_branch(): void
@@ -274,6 +299,12 @@ class InvoiceApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('invoice.orders.0.unit_price', '50000.00')
             ->assertJsonPath('invoice.orders.0.subtotal', '100000.00')
+            ->assertJsonPath('invoice.discount', '0.00')
+            ->assertJsonPath('invoice.dp_amount', '50000.00')
+            ->assertJsonPath('invoice.accounts_receivable', '50000.00')
+            ->assertJsonPath('invoice.grand_total', '100000.00')
+            ->assertJsonPath('invoice.payments.0.amount', '50000.00')
+            ->assertJsonPath('invoice.payments.0.payment_method', 'Cash')
             ->assertJsonMissingPath('invoice.orders.0.cost')
             ->assertJsonMissingPath('invoice.orders.0.profit')
             ->assertJsonMissingPath('invoice.total_cost')

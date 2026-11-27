@@ -593,7 +593,7 @@ sequenceDiagram
     SPA->>API: GET /api/v1/production/queue?branch_id&status&search
     API->>Policy: Authorize viewQueue
     Policy-->>API: All roles, owner all branches, others own branch
-    API->>DB: Query status 0, 1, and 3 rows by branch
+    API->>DB: Query status 0, 1, and 3 rows whose invoice status is 1 or 2, by branch
     opt status or search filter
         API->>DB: Apply status 0/1/3 (422 otherwise) and search invoice number, file, or order UUID
     end
