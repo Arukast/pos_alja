@@ -13,6 +13,7 @@ use App\Models\OrderStatusLog;
 use App\Models\Pricing;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\MaterialAvailability;
 use App\Support\Decimal;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ final class CreateInvoice
      */
     public function __construct(
         private readonly CalculateQuote $quote,
+        private readonly MaterialAvailability $availability,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -71,6 +73,12 @@ final class CreateInvoice
                 if ($pricing->branch_id !== $branchId) {
                     throw ValidationException::withMessages([
                         "items.{$index}.pricing_id" => 'Baris harga ini milik cabang lain.',
+                    ]);
+                }
+
+                if (! $this->availability->isAvailable($pricing->material, $branchId)) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
                     ]);
                 }
 

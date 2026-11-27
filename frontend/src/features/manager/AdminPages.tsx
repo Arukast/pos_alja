@@ -11,6 +11,7 @@ import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
 import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
@@ -128,7 +129,11 @@ export function ManagerMaterialsPage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <StatCard
                         label="Bahan Aktif"
-                        value={materialCount.isSuccess ? String(materialCount.data.meta.total) : '—'}
+                        value={
+                            materialCount.isSuccess
+                                ? String(materialCount.data.available_total ?? 0)
+                                : '—'
+                        }
                     />
                     <StatCard
                         label="Kategori"
@@ -158,6 +163,11 @@ export function ManagerMaterialsPage() {
                     cell: (material) => (
                         <div>
                             <span className="block font-medium">{material.name}</span>
+                            {material.is_active === false ? (
+                                <Badge tone="danger" className="mt-1">
+                                    Nonaktif
+                                </Badge>
+                            ) : null}
                             {material.category && !material.category.is_active ? (
                                 <Badge tone="warning" className="mt-1">
                                     Kategori nonaktif
@@ -168,6 +178,11 @@ export function ManagerMaterialsPage() {
                                     .filter(Boolean)
                                     .join(' · ')}
                             </p>
+                            {material.stocks[0]?.is_active === false ? (
+                                <span className="mt-1 block sm:hidden">
+                                    <Badge tone="danger">Nonaktif di cabang</Badge>
+                                </span>
+                            ) : null}
                             <div className="text-light-muted mt-1 flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 sm:hidden">
                                 <span className="text-light-muted text-xs dark:text-gray-400">
                                     Min
@@ -214,7 +229,11 @@ export function ManagerMaterialsPage() {
                     header: 'Status',
                     className: 'hidden sm:table-cell',
                     cell: (material) =>
-                        material.is_low_stock === null ? (
+                        material.is_active === false ||
+                        (material.stocks.length > 0 &&
+                            material.stocks[0].is_active === false) ? (
+                            <Badge tone="danger">Nonaktif</Badge>
+                        ) : material.is_low_stock === null ? (
                             '-'
                         ) : material.is_low_stock ? (
                             <Badge tone="warning">Menipis</Badge>
@@ -228,6 +247,16 @@ export function ManagerMaterialsPage() {
             create={(values) => api.admin.createMaterial(values)}
             rowActions={(material) => (
                 <>
+                    {material.stocks.length > 0 ? (
+                        <MaterialActiveToggle
+                            scope="branch"
+                            materialId={material.id}
+                            isActive={material.stocks[0].is_active}
+                            branchId={material.stocks[0].branch_id}
+                            branchName={material.stocks[0].branch_name ?? 'cabang ini'}
+                            materialName={material.name}
+                        />
+                    ) : null}
                     <RestockMaterialButton material={material} />
                     <AdjustMaterialModal material={material} />
                 </>

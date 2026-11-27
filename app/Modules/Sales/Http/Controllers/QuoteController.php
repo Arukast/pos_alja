@@ -7,9 +7,11 @@ namespace App\Modules\Sales\Http\Controllers;
 use App\Exceptions\PricingNotFoundException;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Models\Material;
 use App\Models\User;
 use App\Modules\Sales\Actions\CalculateQuote;
 use App\Modules\Sales\Http\Requests\QuoteRequest;
+use App\Services\MaterialAvailability;
 use App\Support\Decimal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
@@ -18,8 +20,11 @@ use InvalidArgumentException;
 
 final class QuoteController extends Controller
 {
-    public function store(QuoteRequest $request, CalculateQuote $quote): JsonResponse
-    {
+    public function store(
+        QuoteRequest $request,
+        CalculateQuote $quote,
+        MaterialAvailability $availability
+    ): JsonResponse {
         $actor = $request->user();
 
         if (! $actor instanceof User) {
@@ -33,6 +38,13 @@ final class QuoteController extends Controller
         }
 
         $data = $request->validated();
+        $material = Material::query()->find($data['material_id']);
+
+        if (! $availability->isAvailable($material, $actor->branch_id)) {
+            throw ValidationException::withMessages([
+                'material_id' => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
+            ]);
+        }
 
         try {
             $result = $quote->execute([

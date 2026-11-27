@@ -8,10 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\User;
+use App\Modules\Catalog\Actions\SetMaterialActive;
+use App\Modules\Catalog\Actions\SetMaterialBranchAvailability;
 use App\Modules\Catalog\Actions\SetMinimumStock;
 use App\Modules\Catalog\Http\Requests\AdjustStockRequest;
 use App\Modules\Catalog\Http\Requests\SetMinimumStockRequest;
 use App\Modules\Catalog\Http\Requests\StoreMaterialRequest;
+use App\Modules\Catalog\Http\Requests\UpdateMaterialActiveRequest;
+use App\Modules\Catalog\Http\Requests\UpdateMaterialBranchAvailabilityRequest;
 use App\Modules\Catalog\Http\Resources\MaterialResource;
 use App\Modules\Catalog\Http\Resources\ProductionMaterialResource;
 use App\Modules\Catalog\Queries\MaterialQueries;
@@ -55,7 +59,9 @@ final class MaterialController extends Controller
             return ProductionMaterialResource::collection($materials);
         }
 
-        return MaterialResource::collection($materials);
+        return MaterialResource::collection($materials)->additional([
+            'available_total' => $queries->availableCount($actor, is_string($branchId) ? $branchId : null),
+        ]);
     }
 
     public function store(
@@ -102,7 +108,7 @@ final class MaterialController extends Controller
 
         return response()->json([
             'material' => new MaterialResource(
-                $material->load(['category', 'branchStocks.branch'])
+                $material->fresh(['category', 'branchStocks.branch'])
             ),
         ], 201);
     }
@@ -333,6 +339,10 @@ final class MaterialController extends Controller
                 $stockBefore = (float) $stock->current_stock;
             }
 
+            if (! $stock->is_active) {
+                $stock->update(['is_active' => true]);
+            }
+
             $audit->record(
                 $actor,
                 'ACTIVATE',
@@ -361,6 +371,46 @@ final class MaterialController extends Controller
         SetMinimumStockRequest $request,
         Material $material,
         SetMinimumStock $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $action->execute($material, $request->validated(), $actor);
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function active(
+        UpdateMaterialActiveRequest $request,
+        Material $material,
+        SetMaterialActive $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $action->execute($material, (bool) $request->validated('is_active'), $actor);
+
+        return response()->json([
+            'material' => new MaterialResource(
+                $material->fresh(['category', 'branchStocks.branch'])
+            ),
+        ]);
+    }
+
+    public function branchAvailability(
+        UpdateMaterialBranchAvailabilityRequest $request,
+        Material $material,
+        SetMaterialBranchAvailability $action
     ): JsonResponse {
         $actor = $request->user();
 
