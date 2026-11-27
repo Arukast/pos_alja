@@ -28,7 +28,7 @@ class Attribute extends Model
     protected $fillable = [
         'branch_id',
         'name',
-        'type', // finishing, cut, display
+        'type', // attribute_types.slug
         'price',
         'cost',
         'is_active',

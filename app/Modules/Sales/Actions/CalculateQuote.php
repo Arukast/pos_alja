@@ -50,10 +50,10 @@ final class CalculateQuote
         $selected = $params['selected_attributes'] ?? [];
 
         if (is_array($selected) && $selected !== []) {
-            $selectedIds = array_values(array_unique(array_filter(
-                $selected,
-                static fn (mixed $id): bool => is_string($id) && $id !== ''
-            )));
+            $selectedIds = array_values(array_unique(array_filter(array_map(
+                static fn (mixed $id): ?string => is_string($id) && $id !== '' ? strtolower($id) : null,
+                $selected
+            ))));
 
             if ($selectedIds !== []) {
                 $branchId = is_string($params['branch_id'] ?? null) && $params['branch_id'] !== ''

@@ -647,6 +647,24 @@ class QuoteApiTest extends TestCase
             ->assertOk();
     }
 
+    public function test_quote_accepts_an_uppercase_attribute_uuid(): void
+    {
+        $this->attribute->update(['price' => 5000, 'cost' => 3000]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [strtoupper($this->attribute->id)],
+                'quantity' => 2,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.unit_price', '55000.00')
+            ->assertJsonPath('quote.subtotal', '660000.00');
+    }
+
     public function test_quote_deduplicates_repeated_attribute_ids(): void
     {
         $this->actingAs($this->designer)
