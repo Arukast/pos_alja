@@ -123,6 +123,36 @@ Priority order:
 - No stale-run cleanup, retry, or health check exists for queue workers. A killed worker leaves a `running` backup row; the page labels it "Mungkin macet" only after 30 minutes, and a queued run with no worker stays `queued` forever.
 - Audit rows grow without bound in PB-10. Retention/archive-then-delete is deferred until the first real backup size is measured; only the `created_at` index is in place. Eloquent append-only is enforced, but query-builder mass updates and raw SQL bypass the guard.
 - **No-branch customer write (remaining debt):** a non-owner with no branch (designer, manager, or owner) can still create or update a customer because customers are global and `CustomerPolicy::create`/`update` authorize on role only; the audit row then has `branch_id = null`. `CustomerPolicy::create` no longer checks only the designer role — owner and manager are explicitly allowed too, and cashier/production are denied. This pre-existing access gap is recorded in `docs/requirements/access-matrix.md` rule 17 and is not resolved by PB-10, B1a, the admin active lifecycle, or the customer-management change.
+- **Customer write semantics (remaining debt/contract note):** `PUT /customers/{customer}` is full replacement, not a patch. Omitted optional fields (`phone`, `email`, `address`) are cleared to null and an omitted `type` resets to `Reguler`; clients must send the complete desired state, including the full `institutions` list. The SPA edit form sends every field, but an external caller that sends only one field loses the others. This is intentional and documented in `docs/architecture/api-contracts.md`; no partial-update endpoint exists.
+- **Customer-management portability (remaining unverified):** the two additive migrations `2026_11_27_000009_add_institutions_to_customers_table.php` and `2026_11_27_000010_add_institution_to_invoices_table.php`, the JSON label array, and the invoice snapshot were verified on SQLite only; no PostgreSQL run or concurrency check was performed. Unknown legacy labels are deliberately preserved by the backfill; a later migration is needed if they must be mapped to the six-label allow-list.
+
+## 2026-11-27 Customer Management Verification Evidence
+
+Recorded from commands actually run in this worktree after the customer-management commits (`620fb76` through `826d473`) and the follow-up commits `4bd8edf` (self-contained migrations plus `CustomerList` query) and `65bb600` (legacy-label order fallback). The sweep was re-run against the final HEAD; all commands exited 0 unless stated otherwise.
+
+| Command | Result |
+| :--- | :--- |
+| `./init.sh` | exit 0. Backend tests 736/736 passed (4358 assertions); frontend typecheck, lint, 22 files / 140 tests, and production build all passed. |
+| `php artisan test` | exit 0. `{"tool":"phpunit","result":"passed","tests":736,"passed":736,"assertions":4358}`. |
+| `./vendor/bin/pint --test` | exit 0. `{"tool":"pint","result":"passed"}`. |
+| `./vendor/bin/phpstan analyse --memory-limit=1G` | exit 0. `{"tool":"phpstan","result":"passed","errors":0}`. |
+| `composer audit` | exit 0. `No security vulnerability advisories found.` |
+| `npm --prefix frontend run typecheck` | exit 0 (`tsc -b`). |
+| `npm --prefix frontend run lint` | exit 0 (`oxlint`). |
+| `npm --prefix frontend run test` | exit 0. 22 files passed, 140 tests passed. |
+| `npm --prefix frontend run build` | exit 0. `2351 modules transformed`, built in 760 ms (719 ms inside `init.sh`); only the pre-existing >500 kB chunk warning. |
+
+Browser smoke: `agent-browser` 0.42.0 with isolated dev servers in this worktree (`php artisan serve` on 8001 and Vite on 5174, with `SANCTUM_STATEFUL_DOMAINS` extended to include port 5174; the pre-existing servers on 5173/8000 belong to another worktree and were not used). Viewport widths 390, 768, and 1440 px were checked for designer, owner, and cashier; production was checked for route denial.
+
+- Designer `/designer/new-order` at all three widths: empty search shows `Cari pelanggan untuk memilih.`, zero "Pilih" rows, zero settled spinners, and no `Institusi pesanan` select. Typing `Sekolah` returns only "Sekolah Cendekia"; selecting it shows `Institusi pesanan` with options `Sekolah` and `Masyarakat/Retail` and default value `Sekolah`. Both new-customer buttons navigate to `/customers` (verified in Task 8 browser/HAR evidence).
+- Designer `/customers` at all three widths: heading `Manajemen Pelanggan`, `Tambah Pelanggan` present, two rows, two `Ubah` buttons, one `Pelanggan` sidebar link. Row `PT Nusantara Jaya` shows `Bisnis/Perusahaan`; `Sekolah Cendekia` shows `Sekolah, Masyarakat/Retail`, confirming multi-label storage and one of the two added labels. The create modal exposes exactly the six institution labels with `Masyarakat/Retail` checked and `Reguler`/`Reseller` type options.
+- Owner `/customers` at all three widths: same write controls as designer (create button, two `Ubah` buttons, one sidebar link).
+- Cashier `/customers` at all three widths: list renders two rows and one sidebar link, with no `Tambah Pelanggan`, no `Ubah` buttons, and no `AKSI` column.
+- Production `/customers` at all three widths: client-side redirect to `/production`, no `Manajemen Pelanggan` heading, and zero `Pelanggan` sidebar links. API writes remain 403 (asserted by `CustomerApiTest`, not re-driven in the browser).
+
+Designer new-order and `/customers` checks were repeated after follow-up commits `4bd8edf` and `65bb600`; at 390, 768, and 1440 px the empty-search prompt still showed with zero customer rows and `/customers` still showed `Tambah Pelanggan` with two rows and two `Ubah` buttons. Those commits change migration internals and the legacy-label invoice payload, not role gating or list visibility.
+
+Screenshots plus DOM and computed-style snapshots are in `.ai-docs/screens/task10-customer-docs/` (untracked scratch, never staged). No code files were changed by this documentation reconciliation; the only working-tree code change observed was the pre-existing, uncommitted `frontend/src/features/customers/customerAccess.test.ts` test-name alignment made by the Task 9 verification subagent, which was left untouched.
 
 - A customer with a legacy label outside the allowed set (for example `Lainnya`) keeps that label on invoices when the designer omits `institution`, because the server falls back to the customer's first stored label. Editing that customer on `/customers` filters unknown labels to the allowed ones, so saving silently rewrites the primary label to `Masyarakat/Retail`. Known limitation.
 
