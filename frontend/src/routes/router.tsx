@@ -91,6 +91,10 @@ export const router = createBrowserRouter([
                         element: <RequireRole roles={['manager']} />,
                         children: [
                             { index: true, element: <ManagerDashboardPage /> },
+                            { path: 'revenue', element: <GrossRevenuePage /> },
+                            { path: 'base-cost', element: <BaseCostPage /> },
+                            { path: 'net-profit', element: <NetProfitPage /> },
+                            { path: 'expenses', element: <ExpensesPage /> },
                             { path: 'materials', element: <ManagerMaterialsPage /> },
                             { path: 'purchases', element: <PurchasesPage /> },
                             { path: 'ledgers', element: <ManagerLedgersPage /> },

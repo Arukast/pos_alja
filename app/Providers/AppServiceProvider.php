@@ -70,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('viewDashboard', [ReportPolicy::class, 'viewDashboard']);
         Gate::define('viewOwnerReports', [ReportPolicy::class, 'viewOwnerReports']);
+        Gate::define('viewFinancialReports', [ReportPolicy::class, 'viewFinancialReports']);
         Gate::define('viewLeaderboard', [ReportPolicy::class, 'viewLeaderboard']);
 
         // Force HTTPS if the request comes from your Tailscale Funnel domain,

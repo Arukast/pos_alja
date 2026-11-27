@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Pin, PinOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../../api/queries';
@@ -10,6 +11,7 @@ import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
 import { Pagination } from '../../components/ui/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -38,6 +40,10 @@ const downloadLinkClass =
 
 function percentLabel(value: number): string {
     return `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(value)}%`;
+}
+
+function pinActionLabel(backup: Backup): string {
+    return `${backup.is_pinned ? 'Lepas sematan' : 'Sematkan'} backup ${backupDisplayName(backup.filename, backup.created_at)}`;
 }
 
 interface SettingsForm {
@@ -363,6 +369,7 @@ export function BackupPage() {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
     const [notice, setNotice] = useState<{ message: string; tone: ToastTone } | null>(null);
+    const [unpinTarget, setUnpinTarget] = useState<Backup | null>(null);
 
     const backups = useQuery({
         queryKey: ['backups', page],
@@ -418,6 +425,15 @@ export function BackupPage() {
 
     const blocked = manualBlocked(rows);
     const overdue = workerOverdue(rows);
+
+    const confirmUnpin = (): void => {
+        if (unpinTarget === null) {
+            return;
+        }
+
+        pin.mutate({ id: unpinTarget.id, pinned: false });
+        setUnpinTarget(null);
+    };
 
     return (
         <div className="space-y-6">
@@ -555,30 +571,38 @@ export function BackupPage() {
                                                         )}
                                                         <Button
                                                             size="sm"
-                                                            variant="ghost"
-                                                            aria-label={`${backup.is_pinned ? 'Lepas sematan' : 'Sematkan'} backup ${backupDisplayName(backup.filename, backup.created_at)}`}
+                                                            variant="secondary"
+                                                            aria-label={pinActionLabel(backup)}
                                                             aria-pressed={backup.is_pinned}
+                                                            title={pinActionLabel(backup)}
                                                             loading={
                                                                 pin.isPending &&
                                                                 pin.variables?.id === backup.id
                                                             }
                                                             onClick={() => {
-                                                                if (
-                                                                    backup.is_pinned &&
-                                                                    !window.confirm(
-                                                                        'Lepas sematan backup ini? Backup yang dilepas dapat dihapus pada backup berikutnya.'
-                                                                    )
-                                                                ) {
+                                                                if (backup.is_pinned) {
+                                                                    setUnpinTarget(backup);
+
                                                                     return;
                                                                 }
 
                                                                 pin.mutate({
                                                                     id: backup.id,
-                                                                    pinned: !backup.is_pinned,
+                                                                    pinned: true,
                                                                 });
                                                             }}
                                                         >
-                                                            {backup.is_pinned ? 'Lepas' : 'Sematkan'}
+                                                            {backup.is_pinned ? (
+                                                                <PinOff
+                                                                    className="h-4 w-4"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            ) : (
+                                                                <Pin
+                                                                    className="h-4 w-4"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            )}
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -598,6 +622,30 @@ export function BackupPage() {
                     ) : null}
                 </CardBody>
             </Card>
+
+            <Modal
+                open={unpinTarget !== null}
+                onClose={() => setUnpinTarget(null)}
+                size="sm"
+                title="Lepas sematan backup?"
+                description="Backup ini tidak lagi dilindungi retensi dan dapat dihapus pada backup berikutnya."
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setUnpinTarget(null)}>
+                            Batal
+                        </Button>
+                        <Button variant="danger" onClick={confirmUnpin}>
+                            Lepas sematan
+                        </Button>
+                    </>
+                }
+            >
+                {unpinTarget ? (
+                    <p className="text-sm">
+                        {backupDisplayName(unpinTarget.filename, unpinTarget.created_at)}
+                    </p>
+                ) : null}
+            </Modal>
 
             {notice ? (
                 <Toast

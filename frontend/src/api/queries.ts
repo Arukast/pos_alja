@@ -1,4 +1,4 @@
-import { API_BASE, apiFetch } from '../lib/api';
+import { API_BASE, apiDownload, apiFetch } from '../lib/api';
 import type {
     ActivityLog,
     Attribute,
@@ -45,7 +45,11 @@ function queryString(params: object = {}): string {
     return query ? `?${query}` : '';
 }
 
+export type ReportType = 'gross-revenue' | 'base-cost' | 'net-profit' | 'expenses';
+export type ReportExportFormat = 'xlsx' | 'pdf';
+
 export interface ReportParams {
+    period?: string;
     branch_id?: string;
     start_date: string;
     end_date: string;
@@ -167,6 +171,15 @@ export const api = {
             ),
 
         leaderboard: () => apiFetch<LeaderboardReport>('/reports/designer-leaderboard'),
+
+        exportReport: (
+            type: ReportType,
+            params: ReportParams & { format: ReportExportFormat }
+        ) =>
+            apiDownload(
+                `/reports/${type}/export${queryString(params)}`,
+                `laporan-${type}-${params.start_date}_${params.end_date}.${params.format}`
+            ),
     },
 
     quoteOptions: (params: QueryParams = {}) =>

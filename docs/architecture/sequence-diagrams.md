@@ -541,7 +541,7 @@ sequenceDiagram
     API-->>SPA: Role-shaped totals, ledgers, margin
 ```
 
-### 7.2 Export Report
+### 7.2 Export Report (PB-09, implemented)
 
 ```mermaid
 sequenceDiagram
@@ -551,17 +551,15 @@ sequenceDiagram
     participant API
     participant Policy
     participant DB
-    participant FS as Storage
-    participant R as Reverb
+    participant Exp as Excel/PDF Exporter
 
-    A->>SPA: Choose report, period, branch, format
-    SPA->>API: GET /api/v1/reports/export?format=xlsx|pdf&filters
-    API->>Policy: Authorize owner/manager, branch scope
+    A->>SPA: Choose report, period, branch (owner), format (xlsx|pdf)
+    SPA->>API: GET /api/v1/reports/{type}/export?format=xlsx|pdf&filters
+    API->>Policy: Authorize viewFinancialReports and branch scope
     API->>DB: Query summary and detail rows
-    API->>FS: Generate and store XLSX/PDF
-    API->>DB: Insert audit log
-    API-->>SPA: Download path
-    API->>R: OrderUpdated optional
+    API->>DB: AuditLogger::record(EXPORT) before streaming
+    API->>Exp: Build streaming XLSX (OpenSpout) or A4 PDF (Dompdf)
+    API-->>SPA: Binary download with Content-Disposition filename
 ```
 
 ### 7.3 Audit Log Write And Read
