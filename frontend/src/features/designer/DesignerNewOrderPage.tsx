@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../api/queries';
 import type { Quote } from '../../api/queries';
-import type { Customer } from '../../api/types';
+import { CUSTOMER_INSTITUTIONS, type Customer } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -191,9 +191,13 @@ export function DesignerNewOrderPage() {
                 throw new Error('Pilih atau buat pelanggan terlebih dahulu.');
             }
 
+            const selectedInstitution = CUSTOMER_INSTITUTIONS.includes(institution)
+                ? institution
+                : null;
+
             return api.createInvoice({
                 customer_id: customer.id,
-                institution: institution || null,
+                ...(selectedInstitution ? { institution: selectedInstitution } : {}),
                 discount: 0,
                 deadline: deadline || null,
                 source,

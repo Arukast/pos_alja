@@ -931,6 +931,20 @@ class CreateInvoiceApiTest extends TestCase
         ]);
     }
 
+    public function test_invoice_omitted_institution_falls_back_to_legacy_customer_label(): void
+    {
+        $this->customer->update(['institutions' => ['Lainnya']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+
+        $this->assertSame(
+            'Lainnya',
+            Invoice::query()->findOrFail($response->json('invoice.id'))->institution
+        );
+    }
+
     public function test_invoice_institution_snapshot_survives_customer_update(): void
     {
         $this->customer->update(['institutions' => ['Sekolah', 'Masyarakat/Retail']]);
