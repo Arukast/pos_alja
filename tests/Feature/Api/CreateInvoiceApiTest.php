@@ -921,20 +921,19 @@ class CreateInvoiceApiTest extends TestCase
             'type' => $type->slug,
         ]);
 
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+
+        $invoiceId = (string) $response->json('invoice.id');
+
+        // T5 rejects attributes on new lines once the flags are off; flip them after creation.
         $this->product->update([
             'requires_material' => false,
             'uses_attributes' => false,
         ]);
         $this->product->attributeTypes()->sync([$type->id]);
         $this->product->compatibleAttributes()->sync([$attribute->id]);
-
-        $response = $this->actingAs($this->designer)
-            ->postJson('/api/v1/invoices', $this->payload([
-                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
-            ]))
-            ->assertCreated();
-
-        $invoiceId = (string) $response->json('invoice.id');
 
         $this->actingAs($this->designer)
             ->getJson("/api/v1/invoices/{$invoiceId}")
@@ -944,6 +943,179 @@ class CreateInvoiceApiTest extends TestCase
             ->assertJsonPath('invoice.orders.0.pricing.uses_attributes', false)
             ->assertJsonPath('invoice.orders.0.pricing.attribute_type_ids.0', $type->id)
             ->assertJsonPath('invoice.orders.0.pricing.attribute_ids.0', $attribute->id);
+    }
+
+    public function test_invoice_edit_grandfathers_a_whole_unchanged_line_after_product_change(): void
+    {
+        $attribute = $this->makeAttribute('Glossy', 'finishing');
+        $invoice = $this->invoiceWithAttributes([$attribute->id]);
+        $this->makeProductIncompatible();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
+                'items' => [$this->item([
+                    'id' => $invoice['order_id'],
+                    'selected_attributes' => [$attribute->id],
+                ])],
+            ])
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.selected_attributes.0', $attribute->id);
+    }
+
+    public function test_invoice_edit_rejects_changed_pricing_line_after_product_change(): void
+    {
+        $attribute = $this->makeAttribute('Glossy', 'finishing');
+        $invoice = $this->invoiceWithAttributes([$attribute->id]);
+        $this->makeProductIncompatible();
+
+        $secondPricing = Pricing::create([
+            'branch_id' => $this->branchOne->id,
+            'product_id' => $this->product->id,
+            'material_id' => $this->material->id,
+            'customer_type' => 'Reguler',
+            'min_qty' => 1,
+            'price' => 60000,
+            'cost' => 20000,
+            'profit' => 40000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
+                'items' => [$this->item([
+                    'id' => $invoice['order_id'],
+                    'pricing_id' => $secondPricing->id,
+                    'selected_attributes' => [$attribute->id],
+                ])],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
+    public function test_invoice_edit_rejects_changed_selection_after_product_change(): void
+    {
+        $glossy = $this->makeAttribute('Glossy', 'finishing');
+        $matte = $this->makeAttribute('Matte', 'finishing');
+        $invoice = $this->invoiceWithAttributes([$glossy->id]);
+        $this->makeProductIncompatible(keepMaterial: true);
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
+                'items' => [$this->item([
+                    'id' => $invoice['order_id'],
+                    'selected_attributes' => [$matte->id],
+                ])],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.selected_attributes');
+    }
+
+    public function test_invoice_edit_rejects_a_new_incompatible_line(): void
+    {
+        $attribute = $this->makeAttribute('Glossy', 'finishing');
+        $invoice = $this->invoiceWithAttributes([$attribute->id]);
+        $this->makeProductIncompatible();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
+    public function test_invoice_edit_grandfathering_ignores_attribute_order_and_client_flags(): void
+    {
+        $finishing = $this->makeAttribute('Glossy', 'finishing');
+        $display = $this->makeAttribute('X-Banner', 'display');
+        $invoice = $this->invoiceWithAttributes([$finishing->id, $display->id]);
+        $this->makeProductIncompatible();
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
+                'inactive_attribute_allowance' => [$finishing->id, $display->id],
+                'allow_product_capability' => true,
+                'items' => [$this->item([
+                    'id' => $invoice['order_id'],
+                    'selected_attributes' => [$display->id, $finishing->id],
+                    'inactive_attribute_allowance' => [$finishing->id, $display->id],
+                    'allow_product_capability' => true,
+                ])],
+            ])
+            ->assertOk()
+            ->assertJsonCount(2, 'invoice.orders.0.selected_attributes');
+    }
+
+    public function test_invoice_edit_client_skip_flag_cannot_grandfather_a_changed_line(): void
+    {
+        $attribute = $this->makeAttribute('Glossy', 'finishing');
+        $invoice = $this->invoiceWithAttributes([$attribute->id]);
+        $this->makeProductIncompatible();
+
+        $secondPricing = Pricing::create([
+            'branch_id' => $this->branchOne->id,
+            'product_id' => $this->product->id,
+            'material_id' => $this->material->id,
+            'customer_type' => 'Reguler',
+            'min_qty' => 1,
+            'price' => 60000,
+            'cost' => 20000,
+            'profit' => 40000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
+                'skip_product_capability_checks' => true,
+                'items' => [$this->item([
+                    'id' => $invoice['order_id'],
+                    'pricing_id' => $secondPricing->id,
+                    'selected_attributes' => [$attribute->id],
+                    'skip_product_capability_checks' => true,
+                ])],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
+    private function makeAttribute(string $name, string $type): Attribute
+    {
+        return Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => $name,
+            'type' => $type,
+        ]);
+    }
+
+    /**
+     * @param  list<string>  $attributeIds
+     * @return array{id: string, order_id: string}
+     */
+    private function invoiceWithAttributes(array $attributeIds): array
+    {
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => $attributeIds])],
+            ]))
+            ->assertCreated();
+
+        return [
+            'id' => (string) $response->json('invoice.id'),
+            'order_id' => (string) $response->json('invoice.orders.0.id'),
+        ];
+    }
+
+    private function makeProductIncompatible(bool $keepMaterial = false): void
+    {
+        $this->product->update([
+            'requires_material' => $keepMaterial,
+            'uses_attributes' => false,
+        ]);
+
+        if (! $keepMaterial) {
+            $this->product->materials()->sync([]);
+        }
+
+        $this->product->attributeTypes()->sync([]);
+        $this->product->compatibleAttributes()->sync([]);
     }
 
     private function payload(array $overrides = []): array

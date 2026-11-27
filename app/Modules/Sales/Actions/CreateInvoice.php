@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Sales\Actions;
 
 use App\Exceptions\InvalidAttributeSelectionException;
+use App\Exceptions\InvalidMaterialSelectionException;
+use App\Exceptions\InvalidProductAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -90,7 +92,11 @@ final class CreateInvoice
                         $branchId,
                         $customerType
                     );
-                } catch (InvalidAttributeSelectionException $exception) {
+                } catch (InvalidMaterialSelectionException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                    ]);
+                } catch (InvalidAttributeSelectionException|InvalidProductAttributeSelectionException $exception) {
                     throw ValidationException::withMessages([
                         "items.{$index}.selected_attributes" => $exception->getMessage(),
                     ]);

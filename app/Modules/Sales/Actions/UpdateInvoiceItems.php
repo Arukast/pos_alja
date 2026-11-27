@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Sales\Actions;
 
 use App\Exceptions\InvalidAttributeSelectionException;
+use App\Exceptions\InvalidMaterialSelectionException;
+use App\Exceptions\InvalidProductAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
 use App\Models\Invoice;
 use App\Models\Order;
@@ -99,17 +101,6 @@ final class UpdateInvoiceItems
                     ]);
                 }
 
-                $material = $pricing->material;
-
-                if (! $this->availability->isAvailable($material, $branchId)
-                    && ($material === null
-                        || $material->trashed()
-                        || ! in_array($material->id, $allowedMaterialIds, true))) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
-                    ]);
-                }
-
                 $selectedAttributes = is_array($item['selected_attributes'] ?? null)
                     ? array_values($item['selected_attributes'])
                     : [];
@@ -128,15 +119,38 @@ final class UpdateInvoiceItems
                     $retainedIds[] = $existingOrder->id;
                 }
 
+                // C2: only a whole unchanged line is grandfathered; no client flag widens this.
+                $unchanged = $existingOrder instanceof Order
+                    && strtolower($existingOrder->pricing_id ?? '') === strtolower((string) $item['pricing_id'])
+                    && $existingOrder->pricing?->material_id === $pricing->material_id
+                    && $this->normalizeAttributeSet($existingOrder->selected_attributes)
+                        === $this->normalizeAttributeSet($selectedAttributes);
+
+                $material = $pricing->material;
+
+                if (! $this->availability->isAvailable($material, $branchId)
+                    && ($material === null
+                        || $material->trashed()
+                        || ! in_array($material->id, $allowedMaterialIds, true))) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
+                    ]);
+                }
+
                 try {
                     $quote = $this->quote->forPricing(
                         $pricing,
                         $item,
                         $branchId,
                         $customerType,
-                        $invoiceAttributeIds
+                        $unchanged ? $invoiceAttributeIds : [],
+                        $unchanged,
                     );
-                } catch (InvalidAttributeSelectionException $exception) {
+                } catch (InvalidMaterialSelectionException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                    ]);
+                } catch (InvalidAttributeSelectionException|InvalidProductAttributeSelectionException $exception) {
                     throw ValidationException::withMessages([
                         "items.{$index}.selected_attributes" => $exception->getMessage(),
                     ]);
@@ -290,6 +304,25 @@ final class UpdateInvoiceItems
         SafeBroadcast::orderUpdated($branchId, $designer);
 
         return $updatedInvoice;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function normalizeAttributeSet(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $id): ?string => is_string($id) && $id !== '' ? strtolower($id) : null,
+            $value
+        ))));
+
+        sort($ids);
+
+        return $ids;
     }
 
     /** Trims optional text, storing empty values as null. */

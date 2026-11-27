@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Http\Controllers;
 
+use App\Exceptions\InvalidMaterialSelectionException;
+use App\Exceptions\InvalidProductAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
@@ -56,6 +58,14 @@ final class QuoteController extends Controller
                 'length' => $data['length'] ?? 0,
                 'customer_type' => $data['customer_type'] ?? 'Reguler',
                 'branch_id' => $actor->branch_id,
+            ]);
+        } catch (InvalidMaterialSelectionException $exception) {
+            throw ValidationException::withMessages([
+                'material_id' => $exception->getMessage(),
+            ]);
+        } catch (InvalidProductAttributeSelectionException $exception) {
+            throw ValidationException::withMessages([
+                'selected_attributes' => $exception->getMessage(),
             ]);
         } catch (PricingNotFoundException|InvalidArgumentException $exception) {
             throw ValidationException::withMessages([
