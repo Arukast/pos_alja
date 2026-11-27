@@ -53,6 +53,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             label: 'Administrasi',
             links: [
                 { to: '/owner/users', label: 'Manajemen Pengguna', icon: Users },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
                 { to: '/owner/branches', label: 'Manajemen Cabang', icon: Building2 },
                 { to: '/owner/categories', label: 'Kategori Produk', icon: Tags },
                 { to: '/owner/products', label: 'Produk', icon: Box },
@@ -99,7 +100,10 @@ export const roleLinks: Record<string, NavGroup[]> = {
         },
         {
             label: 'Administrasi',
-            links: [{ to: '/manager/users', label: 'Manajemen Pengguna', icon: Users }],
+            links: [
+                { to: '/manager/users', label: 'Manajemen Pengguna', icon: Users },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
+            ],
         },
     ],
     cashier: [
@@ -113,6 +117,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
                 { to: '/cashier/payments', label: 'Antrean Pembayaran', icon: CreditCard },
                 { to: '/cashier/pickup', label: 'Antrean Pengambilan', icon: Truck },
                 { to: '/cashier/expenses', label: 'Pengeluaran', icon: Receipt },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
             ],
         },
     ],
@@ -126,6 +131,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             links: [
                 { to: '/designer/new-order', label: 'Pesanan Baru', icon: ShoppingCart },
                 { to: '/designer/orders', label: 'Daftar Pesanan', icon: ClipboardList },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
             ],
         },
     ],
