@@ -9,6 +9,7 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /** Feature coverage for customer creation and search in the Sales module. */
@@ -292,5 +293,150 @@ final class CustomerApiTest extends TestCase
             'name' => 'Production Create',
             'institution' => 'Sekolah',
         ])->assertForbidden();
+    }
+
+    /** Owner, manager and designer may update a customer's labels in canonical order. */
+    public function test_owner_manager_and_designer_can_update_customer(): void
+    {
+        $branch = Branch::create(['name' => 'Update Branch', 'code' => 'UPD']);
+        $customer = Customer::create([
+            'name' => 'Pelanggan Lama',
+            'institution' => 'Sekolah',
+            'institutions' => ['Sekolah'],
+        ]);
+
+        foreach (['owner', 'manager', 'designer'] as $role) {
+            $user = User::factory()->create(['role' => $role, 'branch_id' => $branch->id]);
+
+            $this->actingAs($user)->putJson("/api/v1/customers/{$customer->id}", [
+                'name' => ucfirst($role).' Updated',
+                'institutions' => ['Bisnis/Perusahaan', 'Masyarakat/Retail'],
+                'phone' => '0812345678',
+            ])->assertOk()
+                ->assertJsonPath('customer.name', ucfirst($role).' Updated')
+                ->assertJsonPath('customer.phone', '0812345678')
+                ->assertJsonPath('customer.institution', 'Masyarakat/Retail')
+                ->assertJsonPath('customer.institutions', ['Masyarakat/Retail', 'Bisnis/Perusahaan']);
+        }
+    }
+
+    /** Cashier and production cannot update a customer, leaving data and audit untouched. */
+    public function test_cashier_and_production_cannot_update_customer(): void
+    {
+        $branch = Branch::create(['name' => 'Readonly Branch', 'code' => 'RO']);
+        $customer = Customer::create([
+            'name' => 'Pelanggan Terkunci',
+            'institution' => 'Sekolah',
+            'institutions' => ['Sekolah'],
+            'phone' => '0811111111',
+        ]);
+
+        foreach (['cashier', 'production'] as $role) {
+            $user = User::factory()->create(['role' => $role, 'branch_id' => $branch->id]);
+
+            $this->actingAs($user)->putJson("/api/v1/customers/{$customer->id}", [
+                'name' => 'Blocked By '.$role,
+                'institutions' => ['Universitas'],
+            ])->assertForbidden();
+        }
+
+        $customer->refresh();
+        $this->assertSame('Pelanggan Terkunci', $customer->name);
+        $this->assertSame('Sekolah', $customer->institution);
+        $this->assertSame(['Sekolah'], $customer->institutions);
+        $this->assertSame('0811111111', $customer->phone);
+        $this->assertDatabaseCount('activity_logs', 0);
+    }
+
+    /** Guests cannot update a customer. */
+    public function test_guest_cannot_update_customer(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Guest Target',
+            'institution' => 'Sekolah',
+            'institutions' => ['Sekolah'],
+        ]);
+
+        $this->putJson("/api/v1/customers/{$customer->id}", [
+            'name' => 'Guest Update',
+            'institutions' => ['Universitas'],
+        ])->assertUnauthorized();
+
+        $this->assertDatabaseCount('activity_logs', 0);
+    }
+
+    /** Updating an unknown customer returns 404 without writing an audit row. */
+    public function test_unknown_customer_update_returns_404(): void
+    {
+        $branch = Branch::create(['name' => 'Missing Branch', 'code' => 'MIS']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        $this->actingAs($designer)->putJson('/api/v1/customers/'.Str::uuid()->toString(), [
+            'name' => 'Missing Customer',
+            'institutions' => ['Universitas'],
+        ])->assertNotFound();
+
+        $this->assertDatabaseCount('activity_logs', 0);
+    }
+
+    /** Updating a customer writes one UPDATE audit row with actor, branch and labels. */
+    public function test_update_writes_single_update_audit_with_branch(): void
+    {
+        $branch = Branch::create(['name' => 'Update Audit Branch', 'code' => 'UAD']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+        $customer = Customer::create([
+            'name' => 'Audit Update',
+            'institution' => 'Sekolah',
+            'institutions' => ['Sekolah'],
+        ]);
+
+        $this->actingAs($designer)->putJson("/api/v1/customers/{$customer->id}", [
+            'name' => 'Audit Update Baru',
+            'institutions' => ['Organisasi/Yayasan', 'Bisnis/Perusahaan'],
+        ])->assertOk();
+
+        $log = ActivityLog::query()
+            ->where('action', 'UPDATE')
+            ->where('model_type', Customer::class)
+            ->where('model_id', $customer->id)
+            ->firstOrFail();
+
+        $this->assertSame($designer->id, $log->user_id);
+        $this->assertSame($designer->username, $log->username);
+        $this->assertSame('designer', $log->role);
+        $this->assertSame($branch->id, $log->branch_id);
+        $this->assertSame(['Bisnis/Perusahaan', 'Organisasi/Yayasan'], $log->payload['institutions']);
+
+        $this->assertSame(1, ActivityLog::query()
+            ->where('model_type', Customer::class)
+            ->where('model_id', $customer->id)
+            ->count());
+    }
+
+    /** Invalid label payloads are rejected without mutating the customer or auditing. */
+    public function test_update_validation_rejects_invalid_labels(): void
+    {
+        $branch = Branch::create(['name' => 'Invalid Branch', 'code' => 'INV']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+        $customer = Customer::create([
+            'name' => 'Valid Labels',
+            'institution' => 'Sekolah',
+            'institutions' => ['Sekolah'],
+        ]);
+
+        $this->actingAs($designer)->putJson("/api/v1/customers/{$customer->id}", [
+            'name' => 'Invalid Singular',
+            'institution' => 'Lainnya',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['institution']);
+
+        $this->actingAs($designer)->putJson("/api/v1/customers/{$customer->id}", [
+            'name' => 'Invalid Array',
+            'institutions' => ['Lainnya'],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['institutions.0']);
+
+        $customer->refresh();
+        $this->assertSame('Valid Labels', $customer->name);
+        $this->assertSame(['Sekolah'], $customer->institutions);
+        $this->assertDatabaseCount('activity_logs', 0);
     }
 }

@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\User;
 use App\Modules\Sales\Actions\CreateCustomer;
+use App\Modules\Sales\Actions\UpdateCustomer;
 use App\Modules\Sales\Http\Requests\StoreCustomerRequest;
+use App\Modules\Sales\Http\Requests\UpdateCustomerRequest;
 use App\Modules\Sales\Http\Resources\CustomerResource;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -53,5 +55,23 @@ final class CustomerController extends Controller
         return response()->json([
             'customer' => new CustomerResource($customer),
         ], 201);
+    }
+
+    public function update(
+        UpdateCustomerRequest $request,
+        Customer $customer,
+        UpdateCustomer $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $updated = $action->execute($customer, $request->validated(), $actor);
+
+        return response()->json([
+            'customer' => new CustomerResource($updated),
+        ]);
     }
 }
