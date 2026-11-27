@@ -75,7 +75,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Manager may manage cashier, designer, and production users in their own branch only.
   - Deactivation sets `users.is_active = false` and keeps the row; an owner can reactivate the account. Deactivation blocks new logins and takes effect on the user's next authenticated `/api/v1` request.
   - A manager may toggle own-branch staff status but cannot delete or restore users. Soft delete and restore remain owner-only administrative APIs with no normal UI.
-  - The last active owner (`role = owner`, `is_active = true`, not trashed) cannot be deactivated, deleted, or demoted through the status route, the profile flow, `DELETE /users/{user}`, or `PUT /users/{user}`; each path returns 422.
+  - The last active owner (`role = owner`, `is_active = true`, not trashed) cannot be deactivated, deleted, or demoted: profile deactivation, `DELETE /users/{user}`, and demotion through `PUT /users/{user}` return 422 with `Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.` The status route cannot emit that guard message: a sole owner toggling themselves hits the self-toggle rule, and any other target implies a second active owner.
   - A user cannot deactivate their own account through the user management status route. Profile deactivation remains available with the current password.
   - Status changes are audited with before/after `is_active`. Password is optional on update; audit payloads exclude it.
 - **Traceability:** NFR5, PB-08.

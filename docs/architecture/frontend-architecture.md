@@ -83,7 +83,7 @@ src/
 - Light/dark mode with `dark` class and `theme` in `localStorage`.
 - Responsive layouts checked at 390, 768, and 1440 px.
 - Native `<dialog>` modals with focus handling.
-- Tables scroll horizontally on small screens. Action columns stick to the right only at `lg:` and above.
+- Tables scroll horizontally on small screens. In CRUD tables the action column sticks to the right at every width; in the production queue the action column and in purchases the total column stick only below `lg:` (`max-lg:sticky`).
 - Pagination copy is Indonesian: `Menampilkan X–Y dari Z` when a total is known, with `Halaman X dari Y` for
   lists whose total cannot be stated honestly.
 - A failed query renders an `EmptyState` with a `Coba lagi` retry that refetches; `ResourceTable` and the

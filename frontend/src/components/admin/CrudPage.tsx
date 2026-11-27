@@ -54,6 +54,8 @@ export function CrudPage<T extends { id: string }>({
     footer,
     paginated = true,
     hideBanner = false,
+    notice,
+    onNoticeChange,
 }: {
     eyebrow: string;
     title: string;
@@ -76,6 +78,8 @@ export function CrudPage<T extends { id: string }>({
     footer?: ReactNode;
     paginated?: boolean;
     hideBanner?: boolean;
+    notice?: { message: string; tone: 'success' | 'error' } | null;
+    onNoticeChange?: (notice: { message: string; tone: 'success' | 'error' } | null) => void;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -88,10 +92,12 @@ export function CrudPage<T extends { id: string }>({
     const [editing, setEditing] = useState<T | null>(null);
     const [values, setValues] = useState<FormValues>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [notice, setNotice] = useState<{
+    const [internalNotice, setInternalNotice] = useState<{
         message: string;
         tone: 'success' | 'error';
     } | null>(null);
+    const activeNotice = notice !== undefined ? notice : internalNotice;
+    const updateNotice = onNoticeChange ?? setInternalNotice;
 
     const query = useQuery({
         queryKey: [...queryKey, page],
@@ -138,14 +144,14 @@ export function CrudPage<T extends { id: string }>({
             invalidate();
             setOpen(false);
             setEditing(null);
-            setNotice({
+            updateNotice({
                 message: editing ? 'Data diperbarui.' : 'Data ditambahkan.',
                 tone: 'success',
             });
         },
         onError: (error) => {
             setErrors(mapApiErrors(error));
-            setNotice({ message: errorMessage(error), tone: 'error' });
+            updateNotice({ message: errorMessage(error), tone: 'error' });
         },
     });
 
@@ -159,9 +165,9 @@ export function CrudPage<T extends { id: string }>({
         },
         onSuccess: () => {
             invalidate();
-            setNotice({ message: 'Data dihapus.', tone: 'success' });
+            updateNotice({ message: 'Data dihapus.', tone: 'success' });
         },
-        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+        onError: (error) => updateNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const openCreate = () => {
@@ -466,8 +472,12 @@ export function CrudPage<T extends { id: string }>({
                 </div>
             </Modal>
 
-            {notice ? (
-                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            {activeNotice ? (
+                <Toast
+                    message={activeNotice.message}
+                    tone={activeNotice.tone}
+                    onClose={() => updateNotice(null)}
+                />
             ) : null}
         </div>
     );

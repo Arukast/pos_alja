@@ -158,6 +158,19 @@ class AuthTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_owner_on_trashed_branch_can_log_in(): void
+    {
+        $this->user('owner', ['username' => 'owner-trashed-branch']);
+        $this->branch->delete();
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'owner-trashed-branch',
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->assertAuthenticated();
+    }
+
     public function test_non_owner_without_branch_can_log_in(): void
     {
         $this->user('cashier', ['username' => 'cashier-null', 'branch_id' => null]);

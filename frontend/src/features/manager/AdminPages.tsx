@@ -24,7 +24,6 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { Toast } from '../../components/ui/Toast';
 import { ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
 import { errorMessage } from '../../lib/errors';
@@ -42,10 +41,13 @@ export function ManagerUsersPage() {
 
     const toggleStatus = useMutation({
         mutationFn: (id: string) => api.admin.toggleUser(id),
-        onSuccess: () => {
+        onSuccess: (response) => {
             void queryClient.invalidateQueries({ queryKey: ['manager', 'users'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            setNotice({ message: 'Status pengguna diperbarui.', tone: 'success' });
+            setNotice({
+                message: `Akun ${response.user.name} ${response.user.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`,
+                tone: 'success',
+            });
         },
         onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
     });
@@ -79,9 +81,37 @@ export function ManagerUsersPage() {
                 queryKey={['manager', 'users']}
                 queryFn={(page) => api.users({ page })}
                 columns={[
-                    { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
-                    { header: 'Nama Pengguna', cell: (user) => user.username },
-                    { header: 'Peran', cell: (user) => <RoleBadge role={user.role} /> },
+                    {
+                        header: 'Nama',
+                        cell: (user) => (
+                            <div>
+                                <span className="block font-medium break-words">{user.name}</span>
+                                <span className="mt-1 block md:hidden">
+                                    <span className="sr-only">Peran: </span>
+                                    <RoleBadge role={user.role} />
+                                </span>
+                                {user.id === authUser?.id ? (
+                                    <span className="text-light-muted mt-1 block text-xs dark:text-gray-400">
+                                        Akun Anda — kelola dari Profil.
+                                    </span>
+                                ) : null}
+                            </div>
+                        ),
+                    },
+                    {
+                        header: 'Nama Pengguna',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => (
+                            <span className="block max-w-[12rem] truncate" title={user.username}>
+                                {user.username}
+                            </span>
+                        ),
+                    },
+                    {
+                        header: 'Peran',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => <RoleBadge role={user.role} />,
+                    },
                     {
                         header: 'Status',
                         cell: (user) => (
@@ -104,17 +134,16 @@ export function ManagerUsersPage() {
                         <ActiveToggleButton
                             active={user.is_active}
                             pending={toggleStatus.isPending && toggleStatus.variables === user.id}
-                            confirmMessage="Nonaktifkan akun ini? Pengguna akan langsung kehilangan akses pada permintaan berikutnya dan tidak dapat masuk sampai diaktifkan kembali."
+                            confirmMessage={`Nonaktifkan ${user.name}? Pengguna akan langsung kehilangan akses pada permintaan berikutnya dan tidak dapat masuk sampai diaktifkan kembali.`}
                             ariaLabel={`${user.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${user.name}`}
                             onClick={() => toggleStatus.mutate(user.id)}
                         />
                     )
                 }
                 createLabel="Tambah akun staf"
+                notice={notice}
+                onNoticeChange={setNotice}
             />
-            {notice ? (
-                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
-            ) : null}
         </>
     );
 }

@@ -67,7 +67,9 @@ sequenceDiagram
     alt Manager targets a current owner/manager or a cross-branch target
         Policy-->>API: Deny
         API-->>SPA: 403
-    else Guarded change would remove the last active owner
+    else Actor targets self on toggle status
+        API-->>SPA: 422 self-toggle message
+    else Role demotion would remove the last active owner
         API->>DB: BEGIN; lock active owners
         API-->>SPA: 422 Pemilik aktif terakhir...
     else Allowed
@@ -77,7 +79,7 @@ sequenceDiagram
         API->>R: OrderUpdated on branch/owners
     end
 
-    Note over A,API: Guarded changes are status deactivation, delete, demotion, and profile deactivation. DELETE /users/{user} and restore are owner-only administrative APIs with no SPA action.
+    Note over A,API: The status route cannot emit the last-owner guard: a sole owner targeting themselves gets the self-toggle 422, and any other target implies a second active owner. The same guard returns 422 on profile deactivation and `DELETE /users/{user}`; role demotion is the guarded branch above. DELETE /users/{user} and restore are owner-only administrative APIs with no SPA action.
 ```
 
 ### 1.3 Immediate Access Revocation

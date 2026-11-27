@@ -129,7 +129,10 @@ class BranchApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('branch.is_active', false);
 
-        $log = ActivityLog::query()->latest('created_at')->firstOrFail();
+        $log = ActivityLog::query()
+            ->where('model_id', $branchId)
+            ->where('description', 'Mengubah status aktif cabang: Renamed Branch menjadi nonaktif')
+            ->firstOrFail();
         $this->assertSame('UPDATE', $log->action);
         $this->assertSame(
             'Mengubah status aktif cabang: Renamed Branch menjadi nonaktif',

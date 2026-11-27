@@ -79,6 +79,15 @@ class AccountStatusApiTest extends TestCase
         $this->actingAs($ownerOnBranch)->getJson('/api/v1/users')->assertOk();
     }
 
+    public function test_owner_on_trashed_branch_is_exempt(): void
+    {
+        $owner = $this->user('owner', $this->branchOne);
+        $this->branchOne->delete();
+
+        $this->actingAs($owner)->getJson('/api/v1/auth/me')->assertOk();
+        $this->actingAs($owner)->getJson('/api/v1/users')->assertOk();
+    }
+
     public function test_non_owner_with_null_branch_is_not_401ed(): void
     {
         $user = $this->user('production', null);
