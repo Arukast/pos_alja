@@ -8,9 +8,9 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Login, own password | yes | yes | yes | yes | yes |
 | Edit own name/email | yes | yes | no | no | no |
-| Delete own account | yes | yes | no | no | no |
+| Deactivate own account (profile; current password required) | yes | yes | no | no | no |
 | Branch CRUD | all | no | no | no | no |
-| User CRUD | all | own branch staff only | no | no | no |
+| User CRUD and status toggle | all; delete/restore administrative owner-only | own-branch cashier/designer/production create/update/toggle; no delete or restore | no | no | no |
 | Categories | all | read | no | no | no |
 | Attributes (finishing, display; legacy `cut` rows cannot be edited without changing their type) | all | global read-only; create/update own branch | no | no | no |
 | Pricing matrix | all | CRUD own branch | no | no | no |
@@ -60,7 +60,10 @@
 15. Editing a branch `min_stock` writes no `stock_ledgers` row and no activity log; `current_stock` changes only through restock, adjustment, purchase, or usage. The branch-stock row must already exist; otherwise the request returns 422 on `branch_id` and creates nothing. An explicit branch other than the manager's own is 403, and a manager without a branch is denied.
 16. Audit and backup are owner-only and global, not branch-filtered. `backup:tick` is a system actor (`user_id = null`, `username = system`, `role = system`, `branch_id = null`); manual runs carry the owner's user id.
 17. Customers are global and `CustomerPolicy::create` checks only the designer role. A designer with no branch can therefore create a customer, and the audit row records `branch_id = null`. This is a pre-existing access gap, not changed by PB-10; it is recorded in `docs/requirements/implementation-gaps.md`.
+18. Inactive users, and non-owner users of an inactive, trashed, or missing branch, lose access on their next authenticated `/api/v1` request: `EnsureAccountIsActive` returns 401 after invalidating the session. Owners are exempt from branch checks, and a non-owner with a null branch keeps the existing behavior. Login rejects the same accounts through the generic `auth.failed` response.
+19. The last active owner (`role = owner`, `is_active = true`, not trashed) cannot be deactivated, deleted, or demoted through the status, profile, `DELETE /users/{id}`, or `PUT /users/{id}` paths; each returns 422 with `Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.` The guard runs inside the caller transaction with `lockForUpdate()`.
+20. Inactive users are excluded from new-work assignment: waste designer options and validation, and the manager active-staff count. Historical reads (invoices, payments, orders, activity logs, and the designer leaderboard) keep their attribution and are not filtered by `is_active`. Restoring a soft-deleted user sets `is_active = true`.
 
 ## Revision Note
 
-Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`. The PB-05/PB-07 follow-up dropped the machine tables and endpoints, added unit-aware production with fail/reopen, and allows waste on failed orders; the pricing matrix remains. The Unit A catalog cleanup removed category discount tiers and attribute types, made categories retire-only with `description`/`is_active`, allowed Manager own-branch attributes, and added branch minimum-stock editing without a stock ledger or audit row. PB-10 adds owner-only backup page, download, pin/unpin, and settings; the audit trail stays owner-only and global.
+Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`. The PB-05/PB-07 follow-up dropped the machine tables and endpoints, added unit-aware production with fail/reopen, and allows waste on failed orders; the pricing matrix remains. The Unit A catalog cleanup removed category discount tiers and attribute types, made categories retire-only with `description`/`is_active`, allowed Manager own-branch attributes, and added branch minimum-stock editing without a stock ledger or audit row. PB-10 adds owner-only backup page, download, pin/unpin, and settings; the audit trail stays owner-only and global. The admin active lifecycle adds profile deactivation, the status toggle with owner-only delete/restore, and rules 18-20 for next-request revocation, last-owner protection, and inactive-user assignment filters.

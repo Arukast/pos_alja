@@ -32,9 +32,15 @@
 | PUT | `/auth/profile` | owner, manager | Name and email. |
 | PUT | `/auth/password` | authenticated | Current password plus confirmed new password. 204. |
 | POST | `/auth/confirm-password` | authenticated | Validate current password and record confirmation time. 204. |
-| DELETE | `/auth/profile` | owner, manager | Current password required; soft delete and logout. 204. |
+| DELETE | `/auth/profile` | owner, manager | Current password required; sets `is_active = false`, then logs out and invalidates the session. 204. 422 when the owner is the last active owner. |
 
 `UserResource` never returns `password` or `remember_token`.
+
+Profile deactivation writes an `UPDATE` audit row with description `Menonaktifkan akun sendiri: {username}` and before/after `is_active`.
+
+Login returns 422 with the generic `username` error (`auth.failed`) for invalid credentials, an inactive user, and a non-owner whose assigned branch is inactive, trashed, or missing. Owners skip the branch check; a non-owner with no branch keeps the previous behavior (login succeeds, and branch-scoped actions keep their documented 403/422/empty results).
+
+`EnsureAccountIsActive` runs after `auth:sanctum` on every authenticated `/api/v1` route. An inactive user, or a non-owner whose assigned branch is inactive, trashed, or missing, gets `401` `{ "message": "Akun atau cabang Anda tidak aktif. Silakan hubungi pemilik." }` after the web guard logs out and the session and CSRF token are invalidated. Open Reverb sockets are not revoked; the next authenticated `/api/v1` request rejects the session, and broadcasts carry no money data. `/broadcasting/auth` is outside the `active` middleware, so a deactivated session can still re-authorize a private channel until its next authenticated `/api/v1` request.
 
 ## 3. Identity
 
@@ -51,6 +57,8 @@
 
 Branch create/update accept `reseller_discount_percent` (`0–100`, default `0`) and `settings`; the column and `settings.reseller_discount_percent` are kept in sync and read by pricing.
 
+`PATCH /branches/{branch}/status` toggles `is_active` and writes an `UPDATE` audit row with before/after values; it is the normal SPA toggle. Branch store/update still accept `is_active` (`sometimes`, boolean), but the SPA omits it, so create defaults active and update preserves the current state. Soft-deleted branches are converted to visible inactive rows by `2026_11_26_140000_add_is_active_to_users_and_convert_trashed_branches.php`. `DELETE /branches/{branch}` remains an administrative escape hatch with no restore route.
+
 ### Users
 
 | Method | Path | Access |
@@ -59,10 +67,13 @@ Branch create/update accept `reseller_discount_percent` (`0–100`, default `0`)
 | POST | `/users` | owner; manager creates cashier/designer/production in own branch |
 | GET | `/users/{user}` | owner; manager own branch staff |
 | PUT | `/users/{user}` | same as show |
-| DELETE | `/users/{user}` | same as show |
-| POST | `/users/{user}/restore` | same as show |
+| PATCH | `/users/{user}/status` | owner any user except self; manager own-branch cashier/designer/production |
+| DELETE | `/users/{user}` | owner (administrative; no SPA action) |
+| POST | `/users/{user}/restore` | owner (administrative; no SPA action) |
 
-Managers cannot create or manage owner/manager accounts or assign another branch. Passwords are never included in audit payloads.
+`UserResource` includes `is_active` (boolean, default `true`). Store and update requests do not accept `is_active`; the status route, profile deactivation, and user restore change it. `branch_id` must reference a non-trashed branch.
+
+`PATCH /users/{user}/status` toggles `is_active` and writes an `UPDATE` audit row with `before`/`after` `is_active`. An owner cannot toggle their own status (`422` on `is_active`); a manager targeting themselves is denied `403` by the policy before the service runs. Deactivating the last active owner returns `422` on `is_active` with `Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.` The same guard blocks `DELETE /users/{user}` (`user` key) and demotion through `PUT /users/{user}` (`role` key), inside the caller's transaction with `lockForUpdate()`. `DELETE` and restore are owner-only administrative APIs with no normal UI; restore also sets `is_active = true`. Managers cannot create or manage owner/manager accounts or assign another branch. Passwords are never included in audit payloads.
 
 ## 4. Catalog And Inventory
 
