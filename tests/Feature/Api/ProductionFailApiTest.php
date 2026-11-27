@@ -70,7 +70,7 @@ class ProductionFailApiTest extends TestCase
 
         $product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 

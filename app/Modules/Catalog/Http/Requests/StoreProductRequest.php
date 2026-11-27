@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Http\Requests;
 
 use App\Models\Product;
+use App\Support\MaterialUnit;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,7 +24,7 @@ final class StoreProductRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'product_category_id' => ['required', 'uuid', 'exists:product_categories,id'],
-            'pricing_type' => ['required', 'string', 'in:unit,area'],
+            'selling_unit' => ['required', 'string', Rule::in(MaterialUnit::VALUES)],
             'is_active' => ['sometimes', 'boolean'],
             'requires_material' => ['sometimes', 'boolean'],
             'uses_attributes' => ['sometimes', 'boolean'],

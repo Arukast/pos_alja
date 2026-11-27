@@ -71,7 +71,7 @@ class ProductionWriteApiTest extends TestCase
 
         $product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
@@ -812,7 +812,7 @@ class ProductionWriteApiTest extends TestCase
     {
         $product = Product::create([
             'name' => 'Layanan Digital',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $this->pricing->product->product_category_id,
             'requires_material' => $requiresMaterial,
         ]);

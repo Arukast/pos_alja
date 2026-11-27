@@ -68,7 +68,7 @@ class CreateInvoiceApiTest extends TestCase
 
         $this->product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
@@ -195,6 +195,37 @@ class CreateInvoiceApiTest extends TestCase
             ->postJson('/api/v1/invoices', $this->payload(['items' => [$invalid]]))
             ->assertStatus(422)
             ->assertJsonValidationErrors('items.0.unit_price');
+    }
+
+    public function test_m2_item_with_missing_geometry_returns_422(): void
+    {
+        $item = $this->item(['width' => null, 'length' => null]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
+    public function test_manual_price_uses_area_factor_only_for_m2(): void
+    {
+        $item = $this->item([
+            'is_manual_price' => true,
+            'unit_price' => 60000,
+            'cost' => 25000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
+            ->assertCreated()
+            ->assertJsonPath('invoice.orders.0.subtotal', '720000.00'); // 60000 * 2 * area 6
+
+        $this->product->update(['selling_unit' => 'pcs']);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
+            ->assertCreated()
+            ->assertJsonPath('invoice.orders.0.subtotal', '120000.00'); // 60000 * 2 * factor 1
     }
 
     public function test_pricing_failure_maps_to_422_instead_of_500(): void
@@ -888,6 +919,92 @@ class CreateInvoiceApiTest extends TestCase
                 'name' => 'Blocked Customer',
             ])
             ->assertForbidden();
+    }
+
+    public function test_invoice_stores_the_chosen_institution(): void
+    {
+        $this->customer->update(['institutions' => ['Sekolah', 'Masyarakat/Retail']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Sekolah']))
+            ->assertCreated()
+            ->assertJsonPath('invoice.customer.institution', 'Sekolah');
+
+        $this->assertDatabaseHas('invoices', [
+            'id' => $response->json('invoice.id'),
+            'institution' => 'Sekolah',
+        ]);
+    }
+
+    public function test_invoice_rejects_institution_outside_customer_labels(): void
+    {
+        $this->customer->update(['institutions' => ['Sekolah', 'Masyarakat/Retail']]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Universitas']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('institution');
+
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_invoice_defaults_to_first_customer_institution(): void
+    {
+        $this->customer->update(['institutions' => ['Masyarakat/Retail', 'Sekolah']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+
+        $this->assertDatabaseHas('invoices', [
+            'id' => $response->json('invoice.id'),
+            'institution' => 'Masyarakat/Retail',
+        ]);
+    }
+
+    public function test_invoice_omitted_institution_falls_back_to_legacy_customer_label(): void
+    {
+        $this->customer->update(['institutions' => ['Lainnya']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+
+        $this->assertSame(
+            'Lainnya',
+            Invoice::query()->findOrFail($response->json('invoice.id'))->institution
+        );
+    }
+
+    public function test_invoice_institution_snapshot_survives_customer_update(): void
+    {
+        $this->customer->update(['institutions' => ['Sekolah', 'Masyarakat/Retail']]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Sekolah']))
+            ->assertCreated();
+
+        $invoiceId = (string) $response->json('invoice.id');
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/customers/{$this->customer->id}", [
+                'name' => 'Jane Customer',
+                'institutions' => ['Universitas'],
+            ])
+            ->assertOk();
+
+        $this->actingAs($this->designer)
+            ->getJson("/api/v1/invoices/{$invoiceId}")
+            ->assertOk()
+            ->assertJsonPath('invoice.customer.institution', 'Sekolah');
+    }
+
+    public function test_legacy_invalid_singular_label_request_is_422(): void
+    {
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['institution' => 'Lainnya']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('institution');
     }
 
     public function test_invoice_detail_exposes_product_composition_for_edit(): void

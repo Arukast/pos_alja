@@ -14,6 +14,15 @@ export interface Paginated<T> {
     };
 }
 
+export const CUSTOMER_INSTITUTIONS: readonly string[] = [
+    'Masyarakat/Retail',
+    'Sekolah',
+    'Universitas',
+    'Pemerintahan',
+    'Bisnis/Perusahaan',
+    'Organisasi/Yayasan',
+];
+
 export interface MaterialPage<T> extends Paginated<T> {
     available_total?: number;
 }
@@ -53,6 +62,7 @@ export interface Customer {
     email: string | null;
     address: string | null;
     institution: string;
+    institutions: string[];
     type: string | null;
 }
 
@@ -87,7 +97,7 @@ export interface Attribute {
 export interface Product {
     id: string;
     name: string;
-    pricing_type: string;
+    selling_unit: string;
     is_active: boolean;
     deleted_at?: string | null;
     category: { id: string; name: string; is_active: boolean } | null;
@@ -200,7 +210,7 @@ export interface Order {
     pricing?: {
         product: string | null;
         material: string | null;
-        pricing_type: string | null;
+        selling_unit: string | null;
         product_id?: string | null;
         requires_material?: boolean;
         uses_attributes?: boolean;
@@ -244,6 +254,7 @@ export interface Invoice {
         address?: string | null;
         email?: string | null;
         type?: string | null;
+        institution?: string | null;
     } | null;
     designer: { id: string; name: string } | null;
     created_date: string;

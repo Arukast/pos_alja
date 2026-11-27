@@ -62,7 +62,7 @@ class NoMaterialPricingApiTest extends TestCase
 
         $this->materialProduct = Product::create([
             'name' => 'Banner',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $category->id,
             'requires_material' => true,
             'uses_attributes' => false,
@@ -70,7 +70,7 @@ class NoMaterialPricingApiTest extends TestCase
 
         $this->noMaterialProduct = Product::create([
             'name' => 'Jasa Desain',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $category->id,
             'requires_material' => false,
             'uses_attributes' => false,

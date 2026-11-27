@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../api/queries';
 import type { Quote } from '../../api/queries';
-import type { Customer } from '../../api/types';
+import { CUSTOMER_INSTITUTIONS, type Customer } from '../../api/types';
 import { PageBanner } from '../../components/PageBanner';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -16,6 +16,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { Toast, type ToastTone } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { defaultInstitution, institutionOptions } from '../../lib/institutions';
 import { formatMoney } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
 
@@ -82,6 +83,7 @@ export function DesignerNewOrderPage() {
 
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [customerSearch, setCustomerSearch] = useState('');
+    const [institution, setInstitution] = useState('');
 
     const [item, setItem] = useState<DraftItemState>(emptyItem);
     const [itemError, setItemError] = useState<string | null>(null);
@@ -95,12 +97,12 @@ export function DesignerNewOrderPage() {
     const customersQuery = useQuery({
         queryKey: ['customers', 'search', customerSearch.trim()],
         queryFn: () => api.customers({ search: customerSearch.trim() }),
-        enabled: !customer,
+        enabled: !customer && customerSearch.trim() !== '',
     });
 
     const options = optionsQuery.data;
     const selectedProduct = (options?.products ?? []).find((product) => product.id === item.product_id);
-    const isAreaProduct = selectedProduct?.pricing_type === 'area';
+    const isAreaProduct = selectedProduct?.selling_unit === 'm2';
     const needsWidth = isAreaProduct;
     const needsLength = isAreaProduct;
     const requiresMaterial = selectedProduct?.requires_material ?? true;
@@ -127,6 +129,7 @@ export function DesignerNewOrderPage() {
             });
         }
         setCustomer(selected);
+        setInstitution(defaultInstitution(selected));
         setQuote(null);
         setSubmitErrors({});
     };
@@ -188,8 +191,13 @@ export function DesignerNewOrderPage() {
                 throw new Error('Pilih atau buat pelanggan terlebih dahulu.');
             }
 
+            const selectedInstitution = CUSTOMER_INSTITUTIONS.includes(institution)
+                ? institution
+                : null;
+
             return api.createInvoice({
                 customer_id: customer.id,
+                ...(selectedInstitution ? { institution: selectedInstitution } : {}),
                 discount: 0,
                 deadline: deadline || null,
                 source,
@@ -298,7 +306,7 @@ export function DesignerNewOrderPage() {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => navigate('/designer/customers/new')}
+                                    onClick={() => navigate('/customers')}
                                 >
                                     Tambah Pelanggan
                                 </Button>
@@ -306,30 +314,44 @@ export function DesignerNewOrderPage() {
                         </CardHeader>
                         <CardBody className="space-y-4">
                             {customer ? (
-                                <div className="border-light-border bg-light-surface-2 dark:border-surface-300 dark:bg-surface-600 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
-                                    <div className="min-w-0 space-y-0.5">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <p className="font-medium">{customer.name}</p>
-                                            <Badge tone={customer.type === 'Reseller' ? 'brand' : 'neutral'}>
-                                                {customer.type ?? 'Reguler'}
-                                            </Badge>
+                                <>
+                                    <div className="border-light-border bg-light-surface-2 dark:border-surface-300 dark:bg-surface-600 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
+                                        <div className="min-w-0 space-y-0.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="font-medium">{customer.name}</p>
+                                                <Badge tone={customer.type === 'Reseller' ? 'brand' : 'neutral'}>
+                                                    {customer.type ?? 'Reguler'}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-light-muted-strong text-sm dark:text-gray-400">
+                                                {customer.phone ?? 'Tanpa telepon'}
+                                                {customer.address ? ` · ${customer.address}` : ''}
+                                            </p>
                                         </div>
-                                        <p className="text-light-muted-strong text-sm dark:text-gray-400">
-                                            {customer.phone ?? 'Tanpa telepon'}
-                                            {customer.address ? ` · ${customer.address}` : ''}
-                                        </p>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => {
+                                                setCustomer(null);
+                                                setInstitution('');
+                                                setQuote(null);
+                                            }}
+                                        >
+                                            Ubah
+                                        </Button>
                                     </div>
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() => {
-                                            setCustomer(null);
-                                            setQuote(null);
-                                        }}
+                                    <Select
+                                        label="Institusi pesanan"
+                                        value={institution}
+                                        onChange={(event) => setInstitution(event.target.value)}
                                     >
-                                        Ubah
-                                    </Button>
-                                </div>
+                                        {institutionOptions(customer).map((label) => (
+                                            <option key={label} value={label}>
+                                                {label}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </>
                             ) : (
                                 <div className="space-y-3">
                                     <Input
@@ -338,7 +360,11 @@ export function DesignerNewOrderPage() {
                                         value={customerSearch}
                                         onChange={(event) => setCustomerSearch(event.target.value)}
                                     />
-                                    {customersQuery.isLoading ? (
+                                    {customerSearch.trim() === '' ? (
+                                        <p className="text-light-muted-strong text-sm dark:text-gray-400">
+                                            Cari pelanggan untuk memilih.
+                                        </p>
+                                    ) : customersQuery.isLoading ? (
                                         <div role="status" className="flex justify-center py-4">
                                             <Spinner className="text-brand-primary h-5 w-5" />
                                         </div>
@@ -364,7 +390,7 @@ export function DesignerNewOrderPage() {
                                             <Button
                                                 variant="secondary"
                                                 size="sm"
-                                                onClick={() => navigate('/designer/customers/new')}
+                                                onClick={() => navigate('/customers')}
                                             >
                                                 Buat pelanggan baru
                                             </Button>

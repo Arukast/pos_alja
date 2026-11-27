@@ -10,11 +10,23 @@ export function productCompositionLabels(product: Product): {
     const attributes = product.compatible_attributes ?? [];
 
     return {
-        materials: materials.length === 0 ? 'Semua bahan' : materials.map((item) => item.name).join(', '),
-        types: types.length === 0 ? 'Semua tipe' : types.map((item) => item.name).join(', '),
+        materials:
+            product.requires_material === false
+                ? 'Tanpa bahan'
+                : materials.length === 0
+                  ? 'Semua bahan'
+                  : materials.map((item) => item.name).join(', '),
+        types:
+            product.uses_attributes === false
+                ? 'Tanpa tipe'
+                : types.length === 0
+                  ? 'Semua tipe'
+                  : types.map((item) => item.name).join(', '),
         attributes:
-            attributes.length === 0
-                ? 'Semua atribut'
-                : attributes.map((item) => item.name).join(', '),
+            product.uses_attributes === false
+                ? 'Tanpa atribut'
+                : attributes.length === 0
+                  ? 'Semua atribut'
+                  : attributes.map((item) => item.name).join(', '),
     };
 }
