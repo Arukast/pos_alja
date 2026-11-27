@@ -122,7 +122,7 @@ final class CreateInvoice
                         ]);
                     }
 
-                    $factor = $pricing->product?->pricing_type === 'area'
+                    $factor = $pricing->product?->selling_unit === 'm2'
                         ? (float) $quote['area']
                         : 1.0;
 

@@ -48,7 +48,7 @@ class PricingServiceTest extends TestCase
 
         $product = Product::create([
             'name' => 'Merchandise',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $category->id,
         ]);
 
@@ -113,7 +113,7 @@ class PricingServiceTest extends TestCase
 
         $product = Product::create([
             'name' => 'Large Format',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
@@ -168,6 +168,66 @@ class PricingServiceTest extends TestCase
         $this->assertEquals(117000, $result['profit']);
     }
 
+    public function test_non_m2_selling_units_ignore_dimensions(): void
+    {
+        $category = ProductCategory::create([
+            'name' => 'Large Format',
+        ]);
+
+        $product = Product::create([
+            'name' => 'Large Format',
+            'selling_unit' => 'lembar',
+            'product_category_id' => $category->id,
+        ]);
+
+        $material = Material::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Flexy 340gr',
+            'product_category_id' => $category->id,
+            'type' => 'outdoor',
+        ]);
+
+        $finishing = Attribute::create([
+            'branch_id' => $this->branch->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        $pricing = Pricing::create([
+            'branch_id' => $this->branch->id,
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'price' => 25000,
+            'cost' => 12000,
+            'profit' => 13000,
+            'min_qty' => 1,
+            'customer_type' => 'Reguler',
+        ]);
+
+        AttributePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'attribute_id' => $finishing->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        $result = $this->pricingService->calculateQuote([
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'finishing_id' => $finishing->id,
+            'quantity' => 3,
+            'width' => 1.5,
+            'length' => 2.0,
+        ]);
+
+        $this->assertSame(0.0, $result['area']);
+        $this->assertEquals(25000, $result['unit_price']);
+        $this->assertEquals(75000, $result['subtotal']); // 25000 * 3, no area factor
+        $this->assertEquals(36000, $result['cost']);     // 12000 * 3, no area factor
+    }
+
     /**
      * Test validation exception when geometric parameters are missing for surface_area archetype.
      */
@@ -179,7 +239,7 @@ class PricingServiceTest extends TestCase
 
         $product = Product::create([
             'name' => 'Large Format Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
@@ -223,7 +283,7 @@ class PricingServiceTest extends TestCase
 
         $product = Product::create([
             'name' => 'Merchandise',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $category->id,
         ]);
 
@@ -404,7 +464,7 @@ class PricingServiceTest extends TestCase
 
         $product = Product::create([
             'name' => 'Jasa Desain',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $category->id,
             'requires_material' => false,
         ]);
@@ -451,7 +511,7 @@ class PricingServiceTest extends TestCase
 
         $product = Product::create([
             'name' => 'Pricing Fixture',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $category->id,
         ]);
 

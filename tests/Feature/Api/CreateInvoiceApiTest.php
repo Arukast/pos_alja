@@ -68,7 +68,7 @@ class CreateInvoiceApiTest extends TestCase
 
         $this->product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
@@ -195,6 +195,37 @@ class CreateInvoiceApiTest extends TestCase
             ->postJson('/api/v1/invoices', $this->payload(['items' => [$invalid]]))
             ->assertStatus(422)
             ->assertJsonValidationErrors('items.0.unit_price');
+    }
+
+    public function test_m2_item_with_missing_geometry_returns_422(): void
+    {
+        $item = $this->item(['width' => null, 'length' => null]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
+    public function test_manual_price_uses_area_factor_only_for_m2(): void
+    {
+        $item = $this->item([
+            'is_manual_price' => true,
+            'unit_price' => 60000,
+            'cost' => 25000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
+            ->assertCreated()
+            ->assertJsonPath('invoice.orders.0.subtotal', '720000.00'); // 60000 * 2 * area 6
+
+        $this->product->update(['selling_unit' => 'pcs']);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$item]]))
+            ->assertCreated()
+            ->assertJsonPath('invoice.orders.0.subtotal', '120000.00'); // 60000 * 2 * factor 1
     }
 
     public function test_pricing_failure_maps_to_422_instead_of_500(): void

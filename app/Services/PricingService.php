@@ -35,7 +35,7 @@ class PricingService
         $length = (float) ($params['length'] ?? 0);
         $customerType = $params['customer_type'] ?? 'Reguler';
 
-        // Load product to check pricing type and name
+        // Load product to check selling unit and name
         $product = Product::findOrFail($productId);
 
         $branchId = $params['branch_id'] ?? null;
@@ -158,7 +158,7 @@ class PricingService
         $unitCost = $baseCost + $attributeCostSum;
         $area = 0.0;
 
-        if ($product->pricing_type === 'area') {
+        if ($product->selling_unit === 'm2') {
             if ($width <= 0 || $length <= 0) {
                 throw new InvalidArgumentException('Lebar dan panjang harus lebih besar dari nol untuk perhitungan luas.');
             }
