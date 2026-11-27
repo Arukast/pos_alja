@@ -35,7 +35,7 @@ class SellingUnitBackfillTest extends TestCase
     {
         $category = ProductCategory::create(['name' => 'Large Format']);
         $migration = require database_path(
-            'migrations/2026_11_27_000009_replace_product_pricing_type_with_selling_unit.php'
+            'migrations/2026_11_27_000008_z_replace_product_pricing_type_with_selling_unit.php'
         );
 
         $migration->down();
