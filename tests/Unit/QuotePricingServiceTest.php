@@ -108,6 +108,14 @@ class QuotePricingServiceTest extends TestCase
         $this->assertSame('10.00', $result['reseller_discount_percent']);
     }
 
+    public function test_reseller_without_a_branch_gets_no_discount(): void
+    {
+        $result = $this->quote(['customer_type' => 'Reseller', 'branch_id' => null]);
+
+        $this->assertSame('0.00', $result['reseller_discount_percent']);
+        $this->assertSame('125000.00', $result['unit_price']);
+    }
+
     public function test_highest_eligible_tier_wins_with_inclusive_boundary(): void
     {
         $this->assertSame('5.00', $this->quote(['quantity' => 10])['quantity_discount_percent']);

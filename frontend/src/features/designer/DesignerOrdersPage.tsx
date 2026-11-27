@@ -300,6 +300,11 @@ export function DesignerOrdersPage() {
                                         <TableRow key={order.id}>
                                             <TableCell>
                                                 <p className="font-medium">{order.file_name ?? 'Item'}</p>
+                                                {order.product || order.material ? (
+                                                    <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                        {[order.product, order.material].filter(Boolean).join(' · ')}
+                                                    </p>
+                                                ) : null}
                                                 {order.notes ? (
                                                     <p className="text-light-muted-strong text-xs dark:text-gray-400">
                                                         {order.notes}

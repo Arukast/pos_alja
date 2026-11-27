@@ -3,10 +3,10 @@
 - **Database:** PostgreSQL in production, SQLite in the automated test suite.
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
 - **Table naming:** Eloquent default pluralization, except `material_branch_stock`, which uses a singular table name.
-- **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `attributes`, and `pricing`.
-- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, production failure, the Unit A catalog cleanup, the B1a material retirement flags, the B1b attribute types, and the B2 product flags/pivots and nullable pricing material are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
-- **Current transitional tables:** `PRICING` and `ATTRIBUTE_PRICING` exist in the current build and are the price source; the target pricing redesign replaces them (note 4).
-- **Machine tables:** `machines` and `machine_pricing` are dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable. `pricing` and `attribute_pricing` remain and are the current price source.
+- **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, and `attributes`.
+- **Target schema:** This diagram shows the as-built schema after B4. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, production failure, the Unit A catalog cleanup, the B1a material retirement flags, the B1b attribute types, the B2 product flags/pivots, B3 selling units, and the B4 pricing redesign are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
+- **Pricing matrix removed:** `pricing`, `attribute_pricing`, and `orders.pricing_id` were dropped by `2026_11_27_000013` and `2026_11_27_000014`; their rows are unrecoverable and require a verified backup before deploy. Prices now compute from material and attribute rows plus global product quantity tiers, with six snapshots on each order (note 4).
+- **Machine tables:** `machines` and `machine_pricing` are dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable.
 - **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; the purchase and stock-ledger tables and columns are implemented as described here, while the remaining business tables follow this target.
 - **PB-10 tables:** `backups` (run history) and `backup_settings` (owner-editable singleton) are implemented by `2026_11_26_130000_create_backups_table.php`, `2026_11_26_130001_create_backup_settings_table.php`, and `2026_11_26_130002_make_backups_filename_nullable.php`. `activity_logs` gains a `created_at` index and a `nullOnDelete` branch FK.
 
@@ -15,7 +15,6 @@ erDiagram
     BRANCHES |o--o{ USERS : "assigns staff"
     BRANCHES ||--o{ MATERIAL_BRANCH_STOCK : "holds stock"
     BRANCHES |o--o{ ATTRIBUTES : "owns"
-    BRANCHES |o--o{ PRICING : "owns"
     BRANCHES |o--o{ INVOICES : "issues"
     BRANCHES ||--o{ PAYMENTS : "receives"
     BRANCHES ||--o{ EXPENSES : "incurs"
@@ -30,12 +29,11 @@ erDiagram
     PRODUCT_CATEGORIES ||--o{ MATERIALS : "groups"
 
     PRODUCTS ||--o{ ORDERS : "ordered as"
-    PRODUCTS ||--o{ PRICING : "priced as"
+    PRODUCTS ||--o{ PRODUCT_QUANTITY_DISCOUNTS : "tiered by"
     PRODUCTS ||--o{ MATERIAL_PRODUCT : "maps"
     PRODUCTS ||--o{ ATTRIBUTE_TYPE_PRODUCT : "allows types"
     PRODUCTS ||--o{ ATTRIBUTE_PRODUCT : "allows attributes"
     MATERIALS ||--o{ ORDERS : "uses"
-    MATERIALS ||--o{ PRICING : "priced as"
     MATERIALS ||--o{ MATERIAL_PRODUCT : "compatible with"
     MATERIALS ||--o{ MATERIAL_BRANCH_STOCK : "stocked at"
     MATERIALS ||--o{ STOCK_LEDGERS : "moves"
@@ -46,9 +44,7 @@ erDiagram
     ATTRIBUTE_TYPES ||--o{ ATTRIBUTE_TYPE_PRODUCT : "allowed on"
     ATTRIBUTES ||--o{ ATTRIBUTE_PRODUCT : "compatible with"
     ATTRIBUTES ||--o{ ORDER_ATTRIBUTES : "selected as"
-    ATTRIBUTES ||--o{ ATTRIBUTE_PRICING : "modifies"
-    PRICING ||--o{ ATTRIBUTE_PRICING : "modifiers"
-    PRICING |o--o{ ORDERS : "quoted by"
+
 
     INVOICES ||--o{ ORDERS : "contains"
     INVOICES ||--o{ PAYMENTS : "settled by"
@@ -150,27 +146,13 @@ erDiagram
         timestamp updated_at
     }
 
-    PRICING["PRICING (current, transitional)"] {
+    PRODUCT_QUANTITY_DISCOUNTS {
         uuid id PK
-        uuid branch_id FK
         uuid product_id FK
-        uuid material_id FK
-        string customer_type
         integer min_qty
-        decimal price
-        decimal cost
-        decimal profit
-        timestamp deleted_at
-    }
-
-    ATTRIBUTE_PRICING["ATTRIBUTE_PRICING (current, transitional)"] {
-        uuid id PK
-        uuid branch_id FK
-        uuid pricing_id FK
-        uuid attribute_id FK
-        decimal price
-        decimal cost
-        decimal profit
+        decimal discount_percent
+        timestamp created_at
+        timestamp updated_at
     }
 
     MATERIALS {
@@ -242,7 +224,6 @@ erDiagram
     ORDERS {
         uuid id PK
         uuid invoice_id FK
-        uuid pricing_id FK
         uuid product_id FK
         uuid material_id FK
         uuid operator_id FK
@@ -255,6 +236,7 @@ erDiagram
         decimal unit_price
         string customer_type
         decimal reseller_discount_percent
+        decimal quantity_discount_percent
         decimal discount_amount
         decimal subtotal
         decimal cost
@@ -422,15 +404,15 @@ erDiagram
 
 1. **`attributes.type` stores an `attribute_types.slug`, not a foreign key.** The slug is immutable and unique, and the column is widened to 100 characters so it matches. Referential integrity is by request validation (`exists:attribute_types,slug`, max 100), not by a key. Legacy non-empty values were backfilled as types; an empty value is not a type.
 2. **`material_branch_stock` is the only stock junction with a unique `(material_id, branch_id)` constraint.** `material_product` has a composite primary key `(product_id, material_id)`.
-3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit`.
-4. **`pricing` remains the current price source.** `orders.pricing_id` selects a row by product, material, customer type, and `min_qty`; `attribute_pricing` supplies the attribute modifiers, where a row wins even at `0`, and absent a row the attribute's own `price`/`cost` applies. The `/pricing` endpoints remain, along with `/manager/pricing` (`Matriks Harga`). `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) is the reseller discount source. `DELETE /pricing/{pricing}` is a soft delete: quote lookups exclude deleted rows, invoice history resolves product and material names through trashed pricing rows with `withTrashed()`, and no restore endpoint exists. The target replaces `pricing` and `attribute_pricing` with material price + finishing/display price + reseller discount + product-level quantity tiers (Unit B design). No order-level tier column is specified.
-5. **`order_attributes` is target-only.** No table exists; attribute selections are persisted on `orders.selected_attributes` as the attribute IDs used for pricing modifiers, without a per-attribute price/cost snapshot. The selection is dynamic across all active `attribute_types`, at most one attribute per type, with no fixed cap. The target keeps at most one row per `(order_id, type)` with a price/cost snapshot.
+3. **`orders` is a line item of `invoices`.** The invoice carries the financial roll-up (`grand_total`, `total_cost`, `total_profit`), while each order carries its own `unit_price`, `subtotal`, `cost`, and `profit` plus six identity/discount snapshots: `product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, and `discount_amount`. Pre-B4 orders keep their money snapshots with null product/material identity.
+4. **Price is computed, not looked up.** `base = materials.price + sum(selected active attributes.price)`; Reseller lines apply `branches.reseller_discount_percent` (`0–100`, default `0`, mirrored in `branches.settings.reseller_discount_percent` and editable on `/owner/branches`) to the base; `area_factor = width * length` only when `products.selling_unit = m2`; then the highest `product_quantity_discounts` row with `min_qty <= quantity` applies its `discount_percent`. Cost mirrors the chain from `materials.cost` plus attribute costs without commercial discounts, `profit = subtotal - cost`, and `discount_amount` is the undiscounted subtotal minus the final subtotal. Tiers are global, unique per `(product_id, min_qty)`, Owner-written and Manager-read. `pricing`, `attribute_pricing`, the `/pricing` routes, `/manager/pricing`, and `orders.pricing_id` were removed by B4.
+5. **`order_attributes` is target-only.** No table exists; attribute selections are persisted on `orders.selected_attributes` as attribute IDs whose `price`/`cost` are read from the attribute rows at quote time, without a per-attribute snapshot. The selection is dynamic across all active `attribute_types`, at most one attribute per type, with no fixed cap. The target keeps at most one row per `(order_id, type)` with a price/cost snapshot.
 6. **`orders.operator_id`** is the production operator who started or completed the job; it is null until production starts.
 7. **`invoices.designer_id`** is the user who submitted the order.
 8. **`payments.user_id`** is the cashier; `payments.cashier_name` is a denormalized audit copy.
 9. **`expenses.user_id`** is the Owner or Branch Manager who recorded the expense; `recorded_by_name` is the audit copy. `expenses.category` is a fixed dropdown, not free text.
 10. **`activity_logs.model_id` is a UUID without a foreign key**, allowing the log to reference any model type.
-11. **`branch_id` is nullable on** `users`, `attributes`, `pricing`, `attribute_pricing`, `invoices`, `wasted_materials`, `stock_ledgers`, and `activity_logs`. A null value means "global" or "unassigned", depending on the table; owner accounts are the main case for a null user branch.
+11. **`branch_id` is nullable on** `users`, `attributes`, `invoices`, `wasted_materials`, `stock_ledgers`, and `activity_logs`. A null value means "global" or "unassigned", depending on the table; owner accounts are the main case for a null user branch. `product_quantity_discounts` has no branch column.
 12. **Soft-deleted rows are not shown separately.** The `deleted_at` column is included only on tables that use `SoftDeletes`; deleted rows remain in the table.
 13. **`product_categories` rows are never deleted.** `is_active` is the retire mechanism: deactivating a category leaves its products and materials untouched. `calculation_archetype` and `allowed_attribute_types` remain dead columns but are still present in the table.
 14. **Target and implemented additions.** The following columns and tables are part of the target schema:
@@ -438,13 +420,13 @@ erDiagram
     - `products.is_active` for catalog filtering; implemented by `2026_11_23_000000_add_is_active_and_indexes_to_products_table.php`.
     - `product_categories.calculation_archetype` made nullable (default `per_piece`) and `allowed_attribute_types` deprecated from Category API/UI, with `products.pricing_type` backfilled to `area` for legacy `surface_area` categories by `2026_11_27_000000_drop_category_archetype_and_allowed_types.php`.
     - `products.selling_unit` replaces `products.pricing_type` with the seven SATUAN values (`m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, `batang`), default `pcs`; implemented by `2026_11_27_000008_z_replace_product_pricing_type_with_selling_unit.php`. The backfill first sets every row, including soft-deleted ones, to `pcs` (legacy `unit`), then maps legacy `pricing_type = 'area'` rows to `m2`, and drops `pricing_type` in a separate closure for SQLite. `down()` restores `pricing_type` only as `unit`/`area` with default `unit`, so `lembar`, `roll`, `kg`, `liter`, and `batang` values are lossy on rollback; back up the database and obtain owner approval before rolling back.
-    - `material_product` pivot for compatible materials per product (backfilled from `pricing`) by `2026_11_27_000001_create_material_product_table.php`.
+    - `material_product` pivot for compatible materials per product (historically backfilled from the now-dropped matrix) by `2026_11_27_000001_create_material_product_table.php`.
     - `product_categories.description` and `is_active`, with `product_category_discounts` dropped, by `2026_11_27_000002_add_description_and_is_active_to_product_categories_table.php` and `2026_11_27_000003_drop_product_category_discounts_table.php`.
     - `attribute_types` was dropped by `2026_11_27_000004_drop_attribute_types_table.php` during the Unit A cleanup and reintroduced by `2026_11_27_000006_create_attribute_types_and_widen_attributes_type.php` for B1b. The B1b migration widens `attributes.type` from 20 to 100, seeds Finishing, Potong (`cut`), and Display, and backfills other non-empty legacy values; the previously dropped rows remain unrecoverable.
     - `materials.unit` for `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; implemented by `2026_11_25_000001_add_unit_to_materials_table.php` with default `pcs` and a name/category/archetype backfill.
     - `materials.is_active` for global retirement and `material_branch_stock.is_active` for branch availability, both boolean default `true`; implemented by `2026_11_27_000005_add_is_active_to_materials_and_material_branch_stock.php` with no backfill beyond the default and no index.
     - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
-    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
+    - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `quantity_discount_percent`, and `discount_amount`, added with no backfill by `2026_11_27_000012_add_pricing_snapshots_to_orders_table.php`; `orders.pricing_id` was dropped by `2026_11_27_000013`. `product_quantity_discounts` was created by `2026_11_27_000011`, and the `pricing`/`attribute_pricing` tables were dropped by `2026_11_27_000014`. All four migrations use portable Schema operations, no platform-specific raw SQL, and are exercised on SQLite; PostgreSQL DDL and rollback are unverified here. `design_status`, `design_approved_at`, `design_approved_by`, and `priority` remain target-only.
     - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`. `customers.institutions` (JSON, default `["Masyarakat/Retail"]`) holds the full ordered label list; added by `2026_11_27_000009_add_institutions_to_customers_table.php`, which backfills each legacy primary label. `invoices.institution` (nullable string) holds the per-order snapshot; added by `2026_11_27_000010_add_institution_to_invoices_table.php`, which backfills historical invoices from their customer's current label. Both are portable additive migrations; no merged migration was edited.
     - The transitional order quote-input columns `width`, `length`, and `selected_attributes` are added by `2026_11_26_100000_add_order_edit_specifications.php` and persisted by invoice create/update so pre-production edits can reprice from the saved specifications. `selected_attributes` is a dynamic list with at most one attribute per type.
     - `order_attributes` for attribute snapshots.
@@ -453,7 +435,7 @@ erDiagram
     - `purchases` and `purchase_items` for raw-material purchases; implemented by `2026_11_24_000002_create_purchases_table.php` and `2026_11_24_000003_create_purchase_items_table.php`. `purchases.user_id` is the actor (Owner or Branch Manager), and `purchases.idempotency_key` is unique per branch.
     - `users.is_active` (boolean, default `true`, non-null) by `2026_11_26_140000_add_is_active_to_users_and_convert_trashed_branches.php`. The same migration converts soft-deleted branches to visible inactive rows (`deleted_at = null`, `is_active = false`); `down()` drops only `users.is_active`, so the branch conversion is one-way.
     - `backups` and `backup_settings` for PB-10; implemented by the 2026-11-26 migrations, with `backups.filename` made nullable by a follow-up migration. `activity_logs` gains a `nullOnDelete` branch FK and a `created_at` index.
-15. **The machine master is gone.** `wasted_materials.machine_id` was dropped by `2026_11_24_000004_drop_machine_id_from_wasted_materials_table.php`; the `machines` and `machine_pricing` tables and their endpoints were dropped by `2026_11_25_000002_drop_machines_tables.php`. The rows are unrecoverable, and `down()` recreates empty tables only. The `pricing` and `attribute_pricing` tables remain. `wasted_materials.order_id` stays nullable for legacy rows, but the API requires it for all new waste.
+15. **The machine master is gone.** `wasted_materials.machine_id` was dropped by `2026_11_24_000004_drop_machine_id_from_wasted_materials_table.php`; the `machines` and `machine_pricing` tables and their endpoints were dropped by `2026_11_25_000002_drop_machines_tables.php`. The rows are unrecoverable, and `down()` recreates empty tables only. The pricing matrix tables were removed separately by B4 (note 4). `wasted_materials.order_id` stays nullable for legacy rows, but the API requires it for all new waste.
 16. **Order priority is target-only.** There is no `priority` column; the implemented queue orders by `created_at`, then `id`. The target semantics are higher `priority` first, then `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`, with default priority 0.
 17. **Design status semantics.** `0 = pending`, `1 = in_design`, `2 = approved`. Approval stores the actor and timestamp. The Designer may move forward; Owner and Branch Manager may override a backward transition.
 18. **Stock ledger type semantics.** Types: `initial`, `purchase`, `usage`, `usage_reversal`, `waste`, `adjustment`, `restock`. `reason` is mandatory for `adjustment`; `reference_type` and `reference_id` point to the purchase (`purchase`) or order (`usage`, `usage_reversal`, `waste`) that caused the movement; `user_id` is the actor. `usage_reversal` is written when a processing order fails and adds back the net usage per `(material_id, branch_id)`. Legacy rows may have a null type, actor, and reference after the best-effort backfill.
@@ -467,7 +449,7 @@ erDiagram
 26. **`attribute_types` is master data, not a lookup foreign key.** `name` and `slug` are each unique and capped at 100 characters; `slug` is generated from the name on create, is immutable on update, and is the route key. There is no delete endpoint (a 404 tombstone); `is_active = false` is retirement. The migration seeds Finishing, Potong (`cut`), and Display at sort order 1/2/3, then backfills every other non-empty legacy `attributes.type` with its exact slug and a headline name. Attribute creation requires an active type; updates keep the current type even when inactive and require an active type when the type changes.
 27. **`users.is_active` is the account lifecycle flag; `deleted_at` stays administrative.** Default `true`. Deactivation keeps the row, blocks login, and rejects the account on its next authenticated `/api/v1` request; an owner can reactivate it. Soft-deleted users stay hidden by default, and restore sets `is_active = true`. `users.is_active` is not accepted by user store/update requests.
 28. **Product composition is stored on `products` plus two pivots.** `products.requires_material` and `products.uses_attributes` are boolean, default `true`, and cast to boolean. `attribute_type_product` and `attribute_product` use composite primary keys `(product_id, attribute_type_id)` and `(product_id, attribute_id)`, UUID foreign keys with `cascadeOnDelete()`, and `created_at`/`updated_at` timestamps from `withTimestamps()`. The `Product` relations are explicitly named `attributeTypes()` (pivot `attribute_type_product`) and `compatibleAttributes()` (pivot `attribute_product`); there is no `attributes()` relation. An empty type pivot means all active `attribute_types`; an empty attribute pivot means all active attributes of the allowed types. `uses_attributes = false` rejects new client attribute selections while preserving both pivots so re-enabling restores them. Every `ProductResource` producer eager-loads `category`, `materials`, `attributeTypes`, and `compatibleAttributes.typeInfo` (catalog list, quote options, and product create/update/restore): an unloaded pivot yields empty arrays, which silently means all. The resource exposes `attribute_type_ids`/`attribute_ids` for writes and filtering plus display-only `attribute_types`/`compatible_attributes` name arrays. Owner writes the flags and pivots; Manager reads them.
-29. **`pricing.material_id` is nullable.** `2026_11_27_000008_make_pricing_material_id_nullable.php` changes the column to nullable with no backfill; existing rows are untouched, and a null material is valid only for a product with `requires_material = false`. `PricingService` uses `whereNull('material_id')` for the null-material lookup, including the Reguler fallback, and keeps `pricing.cost` authoritative. SQLite `change()` rebuilds the table; the `materials` foreign key is preserved. PostgreSQL DDL is documented in `docs/architecture/deployment.md` and not executed by the SQLite suite. `down()` throws `RuntimeException` while any `pricing` row has a null `material_id`, so rollback requires deleting or backfilling those rows first.
+29. **No-material lines are order-owned.** `2026_11_27_000008_make_pricing_material_id_nullable.php` was a B2 step on the retired matrix; B4 dropped that table. A null `orders.material_id` is valid only when the order's product has `requires_material = false`, skips availability and stock deduction, and is accepted by production start with an empty `material_usage`. Its PostgreSQL DDL and null-row rollback remain unverified.
 30. **Customer institutions are a label list; invoice institution is a snapshot.** `customers.institutions` is a JSON array of at most six allowed labels in constant order (`Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`, `Bisnis/Perusahaan`, `Organisasi/Yayasan`). The legacy singular `customers.institution` is kept as the mirrored first label so existing readers and payloads keep working; unknown legacy labels are preserved during backfill rather than dropped. `invoices.institution` stores the label chosen for that order and is immutable after creation, so a later customer edit changes neither past invoices nor their API responses. `InvoiceResource` falls back to the live `customer.institution` only for invoices with no snapshot. Customers are global and carry no branch id.
 
 ---

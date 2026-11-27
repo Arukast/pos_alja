@@ -13,6 +13,7 @@ use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductQuantityDiscount;
@@ -1294,6 +1295,57 @@ class CreateInvoiceApiTest extends TestCase
             'unit_price' => '112500.00',
             'subtotal' => '1068750.00',
         ]);
+    }
+
+    public function test_update_invoice_writes_new_snapshots_and_keeps_payment_rows(): void
+    {
+        $this->branchOne->update(['settings' => ['reseller_discount_percent' => 10]]);
+        $this->customer->update(['type' => 'Reseller']);
+
+        $invoiceResponse = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertCreated();
+        $invoiceId = (string) $invoiceResponse->json('invoice.id');
+        $orderId = (string) $invoiceResponse->json('invoice.orders.0.id');
+
+        $this->actingAs($this->cashier)
+            ->postJson("/api/v1/invoices/{$invoiceId}/down-payments", [
+                'amount' => 100000,
+                'payment_method' => 'Cash',
+            ])
+            ->assertCreated();
+
+        $paymentId = (string) Payment::query()->where('invoice_id', $invoiceId)->value('id');
+
+        ProductQuantityDiscount::create([
+            'product_id' => $this->product->id,
+            'min_qty' => 10,
+            'discount_percent' => 5,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->putJson("/api/v1/invoices/{$invoiceId}/items", [
+                'items' => [$this->item(['id' => $orderId, 'quantity' => 10])],
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $orderId,
+            'product_id' => $this->product->id,
+            'material_id' => $this->material->id,
+            'customer_type' => 'Reseller',
+            'reseller_discount_percent' => '10.00',
+            'quantity_discount_percent' => '5.00',
+            'discount_amount' => '217500.00',
+            'unit_price' => '22500.00',
+            'subtotal' => '1282500.00',
+        ]);
+        $this->assertDatabaseHas('payments', [
+            'id' => $paymentId,
+            'invoice_id' => $invoiceId,
+            'amount' => 100000,
+        ]);
+        $this->assertDatabaseCount('payments', 1);
     }
 
     public function test_create_invoice_ignores_the_legacy_pricing_id_key(): void

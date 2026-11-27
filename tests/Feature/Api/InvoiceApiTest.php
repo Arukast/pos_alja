@@ -321,6 +321,7 @@ class InvoiceApiTest extends TestCase
             ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
             ->assertOk()
             ->assertJsonPath('invoice.orders.0.product_id', $fixture['product']->id)
+            ->assertJsonPath('invoice.orders.0.product', 'Spanduk Flexy')
             ->assertJsonPath('invoice.orders.0.material_id', $fixture['material']->id)
             ->assertJsonPath('invoice.orders.0.material', 'Flexy 340gr')
             ->assertJsonMissingPath('invoice.orders.0.pricing');

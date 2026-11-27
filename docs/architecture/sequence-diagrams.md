@@ -141,14 +141,14 @@ sequenceDiagram
     participant R as Reverb
 
     alt Owner
-        A->>SPA: Create or edit product, category, material, attribute type, or a global/branch attribute option
-        SPA->>API: POST/PUT /api/v1/products, /categories, /attribute-types, /attributes, /materials
+        A->>SPA: Create or edit product, category, material, attribute type, a global/branch attribute option, or a global product quantity tier
+        SPA->>API: POST/PUT /api/v1/products, /categories, /attribute-types, /attributes, /materials, /product-quantity-discounts
         SPA->>API: PATCH /api/v1/materials/{id}/min-stock
-        API->>Policy: Authorize CatalogPolicy::manageCategories, manageProducts, createAttribute/updateAttribute, AttributeTypePolicy::create/update, or MaterialPolicy::update/setMinimumStock
+        API->>Policy: Authorize CatalogPolicy::manageCategories, manageProducts, createAttribute/updateAttribute, AttributeTypePolicy::create/update, manageProductQuantityDiscounts, or MaterialPolicy::update/setMinimumStock
     else Manager
-        M->>SPA: Edit own-branch attribute option or branch minimum stock
-        SPA->>API: POST/PUT /api/v1/attributes or PATCH /api/v1/materials/{id}/min-stock
-        API->>Policy: Authorize CatalogPolicy::createAttribute/updateAttribute or MaterialPolicy::setMinimumStock for own branch
+        M->>SPA: Edit own-branch attribute option or branch minimum stock; read global quantity tiers
+        SPA->>API: POST/PUT /api/v1/attributes or PATCH /api/v1/materials/{id}/min-stock; GET /api/v1/product-quantity-discounts
+        API->>Policy: Authorize CatalogPolicy::createAttribute/updateAttribute, viewProductQuantityDiscounts, or MaterialPolicy::setMinimumStock for own branch
     end
     alt Denied
         Policy-->>API: Deny
@@ -160,7 +160,7 @@ sequenceDiagram
     end
 ```
 
-Categories, products, and attributes are retired with `is_active`; category and attribute delete routes return 404. Managers can manage only own-branch attributes and edit only their own branch's minimum stock; global attributes are read-only. There is no discount-tier administration: the pricing matrix remains the price source and category quantity-discount tiers are removed.
+Categories, products, and attributes are retired with `is_active`; category and attribute delete routes return 404. Managers can manage only own-branch attributes and edit only their own branch's minimum stock; global attributes are read-only. Product quantity tiers are global, unique per `(product_id, min_qty)`, Owner-written and Manager-read; the pricing matrix and category tiers are gone, and all prices compute from material and attribute rows plus the tier and reseller discounts.
 
 ### 2.3 Product Compatibility Write And Read
 
@@ -330,27 +330,28 @@ sequenceDiagram
         API-->>SPA: 422 selected_attributes
     else Valid
         API->>API: Skip MaterialAvailability because material_id is null
-        API->>PriceCalc: Enforce product/material/type/attribute capability and one attribute per type
-        PriceCalc->>DB: PricingService whereNull(material_id) lookup, including the Reguler fallback
-        PriceCalc-->>API: Unit price, cost, subtotal from the pricing row and attribute modifiers
-        API-->>SPA: Quote with pricing_id; no cost/profit for the designer
+        API->>PriceCalc: CalculateQuote enforces product/material/type/attribute capability and one attribute per type
+        PriceCalc->>DB: Load product, material price/cost, active attributes, branch reseller percent, product tiers
+        PriceCalc-->>API: base = material + attribute prices; Reseller base discount; area factor; highest eligible tier
+        API-->>SPA: Quote with unit_price, area, quantity, subtotal; no cost/profit, no pricing identity
     end
 
-    SPA->>API: POST /api/v1/invoices {items:[{pricing_id, quantity, selected_attributes?}]}
-    API->>DB: BEGIN, lock branch numbering, check each pricing row product/material compatibility
+    SPA->>API: POST /api/v1/invoices {items:[{product_id, material_id, quantity, selected_attributes?}]}
+    API->>DB: BEGIN, lock branch numbering, check each product/material/attribute capability
     alt Null material on a material-required product, or incompatible mapped material
-        API-->>SPA: 422 items.{index}.pricing_id
+        API-->>SPA: 422 items.{index}.material_id
     else Capability attribute violation
         API-->>SPA: 422 items.{index}.selected_attributes
     else Valid
-        API->>API: Skip availability for null material; branch, customer type, and min_qty still apply
-        API->>DB: Write invoice, orders with selected_attributes, status logs, audit, COMMIT
+        API->>API: Skip availability for null material; active product, quantity, branch and customer type still apply
+        API->>PriceCalc: QuotePricingService::calculate() once per line
+        API->>DB: Write invoice and orders with product_id, material_id, customer_type, reseller/tier percents, discount_amount, money snapshots, and selected_attributes; status logs, audit, COMMIT
         API-->>SPA: 201 invoice
         API->>R: OrderUpdated
     end
 ```
 
-A null material skips only stock availability. Pricing, branch scope, customer type, `min_qty`, active product, one-attribute-per-type, and active/catalog checks still apply, and all prices are recomputed server-side.
+A null material skips only stock availability. Active product, positive quantity, branch reseller percent, tier eligibility, one-attribute-per-type, and catalog checks still apply, and all money is recomputed by `QuotePricingService` on the server and snapshotted per order line.
 
 ### 3.5 Invoice Edit Grandfather Decision
 
@@ -364,26 +365,27 @@ sequenceDiagram
     participant R as Reverb
 
     D->>SPA: Open an unpaid, pre-production invoice and change items
-    SPA->>API: PUT /api/v1/invoices/{id}/items with each item's id, pricing_id, material, and selected_attributes
+    SPA->>API: PUT /api/v1/invoices/{id}/items with each item's id, product_id, material_id, and selected_attributes
     API->>DB: BEGIN, lock invoice and existing orders
-    API->>DB: Derive invoice-wide inactive material/attribute allowances from the locked orders
+    API->>DB: Derive inactive material/attribute allowances from the locked orders
     loop Each submitted line
-        API->>API: Compare locked pricing_id, pricing material_id, and normalized selected_attributes set
+        API->>API: Compare locked product_id, material_id, and normalized selected_attributes set
         alt Whole line unchanged
-            Note over API: Grandfathered; skip product capability checks and keep the invoice-wide allowances
+            Note over API: Grandfathered; skip product capability checks and keep the allowances
         else New line or any signature part changed
-            API->>API: Enforce material requirement/compatibility, allowed types, compatible attributes, uses_attributes
+            API->>API: Enforce product requirement, material compatibility, allowed types, compatible attributes, uses_attributes
             alt Incompatible
-                API-->>SPA: 422 items.{index}.pricing_id or items.{index}.selected_attributes
+                API-->>SPA: 422 items.{index}.product_id, items.{index}.material_id, or items.{index}.selected_attributes
             end
         end
     end
-    API->>DB: Recalculate prices, totals, and receivable; preserve payments; audit before/after; COMMIT
+    API->>PriceCalc: Recompute each changed line and snapshot its discount/money values
+    API->>DB: Recalculate totals and receivable; preserve payments; audit before/after; COMMIT
     API-->>SPA: Updated invoice
     API->>R: OrderUpdated
 ```
 
-The signature is `pricing_id` + pricing `material_id` + the lowercased, de-duplicated, sorted `selected_attributes` set, all derived from locked orders. No client flag, reordered list, or changed pricing row widens it; a new line that reuses an old pricing id is still enforced.
+The signature is the order's own `product_id` + `material_id` + the lowercased, de-duplicated, sorted `selected_attributes` set, all derived from locked orders. No client flag, reordered list, or changed identity widens it; a new line that reuses an old product/material pair is still enforced. Production no longer depends on a pricing row: it reads `order.material` from this snapshot.
 
 ## 4. Payments And Pickup
 
@@ -704,10 +706,10 @@ sequenceDiagram
     participant DB
     participant R as Reverb
 
-    P->>SPA: Start a queued order whose pricing material is null
+    P->>SPA: Start a queued order whose stored material is null
     SPA->>API: POST /api/v1/orders/{id}/start
-    API->>DB: BEGIN, lock order, eager-load pricing.material and pricing.product, require status 0
-    alt pricing.material_id is null but product requires_material=true, or material is soft-deleted
+    API->>DB: BEGIN, lock order, eager-load order.material and order.product, require status 0
+    alt orders.material_id is null but the product requires material, or the material is soft-deleted
         API-->>SPA: 422 material "Bahan untuk pesanan ini tidak ditemukan."
     else Product allows no material
         API->>DB: Set status 1 and operator, write status log "Production started"
@@ -719,7 +721,7 @@ sequenceDiagram
     end
 ```
 
-No new permission or route is introduced: this is the existing start action with the C1 guard. Fail, complete, and reopen use the existing paths; waste remains material-only, so a no-material order produces no waste row unless a material is supplied later.
+No new permission or route is introduced: this is the existing start action with the C1 guard. The material and its unit come from the order snapshot (`orders.material_id`, eager-loaded as `order.material`), never from a pricing row. Fail, complete, and reopen use the existing paths; waste remains material-only, so a no-material order produces no waste row unless a material is supplied later.
 
 ## 7. Reporting And System
 

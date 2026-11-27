@@ -1040,58 +1040,22 @@ class CatalogWriteApiTest extends TestCase
         $this->assertSame('orphan', $row['type_name']);
     }
 
-    public function test_pricing_crud_and_clone_tiers(): void
+    public function test_removed_pricing_matrix_routes_are_tombstoned(): void
     {
-        $pricing = $this->actingAs($this->owner)
-            ->postJson('/api/v1/pricing', [
-                'branch_id' => $this->branchOne->id,
-                'product_id' => $this->product->id,
-                'material_id' => $this->material->id,
-                'customer_type' => 'Reguler',
-                'min_qty' => 1,
-                'price' => 50000,
-                'cost' => 20000,
-            ])
-            ->assertCreated()
-            ->json('pricing');
+        $id = (string) Str::uuid();
 
-        $this->actingAs($this->manager)
-            ->putJson("/api/v1/pricing/{$pricing['id']}", [
-                'min_qty' => 1,
-                'price' => 55000,
-                'cost' => 20000,
-            ])
-            ->assertOk()
-            ->assertJsonPath('pricing.price', '55000.00');
-
-        $this->actingAs($this->manager)
-            ->postJson('/api/v1/pricing/clone-tiers', [
-                'from_material_id' => $this->material->id,
-                'to_material_id' => $this->otherMaterial->id,
-            ])
-            ->assertOk();
-
-        $this->assertDatabaseHas('pricing', [
-            'branch_id' => $this->branchOne->id,
-            'material_id' => $this->otherMaterial->id,
-            'customer_type' => 'Reguler',
-        ]);
-
-        $this->actingAs($this->manager)
-            ->deleteJson("/api/v1/pricing/{$pricing['id']}")
-            ->assertNoContent();
-
-        $this->assertSoftDeleted('pricing', ['id' => $pricing['id']]);
-
-        $this->actingAs($this->manager)
-            ->getJson('/api/v1/pricing')
-            ->assertOk()
-            ->assertJsonMissing(['id' => $pricing['id']]);
+        foreach ([$this->owner, $this->manager] as $user) {
+            $this->actingAs($user)->getJson('/api/v1/pricing')->assertNotFound();
+            $this->actingAs($user)->postJson('/api/v1/pricing', [])->assertNotFound();
+            $this->actingAs($user)->postJson('/api/v1/pricing/clone-tiers', [])->assertNotFound();
+            $this->actingAs($user)->putJson("/api/v1/pricing/{$id}", [])->assertNotFound();
+            $this->actingAs($user)->deleteJson("/api/v1/pricing/{$id}")->assertNotFound();
+        }
     }
 
     public function test_catalog_write_endpoints_require_authentication(): void
     {
-        foreach (['/materials', '/categories', '/attributes', '/pricing'] as $path) {
+        foreach (['/materials', '/categories', '/attributes', '/product-quantity-discounts'] as $path) {
             $this->postJson('/api/v1'.$path, [])->assertUnauthorized();
         }
 
@@ -1102,8 +1066,6 @@ class CatalogWriteApiTest extends TestCase
 
     public function test_catalog_write_validation_errors_are_422(): void
     {
-        $actor = $this->manager;
-
         $this->actingAs($this->owner)
             ->postJson('/api/v1/categories', [
                 'name' => 'Ignored Legacy Fields',
@@ -1144,16 +1106,13 @@ class CatalogWriteApiTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('cost');
 
-        $this->actingAs($actor)
-            ->postJson('/api/v1/pricing', [
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/product-quantity-discounts', [
                 'product_id' => $this->product->id,
-                'material_id' => $this->material->id,
-                'customer_type' => 'Reguler',
                 'min_qty' => 1,
-                'cost' => 1000,
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('price');
+            ->assertJsonValidationErrors('discount_percent');
     }
 
     public function test_product_endpoints_require_authentication(): void

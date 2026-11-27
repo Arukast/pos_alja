@@ -203,6 +203,7 @@ export interface Purchase {
 export interface Order {
     id: string;
     product_id: string | null;
+    product?: string | null;
     material_id: string | null;
     material: string | null;
     customer_type: string;

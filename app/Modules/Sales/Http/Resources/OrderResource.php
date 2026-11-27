@@ -24,6 +24,8 @@ final class OrderResource extends JsonResource
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
+            'product' => $this->when($this->relationLoaded('product'),
+                fn (): ?string => $this->product?->name),
             'material_id' => $this->material_id,
             'material' => $this->when($this->relationLoaded('material'),
                 fn (): ?string => $this->material?->name),

@@ -240,19 +240,19 @@ class ProductionWriteApiTest extends TestCase
         $this->assertSame([], $log->payload['material_usage']);
     }
 
-    public function test_start_uses_the_order_material_identity_not_the_product_flag(): void
+    public function test_start_rejects_a_null_material_order_for_a_material_product(): void
     {
         ['order' => $order] = $this->noMaterialOrder(true);
 
         $this->actingAs($this->production)
             ->postJson("/api/v1/orders/{$order->id}/start")
-            ->assertOk()
-            ->assertJsonPath('order.status', 1);
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material');
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
-            'status' => 1,
-            'material_id' => null,
+            'status' => 0,
+            'operator_id' => null,
         ]);
         $this->assertDatabaseCount('stock_ledgers', 0);
     }
@@ -800,7 +800,7 @@ class ProductionWriteApiTest extends TestCase
     }
 
     /**
-     * @return array{product: Product, pricing: Pricing, order: Order}
+     * @return array{product: Product, order: Order}
      */
     private function noMaterialOrder(bool $requiresMaterial): array
     {

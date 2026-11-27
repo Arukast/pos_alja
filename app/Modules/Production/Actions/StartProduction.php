@@ -24,7 +24,7 @@ final class StartProduction
     {
         $updated = DB::transaction(function () use ($order, $operator): Order {
             $locked = Order::query()
-                ->with(['invoice', 'material'])
+                ->with(['invoice', 'material', 'product'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -40,11 +40,12 @@ final class StartProduction
 
             $material = $locked->material;
 
-            // A null material is only valid when the order itself stores no material;
-            // a soft-deleted material keeps material_id set but material null, so it stays rejected.
-            $isNoMaterialOrder = $locked->material_id === null && $material === null;
-
-            if (! $isNoMaterialOrder && $material === null) {
+            // A null material is valid only for a no-material product or a legacy order
+            // with no product identity; a soft-deleted material stays rejected.
+            if ($material === null && (
+                $locked->material_id !== null
+                || ($locked->product !== null && $locked->product->requires_material === true)
+            )) {
                 throw ValidationException::withMessages([
                     'material' => 'Bahan untuk pesanan ini tidak ditemukan.',
                 ]);
