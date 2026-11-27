@@ -5,10 +5,14 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class UserService
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly LastActiveOwnerGuard $lastActiveOwnerGuard
+    ) {}
 
     /**
      * Create a user and log activity.
@@ -65,6 +69,10 @@ class UserService
                 $updateData['password'] = Hash::make($data['password']);
             }
 
+            if ($user->role === 'owner' && ($data['role'] ?? $user->role) !== 'owner') {
+                $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user, 'role');
+            }
+
             $user->update($updateData);
 
             $newData = $user->fresh()->toArray();
@@ -86,11 +94,48 @@ class UserService
     }
 
     /**
+     * Toggle a user's active status and log activity.
+     */
+    public function toggleUserStatus(User $user, User $actor): User
+    {
+        if ($actor->is($user)) {
+            throw ValidationException::withMessages([
+                'is_active' => 'Anda tidak dapat menonaktifkan akun Anda sendiri dari Manajemen Pengguna. Gunakan menu Profil.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($user, $actor): User {
+            $oldStatus = $user->is_active;
+
+            if ($oldStatus) {
+                $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user);
+            }
+
+            $user->update(['is_active' => ! $oldStatus]);
+
+            $this->audit->record(
+                $actor,
+                'UPDATE',
+                "Mengubah status aktif pengguna: {$user->username} menjadi ".($user->is_active ? 'aktif' : 'nonaktif'),
+                $user,
+                [
+                    'before' => ['is_active' => $oldStatus],
+                    'after' => ['is_active' => $user->is_active],
+                ],
+            );
+
+            return $user;
+        });
+    }
+
+    /**
      * Delete a user and log activity.
      */
     public function deleteUser(User $user, User $actor): void
     {
         DB::transaction(function () use ($user, $actor) {
+            $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user, 'user');
+
             $payload = $user->toArray();
             unset($payload['password']);
 
@@ -113,6 +158,7 @@ class UserService
     {
         DB::transaction(function () use ($user, $actor) {
             $user->restore();
+            $user->update(['is_active' => true]);
 
             $payload = $user->toArray();
             unset($payload['password']);

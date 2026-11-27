@@ -53,6 +53,7 @@ final class WasteList
 
         $designers = User::query()
             ->where('role', 'designer')
+            ->where('is_active', true)
             ->where('branch_id', $branchId)
             ->orderBy('name')
             ->get(['id', 'name'])

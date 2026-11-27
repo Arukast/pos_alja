@@ -18,9 +18,10 @@ sequenceDiagram
     SPA->>API: POST /api/v1/auth/login
     API->>DB: Find user by username
     API->>API: Bcrypt check and rate limit
-    alt Invalid credentials
-        API-->>SPA: 422 generic failure
+    alt Invalid credentials, inactive user, or non-owner with inactive/trashed/missing branch
+        API-->>SPA: 422 generic auth.failed
     else Valid
+        Note over API: Owners skip the branch check. A non-owner with no branch keeps the previous behavior.
         API-->>SPA: 200 user + session cookie
         SPA->>API: GET /api/v1/auth/me
         API-->>SPA: User, role, branch
@@ -40,23 +41,69 @@ sequenceDiagram
     participant R as Reverb
 
     A->>SPA: Open user management
-    SPA->>API: GET /api/v1/users?branch_id
+    SPA->>API: GET /api/v1/users
     API->>Policy: Authorize viewAny
     Policy-->>API: Owner all, manager own branch staff
     API->>DB: Query users scoped by role and branch
     API-->>SPA: Paginated users
 
-    A->>SPA: Create, update, deactivate, or restore user
-    SPA->>API: POST/PUT/DELETE /api/v1/users
-    API->>Policy: Authorize manage target user
-    alt Manager targets owner/manager or another branch
-        Policy-->>API: Deny
-        API-->>SPA: 403
+    A->>SPA: Create user
+    SPA->>API: POST /api/v1/users
+    alt Manager requests an owner/manager role for a staff target or assigns another branch
+        API-->>SPA: 422 validation
     else Allowed
         API->>DB: BEGIN, write user + audit log, COMMIT
         API-->>SPA: User resource
         API->>R: OrderUpdated on branch/owners
     end
+
+    A->>SPA: Update user or toggle active status
+    alt Update
+        SPA->>API: PUT /api/v1/users/{user}
+    else Toggle status
+        SPA->>API: PATCH /api/v1/users/{user}/status
+    end
+    API->>Policy: Authorize manage target user
+    alt Manager targets a current owner/manager or a cross-branch target
+        Policy-->>API: Deny
+        API-->>SPA: 403
+    else Actor targets self on toggle status
+        API-->>SPA: 422 self-toggle message
+    else Role demotion would remove the last active owner
+        API->>DB: BEGIN; lock active owners
+        API-->>SPA: 422 Pemilik aktif terakhir...
+    else Allowed
+        Note over API,DB: A guarded change that succeeds also locks active owners inside the service transaction before commit.
+        API->>DB: BEGIN, write user + audit log, COMMIT
+        API-->>SPA: User resource
+        API->>R: OrderUpdated on branch/owners
+    end
+
+    Note over A,API: The status route cannot emit the last-owner guard: a sole owner targeting themselves gets the self-toggle 422, and any other target implies a second active owner. The same guard returns 422 on profile deactivation and `DELETE /users/{user}`; role demotion is the guarded branch above. DELETE /users/{user} and restore are owner-only administrative APIs with no SPA action.
+```
+
+### 1.3 Immediate Access Revocation
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant SPA
+    participant API
+    participant MW as EnsureAccountIsActive
+    participant DB
+
+    SPA->>API: Any authenticated /api/v1 request
+    API->>MW: auth:sanctum passed
+    MW->>DB: Read user.is_active and assigned branch
+    alt Inactive user, or non-owner with inactive/trashed/missing branch
+        MW->>MW: Web guard logout, invalidate session, regenerate CSRF token
+        MW-->>SPA: 401 Akun atau cabang Anda tidak aktif. Silakan hubungi pemilik.
+    else Active
+        MW-->>API: Continue
+        API-->>SPA: Normal response
+    end
+
+    Note over SPA,MW: Owners skip the branch check. /broadcasting/auth is outside the active middleware, so a deactivated session can still re-authorize a private channel until its next authenticated /api/v1 request. Open sockets are not revoked, and broadcasts carry no money data.
 ```
 
 ## 2. Catalog
