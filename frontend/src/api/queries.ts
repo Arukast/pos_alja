@@ -192,10 +192,13 @@ export const api = {
     quote: (data: MutationBody) => mutate<{ quote: Quote }>('/quotes', 'POST', data),
 
     customers: (params: QueryParams = {}) =>
-        apiFetch<{ data: Customer[] }>(`/customers${queryString(params)}`),
+        apiFetch<Paginated<Customer>>(`/customers${queryString(params)}`),
 
     createCustomer: (data: MutationBody) =>
         mutate<{ customer: Customer }>('/customers', 'POST', data),
+
+    updateCustomer: (id: string, data: MutationBody) =>
+        mutate<{ customer: Customer }>(`/customers/${id}`, 'PUT', data),
 
     createInvoice: (data: MutationBody) =>
         mutate<{ invoice: Invoice }>('/invoices', 'POST', data),
