@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Actions;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\User;
 use App\Support\BranchScope;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 final class CreateAttribute
@@ -42,6 +44,14 @@ final class CreateAttribute
             ? ($data['branch_id'] ?? null)
             : BranchScope::writeBranchId($actor, $data['branch_id'] ?? null);
 
+        $type = AttributeType::where('slug', $data['type'])->first();
+
+        if ($type === null || ! $type->is_active) {
+            throw ValidationException::withMessages([
+                'type' => 'Tipe atribut tidak aktif.',
+            ]);
+        }
+
         try {
             $attribute = DB::transaction(fn (): Attribute => Attribute::create([
                 'name' => $data['name'],
@@ -62,6 +72,6 @@ final class CreateAttribute
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $attribute->load('branch');
+        return $attribute->load(['branch', 'typeInfo']);
     }
 }

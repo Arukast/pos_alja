@@ -4,7 +4,6 @@ import { api } from '../../api/queries';
 import type { Attribute } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { Badge } from '../../components/ui/Badge';
-import { attributeTypeLabel } from '../../lib/labels';
 import { formatMoney } from '../../lib/money';
 import { collectionAsPage } from '../../lib/pagination';
 
@@ -22,6 +21,19 @@ export function AttributesPage({
         queryFn: () => api.branches({ page: 1 }),
         enabled: queryKeyPrefix === 'owner',
     });
+
+    const attributeTypes = useQuery({
+        queryKey: ['attribute-types'],
+        queryFn: () => api.attributeTypes(),
+    });
+
+    const typeOptions = (currentType?: string) =>
+        (attributeTypes.data?.data ?? [])
+            .filter((type) => type.is_active || type.slug === currentType)
+            .map((type) => ({
+                value: type.slug,
+                label: type.is_active ? type.name : `${type.name} (nonaktif)`,
+            }));
 
     const branchOptions = (branches.data?.data ?? []).map((branch) => ({
         value: branch.id,
@@ -45,12 +57,10 @@ export function AttributesPage({
             label: 'Tipe',
             type: 'select',
             required: true,
-            defaultValue: 'finishing',
-            options: [
-                { value: 'finishing', label: attributeTypeLabel('finishing') },
-                { value: 'display', label: attributeTypeLabel('display') },
-            ],
+            defaultValue: (attributeTypes.data?.data ?? []).find((type) => type.is_active)?.slug ?? '',
+            options: (row) => typeOptions(row?.type),
             getValue: (attribute) => attribute.type,
+            emptyOptionLabel: 'Pilih tipe',
         },
         ...(isManager ? [] : [branchField]),
         {
@@ -65,7 +75,7 @@ export function AttributesPage({
             label: 'Biaya',
             type: 'number',
             defaultValue: 0,
-            getValue: (attribute) => attribute.cost,
+            getValue: (attribute) => attribute.cost ?? 0,
         },
         {
             key: 'is_active',
@@ -88,7 +98,7 @@ export function AttributesPage({
                     header: 'Nama',
                     cell: (attribute) => <span className="font-medium">{attribute.name}</span>,
                 },
-                { header: 'Tipe', className: 'hidden sm:table-cell', cell: (attribute) => attributeTypeLabel(attribute.type) },
+                { header: 'Tipe', className: 'hidden sm:table-cell', cell: (attribute) => attribute.type_name },
                 {
                     header: 'Cabang',
                     className: 'hidden sm:table-cell',
@@ -102,7 +112,7 @@ export function AttributesPage({
                 {
                     header: 'Biaya',
                     className: 'hidden text-right tabular-nums whitespace-nowrap md:table-cell',
-                    cell: (attribute) => formatMoney(attribute.cost),
+                    cell: (attribute) => formatMoney(attribute.cost ?? 0),
                 },
                 {
                     header: 'Status',

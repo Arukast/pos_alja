@@ -63,12 +63,21 @@ export interface Category {
     products_count?: number;
 }
 
+export interface AttributeType {
+    id: string;
+    name: string;
+    slug: string;
+    sort_order: number;
+    is_active: boolean;
+}
+
 export interface Attribute {
     id: string;
     name: string;
     type: string;
+    type_name: string;
     price: string;
-    cost: string;
+    cost?: string;
     is_active: boolean;
     branch_id: string | null;
     branch: { id: string; name: string } | null;

@@ -39,7 +39,7 @@ final class CatalogQueries
      */
     public function attributes(User $actor, ?string $branchId): Collection
     {
-        $query = Attribute::query()->with('branch');
+        $query = Attribute::query()->with(['branch', 'typeInfo']);
 
         if ($actor->role === 'owner') {
             if ($branchId !== null && $branchId !== '' && $branchId !== 'all') {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Http\Resources;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\User;
 use App\Support\Decimal;
 use Illuminate\Http\Request;
@@ -22,6 +23,9 @@ final class AttributeResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'type' => $this->type,
+            'type_name' => $this->typeInfo instanceof AttributeType
+                ? $this->typeInfo->name
+                : $this->type,
             'price' => Decimal::money($this->price),
             'is_active' => (bool) $this->is_active,
             'branch_id' => $this->branch_id,

@@ -6,6 +6,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\ActivityLog;
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
@@ -796,6 +797,247 @@ class CatalogWriteApiTest extends TestCase
             'price' => 5000,
             'cost' => 2000,
         ])->assertUnauthorized();
+    }
+
+    public function test_attribute_create_requires_an_active_type(): void
+    {
+        $type = AttributeType::create([
+            'name' => 'Packaging',
+            'slug' => 'packaging',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Box',
+                'type' => 'packaging',
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attribute.type_name', 'Packaging');
+
+        $type->update(['is_active' => false]);
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Box Inactive',
+                'type' => 'packaging',
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('type');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Box Unknown',
+                'type' => 'unknown-type',
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('type');
+
+        $this->assertDatabaseMissing('attributes', ['name' => 'Box Inactive']);
+        $this->assertDatabaseMissing('attributes', ['name' => 'Box Unknown']);
+    }
+
+    public function test_attribute_update_may_keep_its_current_inactive_type(): void
+    {
+        $type = AttributeType::create([
+            'name' => 'Packaging',
+            'slug' => 'packaging',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Box',
+            'type' => 'packaging',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $type->update(['is_active' => false]);
+
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/attributes/{$attribute->id}", [
+                'name' => 'Box Updated',
+                'type' => 'packaging',
+                'price' => 6000,
+                'cost' => 2500,
+            ])
+            ->assertOk()
+            ->assertJsonPath('attribute.type', 'packaging')
+            ->assertJsonPath('attribute.type_name', 'Packaging')
+            ->assertJsonPath('attribute.price', '6000.00');
+
+        $this->assertDatabaseHas('attributes', [
+            'id' => $attribute->id,
+            'name' => 'Box Updated',
+            'type' => 'packaging',
+        ]);
+    }
+
+    public function test_attribute_update_rejects_a_different_inactive_type(): void
+    {
+        AttributeType::create([
+            'name' => 'Packaging',
+            'slug' => 'packaging',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        AttributeType::create([
+            'name' => 'Emboss',
+            'slug' => 'emboss',
+            'sort_order' => 11,
+            'is_active' => false,
+        ]);
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Box',
+            'type' => 'packaging',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/attributes/{$attribute->id}", [
+                'name' => 'Box Emboss',
+                'type' => 'emboss',
+                'price' => 6000,
+                'cost' => 2500,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('type');
+
+        $this->assertDatabaseHas('attributes', [
+            'id' => $attribute->id,
+            'name' => 'Box',
+            'type' => 'packaging',
+        ]);
+    }
+
+    public function test_attribute_update_can_change_to_another_active_type(): void
+    {
+        AttributeType::create([
+            'name' => 'Packaging',
+            'slug' => 'packaging',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Box',
+            'type' => 'packaging',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $this->actingAs($this->manager)
+            ->putJson("/api/v1/attributes/{$attribute->id}", [
+                'name' => 'Box Display',
+                'type' => 'display',
+                'price' => 6000,
+                'cost' => 2500,
+            ])
+            ->assertOk()
+            ->assertJsonPath('attribute.type', 'display')
+            ->assertJsonPath('attribute.type_name', 'Display');
+
+        $this->assertDatabaseHas('attributes', [
+            'id' => $attribute->id,
+            'type' => 'display',
+        ]);
+    }
+
+    public function test_cut_attribute_round_trips_and_reports_potong(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Half Cut',
+            'type' => 'cut',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $rows = $this->actingAs($this->owner)
+            ->getJson('/api/v1/attributes')
+            ->assertOk()
+            ->json('data');
+
+        $row = collect($rows)->firstWhere('id', $attribute->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame('Potong', $row['type_name']);
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/attributes/{$attribute->id}", [
+                'name' => 'Half Cut Updated',
+                'type' => 'cut',
+                'price' => 5500,
+                'cost' => 2200,
+            ])
+            ->assertOk()
+            ->assertJsonPath('attribute.type_name', 'Potong');
+    }
+
+    public function test_custom_type_attribute_reports_type_name(): void
+    {
+        AttributeType::create([
+            'name' => 'Packaging',
+            'slug' => 'packaging',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        $created = $this->actingAs($this->owner)
+            ->postJson('/api/v1/attributes', [
+                'name' => 'Box',
+                'type' => 'packaging',
+                'price' => 5000,
+                'cost' => 2000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attribute.type_name', 'Packaging')
+            ->json('attribute');
+
+        $rows = $this->actingAs($this->owner)
+            ->getJson('/api/v1/attributes')
+            ->assertOk()
+            ->json('data');
+
+        $row = collect($rows)->firstWhere('id', $created['id']);
+
+        $this->assertNotNull($row);
+        $this->assertSame('Packaging', $row['type_name']);
+    }
+
+    public function test_attribute_type_name_falls_back_to_the_raw_slug(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Orphan',
+            'type' => 'orphan',
+            'price' => 5000,
+            'cost' => 2000,
+        ]);
+
+        $rows = $this->actingAs($this->owner)
+            ->getJson('/api/v1/attributes')
+            ->assertOk()
+            ->json('data');
+
+        $row = collect($rows)->firstWhere('id', $attribute->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame('orphan', $row['type_name']);
     }
 
     public function test_pricing_crud_and_clone_tiers(): void

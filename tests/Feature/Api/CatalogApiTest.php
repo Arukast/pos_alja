@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
@@ -14,6 +15,7 @@ use App\Models\ProductCategory;
 use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -512,6 +514,56 @@ class CatalogApiTest extends TestCase
         $this->actingAs($branchlessManager)
             ->getJson('/api/v1/attributes')
             ->assertForbidden();
+    }
+
+    public function test_attribute_list_returns_type_name(): void
+    {
+        $longName = str_repeat('T', 100);
+        $longSlug = str_repeat('a', 100);
+
+        AttributeType::create([
+            'name' => $longName,
+            'slug' => $longSlug,
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        $longAttribute = Attribute::create([
+            'branch_id' => null,
+            'name' => 'Long Type',
+            'type' => $longSlug,
+        ]);
+
+        $rows = $this->actingAs($this->owner)
+            ->getJson('/api/v1/attributes')
+            ->assertOk()
+            ->json('data');
+
+        $finishing = collect($rows)->firstWhere('id', $this->attributeOne->id);
+
+        $this->assertNotNull($finishing);
+        $this->assertSame('Finishing', $finishing['type_name']);
+
+        $longRow = collect($rows)->firstWhere('id', $longAttribute->id);
+
+        $this->assertNotNull($longRow);
+        $this->assertSame($longName, $longRow['type_name']);
+        $this->assertSame(100, strlen($longRow['type_name']));
+    }
+
+    public function test_attribute_list_eager_loads_type_info(): void
+    {
+        DB::enableQueryLog();
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/attributes')
+            ->assertOk();
+
+        $typeQueries = collect(DB::getQueryLog())
+            ->filter(fn (array $query): bool => str_contains($query['query'], 'attribute_types'))
+            ->count();
+
+        $this->assertSame(1, $typeQueries);
     }
 
     public function test_stock_ledgers_carry_traceability_fields(): void

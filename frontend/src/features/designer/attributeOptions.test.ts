@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 
 import { selectableAttributes } from './attributeOptions';
 
-const base = { price: '0.00', cost: '0.00', branch_id: null, branch: null };
+const base = { price: '0.00', cost: '0.00', type_name: 'Finishing', branch_id: null, branch: null };
 const attributes = [
     { ...base, id: 'a1', name: 'Glossy', type: 'finishing', is_active: true },
     { ...base, id: 'a2', name: 'Matte', type: 'finishing', is_active: false },

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Actions;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\User;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 final class UpdateAttribute
@@ -24,6 +26,16 @@ final class UpdateAttribute
      */
     public function execute(Attribute $attribute, array $data, User $actor): Attribute
     {
+        if ($data['type'] !== $attribute->type) {
+            $type = AttributeType::where('slug', $data['type'])->first();
+
+            if ($type === null || ! $type->is_active) {
+                throw ValidationException::withMessages([
+                    'type' => 'Tipe atribut tidak aktif.',
+                ]);
+            }
+        }
+
         try {
             $updated = DB::transaction(function () use ($attribute, $data): Attribute {
                 $attribute->update([
@@ -50,6 +62,6 @@ final class UpdateAttribute
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $updated->fresh('branch') ?? $updated->load('branch');
+        return $updated->fresh(['branch', 'typeInfo']) ?? $updated->load(['branch', 'typeInfo']);
     }
 }
