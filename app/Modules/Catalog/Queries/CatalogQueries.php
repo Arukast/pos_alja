@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Queries;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -23,6 +24,14 @@ final class CatalogQueries
     public function categories(): Collection
     {
         return ProductCategory::query()->withCount('products')->orderBy('name')->get();
+    }
+
+    /**
+     * @return Collection<int, AttributeType>
+     */
+    public function attributeTypes(): Collection
+    {
+        return AttributeType::query()->orderBy('sort_order')->orderBy('name')->get();
     }
 
     /**

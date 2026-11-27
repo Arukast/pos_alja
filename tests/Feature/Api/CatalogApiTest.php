@@ -541,6 +541,33 @@ class CatalogApiTest extends TestCase
         $this->assertNull($response->json('data.0.material'));
     }
 
+    public function test_attribute_type_endpoints_enforce_read_roles(): void
+    {
+        $this->getJson('/api/v1/attribute-types')->assertUnauthorized();
+
+        $this->actingAs($this->owner)->getJson('/api/v1/attribute-types')->assertOk();
+        $this->actingAs($this->manager)->getJson('/api/v1/attribute-types')->assertOk();
+        $this->actingAs($this->designer)->getJson('/api/v1/attribute-types')->assertForbidden();
+    }
+
+    public function test_attribute_type_writes_are_owner_only_and_delete_is_a_tombstone(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attribute-types', ['name' => 'Packaging'])
+            ->assertCreated()
+            ->assertJsonPath('attribute_type.slug', 'packaging');
+
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/attribute-types', ['name' => 'Manager Packaging'])
+            ->assertForbidden();
+
+        $this->actingAs($this->owner)
+            ->deleteJson('/api/v1/attribute-types/finishing')
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('attribute_types', ['slug' => 'finishing']);
+    }
+
     private function branch(string $name): Branch
     {
         return Branch::create([

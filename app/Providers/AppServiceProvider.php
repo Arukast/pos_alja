@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\ActivityLog;
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Backup;
 use App\Models\BackupSetting;
 use App\Models\Material;
@@ -13,6 +14,7 @@ use App\Models\ProductCategory;
 use App\Models\Purchase;
 use App\Models\StockLedger;
 use App\Models\WastedMaterial;
+use App\Policies\AttributeTypePolicy;
 use App\Policies\AuditPolicy;
 use App\Policies\BackupPolicy;
 use App\Policies\BackupSettingPolicy;
@@ -58,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(ProductCategory::class, CatalogPolicy::class);
         Gate::policy(Attribute::class, CatalogPolicy::class);
+        Gate::policy(AttributeType::class, AttributeTypePolicy::class);
         Gate::policy(Product::class, CatalogPolicy::class);
         Gate::policy(Pricing::class, CatalogPolicy::class);
         Gate::policy(StockLedger::class, CatalogPolicy::class);
