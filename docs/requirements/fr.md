@@ -272,6 +272,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Acceptance criteria:**
   - Sort: `created_at ASC`, then `id`. The target rule is `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`; it is not implemented.
   - The implemented queue returns status `0`, `1`, and `3`; status `2` is excluded. `status` accepts 0/1/3 (422 otherwise) and `search` matches invoice number, file name, or exact order UUID. The owner may also filter by branch.
+  - Orders whose invoice status is `0` (Belum Dibayar) are excluded from the queue and from all four `/production/summary` counts; invoices with DP (`1`) or Lunas (`2`) remain visible.
   - Each row shows order, customer, deadline, status, designer, and operator.
   - Branch-bound users see only their branch; owner may view all or one branch.
   - Statuses: `0` (Antre Produksi), `1` (Diproses), `3` (Gagal). Status `2` (Selesai) is not queued.

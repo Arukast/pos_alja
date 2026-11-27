@@ -135,6 +135,9 @@ final class ProductionController extends Controller
         $orders = Order::query()->whereHas(
             'invoice',
             fn (Builder $query) => $query->where('branch_id', $branchId)
+        )->whereHas(
+            'invoice',
+            fn (Builder $query) => $query->whereIn('status', [1, 2])
         );
 
         $queued = (clone $orders)->where('status', 0)->count();
