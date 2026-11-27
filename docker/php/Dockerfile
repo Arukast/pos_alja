@@ -49,3 +49,4 @@ FROM nginx:1.27-alpine AS web
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=frontend /app/frontend/dist /usr/share/nginx/html
+RUN chmod -R a+rX,go-w /usr/share/nginx/html
