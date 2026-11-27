@@ -24,7 +24,7 @@ final class StartProduction
     {
         $updated = DB::transaction(function () use ($order, $operator): Order {
             $locked = Order::query()
-                ->with(['invoice', 'pricing.material', 'pricing.product'])
+                ->with(['invoice', 'material'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -38,21 +38,19 @@ final class StartProduction
             $statusBefore = $locked->status;
             $operatorBefore = $locked->operator_id;
 
-            $pricing = $locked->pricing;
+            $material = $locked->material;
 
-            // A null material is only valid for a product that needs no material;
+            // A null material is only valid when the order itself stores no material;
             // a soft-deleted material keeps material_id set but material null, so it stays rejected.
-            $isNoMaterialOrder = $pricing !== null
-                && $pricing->material_id === null
-                && $pricing->product?->requires_material === false;
+            $isNoMaterialOrder = $locked->material_id === null && $material === null;
 
-            if (! $isNoMaterialOrder && $pricing !== null && $pricing->material === null) {
+            if (! $isNoMaterialOrder && $material === null) {
                 throw ValidationException::withMessages([
                     'material' => 'Bahan untuk pesanan ini tidak ditemukan.',
                 ]);
             }
 
-            $unit = $pricing?->material?->unit;
+            $unit = $material?->unit;
             $area = (float) $locked->area;
 
             if ($unit === 'm2' && $area <= 0) {
@@ -67,7 +65,7 @@ final class StartProduction
 
             $materialUsage = [];
 
-            if ($pricing !== null && $pricing->material_id !== null) {
+            if ($locked->material_id !== null) {
                 $quantity = $unit === 'm2'
                     ? $area * (float) $locked->quantity
                     : (float) $locked->quantity;
@@ -76,7 +74,7 @@ final class StartProduction
 
                 if ($branchId !== null) {
                     $usageLedger = $this->inventory->deductStockOnPrint(
-                        $pricing->material_id,
+                        $locked->material_id,
                         $quantity,
                         $branchId,
                         $locked->id,
@@ -84,7 +82,7 @@ final class StartProduction
                     );
 
                     $materialUsage[] = [
-                        'material_id' => $pricing->material_id,
+                        'material_id' => $locked->material_id,
                         'quantity' => round($quantity, 2),
                         'stock_before' => (float) $usageLedger->initial_stock,
                         'stock_after' => (float) $usageLedger->remaining_stock,
@@ -121,6 +119,6 @@ final class StartProduction
 
         SafeBroadcast::orderUpdated($updated->invoice->branch_id, $operator);
 
-        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'pricing']);
+        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'material']);
     }
 }

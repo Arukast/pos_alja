@@ -10,6 +10,7 @@ use App\Models\Material;
 use App\Models\Product;
 use App\Models\ProductQuantityDiscount;
 use App\Support\Decimal;
+use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 
 final class QuotePricingService
@@ -78,11 +79,22 @@ final class QuotePricingService
             ))))
             : [];
 
+        // Internal allowance lets an unchanged order line keep attributes that have since been deactivated.
+        $allowance = $params['inactive_attribute_allowance'] ?? [];
+        $allowance = is_array($allowance)
+            ? array_values(array_unique(array_filter(array_map(
+                static fn (mixed $id): ?string => is_string($id) && $id !== '' ? strtolower($id) : null,
+                $allowance
+            ))))
+            : [];
+
         $attributes = $selectedIds === []
             ? collect()
             : Attribute::query()
                 ->whereIn('id', $selectedIds)
-                ->where('is_active', true)
+                ->where(static function (Builder $query) use ($allowance): void {
+                    $query->where('is_active', true)->orWhereIn('id', $allowance);
+                })
                 ->get();
 
         if ($attributes->count() !== count($selectedIds)) {

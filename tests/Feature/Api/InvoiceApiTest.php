@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\Attribute;
-use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -218,7 +216,7 @@ class InvoiceApiTest extends TestCase
                 'customer_id' => $this->customer->id,
                 'items' => [
                     [
-                        'pricing_id' => (string) Str::uuid(),
+                        'product_id' => (string) Str::uuid(),
                         'quantity' => 1,
                     ],
                 ],
@@ -299,7 +297,7 @@ class InvoiceApiTest extends TestCase
     /**
      * Memastikan detail invoice memuat label harga dan archetype untuk form edit desainer.
      */
-    public function test_invoice_detail_includes_pricing_labels_and_archetype(): void
+    public function test_invoice_detail_includes_order_identity_snapshots(): void
     {
         $fixture = $this->catalogFixture($this->branchOne);
 
@@ -308,7 +306,8 @@ class InvoiceApiTest extends TestCase
                 'customer_id' => $this->customer->id,
                 'items' => [
                     [
-                        'pricing_id' => $fixture['pricing']->id,
+                        'product_id' => $fixture['product']->id,
+                        'material_id' => $fixture['material']->id,
                         'quantity' => 1,
                         'width' => 2,
                         'length' => 1,
@@ -318,23 +317,19 @@ class InvoiceApiTest extends TestCase
             ])
             ->assertCreated();
 
-        $response = $this->actingAs($this->designer)
+        $this->actingAs($this->designer)
             ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
             ->assertOk()
-            ->assertJsonPath('invoice.orders.0.pricing.product', 'Spanduk Flexy')
-            ->assertJsonPath('invoice.orders.0.pricing.material', 'Flexy 340gr')
-            ->assertJsonPath('invoice.orders.0.pricing.selling_unit', 'm2');
-
-        $this->assertArrayNotHasKey(
-            'pricing_type',
-            $response->json('invoice.orders.0.pricing'),
-        );
+            ->assertJsonPath('invoice.orders.0.product_id', $fixture['product']->id)
+            ->assertJsonPath('invoice.orders.0.material_id', $fixture['material']->id)
+            ->assertJsonPath('invoice.orders.0.material', 'Flexy 340gr')
+            ->assertJsonMissingPath('invoice.orders.0.pricing');
     }
 
     /**
-     * Memastikan detail invoice tetap menampilkan nama produk dan bahan dari baris harga yang dihapus lunak.
+     * Memastikan detail invoice tetap menampilkan nama bahan yang dihapus lunak dari snapshot pesanan.
      */
-    public function test_invoice_detail_resolves_soft_deleted_pricing_product_and_material(): void
+    public function test_invoice_detail_resolves_soft_deleted_material_from_the_order(): void
     {
         $fixture = $this->catalogFixture($this->branchOne);
 
@@ -343,7 +338,8 @@ class InvoiceApiTest extends TestCase
                 'customer_id' => $this->customer->id,
                 'items' => [
                     [
-                        'pricing_id' => $fixture['pricing']->id,
+                        'product_id' => $fixture['product']->id,
+                        'material_id' => $fixture['material']->id,
                         'quantity' => 1,
                         'width' => 2,
                         'length' => 1,
@@ -353,15 +349,13 @@ class InvoiceApiTest extends TestCase
             ])
             ->assertCreated();
 
-        $fixture['pricing']->delete();
-        $fixture['product']->delete();
         $fixture['material']->delete();
 
         $this->actingAs($this->designer)
             ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
             ->assertOk()
-            ->assertJsonPath('invoice.orders.0.pricing.product', 'Spanduk Flexy')
-            ->assertJsonPath('invoice.orders.0.pricing.material', 'Flexy 340gr');
+            ->assertJsonPath('invoice.orders.0.material_id', $fixture['material']->id)
+            ->assertJsonPath('invoice.orders.0.material', 'Flexy 340gr');
     }
 
     /**
@@ -592,7 +586,7 @@ class InvoiceApiTest extends TestCase
                 ->assertForbidden();
         }
 
-        // Base price 50000 + finishing 5000 + display 10000 = 65000; area 2 * 1.5 = 3; qty 2 => 390000.00.
+        // Base (material 25000 + finishing 5000 + display 10000) = 40000; area 2 * 1.5 = 3; qty 2 => 240000.00.
         $this->actingAs($this->designer)
             ->postJson('/api/v1/quotes', [
                 'product_id' => $fixture['product']->id,
@@ -603,8 +597,8 @@ class InvoiceApiTest extends TestCase
                 'length' => 1.5,
             ])
             ->assertOk()
-            ->assertJsonPath('quote.unit_price', '65000.00')
-            ->assertJsonPath('quote.subtotal', '390000.00');
+            ->assertJsonPath('quote.unit_price', '40000.00')
+            ->assertJsonPath('quote.subtotal', '240000.00');
 
         $extraFinishing = Attribute::create([
             'branch_id' => $this->branchOne->id,
@@ -661,7 +655,7 @@ class InvoiceApiTest extends TestCase
             'type' => 'Reseller',
         ]);
 
-        // Base price 50000 with 10% reseller discount = 45000 + finishing 5000 = 50000; area 2*1 = 2; qty 1 => 100000.00.
+        // Base (material 25000 + finishing 5000) with 10% reseller = 27000; area 2*1 = 2; qty 1 => 54000.00.
         $response = $this->actingAs($this->designer)
             ->postJson('/api/v1/invoices', [
                 'customer_id' => $reseller->id,
@@ -669,7 +663,8 @@ class InvoiceApiTest extends TestCase
                 'source' => 'Online',
                 'items' => [
                     [
-                        'pricing_id' => $fixture['pricing']->id,
+                        'product_id' => $fixture['product']->id,
+                        'material_id' => $fixture['material']->id,
                         'selected_attributes' => [$fixture['finishing']->id],
                         'file_name' => '  spanduk-final.pdf  ',
                         'notes' => '   ',
@@ -682,7 +677,7 @@ class InvoiceApiTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('invoice.source', 1)
-            ->assertJsonPath('invoice.grand_total', '100000.00')
+            ->assertJsonPath('invoice.grand_total', '54000.00')
             ->assertJsonPath('invoice.orders.0.file_name', 'spanduk-final.pdf')
             ->assertJsonPath('invoice.orders.0.notes', null);
 
@@ -700,7 +695,7 @@ class InvoiceApiTest extends TestCase
                     'customer_id' => $this->customer->id,
                     'items' => [
                         [
-                            'pricing_id' => (string) Str::uuid(),
+                            'product_id' => (string) Str::uuid(),
                             'quantity' => 1,
                         ],
                     ],
@@ -731,10 +726,48 @@ class InvoiceApiTest extends TestCase
         }
     }
 
+    public function test_invoice_detail_renders_order_snapshots_without_pricing_object(): void
+    {
+        $fixture = $this->catalogFixture($this->branchOne);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', [
+                'customer_id' => $this->customer->id,
+                'items' => [[
+                    'product_id' => $fixture['product']->id,
+                    'material_id' => $fixture['material']->id,
+                    'quantity' => 2,
+                    'width' => 2,
+                    'length' => 1,
+                    'is_manual_price' => false,
+                ]],
+            ])
+            ->assertCreated();
+
+        $this->actingAs($this->designer)
+            ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.product_id', $fixture['product']->id)
+            ->assertJsonPath('invoice.orders.0.material', 'Flexy 340gr')
+            ->assertJsonMissingPath('invoice.orders.0.pricing')
+            ->assertJsonMissingPath('invoice.orders.0.pricing_id');
+    }
+
+    public function test_order_resource_renders_legacy_order_with_null_identity(): void
+    {
+        $this->actingAs($this->owner)
+            ->getJson("/api/v1/invoices/{$this->invoiceOne->id}")
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.product_id', null)
+            ->assertJsonPath('invoice.orders.0.material', null)
+            ->assertJsonPath('invoice.orders.0.unit_price', '50000.00')
+            ->assertJsonPath('invoice.orders.0.subtotal', '100000.00');
+    }
+
     /**
      * Membuat data katalog lengkap untuk pengujian penawaran dan pembuatan invoice.
      *
-     * @return array{product: Product, material: Material, pricing: Pricing, finishing: Attribute, display: Attribute}
+     * @return array{product: Product, material: Material, finishing: Attribute, display: Attribute}
      */
     private function catalogFixture(Branch $branch): array
     {
@@ -764,51 +797,27 @@ class InvoiceApiTest extends TestCase
             'min_stock' => 10,
         ]);
 
-        $pricing = Pricing::create([
-            'branch_id' => $branch->id,
-            'product_id' => $product->id,
-            'material_id' => $material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 20000,
-            'profit' => 30000,
-        ]);
+        $product->materials()->sync([$material->id]);
 
         $finishing = Attribute::create([
             'branch_id' => $branch->id,
             'name' => 'Mata Ayam',
             'type' => 'finishing',
+            'price' => 5000,
+            'cost' => 2000,
         ]);
 
         $display = Attribute::create([
             'branch_id' => $branch->id,
             'name' => 'X-Banner',
             'type' => 'display',
-        ]);
-
-        AttributePricing::create([
-            'branch_id' => $branch->id,
-            'pricing_id' => $pricing->id,
-            'attribute_id' => $finishing->id,
-            'price' => 5000,
-            'cost' => 2000,
-            'profit' => 3000,
-        ]);
-
-        AttributePricing::create([
-            'branch_id' => $branch->id,
-            'pricing_id' => $pricing->id,
-            'attribute_id' => $display->id,
             'price' => 10000,
             'cost' => 4000,
-            'profit' => 6000,
         ]);
 
         return [
             'product' => $product,
             'material' => $material,
-            'pricing' => $pricing,
             'finishing' => $finishing,
             'display' => $display,
         ];

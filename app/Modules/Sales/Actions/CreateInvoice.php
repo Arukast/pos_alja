@@ -7,13 +7,13 @@ namespace App\Modules\Sales\Actions;
 use App\Exceptions\InvalidAttributeSelectionException;
 use App\Exceptions\InvalidMaterialSelectionException;
 use App\Exceptions\InvalidProductAttributeSelectionException;
-use App\Exceptions\PricingNotFoundException;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
-use App\Models\Pricing;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\MaterialAvailability;
@@ -79,41 +79,41 @@ final class CreateInvoice
             $totalCost = 0.0;
 
             foreach ($data['items'] as $index => $item) {
-                $pricing = Pricing::query()
-                    ->with(['product.category', 'material'])
-                    ->findOrFail($item['pricing_id']);
+                $product = Product::query()->with(['category'])->findOrFail($item['product_id']);
+                $materialId = $item['material_id'] ?? null;
 
-                if ($pricing->branch_id !== $branchId) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => 'Baris harga ini milik cabang lain.',
-                    ]);
-                }
+                if ($materialId !== null) {
+                    $material = Material::query()->withTrashed()->findOrFail($materialId);
 
-                if ($pricing->material_id !== null
-                    && ! $this->availability->isAvailable($pricing->material, $branchId)) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
-                    ]);
+                    if (! $this->availability->isAvailable($material, $branchId)) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.material_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
+                        ]);
+                    }
                 }
 
                 try {
-                    $quote = $this->quote->forPricing(
-                        $pricing,
-                        $item,
-                        $branchId,
-                        $customerType
-                    );
+                    $quote = $this->quote->execute([
+                        'product_id' => $item['product_id'],
+                        'material_id' => $materialId,
+                        'selected_attributes' => $item['selected_attributes'] ?? [],
+                        'quantity' => $item['quantity'],
+                        'width' => $item['width'] ?? null,
+                        'length' => $item['length'] ?? null,
+                        'customer_type' => $customerType,
+                        'branch_id' => $branchId,
+                    ]);
                 } catch (InvalidMaterialSelectionException $exception) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                        "items.{$index}.material_id" => $exception->getMessage(),
                     ]);
                 } catch (InvalidAttributeSelectionException|InvalidProductAttributeSelectionException $exception) {
                     throw ValidationException::withMessages([
                         "items.{$index}.selected_attributes" => $exception->getMessage(),
                     ]);
-                } catch (PricingNotFoundException|InvalidArgumentException $exception) {
+                } catch (InvalidArgumentException $exception) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                        "items.{$index}.product_id" => $exception->getMessage(),
                     ]);
                 }
 
@@ -132,7 +132,7 @@ final class CreateInvoice
                         ]);
                     }
 
-                    $factor = $pricing->product?->selling_unit === 'm2'
+                    $factor = $product->selling_unit === 'm2'
                         ? (float) $quote['area']
                         : 1.0;
 
@@ -153,11 +153,19 @@ final class CreateInvoice
                         'subtotal' => $lineSubtotal,
                         'cost' => $lineCost,
                         'profit' => round($lineSubtotal - $lineCost, 2),
+                        'discount_amount' => '0.00',
+                        'reseller_discount_percent' => '0.00',
+                        'quantity_discount_percent' => '0.00',
                     ]);
                 }
 
                 $lines[] = [
-                    'pricing_id' => $quote['pricing_id'],
+                    'product_id' => $quote['product_id'],
+                    'material_id' => $quote['material_id'],
+                    'customer_type' => $quote['customer_type'],
+                    'reseller_discount_percent' => $quote['reseller_discount_percent'],
+                    'quantity_discount_percent' => $quote['quantity_discount_percent'],
+                    'discount_amount' => $quote['discount_amount'],
                     'file_name' => $this->normalizeOptionalText($item['file_name'] ?? null),
                     'notes' => $this->normalizeOptionalText($item['notes'] ?? null),
                     'area' => $quote['area'],
@@ -224,7 +232,12 @@ final class CreateInvoice
             foreach ($lines as $line) {
                 $order = Order::create([
                     'invoice_id' => $invoice->id,
-                    'pricing_id' => $line['pricing_id'],
+                    'product_id' => $line['product_id'],
+                    'material_id' => $line['material_id'],
+                    'customer_type' => $line['customer_type'],
+                    'reseller_discount_percent' => $line['reseller_discount_percent'],
+                    'quantity_discount_percent' => $line['quantity_discount_percent'],
+                    'discount_amount' => $line['discount_amount'],
                     'operator_id' => null,
                     'file_name' => $line['file_name'],
                     'notes' => $line['notes'],
@@ -279,6 +292,7 @@ final class CreateInvoice
                             'unit_price' => Decimal::money($line['unit_price']),
                             'cost' => Decimal::money($line['cost']),
                             'subtotal' => Decimal::money($line['subtotal']),
+                            'discount_amount' => Decimal::money($line['discount_amount']),
                         ],
                         $branchId,
                     );

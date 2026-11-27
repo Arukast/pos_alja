@@ -20,26 +20,15 @@ final class OrderResource extends JsonResource
         $role = $request->user()?->role;
         $showSell = in_array($role, ['owner', 'manager', 'designer'], true);
         $showCost = in_array($role, ['owner', 'manager'], true);
-        $pricing = $this->relationLoaded('pricing') ? $this->pricing : null;
-        $product = $pricing?->product;
 
         return [
             'id' => $this->id,
-            'pricing_id' => $this->pricing_id,
-            'pricing' => $this->when($this->relationLoaded('pricing'), fn (): ?array => $pricing === null ? null : [
-                'product' => $product?->name,
-                'material' => $pricing->material?->name,
-                'selling_unit' => $product?->selling_unit,
-                'product_id' => $product?->id,
-                'requires_material' => $product === null ? true : (bool) $product->requires_material,
-                'uses_attributes' => $product === null ? true : (bool) $product->uses_attributes,
-                'attribute_type_ids' => $product?->relationLoaded('attributeTypes')
-                    ? $product->attributeTypes->pluck('id')->values()->all()
-                    : [],
-                'attribute_ids' => $product?->relationLoaded('compatibleAttributes')
-                    ? $product->compatibleAttributes->pluck('id')->values()->all()
-                    : [],
-            ]),
+            'product_id' => $this->product_id,
+            'material_id' => $this->material_id,
+            'material' => $this->when($this->relationLoaded('material'),
+                fn (): ?string => $this->material?->name),
+            'customer_type' => $this->customer_type,
+            'discount_amount' => $this->when($showSell, fn (): string => Decimal::money($this->discount_amount)),
             'file_name' => $this->file_name,
             'notes' => $this->notes,
             'area' => $this->area,
