@@ -80,6 +80,10 @@ export function ProductsPage({
             label: `${attribute.name} · ${attribute.type_name}`,
         }));
 
+    const materialLabel = 'Bahan yang Kompatibel';
+    const attributeTypeLabel = 'Tipe Atribut yang Kompatibel';
+    const attributeLabel = 'Atribut yang Kompatibel';
+
     const fields: Array<CrudField<Product>> = [
         { key: 'name', label: 'Nama', required: true },
         {
@@ -118,27 +122,36 @@ export function ProductsPage({
         },
         {
             key: 'material_ids',
-            label: 'Bahan yang Kompatibel',
+            label: materialLabel,
             type: 'multiselect',
             defaultValue: [],
             options: materialOptions,
             getValue: (product) => product.material_ids ?? [],
+            disabledWhen: (values) => !values.requires_material,
+            labelFor: (values) =>
+                values.requires_material ? materialLabel : `${materialLabel} (diabaikan)`,
         },
         {
             key: 'attribute_type_ids',
-            label: 'Tipe Atribut yang Kompatibel',
+            label: attributeTypeLabel,
             type: 'multiselect',
             defaultValue: [],
             options: attributeTypeOptions,
             getValue: (product) => product.attribute_type_ids ?? [],
+            disabledWhen: (values) => !values.uses_attributes,
+            labelFor: (values) =>
+                values.uses_attributes ? attributeTypeLabel : `${attributeTypeLabel} (diabaikan)`,
         },
         {
             key: 'attribute_ids',
-            label: 'Atribut yang Kompatibel',
+            label: attributeLabel,
             type: 'multiselect',
             defaultValue: [],
             options: attributeOptions,
             getValue: (product) => product.attribute_ids ?? [],
+            disabledWhen: (values) => !values.uses_attributes,
+            labelFor: (values) =>
+                values.uses_attributes ? attributeLabel : `${attributeLabel} (diabaikan)`,
         },
         {
             key: 'is_active',

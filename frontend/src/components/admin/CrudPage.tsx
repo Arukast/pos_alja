@@ -28,6 +28,7 @@ export interface CrudField<T> {
     defaultValue?: string | number | boolean | string[];
     getValue?: (row: T) => string | number | boolean | string[] | null | undefined;
     labelFor?: (values: Record<string, unknown>) => string;
+    disabledWhen?: (values: Record<string, unknown>) => boolean;
     hideOnEdit?: boolean;
 }
 
@@ -359,6 +360,7 @@ export function CrudPage<T extends { id: string }>({
 
                         if (field.type === 'multiselect') {
                             const selectedIds = Array.isArray(value) ? value : [];
+                            const disabled = field.disabledWhen?.(values) ?? false;
 
                             return (
                                 <fieldset key={field.key} className="space-y-2">
@@ -379,6 +381,7 @@ export function CrudPage<T extends { id: string }>({
                                                         key={option.value}
                                                         label={option.label}
                                                         checked={checked}
+                                                        disabled={disabled}
                                                         onChange={(event) => {
                                                             const next = event.target.checked
                                                                 ? [...selectedIds, option.value]
