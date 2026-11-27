@@ -880,6 +880,72 @@ class CreateInvoiceApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_invoice_detail_exposes_product_composition_for_edit(): void
+    {
+        $type = AttributeType::query()->where('slug', 'finishing')->firstOrFail();
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Glossy',
+            'type' => $type->slug,
+        ]);
+
+        $this->product->attributeTypes()->sync([$type->id]);
+        $this->product->compatibleAttributes()->sync([$attribute->id]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ]))
+            ->assertCreated();
+
+        $invoiceId = (string) $response->json('invoice.id');
+
+        $this->actingAs($this->designer)
+            ->getJson("/api/v1/invoices/{$invoiceId}")
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.pricing.product_id', $this->product->id)
+            ->assertJsonPath('invoice.orders.0.pricing.requires_material', true)
+            ->assertJsonPath('invoice.orders.0.pricing.uses_attributes', true)
+            ->assertJsonPath('invoice.orders.0.pricing.attribute_type_ids.0', $type->id)
+            ->assertJsonPath('invoice.orders.0.pricing.attribute_ids.0', $attribute->id);
+    }
+
+    public function test_invoice_detail_exposes_disabled_composition_flags_with_pivot_ids(): void
+    {
+        $type = AttributeType::query()->where('slug', 'finishing')->firstOrFail();
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Glossy',
+            'type' => $type->slug,
+        ]);
+
+        $this->product->update([
+            'requires_material' => false,
+            'uses_attributes' => false,
+        ]);
+        $this->product->attributeTypes()->sync([$type->id]);
+        $this->product->compatibleAttributes()->sync([$attribute->id]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ]))
+            ->assertCreated();
+
+        $invoiceId = (string) $response->json('invoice.id');
+
+        $this->actingAs($this->designer)
+            ->getJson("/api/v1/invoices/{$invoiceId}")
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.pricing.product_id', $this->product->id)
+            ->assertJsonPath('invoice.orders.0.pricing.requires_material', false)
+            ->assertJsonPath('invoice.orders.0.pricing.uses_attributes', false)
+            ->assertJsonPath('invoice.orders.0.pricing.attribute_type_ids.0', $type->id)
+            ->assertJsonPath('invoice.orders.0.pricing.attribute_ids.0', $attribute->id);
+    }
+
     private function payload(array $overrides = []): array
     {
         return array_merge([

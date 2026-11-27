@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast, type ToastTone } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
-import { activeAttributeTypes, selectedAttributeId, setSelectedAttribute } from './attributeOptions';
+import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
 
 /**
  * Representasi satu baris item pesanan yang sudah dihitung penawarannya di keranjang.
@@ -103,12 +103,16 @@ export function DesignerNewOrderPage() {
     const isAreaProduct = selectedProduct?.pricing_type === 'area';
     const needsWidth = isAreaProduct;
     const needsLength = isAreaProduct;
+    const requiresMaterial = selectedProduct?.requires_material ?? true;
+    const usesAttributes = selectedProduct?.uses_attributes ?? true;
+    const allowedTypeIds = selectedProduct?.attribute_type_ids ?? [];
+    const allowedAttributeIds = selectedProduct?.attribute_ids ?? [];
     const mappedMaterialIds = selectedProduct?.material_ids ?? [];
     const availableMaterials = (options?.materials ?? []).filter(
         (material) => mappedMaterialIds.length === 0 || mappedMaterialIds.includes(material.id)
     );
 
-    const attributeTypes = activeAttributeTypes(options?.attribute_types ?? []);
+    const attributeTypes = typesForSelection(options?.attribute_types ?? [], [], [], false, allowedTypeIds);
 
     const customerList = customersQuery.data?.data ?? [];
 
@@ -138,7 +142,7 @@ export function DesignerNewOrderPage() {
 
     const calculate = useMutation({
         mutationFn: () => {
-            if (!item.product_id || !item.material_id) {
+            if (!item.product_id || (requiresMaterial && !item.material_id)) {
                 throw new Error('Pilih produk dan bahan terlebih dahulu.');
             }
 
@@ -158,7 +162,7 @@ export function DesignerNewOrderPage() {
 
             return api.quote({
                 product_id: item.product_id,
-                material_id: item.material_id,
+                material_id: requiresMaterial ? item.material_id : null,
                 selected_attributes: selectedAttributes,
                 quantity: item.quantity,
                 width: needsWidth ? item.width : undefined,
@@ -233,9 +237,15 @@ export function DesignerNewOrderPage() {
             return;
         }
 
+        if (!item.product_id || (requiresMaterial && !item.material_id)) {
+            setNotice({ message: 'Pilih produk dan bahan terlebih dahulu.', tone: 'error' });
+            return;
+        }
+
         const productName = selectedProduct?.name ?? 'Produk';
-        const materialName =
-            (options?.materials ?? []).find((material) => material.id === item.material_id)?.name ?? 'Bahan';
+        const materialName = requiresMaterial
+            ? (options?.materials ?? []).find((material) => material.id === item.material_id)?.name ?? 'Bahan'
+            : '';
         const selectedAttributes = item.selected_attributes;
         const attributeLabels = selectedAttributes
             .map((id) => (options?.attributes ?? []).find((attribute) => attribute.id === id)?.name)
@@ -428,11 +438,11 @@ export function DesignerNewOrderPage() {
                                                 const nextProduct = (options?.products ?? []).find(
                                                     (product) => product.id === nextProductId
                                                 );
-                                                const nextAllowedIds =
-                                                    nextProduct?.material_ids ?? [];
-                                                const keepMaterial =
-                                                    nextAllowedIds.length === 0 ||
-                                                    nextAllowedIds.includes(item.material_id);
+                                                const nextRequiresMaterial = nextProduct?.requires_material ?? true;
+                                                const nextAllowedIds = nextProduct?.material_ids ?? [];
+                                                const keepMaterial = nextRequiresMaterial
+                                                    && (nextAllowedIds.length === 0
+                                                        || nextAllowedIds.includes(item.material_id));
 
                                                 updatePricingItem({
                                                     product_id: nextProductId,
@@ -450,21 +460,23 @@ export function DesignerNewOrderPage() {
                                                 </option>
                                             ))}
                                         </Select>
-                                        <Select
-                                            label="Bahan"
-                                            value={item.material_id}
-                                            onChange={(event) =>
-                                                updatePricingItem({ material_id: event.target.value })
-                                            }
-                                        >
-                                            <option value="">Pilih bahan</option>
-                                            {availableMaterials.map((material) => (
-                                                <option key={material.id} value={material.id}>
-                                                    {material.name}
-                                                </option>
-                                            ))}
-                                        </Select>
-                                        {attributeTypes.map((type) => (
+                                        {requiresMaterial ? (
+                                            <Select
+                                                label="Bahan"
+                                                value={item.material_id}
+                                                onChange={(event) =>
+                                                    updatePricingItem({ material_id: event.target.value })
+                                                }
+                                            >
+                                                <option value="">Pilih bahan</option>
+                                                {availableMaterials.map((material) => (
+                                                    <option key={material.id} value={material.id}>
+                                                        {material.name}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        ) : null}
+                                        {usesAttributes ? attributeTypes.map((type) => (
                                             <Select
                                                 key={type.slug}
                                                 label={type.name}
@@ -485,15 +497,18 @@ export function DesignerNewOrderPage() {
                                                 }
                                             >
                                                 <option value="">Tanpa {type.name}</option>
-                                                {(options?.attributes ?? [])
-                                                    .filter((attribute) => attribute.type === type.slug)
-                                                    .map((attribute) => (
-                                                        <option key={attribute.id} value={attribute.id}>
-                                                            {attribute.name}
-                                                        </option>
-                                                    ))}
+                                                {selectableAttributes(
+                                                    options?.attributes ?? [],
+                                                    type.slug,
+                                                    [],
+                                                    allowedAttributeIds
+                                                ).map((attribute) => (
+                                                    <option key={attribute.id} value={attribute.id}>
+                                                        {attribute.name}
+                                                    </option>
+                                                ))}
                                             </Select>
-                                        ))}
+                                        )) : null}
                                         <Input
                                             label="Jml"
                                             type="number"
@@ -635,7 +650,8 @@ export function DesignerNewOrderPage() {
                                                     {line.file_name || line.product_name}
                                                 </p>
                                                 <p className="text-light-muted-strong text-xs dark:text-gray-400">
-                                                    {line.product_name} · {line.material_name}
+                                                    {line.product_name}
+                                                    {line.material_name ? ` · ${line.material_name}` : ''}
                                                     {line.attribute_labels.length > 0
                                                         ? ` · ${line.attribute_labels.join(', ')}`
                                                         : ''}

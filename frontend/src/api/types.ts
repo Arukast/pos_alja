@@ -201,6 +201,11 @@ export interface Order {
         product: string | null;
         material: string | null;
         pricing_type: string | null;
+        product_id?: string | null;
+        requires_material?: boolean;
+        uses_attributes?: boolean;
+        attribute_type_ids?: string[];
+        attribute_ids?: string[];
     } | null;
     file_name: string | null;
     notes: string | null;

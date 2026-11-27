@@ -167,6 +167,12 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
         .map((order) => [order.pricing_id as string, {
             id: order.pricing_id as string,
             label: [order.pricing?.product, order.pricing?.material].filter(Boolean).join(' · ') || 'Konfigurasi item',
+            meta: {
+                requires_material: order.pricing?.requires_material ?? true,
+                uses_attributes: order.pricing?.uses_attributes ?? true,
+                attribute_type_ids: order.pricing?.attribute_type_ids ?? [],
+                attribute_ids: order.pricing?.attribute_ids ?? [],
+            },
         }])).values());
     const attributes = optionsQuery.data?.attributes ?? [];
     const attributeTypes = optionsQuery.data?.attribute_types ?? [];
@@ -185,41 +191,56 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
             <Card>
                 <CardHeader><h2 className="font-semibold">Item pesanan</h2><Button variant="secondary" size="sm" onClick={handleAddItem}>Tambah item</Button></CardHeader>
                 <CardBody className="space-y-5">
-                    {items.map((item, index) => (
-                        <section key={item.id ?? `new-${index}`} className="space-y-3 border-b border-light-border pb-5 last:border-0 dark:border-surface-300">
-                            <div className="flex items-center justify-between"><h3 className="font-medium">Item {index + 1}</h3><Button variant="ghost" size="sm" disabled={items.length <= 1} onClick={() => handleRemoveItem(index)}>Hapus</Button></div>
-                            <Select label="Produk dan bahan" value={item.pricing_id} error={errors[`items.${index}.pricing_id`]} onChange={(event) => handleItemChange(index, { pricing_id: event.target.value, selected_attributes: [] })}>
-                                {pricingOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
-                            </Select>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <Input label="Nama file / item" value={item.file_name} error={errors[`items.${index}.file_name`]} onChange={(event) => handleItemChange(index, { file_name: event.target.value })} />
-                                <Input label="Jumlah" type="number" min="0.01" step="0.01" value={item.quantity} error={errors[`items.${index}.quantity`]} onChange={(event) => handleItemChange(index, { quantity: event.target.value })} />
-                                <Input label="Lebar (m)" type="number" min="0.01" step="0.01" value={item.width} error={errors[`items.${index}.width`]} onChange={(event) => handleItemChange(index, { width: event.target.value })} />
-                                <Input label="Panjang (m)" type="number" min="0.01" step="0.01" value={item.length} error={errors[`items.${index}.length`]} onChange={(event) => handleItemChange(index, { length: event.target.value })} />
-                                {typesForSelection(attributeTypes, attributes, item.selected_attributes, true).map((type) => {
-                                    const label = type.is_active ? type.name : `${type.name} (nonaktif)`;
-                                    const optionsForType = selectableAttributes(attributes, type.slug, item.selected_attributes);
+                    {items.map((item, index) => {
+                        const meta = pricingOptions.find((configuration) => configuration.id === item.pricing_id)?.meta;
 
-                                    return (
-                                        <Select
-                                            key={type.slug}
-                                            label={label}
-                                            value={selectedAttributeId(attributes, item.selected_attributes, type.slug)}
-                                            onChange={(event) => handleAttributeChange(index, type.slug, event.target.value)}
-                                        >
-                                            <option value="">Tanpa {type.name}</option>
-                                            {optionsForType.map((attribute) => (
-                                                <option key={attribute.id} value={attribute.id}>
-                                                    {attribute.name}{attribute.is_active ? '' : ' (nonaktif)'}
-                                                </option>
-                                            ))}
-                                        </Select>
-                                    );
-                                })}
-                                <Input label="Catatan" value={item.notes} error={errors[`items.${index}.notes`]} onChange={(event) => handleItemChange(index, { notes: event.target.value })} />
-                            </div>
-                        </section>
-                    ))}
+                        return (
+                            <section key={item.id ?? `new-${index}`} className="space-y-3 border-b border-light-border pb-5 last:border-0 dark:border-surface-300">
+                                <div className="flex items-center justify-between"><h3 className="font-medium">Item {index + 1}</h3><Button variant="ghost" size="sm" disabled={items.length <= 1} onClick={() => handleRemoveItem(index)}>Hapus</Button></div>
+                                <Select label={meta?.requires_material === false ? 'Produk' : 'Produk dan bahan'} value={item.pricing_id} error={errors[`items.${index}.pricing_id`]} onChange={(event) => handleItemChange(index, { pricing_id: event.target.value, selected_attributes: [] })}>
+                                    {pricingOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
+                                </Select>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <Input label="Nama file / item" value={item.file_name} error={errors[`items.${index}.file_name`]} onChange={(event) => handleItemChange(index, { file_name: event.target.value })} />
+                                    <Input label="Jumlah" type="number" min="0.01" step="0.01" value={item.quantity} error={errors[`items.${index}.quantity`]} onChange={(event) => handleItemChange(index, { quantity: event.target.value })} />
+                                    <Input label="Lebar (m)" type="number" min="0.01" step="0.01" value={item.width} error={errors[`items.${index}.width`]} onChange={(event) => handleItemChange(index, { width: event.target.value })} />
+                                    <Input label="Panjang (m)" type="number" min="0.01" step="0.01" value={item.length} error={errors[`items.${index}.length`]} onChange={(event) => handleItemChange(index, { length: event.target.value })} />
+                                    {meta?.uses_attributes === false ? null : typesForSelection(
+                                        attributeTypes,
+                                        attributes,
+                                        item.selected_attributes,
+                                        true,
+                                        meta?.attribute_type_ids ?? []
+                                    ).map((type) => {
+                                        const label = type.is_active ? type.name : `${type.name} (nonaktif)`;
+                                        const optionsForType = selectableAttributes(
+                                            attributes,
+                                            type.slug,
+                                            item.selected_attributes,
+                                            meta?.attribute_ids ?? []
+                                        );
+
+                                        return (
+                                            <Select
+                                                key={type.slug}
+                                                label={label}
+                                                value={selectedAttributeId(attributes, item.selected_attributes, type.slug)}
+                                                onChange={(event) => handleAttributeChange(index, type.slug, event.target.value)}
+                                            >
+                                                <option value="">Tanpa {type.name}</option>
+                                                {optionsForType.map((attribute) => (
+                                                    <option key={attribute.id} value={attribute.id}>
+                                                        {attribute.name}{attribute.is_active ? '' : ' (nonaktif)'}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        );
+                                    })}
+                                    <Input label="Catatan" value={item.notes} error={errors[`items.${index}.notes`]} onChange={(event) => handleItemChange(index, { notes: event.target.value })} />
+                                </div>
+                            </section>
+                        );
+                    })}
                     <Input label="Tenggat" type="date" value={deadline} error={errors.deadline} onChange={(event) => setDeadline(event.target.value)} />
                     {notice ? <p role="alert" className="text-sm text-red-600">{notice}</p> : null}
                     {errors.items ? <p role="alert" className="text-sm text-red-600">{errors.items}</p> : null}
