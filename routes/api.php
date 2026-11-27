@@ -75,6 +75,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/materials/{material}/adjustments', [MaterialController::class, 'adjust']);
         Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
         Route::patch('/materials/{material}/min-stock', [MaterialController::class, 'minStock']);
+        Route::patch('/materials/{material}/active', [MaterialController::class, 'active']);
+        Route::patch('/materials/{material}/branch-availability', [MaterialController::class, 'branchAvailability']);
 
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::post('/purchases', [PurchaseController::class, 'store']);
@@ -121,6 +123,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/reports/base-cost', [ReportController::class, 'baseCost']);
         Route::get('/reports/net-profit', [ReportController::class, 'netProfit']);
         Route::get('/reports/expenses', [ReportController::class, 'expenses']);
+        Route::get('/reports/{type}/export', [ReportController::class, 'export']);
         Route::get('/reports/sparkline', [ReportController::class, 'sparkline']);
         Route::get('/reports/designer-leaderboard', [ReportController::class, 'leaderboard']);
         Route::get('/audit-logs', [AuditController::class, 'index']);

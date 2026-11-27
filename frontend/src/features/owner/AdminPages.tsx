@@ -11,6 +11,7 @@ import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
 import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
@@ -345,6 +346,19 @@ export function OwnerMaterialsPage() {
                         <span className="block tabular-nums">
                             {quantityWithUnit(stock.current_stock, material.unit)}
                         </span>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Badge tone={stock.is_active ? 'success' : 'danger'}>
+                                {stock.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                            <MaterialActiveToggle
+                                scope="branch"
+                                materialId={material.id}
+                                isActive={stock.is_active}
+                                branchId={stock.branch_id}
+                                branchName={stock.branch_name ?? 'cabang'}
+                                materialName={material.name}
+                            />
+                        </div>
                         <div className="text-light-muted flex flex-wrap items-center gap-1 text-xs dark:text-gray-400">
                             <span>min</span>
                             <MinimumStockInline
@@ -399,6 +413,12 @@ export function OwnerMaterialsPage() {
                         >
                             {material.name}
                         </span>
+                        <Badge
+                            tone={material.is_active ? 'success' : 'danger'}
+                            className="mt-1"
+                        >
+                            {material.is_active ? 'Aktif' : 'Nonaktif'}
+                        </Badge>
                         {material.category && !material.category.is_active ? (
                             <Badge tone="warning" className="mt-1">
                                 Kategori nonaktif
@@ -425,9 +445,14 @@ export function OwnerMaterialsPage() {
             rowLabel={(material) => material.name}
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
-            remove={(id) => api.admin.deleteMaterial(id)}
             rowActions={(material) => (
                 <>
+                    <MaterialActiveToggle
+                        scope="global"
+                        materialId={material.id}
+                        isActive={material.is_active}
+                        materialName={material.name}
+                    />
                     <RestockMaterialButton material={material} />
                     <AdjustMaterialModal material={material} />
                 </>

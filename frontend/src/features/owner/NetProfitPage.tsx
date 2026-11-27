@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
+import { useAuth } from '../../auth/useAuth';
 import { PageBanner } from '../../components/PageBanner';
 import { ReportFilterBar, type ReportDraft } from '../../components/ReportFilterBar';
 import { Button } from '../../components/ui/Button';
@@ -10,30 +11,42 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
+import { Toast } from '../../components/ui/Toast';
 import { useBranches } from '../../hooks/useBranches';
+import { useReportExport } from '../../hooks/useReportExport';
 import { formatDate, todayIso } from '../../lib/dates';
 import { formatMoney } from '../../lib/money';
 
 export function NetProfitPage() {
     const today = todayIso();
-    const branchesQuery = useBranches();
-    const [draft, setDraft] = useState<ReportDraft>({ start: today, end: today, branch: 'all' });
+    const { user } = useAuth();
+    const isOwner = user?.role === 'owner';
+    const branchesQuery = useBranches(isOwner);
+    const { exporting, notice, clearNotice, exportReport } = useReportExport('net-profit');
+    const [draft, setDraft] = useState<ReportDraft>({
+        period: 'daily',
+        start: today,
+        end: today,
+        branch: isOwner ? 'all' : '',
+    });
     const [applied, setApplied] = useState(draft);
 
+    const reportParams = {
+        period: applied.period,
+        ...(isOwner ? { branch_id: applied.branch } : {}),
+        start_date: applied.start,
+        end_date: applied.end,
+    };
+
     const query = useQuery({
-        queryKey: ['report', 'net-profit', applied],
-        queryFn: () =>
-            api.report.netProfit({
-                branch_id: applied.branch,
-                start_date: applied.start,
-                end_date: applied.end,
-            }),
+        queryKey: ['report', 'net-profit', isOwner ? 'owner' : 'manager', applied],
+        queryFn: () => api.report.netProfit(reportParams),
     });
 
     return (
         <div className="space-y-6">
             <PageBanner
-                eyebrow="Analitik Pemilik"
+                eyebrow={isOwner ? 'Analitik Pemilik' : 'Analitik Cabang'}
                 title="Rincian Laba Bersih"
                 description="Pendapatan dikurangi HPP dan biaya operasional, beserta catatan pendukungnya."
             />
@@ -41,8 +54,11 @@ export function NetProfitPage() {
                 draft={draft}
                 branches={branchesQuery.data?.data ?? []}
                 loading={query.isFetching}
+                showBranch={isOwner}
+                exporting={exporting}
                 onChange={setDraft}
-                onApply={() => setApplied(draft)}
+                onApply={(next) => setApplied(next ?? draft)}
+                onExport={(format) => void exportReport(format, reportParams)}
             />
 
             {query.isLoading ? (
@@ -187,6 +203,10 @@ export function NetProfitPage() {
                         </Card>
                     </div>
                 </>
+            ) : null}
+
+            {notice ? (
+                <Toast message={notice.message} tone={notice.tone} onClose={clearNotice} />
             ) : null}
         </div>
     );

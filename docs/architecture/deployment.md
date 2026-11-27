@@ -266,6 +266,24 @@ The Unit A drop migrations (`2026_11_27_000003_drop_product_category_discounts_t
 
 Before `php artisan migrate --force` on any database that may contain rows in `product_category_discounts` or `attribute_types`, take and verify a backup: at minimum `pg_dump -Fc -t product_category_discounts -t attribute_types <database>` (a full database dump is also acceptable), confirm it restores, and get Owner approval to proceed. If either table is non-empty and no verified backup exists, stop.
 
+### Material Availability Flags (Additive)
+
+`2026_11_27_000005_add_is_active_to_materials_and_material_branch_stock.php` adds `materials.is_active` and `material_branch_stock.is_active`, both boolean default `true`. Existing rows read true. It has no backfill, no data loss, and no index. Run `php artisan migrate --force` as usual; `down()` drops only the two flags, so stock, ledger, and history remain.
+
+Take the usual verified pre-deploy backup, then run this read-only check for active pricing rows whose material has no active branch stock before deploying the enforcement:
+
+```sql
+SELECT count(*) FROM pricing p
+JOIN materials m ON m.id = p.material_id
+WHERE p.deleted_at IS NULL AND m.deleted_at IS NULL AND m.is_active
+  AND NOT EXISTS (
+    SELECT 1 FROM material_branch_stock s
+    WHERE s.material_id = m.id AND s.branch_id = p.branch_id AND s.is_active
+  );
+```
+
+Have the Owner decide whether those materials should remain orderable; no automatic data change is made. Deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API; the availability toggles require the new API, because the PATCH routes return 404 against an older API.
+
 ## 8. Deployment Checklist
 
 1. Set production `.env` values, including HTTPS session and Sanctum domains.

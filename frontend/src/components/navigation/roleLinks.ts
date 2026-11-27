@@ -72,6 +72,15 @@ export const roleLinks: Record<string, NavGroup[]> = {
             ],
         },
         {
+            label: 'Analitik',
+            links: [
+                { to: '/manager/revenue', label: 'Rincian Pendapatan Bruto', icon: TrendingUp },
+                { to: '/manager/base-cost', label: 'Rincian Biaya Dasar', icon: Wallet },
+                { to: '/manager/net-profit', label: 'Rincian Laba Bersih', icon: PiggyBank },
+                { to: '/manager/expenses', label: 'Rincian Pengeluaran', icon: Receipt },
+            ],
+        },
+        {
             label: 'Inventaris',
             links: [
                 { to: '/manager/materials', label: 'Bahan & Stok', icon: Package },

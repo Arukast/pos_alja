@@ -39,6 +39,7 @@ final class MaterialResource extends JsonResource
             'unit' => $this->unit,
             'cost' => Decimal::money($this->cost),
             'price' => Decimal::money($this->price),
+            'is_active' => (bool) $this->is_active,
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
@@ -54,6 +55,7 @@ final class MaterialResource extends JsonResource
                 'branch_name' => $stock->branch->name,
                 'current_stock' => $stock->current_stock,
                 'min_stock' => $stock->min_stock,
+                'is_active' => (bool) $stock->is_active,
                 'is_low_stock' => (float) $stock->current_stock <= (float) $stock->min_stock,
             ])->values(),
         ];

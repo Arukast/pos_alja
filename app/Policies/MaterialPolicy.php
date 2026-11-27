@@ -45,6 +45,17 @@ final class MaterialPolicy
             || ($user->role === 'manager' && $user->branch_id !== null);
     }
 
+    public function updateActive(User $user): bool
+    {
+        return $user->role === 'owner';
+    }
+
+    public function setBranchAvailability(User $user, Material $material): bool
+    {
+        return $user->role === 'owner'
+            || ($user->role === 'manager' && $user->branch_id !== null);
+    }
+
     public function delete(User $user, Material $material): bool
     {
         return $user->role === 'owner';
