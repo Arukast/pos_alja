@@ -270,6 +270,16 @@ export function DesignerOrdersPage() {
                                 </dd>
                             </div>
                             <div>
+                                <dt className="text-light-muted text-xs dark:text-gray-400">Tanggal</dt>
+                                <dd className="font-medium">
+                                    {detail.created_date ? formatDate(detail.created_date) : '-'}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-light-muted text-xs dark:text-gray-400">Desainer</dt>
+                                <dd className="font-medium">{detail.designer?.name ?? '-'}</dd>
+                            </div>
+                            <div>
                                 <dt className="text-light-muted text-xs dark:text-gray-400">Tenggat</dt>
                                 <dd className="font-medium">{formatDate(detail.deadline ?? '-')}</dd>
                             </div>
@@ -294,31 +304,86 @@ export function DesignerOrdersPage() {
                                     <TableHeaderCell>Item</TableHeaderCell>
                                     <TableHeaderCell>Status</TableHeaderCell>
                                     <TableHeaderCell className="text-right">Jml</TableHeaderCell>
+                                    <TableHeaderCell className="text-right">Harga satuan</TableHeaderCell>
                                     <TableHeaderCell className="text-right">Subtotal</TableHeaderCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {(detail.orders ?? []).length === 0 ? (
-                                    <TableEmpty colSpan={4}>Belum ada item.</TableEmpty>
+                                    <TableEmpty colSpan={5}>Belum ada item.</TableEmpty>
                                 ) : (
-                                    (detail.orders ?? []).map((order) => (
-                                        <TableRow key={order.id}>
-                                            <TableCell>
-                                                <p className="font-medium">{order.file_name ?? 'Item'}</p>
-                                                {order.notes ? (
+                                    (detail.orders ?? []).map((order) => {
+                                        const dimensions = order.length != null && order.width != null
+                                            ? `${formatQuantity(order.length)} x ${formatQuantity(order.width)}`
+                                            : formatQuantity(order.area);
+                                        const attributes = order.selected_attributes ?? [];
+
+                                        return (
+                                            <TableRow key={order.id}>
+                                                <TableCell>
+                                                    <p className="font-medium">{order.file_name ?? 'Item'}</p>
+                                                    {order.pricing?.product || order.pricing?.material ? (
+                                                        <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                            {[order.pricing?.product, order.pricing?.material].filter(Boolean).join(' / ')}
+                                                        </p>
+                                                    ) : null}
                                                     <p className="text-light-muted-strong text-xs dark:text-gray-400">
-                                                        {order.notes}
+                                                        {dimensions}
                                                     </p>
-                                                ) : null}
+                                                    {attributes.length > 0 ? (
+                                                        <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                            {attributes.join(', ')}
+                                                        </p>
+                                                    ) : null}
+                                                    {order.notes ? (
+                                                        <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                            {order.notes}
+                                                        </p>
+                                                    ) : null}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <OrderStatusBadge status={order.status} />
+                                                </TableCell>
+                                                <TableCell className="text-right whitespace-nowrap tabular-nums">
+                                                    {formatQuantity(order.quantity)}
+                                                </TableCell>
+                                                <TableCell className="text-right whitespace-nowrap tabular-nums">
+                                                    {order.unit_price != null ? formatMoney(order.unit_price) : '-'}
+                                                </TableCell>
+                                                <TableCell className="text-right whitespace-nowrap tabular-nums">
+                                                    {order.subtotal != null ? formatMoney(order.subtotal) : '-'}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+
+                        <Table ariaLabel="Pembayaran">
+                            <TableHead>
+                                <TableRow>
+                                    <TableHeaderCell>Jumlah</TableHeaderCell>
+                                    <TableHeaderCell>Metode</TableHeaderCell>
+                                    <TableHeaderCell>Jenis</TableHeaderCell>
+                                    <TableHeaderCell>Kasir</TableHeaderCell>
+                                    <TableHeaderCell>Waktu</TableHeaderCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {(detail.payments ?? []).length === 0 ? (
+                                    <TableEmpty colSpan={5}>Belum ada pembayaran.</TableEmpty>
+                                ) : (
+                                    (detail.payments ?? []).map((payment) => (
+                                        <TableRow key={payment.id}>
+                                            <TableCell className="whitespace-nowrap tabular-nums">
+                                                {formatMoney(payment.amount)}
                                             </TableCell>
-                                            <TableCell>
-                                                <OrderStatusBadge status={order.status} />
-                                            </TableCell>
-                                            <TableCell className="text-right whitespace-nowrap tabular-nums">
-                                                {formatQuantity(order.quantity)}
-                                            </TableCell>
-                                            <TableCell className="text-right whitespace-nowrap tabular-nums">
-                                                {order.subtotal != null ? formatMoney(order.subtotal) : '-'}
+                                            <TableCell>{payment.payment_method || '-'}</TableCell>
+                                            <TableCell>{payment.type || '-'}</TableCell>
+                                            <TableCell>{payment.cashier_name || '-'}</TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                {payment.created_at ? formatDate(payment.created_at) : '-'}
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -327,9 +392,17 @@ export function DesignerOrdersPage() {
                         </Table>
 
                         <div className="border-light-border dark:border-surface-300 flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-sm">
-                            <span className="text-light-muted-strong dark:text-gray-400">
-                                Sisa tagihan: {formatMoney(detail.accounts_receivable)}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                <span className="text-light-muted-strong dark:text-gray-400">
+                                    Diskon: {formatMoney(detail.discount)}
+                                </span>
+                                <span className="text-light-muted-strong dark:text-gray-400">
+                                    DP: {formatMoney(detail.dp_amount)}
+                                </span>
+                                <span className="text-light-muted-strong dark:text-gray-400">
+                                    Sisa tagihan: {formatMoney(detail.accounts_receivable)}
+                                </span>
+                            </div>
                             <span className="text-base font-bold tabular-nums">
                                 Total: {formatMoney(detail.grand_total)}
                             </span>
