@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { NavLink } from 'react-router';
 
-import { LogoMark } from './LogoMark';
 import { ThemeToggle } from './ThemeToggle';
 import { UserPopover } from './UserPopover';
 import { useAuth } from '../auth/useAuth';
@@ -31,7 +30,11 @@ export function Sidebar({
             )}
         >
             <div className="flex h-16 shrink-0 items-center gap-3 px-4">
-                <LogoMark className="h-8 w-8 shrink-0" decorative={!collapsed} />
+                <img
+                    src="/images/logo-alja-mark.png"
+                    alt={collapsed ? 'Alja POS' : ''}
+                    className="h-8 w-8 shrink-0 object-contain"
+                />
                 {!collapsed ? (
                     <div className="min-w-0">
                         <p className="truncate text-sm font-bold">Alja POS</p>

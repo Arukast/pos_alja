@@ -2,7 +2,6 @@ import { Menu } from 'lucide-react';
 import { useState } from 'react';
 import { Outlet } from 'react-router';
 
-import { LogoMark } from './LogoMark';
 import { MobileDrawer } from './MobileDrawer';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
@@ -42,7 +41,7 @@ export function AppShell() {
                             <Menu className="h-5 w-5" />
                         </button>
                         <div className="flex min-w-0 items-center gap-2">
-                            <LogoMark className="h-7 w-7 shrink-0" decorative />
+                            <img src="/images/logo-alja-mark.png" alt="" className="h-7 w-7 shrink-0 object-contain" />
                             <span className="text-sm font-bold">Alja POS</span>
                         </div>
                         <ThemeToggle compact />
