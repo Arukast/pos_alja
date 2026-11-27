@@ -107,13 +107,15 @@ src/
 - `Card` follows the Panel spec (white, 16px radius, 1px border, 20px padding), and `StatCard` follows the KPI
   spec (10px uppercase label, 22px/800 value). Controls are 40px tall, labels 10px uppercase.
 - `CrudPage` provides create/edit/delete for admin resources; `ResourceTable` handles paginated read-only
-  lists. `CrudPage` always renders a `PageBanner` and derives a short `Daftar` list title on the left of the
-  card header (a leading `Manajemen ` is stripped, a title already starting with `Daftar ` is kept as-is, and
-  the optional `cardTitle` prop overrides the result) with its small create button on the right; it supports
-  `summary`, `footer`, and `toolbar` slots, `rowClassName` for row tinting, `canEditRow` to hide the Ubah
-  action per row while keeping the action column, and `pageResetKey` to return to page 1 when a filter
-  changes. `ResourceTable` accepts an optional `cardActions` node; when present the same derived `Daftar`
-  list title renders above the table.
+  lists. `CrudPage` always renders a `PageBanner`, and only when `create` is provided does it render a card
+  header with a short derived `Daftar` list title on the left (a leading `Manajemen ` is stripped, a title
+  already starting with `Daftar ` is kept as-is, and the optional `cardTitle` prop overrides the result) and
+  its small create button on the right; a read-only `CrudPage` without `create` (for example manager
+  Products) renders no list header. It supports `summary`, `footer`, and `toolbar` slots, `rowClassName` for
+  row tinting, `canEditRow` to hide the Ubah action per row while keeping the action column, and
+  `pageResetKey` to return to page 1 when a filter changes. `ResourceTable` accepts an optional `cardActions`
+  node; only when present does it render a card header with the same derived `Daftar` list title above the
+  table, so read-only tables without `cardActions` start directly in the card body.
 - `/owner/purchases` and `/manager/purchases` share `PurchasesPage`: a paginated history table plus a "Catat Pembelian" modal with date-only `purchased_at`, supplier, notes, dynamic line items, a running total, and an `idempotency_key` generated once when the modal opens. Each history row expands to its line items: material name, quantity with unit, unit cost, subtotal, notes, and the recorder. `ResourceTable` takes an optional `expandedRow` renderer; existing tables are unchanged. The owner selects a branch; the manager has no branch selector. The purchase modal labels quantity with the selected material's unit.
 - `/manager/ledgers` adds type, reason, and user columns to the stock quantities.
 - Copy is hardcoded Indonesian; there is no i18n layer. Code identifiers, API fields, and database values stay English, with one exception: `expense.category` is a fixed dropdown, not free text, so reports group by the selected category.
