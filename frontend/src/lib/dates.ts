@@ -61,6 +61,16 @@ export function formatDate(value: string | Date): string {
     }).format(date);
 }
 
+export function toInputDate(value: string | null | undefined): string {
+    if (!value) {
+        return '';
+    }
+
+    const date = parseDate(value);
+
+    return date ? toIsoDate(date) : '';
+}
+
 export function todayIso(): string {
     return toIsoDate(new Date());
 }

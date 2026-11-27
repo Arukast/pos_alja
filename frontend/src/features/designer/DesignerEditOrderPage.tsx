@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
+import { toInputDate } from '../../lib/dates';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
@@ -77,7 +78,7 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [items, setItems] = useState<EditableOrderItem[]>(() => (invoice.orders ?? []).map(editableItem));
-    const [deadline, setDeadline] = useState(invoice.deadline ?? '');
+    const [deadline, setDeadline] = useState(toInputDate(invoice.deadline));
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [notice, setNotice] = useState<string | null>(null);
     const optionsQuery = useQuery({ queryKey: ['quote-options', 'edit'], queryFn: () => api.quoteOptions({ include_inactive_attributes: 1 }) });
