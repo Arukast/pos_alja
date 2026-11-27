@@ -65,8 +65,9 @@ selects, checkboxes, and the secondary button variant all use it; error controls
 ## Shell
 
 240px white sidebar (`w-60`), 64px collapsed (`w-16`), right border, and a 3px top stripe of magenta 33% /
-yellow 22% / cyan 45%. The sidebar header carries the `LogoMark`, the `Alja POS` wordmark, and the current
-branch name. Navigation groups use 10px uppercase muted captions, 40px rows, 12px radius, and 14px/500 labels.
+yellow 22% / cyan 45%. The sidebar header carries the square Alja mark (`logo-alja-mark.png`), the `Alja POS`
+wordmark, and the current branch name when one is assigned. Navigation groups use 10px uppercase muted captions,
+40px rows, 12px radius, and 14px/500 labels.
 
 Active navigation is a solid `#D01A7E` row with white text and a white 3px rail on the left (5.08:1). This
 replaced an earlier tinted active row.
@@ -77,9 +78,9 @@ width 1600px.
 ## Components
 
 - Page banner: role-tinted, 16px radius, 20px padding, 1px tinted border, four 8px CMYK squares, a 10px
-  uppercase eyebrow, title 28px/800, description 14px `light-muted-strong`, actions on the right, and one
-  blurred magenta circle. Tints: owner `#FFF0F3`, operations `#E6F7FD` (manager, cashier, production),
-  designer `#F0FDFA`.
+  uppercase eyebrow, title 28px/800, description 14px `light-muted-strong`, and one blurred magenta circle.
+  Headers are copy only, with no actions, filters, or links. Tints: owner `#FFF0F3`, operations `#E6F7FD`
+  (manager, cashier, production), designer `#F0FDFA`.
 - KPI card (`StatCard`): white, 16px radius, 1px border, 20px padding, 10px uppercase muted label, 22px/800
   value, optional hint line. It supports a tinted icon chip (`icon` prop, 32px, `brand-primary/10`), but no
   dashboard passes one; record it as available, not as a page rule.
@@ -104,9 +105,9 @@ width 1600px.
 - Chart (`Sparkline`): one magenta area series, 3px line, area gradient from 28% to transparent, three
   quarter gridlines plus a dashed zero baseline, and 3.5px point markers.
 - Login: light grey canvas (`login-mesh`) with a 4rem grid mesh, a centred 448px (`max-w-md`) white card with
-  the 3px brand stripe, the `LogoMark` beside the wordmark, and one primary button. This screen has no CMYK
-  squares.
-- `LogoMark`: rounded square on a 32px grid, magenta fill, white A with a yellow crossbar and dot.
+  the 3px brand stripe, the full Alja lockup above the wordmark below `sm` and beside it at `sm` and above,
+  and one primary button. This screen has no CMYK squares.
+- Brand mark: the square mark is the leading `A` glyph cropped from the source artwork's ALJA word, on a 512px opaque black tile (`frontend/public/images/logo-alja-mark.png`). The full lockup (`frontend/public/images/logo-alja.webp`) appears on Login and 404 at 160px wide. Favicons use the mark at 16/32/48 plus an ICO; Apple 180 and PWA 192/512 use the same black tile with the mark inside the central 80% safe zone. Manifest theme is `#E91E8C` on `#FFFFFF`.
 
 ### Banner deviations
 
@@ -128,6 +129,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
   `teal-400/10`); the banner's blurred circle uses `brand-primary/15`. Tinted borders sit at 25%.
 - Filled brand controls keep `#D01A7E` with white text.
 - Dark mode never changes composition, only colour.
+- The full lockup carries its own white sticker border; the mark and generated icons are opaque near-black tiles with no white backing. Verify contrast on both themes.
 
 ## Print
 
