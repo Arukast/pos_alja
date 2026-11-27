@@ -77,7 +77,7 @@ class ProductCompositionApiTest extends TestCase
 
         $this->product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $this->category->id,
         ]);
 
@@ -94,7 +94,7 @@ class ProductCompositionApiTest extends TestCase
     {
         $product = Product::create([
             'name' => 'Banner Tanpa Bahan',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $this->category->id,
         ]);
 
@@ -175,7 +175,7 @@ class ProductCompositionApiTest extends TestCase
             ->postJson('/api/v1/products', [
                 'name' => 'Banner Tanpa Bahan',
                 'product_category_id' => $this->category->id,
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
                 'requires_material' => false,
                 'uses_attributes' => true,
                 'material_ids' => [],
@@ -210,7 +210,7 @@ class ProductCompositionApiTest extends TestCase
             ->putJson("/api/v1/products/{$this->product->id}", [
                 'name' => $this->product->name,
                 'product_category_id' => $this->category->id,
-                'pricing_type' => $this->product->pricing_type,
+                'selling_unit' => $this->product->selling_unit,
                 'requires_material' => false,
                 'uses_attributes' => false,
                 'material_ids' => [],
@@ -253,7 +253,7 @@ class ProductCompositionApiTest extends TestCase
             ->putJson("/api/v1/products/{$this->product->id}", [
                 'name' => $this->product->name,
                 'product_category_id' => $this->category->id,
-                'pricing_type' => $this->product->pricing_type,
+                'selling_unit' => $this->product->selling_unit,
                 'attribute_type_ids' => [$this->finishingType->id],
                 'attribute_ids' => [$this->displayAttribute->id],
             ])
@@ -273,7 +273,7 @@ class ProductCompositionApiTest extends TestCase
             ->putJson("/api/v1/products/{$this->product->id}", [
                 'name' => $this->product->name,
                 'product_category_id' => $this->category->id,
-                'pricing_type' => $this->product->pricing_type,
+                'selling_unit' => $this->product->selling_unit,
                 'attribute_type_ids' => [$this->type->id],
                 'attribute_ids' => [$this->attribute->id],
             ])
@@ -303,7 +303,7 @@ class ProductCompositionApiTest extends TestCase
             ->putJson("/api/v1/products/{$this->product->id}", [
                 'name' => $this->product->name,
                 'product_category_id' => $this->category->id,
-                'pricing_type' => $this->product->pricing_type,
+                'selling_unit' => $this->product->selling_unit,
                 'attribute_type_ids' => [$inactiveType->id],
             ])
             ->assertStatus(422)
@@ -319,7 +319,7 @@ class ProductCompositionApiTest extends TestCase
             ->putJson("/api/v1/products/{$this->product->id}", [
                 'name' => $this->product->name,
                 'product_category_id' => $this->category->id,
-                'pricing_type' => $this->product->pricing_type,
+                'selling_unit' => $this->product->selling_unit,
                 'uses_attributes' => false,
             ])
             ->assertOk()
@@ -342,7 +342,7 @@ class ProductCompositionApiTest extends TestCase
         $payload = [
             'name' => 'Manager Product',
             'product_category_id' => $this->category->id,
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'attribute_type_ids' => [$this->type->id],
             'attribute_ids' => [$this->attribute->id],
         ];

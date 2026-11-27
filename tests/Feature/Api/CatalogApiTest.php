@@ -75,13 +75,13 @@ class CatalogApiTest extends TestCase
 
         $vinylBanner = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $this->category->id,
         ]);
 
         Product::create([
             'name' => 'Flyer',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $this->category->id,
         ]);
 
@@ -304,7 +304,7 @@ class CatalogApiTest extends TestCase
         for ($index = 1; $index <= 23; $index++) {
             Product::create([
                 'name' => sprintf('Produk %02d', $index),
-                'pricing_type' => 'unit',
+                'selling_unit' => 'pcs',
                 'product_category_id' => $this->category->id,
             ]);
         }
@@ -350,7 +350,7 @@ class CatalogApiTest extends TestCase
 
         $inactiveProduct = Product::create([
             'name' => 'Goodie Bag',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $secondCategory->id,
             'is_active' => false,
         ]);
@@ -412,7 +412,7 @@ class CatalogApiTest extends TestCase
     {
         $deleted = Product::create([
             'name' => 'Deleted Banner',
-            'pricing_type' => 'unit',
+            'selling_unit' => 'pcs',
             'product_category_id' => $this->category->id,
         ]);
         $deleted->delete();
