@@ -40,18 +40,22 @@ final class QuoteController extends Controller
         }
 
         $data = $request->validated();
-        $material = Material::query()->find($data['material_id']);
+        $materialId = $data['material_id'] ?? null;
 
-        if (! $availability->isAvailable($material, $actor->branch_id)) {
-            throw ValidationException::withMessages([
-                'material_id' => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
-            ]);
+        if ($materialId !== null) {
+            $material = Material::query()->find($materialId);
+
+            if (! $availability->isAvailable($material, $actor->branch_id)) {
+                throw ValidationException::withMessages([
+                    'material_id' => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
+                ]);
+            }
         }
 
         try {
             $result = $quote->execute([
                 'product_id' => $data['product_id'],
-                'material_id' => $data['material_id'],
+                'material_id' => $materialId,
                 'selected_attributes' => $data['selected_attributes'] ?? [],
                 'quantity' => $data['quantity'],
                 'width' => $data['width'] ?? 0,

@@ -128,7 +128,8 @@ final class UpdateInvoiceItems
 
                 $material = $pricing->material;
 
-                if (! $this->availability->isAvailable($material, $branchId)
+                if ($pricing->material_id !== null
+                    && ! $this->availability->isAvailable($material, $branchId)
                     && ($material === null
                         || $material->trashed()
                         || ! in_array($material->id, $allowedMaterialIds, true))) {

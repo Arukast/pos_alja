@@ -296,6 +296,16 @@ class CreateInvoiceApiTest extends TestCase
         ]);
     }
 
+    public function test_invoice_creation_rejects_a_pricing_with_a_missing_material_relation(): void
+    {
+        $this->material->delete();
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload())
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.pricing_id');
+    }
+
     public function test_invoice_creation_persists_width_length_and_selected_attributes(): void
     {
         $attribute = Attribute::create([

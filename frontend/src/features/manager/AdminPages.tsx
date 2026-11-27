@@ -467,8 +467,8 @@ export function ManagerPricingPage() {
     }));
 
     const fields: Array<CrudField<Pricing>> = [
-        { key: 'product_id', label: 'Produk', type: 'select', options: productOptions, getValue: (pricing) => pricing.product?.id ?? '' },
-        { key: 'material_id', label: 'Bahan', type: 'select', options: materialOptions, getValue: (pricing) => pricing.material?.id ?? '' },
+        { key: 'product_id', label: 'Produk', type: 'select', options: productOptions, getValue: (pricing) => pricing.product?.id ?? '', hideOnEdit: true },
+        { key: 'material_id', label: 'Bahan', type: 'select', emptyOptionLabel: 'Tanpa bahan', options: materialOptions, getValue: (pricing) => pricing.material?.id ?? '', hideOnEdit: true },
         {
             key: 'customer_type',
             label: 'Tipe Pelanggan',
@@ -478,6 +478,7 @@ export function ManagerPricingPage() {
                 { value: 'Reseller', label: 'Reseller' },
             ],
             getValue: (pricing) => pricing.customer_type,
+            hideOnEdit: true,
         },
         { key: 'min_qty', label: 'Jml min', type: 'number', defaultValue: 1, getValue: (pricing) => pricing.min_qty },
         { key: 'price', label: 'Harga jual', type: 'number', getValue: (pricing) => pricing.price },
@@ -495,7 +496,7 @@ export function ManagerPricingPage() {
                 queryFn={(page) => api.pricing({ page })}
                 columns={[
                     { header: 'Produk', cell: (pricing) => pricing.product?.name ?? '-' },
-                    { header: 'Bahan', cell: (pricing) => pricing.material?.name ?? '-' },
+                    { header: 'Bahan', cell: (pricing) => pricing.material?.name ?? 'Tanpa bahan' },
                     { header: 'Tipe', cell: (pricing) => pricing.customer_type },
                     { header: 'Jml min', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => pricing.min_qty },
                     { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.price) },
@@ -503,10 +504,17 @@ export function ManagerPricingPage() {
                 ]}
                 fields={fields}
                 rowLabel={(pricing) =>
-                    `${pricing.product?.name ?? '-'} / ${pricing.material?.name ?? '-'}`
+                    `${pricing.product?.name ?? '-'} / ${pricing.material?.name ?? 'Tanpa bahan'}`
                 }
-                create={(values) => api.admin.createPricing(values)}
-                update={(id, values) => api.admin.updatePricing(id, values)}
+                create={(values) => api.admin.createPricing({
+                    ...values,
+                    material_id: values.material_id || null,
+                })}
+                update={(id, values) => api.admin.updatePricing(id, {
+                    min_qty: values.min_qty,
+                    price: values.price,
+                    cost: values.cost,
+                })}
                 remove={(id) => api.admin.deletePricing(id)}
                 createLabel="Tambah baris harga"
             />

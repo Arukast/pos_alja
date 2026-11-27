@@ -10,6 +10,7 @@ use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Pricing;
 use App\Models\Product;
+use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 
 class PricingService
@@ -43,7 +44,11 @@ class PricingService
 
         // Fetch core pricing record matching product, material, customer tier type, and tiered min_qty
         $pricing = Pricing::where('product_id', $productId)
-            ->where('material_id', $materialId)
+            ->when(
+                $materialId === null,
+                fn (Builder $query) => $query->whereNull('material_id'),
+                fn (Builder $query) => $query->where('material_id', $materialId),
+            )
             ->where('customer_type', $customerType)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->where('min_qty', '<=', $quantity)
@@ -53,7 +58,11 @@ class PricingService
         // Fallback to 'Reguler' pricing tier if custom type pricing is not defined
         if (! $pricing && $customerType !== 'Reguler') {
             $pricing = Pricing::where('product_id', $productId)
-                ->where('material_id', $materialId)
+                ->when(
+                    $materialId === null,
+                    fn (Builder $query) => $query->whereNull('material_id'),
+                    fn (Builder $query) => $query->where('material_id', $materialId),
+                )
                 ->where('customer_type', 'Reguler')
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->where('min_qty', '<=', $quantity)

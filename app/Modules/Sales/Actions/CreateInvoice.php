@@ -79,7 +79,8 @@ final class CreateInvoice
                     ]);
                 }
 
-                if (! $this->availability->isAvailable($pricing->material, $branchId)) {
+                if ($pricing->material_id !== null
+                    && ! $this->availability->isAvailable($pricing->material, $branchId)) {
                     throw ValidationException::withMessages([
                         "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
                     ]);
