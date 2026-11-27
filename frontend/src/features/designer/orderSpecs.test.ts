@@ -7,13 +7,13 @@ describe('hasMissingLinearLength', () => {
         expect(hasMissingLinearLength({
             length: null,
             area: '0.00',
-            pricing: { product: 'Sticker', material: 'Vinyl', pricing_type: 'unit' },
+            pricing: { product: 'Sticker', material: 'Vinyl', selling_unit: 'pcs' },
         })).toBe(false);
 
         expect(hasMissingLinearLength({
             length: null,
             area: '3.00',
-            pricing: { product: 'Banner', material: 'Flexy', pricing_type: 'area' },
+            pricing: { product: 'Banner', material: 'Flexy', selling_unit: 'm2' },
         })).toBe(false);
     });
 });

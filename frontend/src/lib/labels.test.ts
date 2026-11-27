@@ -5,7 +5,6 @@ import {
     expenseTypeLabel,
     modelTypeLabel,
     paymentMethodLabel,
-    pricingTypeLabel,
     ledgerTypeLabel,
     listCardTitle,
     roleLabel,
@@ -125,17 +124,6 @@ describe('attributeTypeLabel', () => {
 
     it('falls back to the input for an unknown type', () => {
         expect(attributeTypeLabel('packaging')).toBe('packaging');
-    });
-});
-
-describe('pricingTypeLabel', () => {
-    it('labels every stored pricing type', () => {
-        expect(pricingTypeLabel('unit')).toBe('Per Satuan');
-        expect(pricingTypeLabel('area')).toBe('Per Area (m²)');
-    });
-
-    it('falls back to the input for an unknown pricing type', () => {
-        expect(pricingTypeLabel('custom')).toBe('custom');
     });
 });
 

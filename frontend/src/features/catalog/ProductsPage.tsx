@@ -8,7 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { pricingTypeLabel } from '../../lib/labels';
+import { unitLabel, unitOptions } from '../../lib/units';
 import { productCompositionLabels } from './productOptions';
 
 async function fetchAllMaterials(): Promise<Material[]> {
@@ -91,16 +91,13 @@ export function ProductsPage({
             getValue: (product) => product.category?.id ?? '',
         },
         {
-            key: 'pricing_type',
-            label: 'Tipe Harga',
+            key: 'selling_unit',
+            label: 'Satuan Jual',
             type: 'select',
             required: true,
-            defaultValue: 'unit',
-            options: [
-                { value: 'unit', label: pricingTypeLabel('unit') },
-                { value: 'area', label: pricingTypeLabel('area') },
-            ],
-            getValue: (product) => product.pricing_type,
+            defaultValue: 'pcs',
+            options: unitOptions,
+            getValue: (product) => product.selling_unit,
         },
         {
             key: 'requires_material',
@@ -154,7 +151,7 @@ export function ProductsPage({
             pageResetKey={`${search}:${categoryId}:${status}`}
             eyebrow={eyebrow}
             title="Manajemen Produk"
-            description="Daftar produk, kategori, tipe harga, dan status aktif."
+            description="Daftar produk, kategori, satuan jual, dan status aktif."
             queryKey={[queryKeyPrefix, 'products', search, categoryId, status]}
             queryFn={(page) =>
                 api.products({
@@ -236,9 +233,9 @@ export function ProductsPage({
                     ),
                 },
                 {
-                    header: 'Tipe Harga',
+                    header: 'Satuan Jual',
                     className: 'hidden md:table-cell',
-                    cell: (product) => pricingTypeLabel(product.pricing_type),
+                    cell: (product) => unitLabel(product.selling_unit),
                 },
                 {
                     header: 'Bahan',

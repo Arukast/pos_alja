@@ -97,17 +97,17 @@ class DatabaseSeeder extends Seeder
 
         // 3. Products
         $products = [
-            ['name' => 'Merchandise', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Merchandise']->id],
-            ['name' => 'Jasa Desain', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Jasa Desain']->id],
-            ['name' => 'Display', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Display']->id],
-            ['name' => 'Print Kertas', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Print Kertas']->id],
-            ['name' => 'Large Format', 'pricing_type' => 'area', 'product_category_id' => $categoriesMap['Large Format']->id],
-            ['name' => 'ID Card', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['ID Card']->id],
-            ['name' => 'Stempel', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Stempel']->id],
-            ['name' => 'Kartu Nama', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Kartu Nama']->id],
-            ['name' => 'Produk Jadi', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Produk Jadi']->id],
-            ['name' => 'NOTA', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['NOTA']->id],
-            ['name' => 'DTF Large Format', 'pricing_type' => 'area', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
+            ['name' => 'Merchandise', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Merchandise']->id],
+            ['name' => 'Jasa Desain', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Jasa Desain']->id],
+            ['name' => 'Display', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Display']->id],
+            ['name' => 'Print Kertas', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Print Kertas']->id],
+            ['name' => 'Large Format', 'selling_unit' => 'm2', 'product_category_id' => $categoriesMap['Large Format']->id],
+            ['name' => 'ID Card', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['ID Card']->id],
+            ['name' => 'Stempel', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Stempel']->id],
+            ['name' => 'Kartu Nama', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Kartu Nama']->id],
+            ['name' => 'Produk Jadi', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Produk Jadi']->id],
+            ['name' => 'NOTA', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['NOTA']->id],
+            ['name' => 'DTF Large Format', 'selling_unit' => 'm2', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
         ];
 
         $productModels = [];
