@@ -4,7 +4,7 @@
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
 - **Table naming:** Eloquent default pluralization, except `material_branch_stock`, which uses a singular table name.
 - **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `attributes`, and `pricing`.
-- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, production failure, and the Unit A catalog cleanup are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
+- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, production failure, the Unit A catalog cleanup, and the B1a material retirement flags are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
 - **Current transitional tables:** `PRICING` and `ATTRIBUTE_PRICING` exist in the current build and are the price source; the target pricing redesign replaces them (note 4).
 - **Machine tables:** `machines` and `machine_pricing` are dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable. `pricing` and `attribute_pricing` remain and are the current price source.
 - **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; the purchase and stock-ledger tables and columns are implemented as described here, while the remaining business tables follow this target.
@@ -86,6 +86,7 @@ erDiagram
         string password
         string role
         uuid branch_id FK
+        boolean is_active
         string phone
         text address
         timestamp deleted_at
@@ -159,6 +160,7 @@ erDiagram
         string dimensions
         decimal cost
         decimal price
+        boolean is_active
         timestamp deleted_at
     }
 
@@ -168,6 +170,7 @@ erDiagram
         uuid branch_id FK
         decimal current_stock
         decimal min_stock
+        boolean is_active
     }
 
     ATTRIBUTES {
@@ -405,6 +408,7 @@ erDiagram
     - `product_categories.description` and `is_active`, with `product_category_discounts` dropped, by `2026_11_27_000002_add_description_and_is_active_to_product_categories_table.php` and `2026_11_27_000003_drop_product_category_discounts_table.php`.
     - `attribute_types` dropped by `2026_11_27_000004_drop_attribute_types_table.php`; `attributes.type` stays a string validated as `finishing` or `display`, while legacy `cut` rows remain.
     - `materials.unit` for `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; implemented by `2026_11_25_000001_add_unit_to_materials_table.php` with default `pcs` and a name/category/archetype backfill.
+    - `materials.is_active` for global retirement and `material_branch_stock.is_active` for branch availability, both boolean default `true`; implemented by `2026_11_27_000005_add_is_active_to_materials_and_material_branch_stock.php` with no backfill beyond the default and no index.
     - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
     - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`.
@@ -413,6 +417,7 @@ erDiagram
     - `expenses.user_id` and `recorded_by_name`.
     - `stock_ledgers.user_id`, `type`, `reason`, `reference_type`, and `reference_id`; implemented by `2026_11_24_000001_add_traceability_to_stock_ledgers_table.php`.
     - `purchases` and `purchase_items` for raw-material purchases; implemented by `2026_11_24_000002_create_purchases_table.php` and `2026_11_24_000003_create_purchase_items_table.php`. `purchases.user_id` is the actor (Owner or Branch Manager), and `purchases.idempotency_key` is unique per branch.
+    - `users.is_active` (boolean, default `true`, non-null) by `2026_11_26_140000_add_is_active_to_users_and_convert_trashed_branches.php`. The same migration converts soft-deleted branches to visible inactive rows (`deleted_at = null`, `is_active = false`); `down()` drops only `users.is_active`, so the branch conversion is one-way.
     - `backups` and `backup_settings` for PB-10; implemented by the 2026-11-26 migrations, with `backups.filename` made nullable by a follow-up migration. `activity_logs` gains a `nullOnDelete` branch FK and a `created_at` index.
 15. **The machine master is gone.** `wasted_materials.machine_id` was dropped by `2026_11_24_000004_drop_machine_id_from_wasted_materials_table.php`; the `machines` and `machine_pricing` tables and their endpoints were dropped by `2026_11_25_000002_drop_machines_tables.php`. The rows are unrecoverable, and `down()` recreates empty tables only. The `pricing` and `attribute_pricing` tables remain. `wasted_materials.order_id` stays nullable for legacy rows, but the API requires it for all new waste.
 16. **Order priority is target-only.** There is no `priority` column; the implemented queue orders by `created_at`, then `id`. The target semantics are higher `priority` first, then `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`, with default priority 0.
@@ -423,7 +428,9 @@ erDiagram
 21. **`backups` is run history, never the backup payload.** `trigger` is `manual` or `scheduled`; `destination` is `local`, `remote`, or `both`; `status` is `queued`, `running`, `success`, `partial`, or `failed`. `filename` is nullable while a row is still `queued`; the job fills it when it starts. `local_path` and `remote_path` are relative to the `backups-local` and `backups-s3` disks. `user_id` is the manual owner and `nullOnDelete`; scheduled rows have no user. `meta` holds pruned counts, `duration_ms`, `remote_skipped`, `retention_error`, and transient `pending_local`/`pending_temp` cleanup targets that `BackupResource` strips. Indexes: `created_at`, `status`, `is_pinned`. No branch column: backups are owner-only and global.
 22. **`backup_settings` is a singleton with a fixed UUID** (`00000000-0000-4000-8000-000000000001`) so concurrent first access cannot insert two rows. The row seeds from `config('backup.*')` on first access; afterwards the database is the source of truth and env values are initial defaults only. `last_local_date` and `last_remote_date` prevent duplicate daily scheduled runs. A retention window below 1 fails closed at prune time.
 23. **`activity_logs` is append-only from the application.** Eloquent `updating` and `deleting` throw `LogicException`; query-builder mass updates, `truncate()`, and raw SQL bypass the guard by convention. `branch_id` is nullable and `nullOnDelete`, so a force-deleted branch leaves the row with `branch_id = null`. `created_at` is indexed for the audit list and any future archive query. System writes use `user_id = null`, `username = system`, `role = system`.
-24. **Retention deletes files, not history.** When a dump file is pruned, the matching `local_path` or `remote_path` is set to `null` and the row remains. Pinned filenames are exempt from selection; the newest file on each destination is always kept. `ACTIVATE` audit payloads record branch-stock creation and initial stock because `materials` has no `is_active` column.
+24. **Retention deletes files, not history.** When a dump file is pruned, the matching `local_path` or `remote_path` is set to `null` and the row remains. Pinned filenames are exempt from selection; the newest file on each destination is always kept. `ACTIVATE` audit payloads record branch-stock creation and initial stock; the global material active toggle writes one `UPDATE` row with the flag before/after and inherits the actor's `branch_id`.
+25. **Material retirement is two-level.** `materials.is_active` (default true) is the global retire flag; `material_branch_stock.is_active` (default true) is branch availability. Neither changes `current_stock` nor writes `stock_ledgers`. A material is available for new quote/invoice lines only when both flags are true and a branch-stock row exists; a missing row means unavailable, not inactive. An invoice edit may reuse an inactive material already on the locked invoice, while a soft-deleted material is never available, even when an order used it. `POST /materials/{material}/activate` sets an existing inactive stock row active; it creates a missing row as before.
+26. **`users.is_active` is the account lifecycle flag; `deleted_at` stays administrative.** Default `true`. Deactivation keeps the row, blocks login, and rejects the account on its next authenticated `/api/v1` request; an owner can reactivate it. Soft-deleted users stay hidden by default, and restore sets `is_active = true`. `users.is_active` is not accepted by user store/update requests.
 
 ---
 

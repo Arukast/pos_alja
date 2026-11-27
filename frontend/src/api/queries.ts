@@ -1,4 +1,4 @@
-import { API_BASE, apiFetch } from '../lib/api';
+import { API_BASE, apiDownload, apiFetch } from '../lib/api';
 import type {
     ActivityLog,
     Attribute,
@@ -15,6 +15,7 @@ import type {
     Invoice,
     LeaderboardReport,
     Material,
+    MaterialPage,
     NetProfitReport,
     Paginated,
     Payment,
@@ -44,7 +45,11 @@ function queryString(params: object = {}): string {
     return query ? `?${query}` : '';
 }
 
+export type ReportType = 'gross-revenue' | 'base-cost' | 'net-profit' | 'expenses';
+export type ReportExportFormat = 'xlsx' | 'pdf';
+
 export interface ReportParams {
+    period?: string;
     branch_id?: string;
     start_date: string;
     end_date: string;
@@ -98,7 +103,7 @@ export const api = {
         apiFetch<Paginated<Product>>(`/products${queryString(params)}`),
 
     materials: <T = Material>(params: QueryParams = {}) =>
-        apiFetch<Paginated<T>>(`/materials${queryString(params)}`),
+        apiFetch<MaterialPage<T>>(`/materials${queryString(params)}`),
 
     pricing: (params: QueryParams = {}) =>
         apiFetch<Paginated<Pricing>>(`/pricing${queryString(params)}`),
@@ -166,6 +171,15 @@ export const api = {
             ),
 
         leaderboard: () => apiFetch<LeaderboardReport>('/reports/designer-leaderboard'),
+
+        exportReport: (
+            type: ReportType,
+            params: ReportParams & { format: ReportExportFormat }
+        ) =>
+            apiDownload(
+                `/reports/${type}/export${queryString(params)}`,
+                `laporan-${type}-${params.start_date}_${params.end_date}.${params.format}`
+            ),
     },
 
     quoteOptions: (params: QueryParams = {}) =>
@@ -245,6 +259,8 @@ export const api = {
             mutate<{ user: UserRecord }>('/users', 'POST', data),
         updateUser: (id: string, data: MutationBody) =>
             mutate<{ user: UserRecord }>(`/users/${id}`, 'PUT', data),
+        toggleUser: (id: string) =>
+            mutate<{ user: UserRecord }>(`/users/${id}/status`, 'PATCH'),
         deleteUser: (id: string) => mutate<void>(`/users/${id}`, 'DELETE'),
         restoreUser: (id: string) =>
             mutate<{ user: UserRecord }>(`/users/${id}/restore`, 'POST'),
@@ -266,6 +282,17 @@ export const api = {
             mutate<{ material: Material }>(`/materials/${id}/activate`, 'POST', data),
         setMaterialMinimumStock: (id: string, data: MutationBody) =>
             mutate<{ material: Material }>(`/materials/${id}/min-stock`, 'PATCH', data),
+        setMaterialActive: (id: string, data: { is_active: boolean }) =>
+            mutate<{ material: Material }>(`/materials/${id}/active`, 'PATCH', data),
+        setMaterialBranchAvailability: (
+            id: string,
+            data: { branch_id?: string; is_active: boolean }
+        ) =>
+            mutate<{ material: Material }>(
+                `/materials/${id}/branch-availability`,
+                'PATCH',
+                data
+            ),
 
         createCategory: (data: MutationBody) =>
             mutate<{ category: Category }>('/categories', 'POST', data),

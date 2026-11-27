@@ -46,6 +46,8 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Requirement:** A user SHALL log in with `username` and `password`, with an optional remember-me flag.
 - **Acceptance criteria:**
   - Valid credentials create an authenticated session; invalid credentials return a generic error.
+  - Login rejects an inactive user and a non-owner user whose assigned branch is inactive, trashed, or missing, all through the generic `auth.failed` response.
+  - Owners skip the branch check. A non-owner with no branch keeps the current behavior: login is allowed and branch-scoped actions keep their documented denial or empty results.
   - Login is rate limited to 5 attempts per username and IP.
   - After login, `/dashboard` renders the dashboard for the user's role.
 - **Traceability:** NFR5, PB-08.
@@ -67,12 +69,15 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Traceability:** NFR5, PB-08.
 
 ### FR4 Update user, role, and deactivate account
-- **Requirement:** Owner and Branch Manager SHALL update user data, assign roles, and deactivate accounts. A manager SHALL only manage branch staff.
+- **Requirement:** Owner and Branch Manager SHALL update user data, assign roles, and activate or deactivate accounts. A manager SHALL only manage branch staff.
 - **Acceptance criteria:**
-  - Owner may manage all users; a primary owner is required to manage owner accounts.
+  - Only an owner can manage owner accounts; Owner may manage all users.
   - Manager may manage cashier, designer, and production users in their own branch only.
-  - Deactivation is a soft delete; accounts can be restored.
-  - Password is optional on update; audit payloads exclude it.
+  - Deactivation sets `users.is_active = false` and keeps the row; an owner can reactivate the account. Deactivation blocks new logins and takes effect on the user's next authenticated `/api/v1` request.
+  - A manager may toggle own-branch staff status but cannot delete or restore users. Soft delete and restore remain owner-only administrative APIs with no normal UI.
+  - The last active owner (`role = owner`, `is_active = true`, not trashed) cannot be deactivated, deleted, or demoted: profile deactivation, `DELETE /users/{user}`, and demotion through `PUT /users/{user}` return 422 with `Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.` The status route cannot emit that guard message: a sole owner toggling themselves hits the self-toggle rule, and any other target implies a second active owner.
+  - A user cannot deactivate their own account through the user management status route. Profile deactivation remains available with the current password.
+  - Status changes are audited with before/after `is_active`. Password is optional on update; audit payloads exclude it.
 - **Traceability:** NFR5, PB-08.
 
 ### FR5 Role-based access control
@@ -95,15 +100,16 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Product CRUD includes name, category, pricing type (`unit` or `area`), compatible material mapping (`material_ids[]`), and active status. `products.pricing_type` drives area (`width * length`) vs per-unit price calculations.
   - Category CRUD includes name, description, active status, and the derived product count; categories are never deleted, so `is_active` is the retire mechanism. Legacy `calculation_archetype` and `allowed_attribute_types` remain dead columns but are removed from the category form and API. Quantity discount tiers are removed.
   - Products use the same retire mechanism (`is_active`). An active product may still be created or edited under an inactive category (no 422 guard); it stays hidden from the designer option list until the category is active again.
-  - The designer `/quotes/options` list follows catalog visibility: active categories only, active products in an active or null category, materials in an active category, and active attributes unless `include_inactive_attributes=1`. The response omits `products_count`; product categories report `is_active`, while material categories remain `{id,name}`.
+  - The designer `/quotes/options` list follows catalog visibility: active categories only, active products in an active or null category, globally active materials in an active category with an active branch-stock row, and active attributes unless `include_inactive_attributes=1`. The response omits `products_count`; product categories report `is_active`, while material categories remain `{id,name}`. Attribute objects omit `cost` for every non-owner/manager actor (cashier and production too), though only designers can reach quote options; Owner and Manager attribute lists keep it.
   - Material master includes name, category, unit, type, dimensions, base cost, and base price. The allowed units are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`; `m2` displays as `m²`. Create requires `unit`; update accepts it optionally. The column defaults to `pcs`.
+  - Materials have a global `is_active` flag (default true), and `material_branch_stock.is_active` (default true) marks availability in a branch. The Owner toggles the global flag; Owner any branch and Manager own branch toggle branch availability. Neither toggle writes a `stock_ledgers` row or changes `current_stock`. The materials screen has no Hapus; the Owner-only delete/restore API remains recovery-only. `available_total` and the manager `Bahan Aktif` count include only globally active materials; a resolved named branch additionally requires an active branch-stock row there, while an owner request with `branch_id=all` or omitted counts globally active materials only.
   - Existing materials are backfilled by `MaterialUnit::backfill()`. The first match wins: material name keywords (`banner`, `vinyl`, `flexi`, `backdrop`, `spandex`, `spanduk` -> `m2`; `kertas`, `paper`, `hvs`, `art paper`, `sticker`, `stiker` -> `lembar`; `tinta`, `ink`, `solvent`, `pelarut` -> `liter`), then the same keyword sets against the category name, then a `surface_area` category archetype -> `m2`, otherwise `pcs`. A null or legacy value reads as `pcs`.
   - Finishing and display masters exist as `attributes` with type `finishing` or `display`, and `attribute_pricing` rows supply their price/cost modifiers. The designer form offers finishing/display selection, and the selection is persisted in `orders.selected_attributes`.
   - The current price source is the pricing matrix: a quote selects a `pricing` row by product, material, customer type, and `min_qty`, then adds the selected `attribute_pricing` modifiers. The target model (material price + finishing/display price + reseller discount + product-level quantity tiers, designed in Unit B) is not implemented.
   - Invoice creation reads the customer type from the customer record; quotes default to `Reguler` and accept a `customer_type` request value. The branch reseller discount is read from `branches.reseller_discount_percent` (falling back to `branches.settings.reseller_discount_percent`) and applied when a Reseller quote falls back to the Reguler pricing row.
   - `branches.reseller_discount_percent` (`0–100`, default `0`) is the reseller-discount source, mirrored into `branches.settings.reseller_discount_percent` by `BranchService` and editable on `/owner/branches`. `Branch::getResellerDiscountPercent()` falls back to `settings` for legacy rows. The invoice branch's value applies.
   - Machine masters and machine selection are removed; the `machines` and `machine_pricing` tables are dropped. The pricing matrix is a target removal and remains the current price source.
-  - Category and product changes are Owner-only; product create, update, delete, and restore are written to the audit log, while category, attribute, material, and minimum-stock writes are not yet audited. Managers manage own-branch attributes and pricing rows; global attributes are read-only, attributes cannot be moved to another branch after creation, and the attribute delete endpoint is removed. Branch stock changes are branch-scoped.
+  - Category and product changes are Owner-only; product create/update/delete/restore, category create/update, material create/update/delete/restore/stock, the material global active toggle, and stock adjustment writes are written to the audit log, while attribute, pricing, minimum-stock, and material branch-availability writes remain unaudited. Managers manage own-branch attributes and pricing rows; global attributes are read-only, attributes cannot be moved to another branch after creation, and the attribute delete endpoint is removed. Branch stock changes are branch-scoped.
 - **Traceability:** NFR1, NFR7, PB-01.
 
 ### FR7 Search, filter, and paginate products
@@ -126,7 +132,8 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Customer master requires name and institution; phone, email, and address are optional.
   - Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
   - Each item stores the selected pricing row (`pricing_id`), quantity, area, price, cost, profit, and file reference. Finishing and display selections are persisted in `orders.selected_attributes`; there is no `order_attributes` price/cost snapshot.
-  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone. When a product defines compatible materials (`material_product`), the Designer material selector filters to those mapped materials (falling back to all branch materials when no mapping exists). The option lists hide inactive categories and the products/materials they contain. The designer edit page requests `include_inactive_attributes=1` with its own query key, so a saved inactive finishing/display stays selected and removable without being offered for new rows.
+  - Item entry follows Product -> Material -> Finishing -> Display; machine selection is gone. When a product defines compatible materials (`material_product`), the Designer material selector filters to those mapped materials (falling back to all branch materials when no mapping exists). The option lists hide inactive categories and the products/materials they contain; material options also require the global active flag and an active branch-stock row. The designer edit page requests `include_inactive_attributes=1` with its own query key, so a saved inactive finishing/display stays selected and removable without being offered for new rows.
+  - New quote and invoice lines require a globally active material with an active branch-stock row. An inactive, branch-inactive, soft-deleted, or missing-stock material returns 422 on `material_id` (quote) or `items.{index}.pricing_id` (invoice), including manual-price lines.
   - Finishing and display masters exist (attributes plus `attribute_pricing` modifiers), and the quote/invoice API accepts `selected_attributes[]` and stores it on the order.
   - For area calculations, width and length are separate inputs; area is computed server-side as `width * length`.
   - Submission creates one invoice, its orders (including `width`, `length`, and `selected_attributes`), initial status logs, and an activity log in one transaction. No `order_attributes` rows are written.
@@ -143,6 +150,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Invoice `grand_total`, `total_cost`, `total_profit`, and `accounts_receivable` are recalculated; existing payments are preserved.
   - Invoice status is recalculated: `2` when the receivable is zero, `1` when a receivable remains after a payment.
   - The remaining receivable cannot become negative. If the new total is less than the total already paid, the request is rejected with HTTP 422.
+  - An invoice edit may reuse an inactive material already present on the locked existing invoice, including a new line that reuses that material; a different unavailable material returns 422. A soft-deleted material is always rejected, even when an existing order used it, so the allowance applies only to inactive-but-present materials. The allowance is derived only from the server-locked existing orders; no client flag widens it.
   - Before/after values are written to the audit log with the actor and branch.
   - `OrderUpdated` is dispatched after commit.
 - **Traceability:** NFR3, NFR9, NFR10, PB-02.
@@ -235,6 +243,7 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Low-stock items are highlighted or listed separately.
   - A warning appears when `current_stock <= min_stock`.
   - Owner and Branch Manager can edit the branch minimum-stock threshold without a stock-ledger movement or activity log; `current_stock` is unchanged by the edit, and the branch-stock row must already exist.
+  - The manager materials `Bahan Aktif` stat reads `available_total`, and the manager dashboard `Bahan Tersedia` uses the same available count: globally active materials with an active own-branch stock row. The production list is unchanged and exposes no availability flags or count.
   - Owner may view all branches or one branch.
 - **Traceability:** NFR4, NFR9, PB-05.
 
@@ -299,6 +308,9 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Branch filter for owner; manager is fixed to their branch.
   - Data refreshes on `OrderUpdated`.
 - **Traceability:** NFR1, NFR4, PB-09.
+- **Implementation note (PB-09, 2026-11-27):**
+  - `DashboardRequest` validates `period` (`daily|weekly|monthly`) and enforces `403` when a non-owner has no branch or passes `branch_id=all` / another branch.
+  - `DashboardQuery` returns `period`, `finance.receivables`, `order_count`, and `production` (`queued`, `processing`, `completed`, `failed`) for both `owner` and `manager` (alongside manager `finance` `gross_revenue` and `expenses`); `OwnerDashboardPage` and `ManagerDashboardPage` render these metrics and refresh via `OrderUpdated`.
 
 ### FR23 Periodic financial reports
 - **Requirement:** Owner and Branch Manager SHALL view periodic financial reports filtered by period and branch.
@@ -308,6 +320,9 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Owner may view all branches or one branch; manager is branch-scoped.
   - Values reconcile with payments, invoices, waste, and expenses.
 - **Traceability:** NFR1, NFR2, NFR3, PB-09.
+- **Implementation note (PB-09, 2026-11-27):**
+  - `ReportPolicy::viewFinancialReports` and `ReportFilterRequest` open `/reports/gross-revenue`, `/reports/base-cost`, `/reports/net-profit`, and `/reports/expenses` to both Owner (`branch_id=all` or single branch) and Branch Manager (own branch only; `403` when branchless or targeting `all`/another branch). `/reports/sparkline` remains Owner-only.
+  - `ReportFilterBar` provides quick `Harian`, `Mingguan`, `Bulanan`, and `Kustom` presets and hides the branch selector for managers; manager sidebar and routes expose `/manager/{revenue,base-cost,net-profit,expenses}`.
 
 ### FR24 Export reports to Excel or PDF
 - **Requirement:** Owner and Branch Manager SHALL export filtered reports to Excel or PDF.
@@ -318,6 +333,10 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
   - Export of 10,000 rows completes within the NFR2 target.
   - Export actions are written to the audit log.
 - **Traceability:** NFR2, PB-09.
+- **Implementation note (PB-09, 2026-11-27):**
+  - `GET /api/v1/reports/{type}/export` (`ExportReportRequest`, `ExportReport` action) exports `gross-revenue`, `base-cost`, `net-profit`, and `expenses` to `.xlsx` via streaming `openspout/openspout` (`ExcelReportExporter`) or A4 `.pdf` via `dompdf/dompdf` (`PdfReportExporter`, capping PDF detail tables at 200 rows per section with an Excel guidance note).
+  - Filenames follow `laporan-{type}-{scope}-{start_date}_{end_date}.{xlsx|pdf}`. `AuditLogger` records an `EXPORT` row before streaming starts (`branch_id = null` for owner `all`, or the branch UUID).
+  - The 10,000-row staging benchmark remains unmeasured in this environment (see `docs/requirements/nfr.md`).
 
 ---
 
@@ -327,16 +346,16 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 - **Requirement:** The system SHALL record an audit trail for important changes, including payments, order changes, and stock adjustments.
 - **Acceptance criteria:**
   - Log fields: actor, role, branch, action, model type, model ID, before/after payload, timestamp.
-  - Covered actions in code: product create/update/delete/restore, invoice create/update, purchase create, stock adjustment, user create/update/delete/restore, and branch create/update/delete.
+  - Covered actions in code: invoice create/update, payments, pickup, production transitions, expense, purchase create, customer create, category and product writes, material create/update/delete/restore/stock and the global active toggle, stock adjustment, waste, user and branch writes, and backup operations.
   - Owner can view and filter the audit trail.
   - Audit rows are append-only from the application.
-  - **Audit debt:** payment create/settle, design status, expense creation, customer create/update, and category/attribute/material/minimum-stock writes are not yet logged. In particular, `PATCH /materials/{material}/min-stock` writes no `activity_logs` row (accepted FR25 debt, see `docs/requirements/implementation-gaps.md`).
+  - **Audit debt:** design status, customer update, pricing and attribute master writes, minimum-stock edits, and the material branch-availability toggle are not logged. In particular, `PATCH /materials/{material}/min-stock` and `PATCH /materials/{material}/branch-availability` write no `activity_logs` row (accepted FR25 debt, see `docs/requirements/implementation-gaps.md`).
 - **Traceability:** NFR5, NFR9, PB-10.
 - **Implementation note (PB-10, 2026-11-26):**
   - `App\Services\AuditLogger` is the single write path. It records actor, role, branch, action, `model_type`, `model_id`, payload, and timestamp; a null actor writes `username = system`, `role = system`, `user_id = null`, and `branch_id = null`. Descriptions are capped at 255 characters; payload keys such as `password`, `token`, and `secret` are dropped.
   - Eloquent updates and deletes throw `LogicException`. Query-builder mass updates and raw SQL still bypass the guard, by convention. `activity_logs.branch_id` is `nullOnDelete`, and `activity_logs.created_at` is indexed.
-  - Covered actions: invoice create/update/manual price, down payment/settlement, pickup, production start/complete/fail/reopen, expense, customer create, category create/update/delete, product create/update/delete/restore, material create/update/delete/restore/stock, stock adjustment, waste, user and branch writes, and backup operations. `ACTIVATE` records branch-stock creation and initial stock; `materials` has no `is_active` column (user-approved deviation).
-  - Not covered: design status (its endpoint and columns do not exist), customer update (no endpoint), and pricing/attribute master writes.
+  - Covered actions: invoice create/update/manual price, down payment/settlement, pickup, production start/complete/fail/reopen, expense, purchase create, customer create, category create/update, product create/update/delete/restore, material create/update/delete/restore/stock and the global active toggle, stock adjustment, waste, user and branch writes, report exports (`EXPORT`), and backup operations. `ACTIVATE` records branch-stock creation and initial stock, and sets an existing inactive stock row active; the global material active toggle writes one `UPDATE` row with the `is_active` before/after. The global toggle audit inherits the actor's `branch_id` (null when the owner has no branch).
+  - Not covered: design status (its endpoint and columns do not exist), customer update (no endpoint), pricing and attribute master writes, minimum-stock edits, and the material branch-availability toggle (accepted FR25 debt).
   - The owner list/search/sort stays global and owner-only. The SPA adds a "Lihat" detail modal over the list payload; there is no extra detail fetch. Audit rows are kept in full: retention and archive-then-delete are deferred until the first real backup size is known.
 
 ### FR26 Manual and scheduled database backup
@@ -385,3 +404,6 @@ Sprint Review 1 Sales acceptance: customer registration is separate from new-ord
 | 2026-11-25 | PB-05/PB-07 follow-up | FR6 material units and pricing-source truth; FR8 finishing/display truth; FR16 unit-aware usage and reversal; FR19 queue statuses; FR20 fail/reopen transitions; FR22 per-unit waste KPI. Machine masters and tables removed. |
 | 2026-11-26 | Unit A catalog cleanup | FR6 category description/active status with no hard delete, attribute types removed, Manager own-branch attributes; FR8/FR9 order-history and inactive-attribute edits; FR17 minimum stock editable per branch; FR25 minimum-stock audit debt. Category quantity-discount tiers removed; product-level tiers move to Unit B. |
 | 2026-11-26 | PB-10 | FR25 audit coverage and append-only guard; FR26 three backup types, owner schedules and retention, download, pinning, quota warning. Acceptance text unchanged; implementation notes added. |
+| 2026-11-26 | B1a material retirement | FR6 material `is_active` and branch-stock availability toggles with no stock or ledger effect, Hapus removal, `available_total` counts, and designer attribute `cost` omission; FR8 new-line availability enforcement; FR9 invoice-edit allowance for an already-used inactive material; FR17 manager available count; FR25 global toggle audit and branch-availability audit debt. |
+| 2026-11-26 | Admin active lifecycle | FR1 login rejection for inactive users and inactive/trashed branches with owner exemption and unchanged null-branch behavior; FR4 active/inactive toggle, owner-only delete/restore, last-active-owner guard on every path, profile deactivation, and status audit. |
+| 2026-11-27 | PB-09 | FR22 owner/manager dashboard receivables, order count, and production summary; FR23 branch-scoped financial reports and period presets for managers; FR24 server-side Excel/PDF exports with `AuditLogger` (`EXPORT`). |

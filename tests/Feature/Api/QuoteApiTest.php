@@ -366,6 +366,13 @@ class QuoteApiTest extends TestCase
             'type' => 'roll',
         ]);
 
+        MaterialBranchStock::create([
+            'material_id' => $unpriced->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 10,
+            'min_stock' => 1,
+        ]);
+
         $this->actingAs($this->designer)
             ->postJson('/api/v1/quotes', [
                 'product_id' => $this->product->id,
@@ -407,6 +414,78 @@ class QuoteApiTest extends TestCase
                 ])
                 ->assertForbidden();
         }
+    }
+
+    public function test_quote_options_hide_globally_inactive_materials(): void
+    {
+        $this->material->update(['is_active' => false]);
+
+        $inactiveIds = collect(
+            $this->actingAs($this->designer)
+                ->getJson('/api/v1/quotes/options')
+                ->assertOk()
+                ->json('materials')
+        )->pluck('id')->all();
+
+        $this->assertNotContains($this->material->id, $inactiveIds);
+
+        $this->material->update(['is_active' => true]);
+
+        $activeIds = collect(
+            $this->actingAs($this->designer)
+                ->getJson('/api/v1/quotes/options')
+                ->assertOk()
+                ->json('materials')
+        )->pluck('id')->all();
+
+        $this->assertContains($this->material->id, $activeIds);
+    }
+
+    public function test_quote_options_hide_branch_inactive_materials_and_show_them_in_another_branch(): void
+    {
+        MaterialBranchStock::create([
+            'material_id' => $this->material->id,
+            'branch_id' => $this->branchTwo->id,
+            'current_stock' => 5,
+            'min_stock' => 1,
+        ]);
+
+        MaterialBranchStock::query()
+            ->where('material_id', $this->material->id)
+            ->where('branch_id', $this->branchOne->id)
+            ->update(['is_active' => false]);
+
+        $branchOneIds = collect(
+            $this->actingAs($this->designer)
+                ->getJson('/api/v1/quotes/options')
+                ->assertOk()
+                ->json('materials')
+        )->pluck('id')->all();
+
+        $this->assertNotContains($this->material->id, $branchOneIds);
+
+        $branchTwoDesigner = $this->user('designer', $this->branchTwo);
+
+        $branchTwoIds = collect(
+            $this->actingAs($branchTwoDesigner)
+                ->getJson('/api/v1/quotes/options')
+                ->assertOk()
+                ->json('materials')
+        )->pluck('id')->all();
+
+        $this->assertContains($this->material->id, $branchTwoIds);
+    }
+
+    public function test_quote_options_keep_active_materials_with_active_branch_stock(): void
+    {
+        $ids = collect(
+            $this->actingAs($this->designer)
+                ->getJson('/api/v1/quotes/options')
+                ->assertOk()
+                ->json('materials')
+        )->pluck('id')->all();
+
+        $this->assertContains($this->material->id, $ids);
     }
 
     private function branch(string $name): Branch

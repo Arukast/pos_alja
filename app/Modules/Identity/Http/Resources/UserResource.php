@@ -23,6 +23,7 @@ final class UserResource extends JsonResource
             'email' => $this->email,
             'email_verified_at' => $this->email_verified_at,
             'role' => $this->role,
+            'is_active' => $this->is_active,
             'phone' => $this->phone,
             'address' => $this->address,
             'branch' => $this->branch ? [

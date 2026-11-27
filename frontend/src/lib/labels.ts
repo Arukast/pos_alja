@@ -1,3 +1,5 @@
+import type { BadgeTone } from '../components/ui/Badge';
+
 const roles: Record<string, string> = {
     owner: 'Pemilik',
     manager: 'Manajer',
@@ -5,6 +7,15 @@ const roles: Record<string, string> = {
     designer: 'Desainer',
     production: 'Produksi',
     system: 'Sistem',
+};
+
+const roleTones: Record<string, BadgeTone> = {
+    owner: 'brand',
+    manager: 'info',
+    cashier: 'success',
+    designer: 'violet',
+    production: 'warning',
+    system: 'neutral',
 };
 
 const modelTypes: Record<string, string> = {
@@ -67,6 +78,10 @@ const ledgerTypes: Record<string, string> = {
 
 export function roleLabel(role: string): string {
     return roles[role] ?? role;
+}
+
+export function roleTone(role: string): BadgeTone {
+    return roleTones[role] ?? 'neutral';
 }
 
 export function usernameLabel(username: string): string {

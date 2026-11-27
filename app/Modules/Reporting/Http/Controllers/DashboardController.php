@@ -6,14 +6,13 @@ namespace App\Modules\Reporting\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\Reporting\Http\Requests\DashboardRequest;
 use App\Modules\Reporting\Queries\DashboardQuery;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 
 final class DashboardController extends Controller
 {
-    public function index(Request $request, DashboardQuery $dashboard): JsonResponse
+    public function index(DashboardRequest $request, DashboardQuery $dashboard): JsonResponse
     {
         $actor = $request->user();
 
@@ -21,8 +20,8 @@ final class DashboardController extends Controller
             abort(401);
         }
 
-        Gate::authorize('viewDashboard');
-
-        return response()->json($dashboard->for($actor, $request));
+        return response()->json(
+            $dashboard->for($actor, $request->period(), $request->resolvedBranchId())
+        );
     }
 }

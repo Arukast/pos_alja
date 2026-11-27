@@ -158,6 +158,53 @@ export function OwnerDashboardPage() {
                         />
                     </div>
 
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
+                        <StatCard
+                            label="Piutang Usaha"
+                            value={formatMoney(data.finance.receivables)}
+                            hint="Sisa tagihan invoice belum lunas"
+                        />
+                        <StatCard
+                            label="Jumlah Pesanan"
+                            value={String(data.order_count)}
+                            hint={
+                                branchLabel
+                                    ? `${branchLabel} · Pesanan pada periode ini`
+                                    : 'Pesanan pada periode ini'
+                            }
+                        />
+                        <Card>
+                            <CardHeader>
+                                <h2 className="font-semibold">Status Produksi</h2>
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    {periodLabels[period] ?? period}
+                                </span>
+                            </CardHeader>
+                            <CardBody>
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    {[
+                                        { label: 'Antre', value: data.production.queued },
+                                        { label: 'Diproses', value: data.production.processing },
+                                        { label: 'Selesai', value: data.production.completed },
+                                        { label: 'Gagal', value: data.production.failed },
+                                    ].map((item) => (
+                                        <div
+                                            key={item.label}
+                                            className="bg-light-surface-2 dark:bg-surface-700 border-light-border dark:border-surface-300 rounded-xl border px-3 py-2.5"
+                                        >
+                                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                                {item.label}
+                                            </p>
+                                            <p className="text-light-text mt-1 text-xl font-extrabold tabular-nums dark:text-gray-100">
+                                                {item.value}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardBody>
+                        </Card>
+                    </div>
+
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                         <Card>
                             <CardHeader>

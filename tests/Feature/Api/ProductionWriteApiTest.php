@@ -602,6 +602,24 @@ class ProductionWriteApiTest extends TestCase
         }
     }
 
+    public function test_waste_rejects_inactive_designer(): void
+    {
+        $this->designer->update(['is_active' => false]);
+
+        $this->actingAs($this->production)->postJson('/api/v1/waste', [
+            'material_id' => $this->material->id,
+            'designer_id' => $this->designer->id,
+            'order_id' => $this->order->id,
+            'quantity' => 1,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('designer_id')
+            ->assertJsonPath(
+                'errors.designer_id.0',
+                'Desainer ini tidak aktif atau bukan milik cabang Anda.'
+            );
+    }
+
     public function test_waste_requires_authentication_and_a_production_role(): void
     {
         $payload = [

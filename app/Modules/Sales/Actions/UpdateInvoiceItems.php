@@ -12,6 +12,7 @@ use App\Models\OrderStatusLog;
 use App\Models\Pricing;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\MaterialAvailability;
 use App\Support\Decimal;
 use App\Support\SafeBroadcast;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,6 +27,7 @@ final class UpdateInvoiceItems
     /** Injects the server-side quote calculator. */
     public function __construct(
         private readonly CalculateQuote $quote,
+        private readonly MaterialAvailability $availability,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -52,7 +54,7 @@ final class UpdateInvoiceItems
                 ->whereKey($invoice->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-            $existingOrders = $lockedInvoice->orders()->lockForUpdate()->get();
+            $existingOrders = $lockedInvoice->orders()->with('pricing')->lockForUpdate()->get();
 
             if ($lockedInvoice->status === 2 || $existingOrders->contains(
                 static fn (Order $order): bool => $order->status !== 0
@@ -65,6 +67,12 @@ final class UpdateInvoiceItems
             )) {
                 throw new HttpException(409, 'Invoice dengan harga manual tidak dapat diubah.');
             }
+
+            $allowedMaterialIds = $existingOrders
+                ->map(static fn (Order $order): ?string => $order->pricing?->material_id)
+                ->filter()
+                ->unique()
+                ->all();
 
             $customerType = $lockedInvoice->customer()->value('type') ?: 'Reguler';
             $lines = [];
@@ -80,6 +88,17 @@ final class UpdateInvoiceItems
                 if ($pricing->branch_id !== $branchId) {
                     throw ValidationException::withMessages([
                         "items.{$index}.pricing_id" => 'Baris harga ini milik cabang lain.',
+                    ]);
+                }
+
+                $material = $pricing->material;
+
+                if (! $this->availability->isAvailable($material, $branchId)
+                    && ($material === null
+                        || $material->trashed()
+                        || ! in_array($material->id, $allowedMaterialIds, true))) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
                     ]);
                 }
 

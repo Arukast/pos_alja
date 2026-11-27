@@ -4,13 +4,16 @@ import { useState } from 'react';
 import { api } from '../../api/queries';
 import type { Material, Pricing, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
+import { ActiveToggleButton } from '../../components/admin/ActiveToggleButton';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { RoleBadge } from '../../components/RoleBadge';
 import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
 import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
@@ -24,13 +27,32 @@ import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
+import { errorMessage } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { ledgerQuantity, quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
 const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
 export function ManagerUsersPage() {
-    const { user } = useAuth();
+    const { user: authUser } = useAuth();
+    const queryClient = useQueryClient();
+    const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'error' } | null>(
+        null
+    );
+
+    const toggleStatus = useMutation({
+        mutationFn: (id: string) => api.admin.toggleUser(id),
+        onSuccess: (response) => {
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'users'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            setNotice({
+                message: `Akun ${response.user.name} ${response.user.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`,
+                tone: 'success',
+            });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
+
     const fields: Array<CrudField<UserRecord>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'username', label: 'Nama Pengguna', required: true },
@@ -52,28 +74,78 @@ export function ManagerUsersPage() {
     ];
 
     return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Manajemen Pengguna"
-            description="Akun staf cabang dan penugasan peran."
-            queryKey={['manager', 'users']}
-            queryFn={(page) => api.users({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
-                { header: 'Nama Pengguna', cell: (user) => user.username },
-                { header: 'Peran', cell: (user) => <Badge tone="brand">{roleLabel(user.role)}</Badge> },
-            ]}
-            fields={fields}
-            rowLabel={(user) => user.name}
-            create={(values) =>
-                api.admin.createUser({ ...values, branch_id: user?.branch?.id })
-            }
-            update={(id, values) =>
-                api.admin.updateUser(id, { ...values, branch_id: user?.branch?.id })
-            }
-            remove={(id) => api.admin.deleteUser(id)}
-            createLabel="Tambah akun staf"
-        />
+        <>
+            <CrudPage
+                eyebrow="Administrasi"
+                title="Manajemen Pengguna"
+                description="Akun staf cabang dan penugasan peran."
+                queryKey={['manager', 'users']}
+                queryFn={(page) => api.users({ page })}
+                columns={[
+                    {
+                        header: 'Nama',
+                        cell: (user) => (
+                            <div>
+                                <span className="block font-medium break-words">{user.name}</span>
+                                <span className="mt-1 block md:hidden">
+                                    <span className="sr-only">Peran: </span>
+                                    <RoleBadge role={user.role} />
+                                </span>
+                                {user.id === authUser?.id ? (
+                                    <span className="text-light-muted mt-1 block text-xs dark:text-gray-400">
+                                        Akun Anda — kelola dari Profil.
+                                    </span>
+                                ) : null}
+                            </div>
+                        ),
+                    },
+                    {
+                        header: 'Nama Pengguna',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => (
+                            <span className="block max-w-[12rem] truncate" title={user.username}>
+                                {user.username}
+                            </span>
+                        ),
+                    },
+                    {
+                        header: 'Peran',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => <RoleBadge role={user.role} />,
+                    },
+                    {
+                        header: 'Status',
+                        cell: (user) => (
+                            <Badge tone={user.is_active ? 'success' : 'neutral'}>
+                                {user.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        ),
+                    },
+                ]}
+                fields={fields}
+                rowLabel={(user) => user.name}
+                create={(values) =>
+                    api.admin.createUser({ ...values, branch_id: authUser?.branch?.id })
+                }
+                update={(id, values) =>
+                    api.admin.updateUser(id, { ...values, branch_id: authUser?.branch?.id })
+                }
+                rowActions={(user) =>
+                    user.id === authUser?.id ? null : (
+                        <ActiveToggleButton
+                            active={user.is_active}
+                            pending={toggleStatus.isPending && toggleStatus.variables === user.id}
+                            confirmMessage={`Nonaktifkan ${user.name}? Pengguna akan langsung kehilangan akses pada permintaan berikutnya dan tidak dapat masuk sampai diaktifkan kembali.`}
+                            ariaLabel={`${user.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${user.name}`}
+                            onClick={() => toggleStatus.mutate(user.id)}
+                        />
+                    )
+                }
+                createLabel="Tambah akun staf"
+                notice={notice}
+                onNoticeChange={setNotice}
+            />
+        </>
     );
 }
 
@@ -128,7 +200,11 @@ export function ManagerMaterialsPage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <StatCard
                         label="Bahan Aktif"
-                        value={materialCount.isSuccess ? String(materialCount.data.meta.total) : '—'}
+                        value={
+                            materialCount.isSuccess
+                                ? String(materialCount.data.available_total ?? 0)
+                                : '—'
+                        }
                     />
                     <StatCard
                         label="Kategori"
@@ -158,6 +234,11 @@ export function ManagerMaterialsPage() {
                     cell: (material) => (
                         <div>
                             <span className="block font-medium">{material.name}</span>
+                            {material.is_active === false ? (
+                                <Badge tone="danger" className="mt-1">
+                                    Nonaktif
+                                </Badge>
+                            ) : null}
                             {material.category && !material.category.is_active ? (
                                 <Badge tone="warning" className="mt-1">
                                     Kategori nonaktif
@@ -168,6 +249,11 @@ export function ManagerMaterialsPage() {
                                     .filter(Boolean)
                                     .join(' · ')}
                             </p>
+                            {material.stocks[0]?.is_active === false ? (
+                                <span className="mt-1 block sm:hidden">
+                                    <Badge tone="danger">Nonaktif di cabang</Badge>
+                                </span>
+                            ) : null}
                             <div className="text-light-muted mt-1 flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 sm:hidden">
                                 <span className="text-light-muted text-xs dark:text-gray-400">
                                     Min
@@ -214,7 +300,11 @@ export function ManagerMaterialsPage() {
                     header: 'Status',
                     className: 'hidden sm:table-cell',
                     cell: (material) =>
-                        material.is_low_stock === null ? (
+                        material.is_active === false ||
+                        (material.stocks.length > 0 &&
+                            material.stocks[0].is_active === false) ? (
+                            <Badge tone="danger">Nonaktif</Badge>
+                        ) : material.is_low_stock === null ? (
                             '-'
                         ) : material.is_low_stock ? (
                             <Badge tone="warning">Menipis</Badge>
@@ -228,6 +318,16 @@ export function ManagerMaterialsPage() {
             create={(values) => api.admin.createMaterial(values)}
             rowActions={(material) => (
                 <>
+                    {material.stocks.length > 0 ? (
+                        <MaterialActiveToggle
+                            scope="branch"
+                            materialId={material.id}
+                            isActive={material.stocks[0].is_active}
+                            branchId={material.stocks[0].branch_id}
+                            branchName={material.stocks[0].branch_name ?? 'cabang ini'}
+                            materialName={material.name}
+                        />
+                    ) : null}
                     <RestockMaterialButton material={material} />
                     <AdjustMaterialModal material={material} />
                 </>

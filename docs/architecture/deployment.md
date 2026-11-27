@@ -205,6 +205,7 @@ PB-10 implements FR26. There are three independent run types, all recorded in `b
 ### 7.3 Image And Compose
 
 - The app image adds the PGDG repository and `postgresql-client-16`, then creates `storage/app/backups` and `storage/app/backup-tmp` before the `www-data` chown. `pg_dump` and `pg_restore` must be on `PATH` for `www-data`.
+- Application code stays root-owned and read-only at runtime; the image normalizes it with `chmod -R a+rX,go-w` so `www-data` can read and traverse it, and only `storage` and `bootstrap/cache` are chowned to `www-data` for writes.
 - `worker` runs `php artisan queue:work --sleep=3 --tries=1 --timeout=600` and mounts the `backupdata` volume at `/var/www/html/storage/app/backups`. A backup is queued, never inline; without a worker the row stays `queued`.
 - `scheduler` runs `php artisan schedule:work` and does not mount the volume.
 - `DB_QUEUE_RETRY_AFTER=900` must exceed the job timeout (`BACKUP_TIMEOUT=600`).
@@ -265,6 +266,24 @@ Drill status: **not verified.** This environment has no Docker CLI, no PostgreSQ
 The Unit A drop migrations (`2026_11_27_000003_drop_product_category_discounts_table.php` and `2026_11_27_000004_drop_attribute_types_table.php`) are irreversible. Their `down()` methods recreate empty tables only; dropped rows cannot be recovered.
 
 Before `php artisan migrate --force` on any database that may contain rows in `product_category_discounts` or `attribute_types`, take and verify a backup: at minimum `pg_dump -Fc -t product_category_discounts -t attribute_types <database>` (a full database dump is also acceptable), confirm it restores, and get Owner approval to proceed. If either table is non-empty and no verified backup exists, stop.
+
+### Material Availability Flags (Additive)
+
+`2026_11_27_000005_add_is_active_to_materials_and_material_branch_stock.php` adds `materials.is_active` and `material_branch_stock.is_active`, both boolean default `true`. Existing rows read true. It has no backfill, no data loss, and no index. Run `php artisan migrate --force` as usual; `down()` drops only the two flags, so stock, ledger, and history remain.
+
+Take the usual verified pre-deploy backup, then run this read-only check for active pricing rows whose material has no active branch stock before deploying the enforcement:
+
+```sql
+SELECT count(*) FROM pricing p
+JOIN materials m ON m.id = p.material_id
+WHERE p.deleted_at IS NULL AND m.deleted_at IS NULL AND m.is_active
+  AND NOT EXISTS (
+    SELECT 1 FROM material_branch_stock s
+    WHERE s.material_id = m.id AND s.branch_id = p.branch_id AND s.is_active
+  );
+```
+
+Have the Owner decide whether those materials should remain orderable; no automatic data change is made. Deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API; the availability toggles require the new API, because the PATCH routes return 404 against an older API.
 
 ## 8. Deployment Checklist
 

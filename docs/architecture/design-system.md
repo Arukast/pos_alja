@@ -52,7 +52,9 @@ Outfit only, with tabular numerals for money and counts.
   `#FFF200` for the brand stripe and marks only, dark neutral `#1A1A2E`.
 - Light surfaces: canvas `#F8F9FA`, card `#FFFFFF`, secondary surface `#F1F3F5`, border `#E5E7EB`, ink
   `#111827`, muted `#6B7280`, muted-strong `#4B5563`.
-- Status: soft pill, 6px dot, 11px/600 text in a strong tonal shade (emerald, amber, red, blue).
+- Status: soft pill, 6px dot, 11px/600 text in a strong tonal shade (emerald, amber, red, blue, violet).
+  Role badges map owner brand, manager info, cashier success, designer violet, production warning, system
+  and unknown neutral. User and branch status badges use Aktif success and Nonaktif neutral.
 - Soft shadows only. No page gradients, glass panels, or neon glows. A page banner may carry a soft tint and
   one blurred magenta circle.
 
@@ -177,7 +179,7 @@ needed to state them honestly:
 - Per-branch comparison rows.
 - File upload.
 - Attendance and on-shift state.
-- User last-active and active flag.
+- User last-active timestamp.
 - Cash-drawer balance.
 - Persisted cash tendered.
 

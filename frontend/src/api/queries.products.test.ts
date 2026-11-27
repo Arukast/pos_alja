@@ -104,6 +104,23 @@ describe('api.products and admin product mutations', () => {
         });
     });
 
+    it('calls material active and branch availability endpoints', async () => {
+        await api.admin.setMaterialActive('mat-1', { is_active: false });
+        expect(mockedApiFetch).toHaveBeenCalledWith('/materials/mat-1/active', {
+            method: 'PATCH',
+            body: JSON.stringify({ is_active: false }),
+        });
+
+        await api.admin.setMaterialBranchAvailability('mat-1', {
+            branch_id: 'br-1',
+            is_active: true,
+        });
+        expect(mockedApiFetch).toHaveBeenCalledWith('/materials/mat-1/branch-availability', {
+            method: 'PATCH',
+            body: JSON.stringify({ branch_id: 'br-1', is_active: true }),
+        });
+    });
+
     it('serializes the include_inactive_attributes flag for quote options', async () => {
         await api.quoteOptions({ include_inactive_attributes: 1 });
         expect(mockedApiFetch).toHaveBeenCalledWith(

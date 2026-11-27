@@ -14,6 +14,10 @@ export interface Paginated<T> {
     };
 }
 
+export interface MaterialPage<T> extends Paginated<T> {
+    available_total?: number;
+}
+
 export interface CollectionResponse<T> {
     data: T[];
 }
@@ -36,6 +40,7 @@ export interface UserRecord {
     email: string | null;
     email_verified_at: string | null;
     role: string;
+    is_active: boolean;
     phone: string | null;
     address: string | null;
     branch: { id: string; name: string; code: string | null } | null;
@@ -86,6 +91,7 @@ export interface MaterialStock {
     branch_name: string | null;
     current_stock: string;
     min_stock: string;
+    is_active: boolean;
     is_low_stock: boolean;
 }
 
@@ -97,6 +103,7 @@ export interface Material {
     unit: string;
     cost: string;
     price: string;
+    is_active: boolean;
     category: { id: string; name: string; is_active: boolean } | null;
     current_stock: string | null;
     min_stock: string | null;
@@ -355,19 +362,40 @@ export interface Leader {
     waste_count: number;
 }
 
+export type DashboardPeriod = 'daily' | 'weekly' | 'monthly';
+
+export interface ProductionStatusCounts {
+    queued: number;
+    processing: number;
+    completed: number;
+    failed: number;
+}
+
 export interface OwnerDashboard {
     role: 'owner';
+    period: DashboardPeriod;
     finance: {
         gross_revenue: string;
         total_cost: string;
         net_profit: string;
         expenses: string;
+        receivables: string;
     };
+    order_count: number;
+    production: ProductionStatusCounts;
     sparkline: Sparkline;
 }
 
 export interface ManagerDashboard {
     role: 'manager';
+    period: DashboardPeriod;
+    finance: {
+        gross_revenue: string;
+        expenses: string;
+        receivables: string;
+    };
+    order_count: number;
+    production: ProductionStatusCounts;
     counts: {
         materials: number;
         staff: number;

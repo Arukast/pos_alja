@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../api/queries';
 import { PageBanner } from '../../components/PageBanner';
@@ -16,10 +16,27 @@ import { ledgerQuantity, quantityWithUnit } from '../../lib/units';
 const panelLink =
     'text-brand-fill-hover dark:text-brand-primary-light focus-visible:ring-brand-fill dark:focus-visible:ring-brand-primary-light rounded-sm text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none';
 
+const periodLabels: Record<string, string> = {
+    daily: 'Harian',
+    weekly: 'Mingguan',
+    monthly: 'Bulanan',
+};
+
 export function ManagerDashboardPage() {
+    const [params, setParams] = useSearchParams();
+    const periodParam = params.get('period');
+    const period =
+        periodParam === 'weekly' || periodParam === 'monthly' ? periodParam : 'daily';
+
+    const updatePeriod = (value: string) => {
+        const next = new URLSearchParams(params);
+        next.set('period', value);
+        setParams(next);
+    };
+
     const query = useQuery({
-        queryKey: ['dashboard', 'manager'],
-        queryFn: () => api.dashboard(),
+        queryKey: ['dashboard', 'manager', period],
+        queryFn: () => api.dashboard({ period }),
     });
     const data = query.data?.role === 'manager' ? query.data : null;
 
@@ -28,8 +45,24 @@ export function ManagerDashboardPage() {
             <PageBanner
                 eyebrow="Manajer Cabang"
                 title="Dasbor Cabang"
-                description="Inventaris, harga, staf, dan kinerja desainer bulan ini."
+                description="Ringkasan keuangan, produksi, inventaris, staf, dan kinerja desainer cabang."
             />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <div className="flex flex-wrap gap-2">
+                    {(['daily', 'weekly', 'monthly'] as const).map((value) => (
+                        <Button
+                            key={value}
+                            size="sm"
+                            variant={period === value ? 'primary' : 'secondary'}
+                            aria-pressed={period === value}
+                            onClick={() => updatePeriod(value)}
+                        >
+                            {periodLabels[value]}
+                        </Button>
+                    ))}
+                </div>
+            </div>
 
             {query.isLoading ? (
                 <Card>
@@ -53,10 +86,66 @@ export function ManagerDashboardPage() {
 
             {data ? (
                 <>
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        <StatCard label="Bahan Tersedia" value={String(data.counts.materials)} />
-                        <StatCard label="Staf Aktif" value={String(data.counts.staff)} />
-                        <StatCard label="Baris Harga" value={String(data.counts.pricing)} />
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <StatCard
+                            label="Pendapatan Bruto"
+                            value={formatMoney(data.finance.gross_revenue)}
+                            hint="Pembayaran yang diterima pada periode ini"
+                        />
+                        <StatCard
+                            label="Pengeluaran"
+                            value={formatMoney(data.finance.expenses)}
+                            hint="Biaya operasional cabang pada periode ini"
+                        />
+                        <StatCard
+                            label="Piutang Usaha"
+                            value={formatMoney(data.finance.receivables)}
+                            hint="Sisa tagihan invoice belum lunas"
+                        />
+                        <StatCard
+                            label="Jumlah Pesanan"
+                            value={String(data.order_count)}
+                            hint={`Pesanan cabang (${periodLabels[period] ?? period})`}
+                        />
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                        <Card>
+                            <CardHeader>
+                                <h2 className="font-semibold">Status Produksi Cabang</h2>
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    {periodLabels[period] ?? period}
+                                </span>
+                            </CardHeader>
+                            <CardBody>
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    {[
+                                        { label: 'Antre', value: data.production.queued },
+                                        { label: 'Diproses', value: data.production.processing },
+                                        { label: 'Selesai', value: data.production.completed },
+                                        { label: 'Gagal', value: data.production.failed },
+                                    ].map((item) => (
+                                        <div
+                                            key={item.label}
+                                            className="bg-light-surface-2 dark:bg-surface-700 border-light-border dark:border-surface-300 rounded-xl border px-3 py-2.5"
+                                        >
+                                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                                {item.label}
+                                            </p>
+                                            <p className="text-light-text mt-1 text-xl font-extrabold tabular-nums dark:text-gray-100">
+                                                {item.value}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardBody>
+                        </Card>
+
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            <StatCard label="Bahan Tersedia" value={String(data.counts.materials)} />
+                            <StatCard label="Staf Aktif" value={String(data.counts.staff)} />
+                            <StatCard label="Baris Harga" value={String(data.counts.pricing)} />
+                        </div>
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-2">
