@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Attribute;
-use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -11,9 +10,9 @@ use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -158,17 +157,16 @@ class DatabaseSeeder extends Seeder
 
         // 5. Attributes (Finishing, Cuts, Displays)
         $attributes = [
-            ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branchMain->id],
-            ['name' => 'Laminating Doff', 'type' => 'finishing', 'branch_id' => $branchMain->id],
-            ['name' => 'Mata Ayam (Eyelets)', 'type' => 'finishing', 'branch_id' => $branchMain->id],
-            ['name' => 'Half Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id],
-            ['name' => 'Die Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id],
-            ['name' => 'X-Banner Stand', 'type' => 'display', 'branch_id' => $branchMain->id],
+            ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branchMain->id, 'price' => 3000, 'cost' => 1500],
+            ['name' => 'Laminating Doff', 'type' => 'finishing', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'Mata Ayam (Eyelets)', 'type' => 'finishing', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'Half Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'Die Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'X-Banner Stand', 'type' => 'display', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
         ];
 
-        $attributeModels = [];
         foreach ($attributes as $a) {
-            $attributeModels[$a['name']] = Attribute::create($a);
+            Attribute::create($a);
         }
 
         // 6. Customers
@@ -188,90 +186,17 @@ class DatabaseSeeder extends Seeder
             'type' => 'Mitra',
         ]);
 
-        // 7. Pricing
-        // Large Format (Pricing type = area)
-        $p1 = Pricing::create([
-            'branch_id' => $branchMain->id,
+        // 7. Product quantity tiers
+        ProductQuantityDiscount::create([
             'product_id' => $productModels['Large Format']->id,
-            'material_id' => $materialModels['Flexi China 280g']->id,
-            'price' => 20000,
-            'cost' => 10000,
-            'profit' => 10000,
-            'min_qty' => 1,
-            'customer_type' => 'Reguler',
-        ]);
-
-        // Attribute pricing modifier
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p1->id,
-            'attribute_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // Large Format Bulk Discount (Tiered)
-        $p2 = Pricing::create([
-            'branch_id' => $branchMain->id,
-            'product_id' => $productModels['Large Format']->id,
-            'material_id' => $materialModels['Flexi China 280g']->id,
-            'price' => 15000, // Discounted from 20000 to 15000 for 100+ meters
-            'cost' => 10000,
-            'profit' => 5000,
             'min_qty' => 100,
-            'customer_type' => 'Reguler',
+            'discount_percent' => 10,
         ]);
 
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p2->id,
-            'attribute_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // Print Kertas (A3+ Art Paper)
-        $p3 = Pricing::create([
-            'branch_id' => $branchMain->id,
+        ProductQuantityDiscount::create([
             'product_id' => $productModels['Print Kertas']->id,
-            'material_id' => $materialModels['Art Paper 260g A3+']->id,
-            'price' => 5000,
-            'cost' => 2000,
-            'profit' => 3000,
-            'min_qty' => 1,
-            'customer_type' => 'Reguler',
-        ]);
-
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p3->id,
-            'attribute_id' => $attributeModels['Laminating Glossy']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // Print Kertas Bulk Discount (Tiered)
-        $p4 = Pricing::create([
-            'branch_id' => $branchMain->id,
-            'product_id' => $productModels['Print Kertas']->id,
-            'material_id' => $materialModels['Art Paper 260g A3+']->id,
-            'price' => 4000, // Discounted for 100+ sheets
-            'cost' => 2000,
-            'profit' => 2000,
             'min_qty' => 100,
-            'customer_type' => 'Reguler',
-        ]);
-
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p4->id,
-            'attribute_id' => $attributeModels['Laminating Glossy']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
+            'discount_percent' => 5,
         ]);
 
         // 8. Sample Transactions
@@ -297,10 +222,14 @@ class DatabaseSeeder extends Seeder
             'pickup_date' => now()->toIso8601String(),
         ]);
 
-        $pricingLargeFormat = Pricing::where('product_id', $productModels['Large Format']->id)->first();
         Order::create([
             'invoice_id' => $invoice1->id,
-            'pricing_id' => $pricingLargeFormat->id,
+            'product_id' => $productModels['Large Format']->id,
+            'material_id' => $materialModels['Flexi China 280g']->id,
+            'customer_type' => 'Reguler',
+            'reseller_discount_percent' => 0,
+            'quantity_discount_percent' => 0,
+            'discount_amount' => 0,
             'file_name' => 'spanduk_toko.pdf',
             'area' => 5.0, // 5 sqm
             'quantity' => 1,

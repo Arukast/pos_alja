@@ -14,11 +14,12 @@ import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
-import { hasMissingLinearLength } from './orderSpecs';
+import { hasMissingLinearLength, isOrderEditable } from './orderSpecs';
 
 interface EditableOrderItem {
     id?: string;
-    pricing_id: string;
+    product_id: string;
+    material_id: string | null;
     file_name: string;
     notes: string;
     quantity: string;
@@ -34,7 +35,8 @@ function editableItem(order: Order): EditableOrderItem {
 
     return {
         id: order.id,
-        pricing_id: order.pricing_id ?? '',
+        product_id: order.product_id ?? '',
+        material_id: order.material_id ?? null,
         file_name: order.file_name ?? '',
         notes: order.notes ?? '',
         quantity: String(order.quantity),
@@ -52,7 +54,7 @@ export function DesignerEditOrderPage() {
 
     const canEdit = invoice !== undefined
         && invoice.status !== 2
-        && (invoice.orders ?? []).every((order) => order.status === 0 && order.pricing_id !== null);
+        && (invoice.orders ?? []).every(isOrderEditable);
 
     if (invoiceQuery.isLoading) {
         return <div role="status" className="flex min-h-48 items-center justify-center"><Spinner className="text-brand-primary h-6 w-6" /></div>;
@@ -162,18 +164,24 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
         return <EmptyState title="Opsi item gagal dimuat" description="Periksa koneksi, lalu coba lagi." action={<Button variant="secondary" onClick={() => optionsQuery.refetch()}>Coba lagi</Button>} />;
     }
 
-    const pricingOptions = Array.from(new Map((invoice.orders ?? [])
-        .filter((order) => order.pricing_id !== null)
-        .map((order) => [order.pricing_id as string, {
-            id: order.pricing_id as string,
-            label: [order.pricing?.product, order.pricing?.material].filter(Boolean).join(' · ') || 'Konfigurasi item',
-            meta: {
-                requires_material: order.pricing?.requires_material ?? true,
-                uses_attributes: order.pricing?.uses_attributes ?? true,
-                attribute_type_ids: order.pricing?.attribute_type_ids ?? [],
-                attribute_ids: order.pricing?.attribute_ids ?? [],
-            },
-        }])).values());
+    const products = optionsQuery.data?.products ?? [];
+    const productOptions = Array.from(new Map((invoice.orders ?? [])
+        .filter((order) => order.product_id !== null)
+        .map((order) => {
+            const productId = order.product_id as string;
+            const product = products.find((candidate) => candidate.id === productId);
+
+            return [productId, {
+                id: productId,
+                label: product?.name ?? 'Konfigurasi item',
+                meta: {
+                    requires_material: product?.requires_material ?? true,
+                    uses_attributes: product?.uses_attributes ?? true,
+                    attribute_type_ids: product?.attribute_type_ids ?? [],
+                    attribute_ids: product?.attribute_ids ?? [],
+                },
+            }];
+        })).values());
     const attributes = optionsQuery.data?.attributes ?? [];
     const attributeTypes = optionsQuery.data?.attribute_types ?? [];
 
@@ -192,13 +200,13 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
                 <CardHeader><h2 className="font-semibold">Item pesanan</h2><Button variant="secondary" size="sm" onClick={handleAddItem}>Tambah item</Button></CardHeader>
                 <CardBody className="space-y-5">
                     {items.map((item, index) => {
-                        const meta = pricingOptions.find((configuration) => configuration.id === item.pricing_id)?.meta;
+                        const meta = productOptions.find((configuration) => configuration.id === item.product_id)?.meta;
 
                         return (
                             <section key={item.id ?? `new-${index}`} className="space-y-3 border-b border-light-border pb-5 last:border-0 dark:border-surface-300">
                                 <div className="flex items-center justify-between"><h3 className="font-medium">Item {index + 1}</h3><Button variant="ghost" size="sm" disabled={items.length <= 1} onClick={() => handleRemoveItem(index)}>Hapus</Button></div>
-                                <Select label={meta?.requires_material === false ? 'Produk' : 'Produk dan bahan'} value={item.pricing_id} error={errors[`items.${index}.pricing_id`]} onChange={(event) => handleItemChange(index, { pricing_id: event.target.value, selected_attributes: [] })}>
-                                    {pricingOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
+                                <Select label={meta?.requires_material === false ? 'Produk' : 'Produk dan bahan'} value={item.product_id} error={errors[`items.${index}.product_id`]} onChange={(event) => handleItemChange(index, { product_id: event.target.value, material_id: null, selected_attributes: [] })}>
+                                    {productOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
                                 </Select>
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <Input label="Nama file / item" value={item.file_name} error={errors[`items.${index}.file_name`]} onChange={(event) => handleItemChange(index, { file_name: event.target.value })} />

@@ -25,7 +25,7 @@ const tabRoutes: Record<string, Record<string, string>> = {
         materials: '/manager/materials',
         ledgers: '/manager/ledgers',
         finishing: '/manager/finishing',
-        pricing: '/manager/pricing',
+        quantity_tiers: '/manager/quantity-tiers',
         leaderboard: '/manager/leaderboard',
         users: '/manager/users',
         categories: '/manager/categories',

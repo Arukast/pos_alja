@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Attribute;
-use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Expense;
@@ -12,9 +11,9 @@ use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
 use App\Models\WastedMaterial;
@@ -175,10 +174,9 @@ class HugeDatasetSeeder extends Seeder
             $materialModels[$m['name']] = Material::create($m);
         }
 
-        // 4. Materials, Attributes, and Pricing per branch
+        // 4. Materials and Attributes per branch
         $materialsByBranch = [];
-        $attributesByBranch = [];
-        $pricingsByBranch = [];
+        $printOptionsByBranch = [];
 
         foreach ($branches as $branch) {
             // Materials
@@ -205,65 +203,35 @@ class HugeDatasetSeeder extends Seeder
 
             // Attributes
             $attributes = [
-                ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branch->id],
-                ['name' => 'Laminating Doff', 'type' => 'finishing', 'branch_id' => $branch->id],
-                ['name' => 'Mata Ayam (Eyelets)', 'type' => 'finishing', 'branch_id' => $branch->id],
-                ['name' => 'Half Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branch->id],
-                ['name' => 'Die Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branch->id],
-                ['name' => 'X-Banner Stand', 'type' => 'display', 'branch_id' => $branch->id],
+                ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branch->id, 'price' => 3000, 'cost' => 1500],
+                ['name' => 'Laminating Doff', 'type' => 'finishing', 'branch_id' => $branch->id, 'price' => 0, 'cost' => 0],
+                ['name' => 'Mata Ayam (Eyelets)', 'type' => 'finishing', 'branch_id' => $branch->id, 'price' => 0, 'cost' => 0],
+                ['name' => 'Half Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branch->id, 'price' => 0, 'cost' => 0],
+                ['name' => 'Die Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branch->id, 'price' => 0, 'cost' => 0],
+                ['name' => 'X-Banner Stand', 'type' => 'display', 'branch_id' => $branch->id, 'price' => 0, 'cost' => 0],
             ];
 
-            $attributesByBranch[$branch->id] = [];
             foreach ($attributes as $a) {
-                $attributesByBranch[$branch->id][$a['name']] = Attribute::create($a);
+                Attribute::create($a);
             }
 
-            // Setup pricing matrix for each branch
-            $pricingsByBranch[$branch->id] = [];
+            $printOptionsByBranch[$branch->id] = [
+                [
+                    'product' => $productModels['Large Format'],
+                    'material' => $materialsByBranch[$branch->id]['Flexi China 280g'],
+                ],
+                [
+                    'product' => $productModels['Print Kertas'],
+                    'material' => $materialsByBranch[$branch->id]['Art Paper 260g A3+'],
+                ],
+            ];
+        }
 
-            // Large Format Pricing
-            $p1 = Pricing::create([
-                'branch_id' => $branch->id,
-                'product_id' => $productModels['Large Format']->id,
-                'material_id' => $materialsByBranch[$branch->id]['Flexi China 280g']->id,
-                'price' => 20000,
-                'cost' => 10000,
-                'profit' => 10000,
-                'min_qty' => 1,
-                'customer_type' => 'Reguler',
-            ]);
-            $pricingsByBranch[$branch->id][] = $p1;
-
-            AttributePricing::create([
-                'branch_id' => $branch->id,
-                'pricing_id' => $p1->id,
-                'attribute_id' => $attributesByBranch[$branch->id]['Mata Ayam (Eyelets)']->id,
-                'price' => 1000,
-                'cost' => 500,
-                'profit' => 500,
-            ]);
-
-            // Print Kertas Pricing
-            $p2 = Pricing::create([
-                'branch_id' => $branch->id,
-                'product_id' => $productModels['Print Kertas']->id,
-                'material_id' => $materialsByBranch[$branch->id]['Art Paper 260g A3+']->id,
-                'price' => 5000,
-                'cost' => 2000,
-                'profit' => 3000,
-                'min_qty' => 1,
-                'customer_type' => 'Reguler',
-            ]);
-            $pricingsByBranch[$branch->id][] = $p2;
-
-            AttributePricing::create([
-                'branch_id' => $branch->id,
-                'pricing_id' => $p2->id,
-                'attribute_id' => $attributesByBranch[$branch->id]['Laminating Glossy']->id,
-                'price' => 1500,
-                'cost' => 700,
-                'profit' => 800,
-            ]);
+        foreach ([
+            ['product_id' => $productModels['Large Format']->id, 'min_qty' => 100, 'discount_percent' => 10],
+            ['product_id' => $productModels['Print Kertas']->id, 'min_qty' => 100, 'discount_percent' => 5],
+        ] as $tier) {
+            ProductQuantityDiscount::create($tier);
         }
 
         // 5. Customers
@@ -286,7 +254,7 @@ class HugeDatasetSeeder extends Seeder
         $fileNames = ['banner_promo.pdf', 'brosur_flyer.pdf', 'sticker_label.tiff', 'kartu_nama_final.cdr', 'spanduk_warung.jpg', 'baliho_perumahan.png', 'id_card_karyawan.pdf'];
 
         // We will seed in a transaction block for speed
-        DB::transaction(function () use ($branches, $designersByBranch, $cashiersByBranch, $operatorsByBranch, $pricingsByBranch, $customers, $startDate, $fileNames, &$totalInvoices, $productModels) {
+        DB::transaction(function () use ($branches, $designersByBranch, $cashiersByBranch, $operatorsByBranch, $printOptionsByBranch, $customers, $startDate, $fileNames, &$totalInvoices, $productModels) {
             for ($day = 0; $day <= 90; $day++) {
                 $currentSimulatedDate = (clone $startDate)->addDays($day);
 
@@ -346,16 +314,18 @@ class HugeDatasetSeeder extends Seeder
                         $invoiceTotalProfit = 0;
 
                         for ($item = 1; $item <= $itemCount; $item++) {
-                            // Pick random pricing
-                            $pricing = $pricingsByBranch[$branch->id][array_rand($pricingsByBranch[$branch->id])];
+                            // Pick a product and one of its compatible materials
+                            $printOption = $printOptionsByBranch[$branch->id][array_rand($printOptionsByBranch[$branch->id])];
+                            $product = $printOption['product'];
+                            $material = $printOption['material'];
 
                             $qty = rand(1, 50);
                             $area = 0.0;
-                            $unitPrice = $pricing->price;
-                            $unitCost = $pricing->cost;
+                            $unitPrice = (float) $material->price;
+                            $unitCost = (float) $material->cost;
 
                             // Area calculation if large format
-                            if ($pricing->product_id === $productModels['Large Format']->id) {
+                            if ($product->id === $productModels['Large Format']->id) {
                                 $width = rand(1, 5);
                                 $length = rand(1, 10);
                                 $area = $width * $length;
@@ -377,7 +347,12 @@ class HugeDatasetSeeder extends Seeder
 
                             $order = Order::create([
                                 'invoice_id' => $invoice->id,
-                                'pricing_id' => $pricing->id,
+                                'product_id' => $product->id,
+                                'material_id' => $material->id,
+                                'customer_type' => 'Reguler',
+                                'reseller_discount_percent' => 0,
+                                'quantity_discount_percent' => 0,
+                                'discount_amount' => 0,
                                 'operator_id' => $operator?->id,
                                 'file_name' => $fileNames[array_rand($fileNames)],
                                 'area' => $area,
@@ -397,7 +372,7 @@ class HugeDatasetSeeder extends Seeder
                                 WastedMaterial::create([
                                     'branch_id' => $branch->id,
                                     'logged_at' => $createdTime->toIso8601String(),
-                                    'material_id' => $pricing->material_id,
+                                    'material_id' => $material->id,
                                     'order_id' => $order->id,
                                     'designer_id' => $designer->id,
                                     'operator_id' => $operator?->id,
@@ -411,7 +386,7 @@ class HugeDatasetSeeder extends Seeder
                             if (rand(1, 50) === 1) {
                                 StockLedger::create([
                                     'branch_id' => $branch->id,
-                                    'material_id' => $pricing->material_id,
+                                    'material_id' => $material->id,
                                     'logged_at' => $createdTime->toIso8601String(),
                                     'initial_stock' => 1000,
                                     'added_stock' => rand(1, 10) * 100,

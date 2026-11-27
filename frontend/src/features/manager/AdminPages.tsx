@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Material, Pricing, UserRecord } from '../../api/types';
+import type { Material, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
 import { ActiveToggleButton } from '../../components/admin/ActiveToggleButton';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
@@ -16,12 +16,12 @@ import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
 import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
+import { QuantityTiersPage } from '../owner/AdminPages';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
@@ -450,142 +450,8 @@ export function ManagerProductsPage() {
     return <ProductsPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
 }
 
-export function ManagerPricingPage() {
-    const products = useQuery({
-        queryKey: ['products', 'options'],
-        queryFn: () => api.products({ is_active: 1 }),
-    });
-    const materials = useQuery({ queryKey: ['materials', 'options'], queryFn: () => api.materials() });
-
-    const productOptions = (products.data?.data ?? []).map((product) => ({
-        value: product.id,
-        label: product.name,
-    }));
-    const materialOptions = (materials.data?.data ?? []).map((material) => ({
-        value: material.id,
-        label: material.name,
-    }));
-
-    const fields: Array<CrudField<Pricing>> = [
-        { key: 'product_id', label: 'Produk', type: 'select', options: productOptions, getValue: (pricing) => pricing.product?.id ?? '', hideOnEdit: true },
-        { key: 'material_id', label: 'Bahan', type: 'select', emptyOptionLabel: 'Tanpa bahan', options: materialOptions, getValue: (pricing) => pricing.material?.id ?? '', hideOnEdit: true },
-        {
-            key: 'customer_type',
-            label: 'Tipe Pelanggan',
-            type: 'select',
-            options: [
-                { value: 'Reguler', label: 'Reguler' },
-                { value: 'Reseller', label: 'Reseller' },
-            ],
-            getValue: (pricing) => pricing.customer_type,
-            hideOnEdit: true,
-        },
-        { key: 'min_qty', label: 'Jml min', type: 'number', defaultValue: 1, getValue: (pricing) => pricing.min_qty },
-        { key: 'price', label: 'Harga jual', type: 'number', getValue: (pricing) => pricing.price },
-        { key: 'cost', label: 'Biaya', type: 'number', getValue: (pricing) => pricing.cost },
-    ];
-
-    return (
-        <div className="space-y-8">
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Matriks Harga"
-                cardTitle="Daftar Harga"
-                description="Baris harga bertingkat dan aturan penyesuaian."
-                queryKey={['manager', 'pricing']}
-                queryFn={(page) => api.pricing({ page })}
-                columns={[
-                    { header: 'Produk', cell: (pricing) => pricing.product?.name ?? '-' },
-                    { header: 'Bahan', cell: (pricing) => pricing.material?.name ?? 'Tanpa bahan' },
-                    { header: 'Tipe', cell: (pricing) => pricing.customer_type },
-                    { header: 'Jml min', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => pricing.min_qty },
-                    { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.price) },
-                    { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.cost) },
-                ]}
-                fields={fields}
-                rowLabel={(pricing) =>
-                    `${pricing.product?.name ?? '-'} / ${pricing.material?.name ?? 'Tanpa bahan'}`
-                }
-                create={(values) => api.admin.createPricing({
-                    ...values,
-                    material_id: values.material_id || null,
-                })}
-                update={(id, values) => api.admin.updatePricing(id, {
-                    min_qty: values.min_qty,
-                    price: values.price,
-                    cost: values.cost,
-                })}
-                remove={(id) => api.admin.deletePricing(id)}
-                createLabel="Tambah baris harga"
-            />
-
-            <PricingClonePanel />
-        </div>
-    );
-}
-
-function PricingClonePanel() {
-    const queryClient = useQueryClient();
-    const materials = useQuery({ queryKey: ['materials', 'clone'], queryFn: () => api.materials() });
-    const [from, setFrom] = useState('');
-    const [to, setTo] = useState('');
-    const [notice, setNotice] = useState<string | null>(null);
-
-    const clone = useMutation({
-        mutationFn: () =>
-            api.admin.clonePricing({ from_material_id: from, to_material_id: to }),
-        onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ['manager', 'pricing'] });
-            setNotice('Tingkat harga disalin.');
-        },
-        onError: () => setNotice('Gagal menyalin tingkat harga.'),
-    });
-
-    const options = materials.data?.data ?? [];
-
-    return (
-        <Card>
-            <CardBody className="space-y-4">
-                <div className="space-y-1">
-                    <p className="text-light-muted text-[10px] font-semibold uppercase tracking-widest dark:text-gray-400">
-                        Konfigurasi
-                    </p>
-                    <h2 className="text-light-text text-lg font-semibold dark:text-gray-100">
-                        Salin tingkat harga
-                    </h2>
-                    <p className="text-light-muted text-sm dark:text-gray-400">
-                        Salin setiap baris harga dari satu bahan ke bahan lain di cabang Anda.
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-end gap-3">
-                    <Select label="Dari bahan" value={from} onChange={(event) => setFrom(event.target.value)}>
-                        <option value="">Pilih</option>
-                        {options.map((material) => (
-                            <option key={material.id} value={material.id}>
-                                {material.name}
-                            </option>
-                        ))}
-                    </Select>
-                    <Select label="Ke bahan" value={to} onChange={(event) => setTo(event.target.value)}>
-                        <option value="">Pilih</option>
-                        {options.map((material) => (
-                            <option key={material.id} value={material.id}>
-                                {material.name}
-                            </option>
-                        ))}
-                    </Select>
-                    <Button
-                        loading={clone.isPending}
-                        disabled={!from || !to || from === to}
-                        onClick={() => clone.mutate()}
-                    >
-                        Salin tingkat
-                    </Button>
-                </div>
-                {notice ? <p className="text-sm">{notice}</p> : null}
-            </CardBody>
-        </Card>
-    );
+export function ManagerQuantityTiersPage() {
+    return <QuantityTiersPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
 }
 
 export function ManagerLeaderboardPage() {
