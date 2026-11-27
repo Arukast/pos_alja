@@ -236,4 +236,218 @@ class PricingServiceTest extends TestCase
             'quantity' => 10,
         ]);
     }
+
+    public function test_attribute_price_and_cost_are_the_fallback_without_a_modifier(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $attribute = $this->makeAttribute('finishing', 5000, 2000);
+
+        $result = $this->quoteFor($pricing, ['selected_attributes' => [$attribute->id]]);
+
+        $this->assertEquals(55000, $result['unit_price']); // base 50000 + 5000
+        $this->assertEquals(22000, $result['unit_cost']);  // base 20000 + 2000
+    }
+
+    public function test_cut_display_and_custom_types_use_the_same_fallback(): void
+    {
+        $pricing = $this->makeUnitPricing();
+
+        foreach (['cut' => [1000, 400], 'display' => [2000, 500], 'custom' => [3000, 600]] as $type => [$price, $cost]) {
+            $attribute = $this->makeAttribute($type, $price, $cost);
+
+            $result = $this->quoteFor($pricing, ['selected_attributes' => [$attribute->id]]);
+
+            $this->assertEquals(50000 + $price, $result['unit_price'], "unit_price for {$type}");
+            $this->assertEquals(20000 + $cost, $result['unit_cost'], "unit_cost for {$type}");
+        }
+    }
+
+    public function test_uppercase_selected_attribute_id_still_uses_the_fallback(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $attribute = $this->makeAttribute('finishing', 5000, 2000);
+
+        $result = $this->quoteFor($pricing, ['selected_attributes' => [strtoupper($attribute->id)]]);
+
+        $this->assertEquals(55000, $result['unit_price']);
+        $this->assertEquals(22000, $result['unit_cost']);
+    }
+
+    public function test_modifier_and_attribute_price_mix_in_one_selection(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $withModifier = $this->makeAttribute('finishing', 5000, 2000);
+        $withAttributePrice = $this->makeAttribute('display', 3000, 1000);
+
+        AttributePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'attribute_id' => $withModifier->id,
+            'price' => 2000,
+            'cost' => 900,
+            'profit' => 1100,
+        ]);
+
+        $result = $this->quoteFor($pricing, [
+            'selected_attributes' => [$withModifier->id, $withAttributePrice->id],
+        ]);
+
+        $this->assertEquals(55000, $result['unit_price']); // base 50000 + modifier 2000 + attribute 3000
+        $this->assertEquals(21900, $result['unit_cost']);  // base 20000 + modifier 900 + attribute 1000
+    }
+
+    public function test_modifier_row_wins_over_attribute_price(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $attribute = $this->makeAttribute('finishing', 5000, 2000);
+
+        AttributePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'attribute_id' => $attribute->id,
+            'price' => 2000,
+            'cost' => 900,
+            'profit' => 1100,
+        ]);
+
+        $result = $this->quoteFor($pricing, ['selected_attributes' => [$attribute->id]]);
+
+        $this->assertEquals(52000, $result['unit_price']); // base 50000 + modifier 2000
+        $this->assertEquals(20900, $result['unit_cost']);  // base 20000 + modifier 900
+    }
+
+    public function test_zero_modifier_row_still_wins(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $attribute = $this->makeAttribute('finishing', 5000, 2000);
+
+        AttributePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'attribute_id' => $attribute->id,
+            'price' => 0,
+            'cost' => 0,
+            'profit' => 0,
+        ]);
+
+        $result = $this->quoteFor($pricing, ['selected_attributes' => [$attribute->id]]);
+
+        $this->assertEquals(50000, $result['unit_price']);
+        $this->assertEquals(20000, $result['unit_cost']);
+    }
+
+    public function test_legacy_finishing_id_uses_the_attribute_price_fallback(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $attribute = $this->makeAttribute('finishing', 3000, 1200);
+
+        $result = $this->quoteFor($pricing, ['finishing_id' => $attribute->id]);
+
+        $this->assertEquals(53000, $result['unit_price']);
+        $this->assertEquals(21200, $result['unit_cost']);
+    }
+
+    public function test_legacy_cut_and_display_ids_still_work(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $cut = $this->makeAttribute('cut', 1000, 400);
+        $display = $this->makeAttribute('display', 2000, 500);
+
+        $result = $this->quoteFor($pricing, [
+            'cut_id' => $cut->id,
+            'display_id' => $display->id,
+        ]);
+
+        $this->assertEquals(53000, $result['unit_price']);
+        $this->assertEquals(20900, $result['unit_cost']);
+    }
+
+    public function test_selected_attributes_take_precedence_over_legacy_ids(): void
+    {
+        $pricing = $this->makeUnitPricing();
+        $selected = $this->makeAttribute('display', 3000, 1000);
+        $legacy = $this->makeAttribute('finishing', 9000, 4000);
+
+        AttributePricing::create([
+            'branch_id' => $this->branch->id,
+            'pricing_id' => $pricing->id,
+            'attribute_id' => $legacy->id,
+            'price' => 1000,
+            'cost' => 300,
+            'profit' => 700,
+        ]);
+
+        $result = $this->quoteFor($pricing, [
+            'finishing_id' => $legacy->id,
+            'selected_attributes' => [$selected->id],
+        ]);
+
+        $this->assertEquals(53000, $result['unit_price']); // only the selected attribute counts
+        $this->assertEquals(21000, $result['unit_cost']);
+    }
+
+    public function test_missing_selected_attribute_contributes_zero(): void
+    {
+        $pricing = $this->makeUnitPricing();
+
+        $result = $this->quoteFor($pricing, ['selected_attributes' => [(string) Str::uuid()]]);
+
+        $this->assertEquals(50000, $result['unit_price']);
+        $this->assertEquals(20000, $result['unit_cost']);
+    }
+
+    private function makeUnitPricing(float $price = 50000, float $cost = 20000): Pricing
+    {
+        $category = ProductCategory::create([
+            'name' => 'Pricing Fixture',
+        ]);
+
+        $product = Product::create([
+            'name' => 'Pricing Fixture',
+            'pricing_type' => 'unit',
+            'product_category_id' => $category->id,
+        ]);
+
+        $material = Material::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Pricing Fixture Material',
+            'product_category_id' => $category->id,
+            'type' => 'Merchandise',
+        ]);
+
+        return Pricing::create([
+            'branch_id' => $this->branch->id,
+            'product_id' => $product->id,
+            'material_id' => $material->id,
+            'price' => $price,
+            'cost' => $cost,
+            'profit' => $price - $cost,
+            'min_qty' => 1,
+            'customer_type' => 'Reguler',
+        ]);
+    }
+
+    private function makeAttribute(string $type, float $price, float $cost): Attribute
+    {
+        return Attribute::create([
+            'branch_id' => $this->branch->id,
+            'name' => ucfirst($type).' Fixture',
+            'type' => $type,
+            'price' => $price,
+            'cost' => $cost,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function quoteFor(Pricing $pricing, array $overrides): array
+    {
+        return $this->pricingService->calculateQuote(array_merge([
+            'product_id' => $pricing->product_id,
+            'material_id' => $pricing->material_id,
+            'quantity' => 1,
+        ], $overrides));
+    }
 }
