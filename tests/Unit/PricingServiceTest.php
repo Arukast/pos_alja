@@ -396,6 +396,53 @@ class PricingServiceTest extends TestCase
         $this->assertEquals(20000, $result['unit_cost']);
     }
 
+    public function test_no_material_pricing_uses_the_null_material_row(): void
+    {
+        $category = ProductCategory::create([
+            'name' => 'No Material Pricing Fixture',
+        ]);
+
+        $product = Product::create([
+            'name' => 'Jasa Desain',
+            'pricing_type' => 'unit',
+            'product_category_id' => $category->id,
+            'requires_material' => false,
+        ]);
+
+        Pricing::create([
+            'branch_id' => $this->branch->id,
+            'product_id' => $product->id,
+            'material_id' => null,
+            'price' => 30000,
+            'cost' => 12000,
+            'profit' => 18000,
+            'min_qty' => 1,
+            'customer_type' => 'Reguler',
+        ]);
+
+        $params = [
+            'product_id' => $product->id,
+            'material_id' => null,
+            'quantity' => 2,
+            'branch_id' => $this->branch->id,
+        ];
+
+        $result = $this->pricingService->calculateQuote($params);
+
+        $this->assertEquals(30000, $result['unit_price']);
+        $this->assertEquals(60000, $result['subtotal']);
+        $this->assertEquals(24000, $result['cost']);
+
+        $fallback = $this->pricingService->calculateQuote([
+            ...$params,
+            'customer_type' => 'Reseller',
+        ]);
+
+        $this->assertEquals(30000, $fallback['unit_price']);
+        $this->assertEquals(60000, $fallback['subtotal']);
+        $this->assertEquals(24000, $fallback['cost']);
+    }
+
     private function makeUnitPricing(float $price = 50000, float $cost = 20000): Pricing
     {
         $category = ProductCategory::create([

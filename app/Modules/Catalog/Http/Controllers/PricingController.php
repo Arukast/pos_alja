@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Pricing;
+use App\Models\Product;
 use App\Models\User;
 use App\Modules\Catalog\Http\Resources\PricingResource;
 use App\Modules\Catalog\Queries\CatalogQueries;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 final class PricingController extends Controller
 {
@@ -47,7 +49,7 @@ final class PricingController extends Controller
         $data = $request->validate([
             'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
             'product_id' => ['required', 'uuid', 'exists:products,id'],
-            'material_id' => ['required', 'uuid', 'exists:materials,id'],
+            'material_id' => ['nullable', 'uuid', 'exists:materials,id'],
             'customer_type' => ['required', 'string', 'max:50'],
             'min_qty' => ['required', 'integer', 'min:1'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
@@ -61,6 +63,21 @@ final class PricingController extends Controller
 
         if ($data['branch_id'] === null) {
             abort(422, 'Cabang wajib diisi.');
+        }
+
+        $product = Product::query()->findOrFail($data['product_id']);
+        $hasMaterial = ($data['material_id'] ?? null) !== null;
+
+        if ($product->requires_material && ! $hasMaterial) {
+            throw ValidationException::withMessages([
+                'material_id' => 'Bahan wajib dipilih untuk produk ini.',
+            ]);
+        }
+
+        if (! $product->requires_material && $hasMaterial) {
+            throw ValidationException::withMessages([
+                'material_id' => 'Produk ini tidak menggunakan bahan.',
+            ]);
         }
 
         $data['profit'] = $data['profit'] ?? max(0, (float) $data['price'] - (float) $data['cost']);

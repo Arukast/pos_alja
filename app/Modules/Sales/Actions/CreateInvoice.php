@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Sales\Actions;
 
 use App\Exceptions\InvalidAttributeSelectionException;
+use App\Exceptions\InvalidMaterialSelectionException;
+use App\Exceptions\InvalidProductAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -77,7 +79,8 @@ final class CreateInvoice
                     ]);
                 }
 
-                if (! $this->availability->isAvailable($pricing->material, $branchId)) {
+                if ($pricing->material_id !== null
+                    && ! $this->availability->isAvailable($pricing->material, $branchId)) {
                     throw ValidationException::withMessages([
                         "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
                     ]);
@@ -90,7 +93,11 @@ final class CreateInvoice
                         $branchId,
                         $customerType
                     );
-                } catch (InvalidAttributeSelectionException $exception) {
+                } catch (InvalidMaterialSelectionException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                    ]);
+                } catch (InvalidAttributeSelectionException|InvalidProductAttributeSelectionException $exception) {
                     throw ValidationException::withMessages([
                         "items.{$index}.selected_attributes" => $exception->getMessage(),
                     ]);

@@ -355,6 +355,8 @@ class QuoteApiTest extends TestCase
             'type' => 'cut',
         ]);
 
+        $this->product->compatibleAttributes()->sync([$this->attribute->id]);
+
         DB::enableQueryLog();
 
         $this->actingAs($this->designer)
@@ -365,7 +367,8 @@ class QuoteApiTest extends TestCase
             ->filter(fn (array $query): bool => str_contains($query['query'], 'attribute_types'))
             ->count();
 
-        $this->assertSame(2, $typeQueries);
+        // attribute_types list + attributeTypes pivot + attributes typeInfo + compatibleAttributes typeInfo.
+        $this->assertSame(4, $typeQueries);
     }
 
     public function test_quote_options_categories_do_not_report_a_product_count(): void
@@ -452,6 +455,7 @@ class QuoteApiTest extends TestCase
             'product_category_id' => $this->product->product_category_id,
             'type' => 'roll',
         ]);
+        $this->product->materials()->sync([$this->material->id, $unpriced->id]);
 
         MaterialBranchStock::create([
             'material_id' => $unpriced->id,
@@ -470,6 +474,20 @@ class QuoteApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('quote');
+    }
+
+    public function test_quote_rejects_array_product_id_with_validation_error(): void
+    {
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => [$this->product->id],
+                'material_id' => $this->material->id,
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('product_id');
     }
 
     public function test_quote_rejects_a_soft_deleted_pricing_row(): void
@@ -792,6 +810,123 @@ class QuoteApiTest extends TestCase
         )->pluck('id')->all();
 
         $this->assertContains($this->material->id, $ids);
+    }
+
+    public function test_quote_rejects_material_not_compatible_with_product(): void
+    {
+        $otherMaterial = Material::create([
+            'name' => 'Other Roll',
+            'product_category_id' => $this->product->product_category_id,
+            'type' => 'roll',
+            'cost' => 20000,
+            'price' => 25000,
+        ]);
+        MaterialBranchStock::create([
+            'material_id' => $otherMaterial->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 10,
+            'min_stock' => 1,
+        ]);
+        Pricing::create([
+            'branch_id' => $this->branchOne->id,
+            'product_id' => $this->product->id,
+            'material_id' => $otherMaterial->id,
+            'customer_type' => 'Reguler',
+            'min_qty' => 1,
+            'price' => 50000,
+            'cost' => 20000,
+            'profit' => 30000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $otherMaterial->id,
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material_id');
+    }
+
+    public function test_quote_rejects_attribute_outside_allowed_types(): void
+    {
+        $type = AttributeType::query()->where('slug', 'finishing')->firstOrFail();
+        $display = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'X-Banner',
+            'type' => 'display',
+        ]);
+        $this->product->attributeTypes()->sync([$type->id]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$display->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('selected_attributes');
+    }
+
+    public function test_quote_rejects_attribute_outside_compatible_list(): void
+    {
+        $type = AttributeType::query()->where('slug', 'finishing')->firstOrFail();
+        $matte = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Matte',
+            'type' => 'finishing',
+        ]);
+        $this->product->attributeTypes()->sync([$type->id]);
+        $this->product->compatibleAttributes()->sync([$this->attribute->id]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$matte->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('selected_attributes');
+    }
+
+    public function test_quote_rejects_attributes_when_product_uses_none(): void
+    {
+        $this->product->update(['uses_attributes' => false]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$this->attribute->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('selected_attributes');
+    }
+
+    public function test_empty_pivots_allow_all_active_types_and_attributes(): void
+    {
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$this->attribute->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.unit_price', '50000.00');
     }
 
     private function branch(string $name): Branch

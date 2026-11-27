@@ -1,9 +1,18 @@
 import type { Attribute, AttributeType } from '../../api/types';
 
 /** Keeps inactive options only when the row already selected them. */
-export function selectableAttributes(attributes: Attribute[], type: string, selectedIds: string[]): Attribute[] {
+export function selectableAttributes(
+    attributes: Attribute[],
+    type: string,
+    selectedIds: string[],
+    allowedAttributeIds: string[] = []
+): Attribute[] {
     return attributes.filter(
-        (attribute) => attribute.type === type && (attribute.is_active || selectedIds.includes(attribute.id))
+        (attribute) => attribute.type === type
+            && (attribute.is_active || selectedIds.includes(attribute.id))
+            && (allowedAttributeIds.length === 0
+                || allowedAttributeIds.includes(attribute.id)
+                || selectedIds.includes(attribute.id))
     );
 }
 
@@ -20,14 +29,20 @@ export function typesForSelection(
     types: AttributeType[],
     attributes: Attribute[],
     selectedIds: string[],
-    includeInactiveSelected: boolean
+    includeInactiveSelected: boolean,
+    allowedTypeIds: string[] = []
 ): AttributeType[] {
     const selectedTypes = new Set(
         attributes.filter((attribute) => selectedIds.includes(attribute.id)).map((attribute) => attribute.type)
     );
 
     return types
-        .filter((type) => type.is_active || (includeInactiveSelected && selectedTypes.has(type.slug)))
+        .filter((type) => {
+            const selected = includeInactiveSelected && selectedTypes.has(type.slug);
+
+            return (type.is_active || selected)
+                && (allowedTypeIds.length === 0 || allowedTypeIds.includes(type.id) || selected);
+        })
         .sort(byOrderThenName);
 }
 

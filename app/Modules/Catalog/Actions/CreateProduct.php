@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Actions;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Modules\Catalog\Support\ProductComposition;
 use App\Services\AuditLogger;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
@@ -14,13 +15,18 @@ use Throwable;
 
 final class CreateProduct
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly ProductComposition $composition,
+    ) {}
 
     /**
-     * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool, material_ids?: array<int, string>}  $data
+     * @param  array{name: string, product_category_id: string, pricing_type: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>}  $data
      */
     public function execute(array $data, User $actor): Product
     {
+        $this->composition->validate($data);
+
         try {
             $product = DB::transaction(function () use ($data, $actor): Product {
                 $product = Product::create([
@@ -28,20 +34,18 @@ final class CreateProduct
                     'product_category_id' => $data['product_category_id'],
                     'pricing_type' => $data['pricing_type'],
                     'is_active' => (bool) ($data['is_active'] ?? true),
+                    'requires_material' => (bool) ($data['requires_material'] ?? true),
+                    'uses_attributes' => (bool) ($data['uses_attributes'] ?? true),
                 ]);
 
-                if (array_key_exists('material_ids', $data)) {
-                    $product->materials()->sync(array_values($data['material_ids']));
-                }
-
-                $materialIds = $product->materials()->pluck('materials.id')->values()->all();
+                $this->composition->sync($product, $data);
 
                 $this->audit->record(
                     $actor,
                     'CREATE',
                     "Membuat produk: {$product->name}",
                     $product,
-                    array_merge($product->toArray(), ['material_ids' => $materialIds]),
+                    array_merge($product->toArray(), $product->auditSnapshot()),
                 );
 
                 return $product;
@@ -57,6 +61,6 @@ final class CreateProduct
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $product->load(['category', 'materials']);
+        return $product->load(['category', 'materials', 'attributeTypes', 'compatibleAttributes.typeInfo']);
     }
 }

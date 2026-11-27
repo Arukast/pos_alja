@@ -25,8 +25,14 @@ final class StoreProductRequest extends FormRequest
             'product_category_id' => ['required', 'uuid', 'exists:product_categories,id'],
             'pricing_type' => ['required', 'string', 'in:unit,area'],
             'is_active' => ['sometimes', 'boolean'],
+            'requires_material' => ['sometimes', 'boolean'],
+            'uses_attributes' => ['sometimes', 'boolean'],
             'material_ids' => ['sometimes', 'array'],
             'material_ids.*' => ['uuid', 'distinct', Rule::exists('materials', 'id')->whereNull('deleted_at')],
+            'attribute_type_ids' => ['sometimes', 'array'],
+            'attribute_type_ids.*' => ['uuid', 'distinct', 'exists:attribute_types,id'],
+            'attribute_ids' => ['sometimes', 'array'],
+            'attribute_ids.*' => ['uuid', 'distinct', Rule::exists('attributes', 'id')->whereNull('deleted_at')],
         ];
     }
 }

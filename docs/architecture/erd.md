@@ -4,7 +4,7 @@
 - **Keys:** All primary keys are UUID strings. Foreign keys are UUID strings.
 - **Table naming:** Eloquent default pluralization, except `material_branch_stock`, which uses a singular table name.
 - **Soft deletes:** Present on `branches`, `users`, `customers`, `products`, `materials`, `attributes`, and `pricing`.
-- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, production failure, the Unit A catalog cleanup, the B1a material retirement flags, and the B1b attribute types are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
+- **Target schema:** This diagram shows the target schema after Sprint Review 1. PB-05/PB-07 inventory purchasing, stock-ledger traceability, material units, the machine-table drop, production failure, the Unit A catalog cleanup, the B1a material retirement flags, the B1b attribute types, and the B2 product flags/pivots and nullable pricing material are implemented; remaining target changes are tracked in `docs/requirements/implementation-gaps.md`.
 - **Current transitional tables:** `PRICING` and `ATTRIBUTE_PRICING` exist in the current build and are the price source; the target pricing redesign replaces them (note 4).
 - **Machine tables:** `machines` and `machine_pricing` are dropped by `2026_11_25_000002_drop_machines_tables.php`; their rows are unrecoverable. `pricing` and `attribute_pricing` remain and are the current price source.
 - **API-first status:** The React refactor did not add domain tables. Sanctum adds `personal_access_tokens`; the purchase and stock-ledger tables and columns are implemented as described here, while the remaining business tables follow this target.
@@ -32,6 +32,8 @@ erDiagram
     PRODUCTS ||--o{ ORDERS : "ordered as"
     PRODUCTS ||--o{ PRICING : "priced as"
     PRODUCTS ||--o{ MATERIAL_PRODUCT : "maps"
+    PRODUCTS ||--o{ ATTRIBUTE_TYPE_PRODUCT : "allows types"
+    PRODUCTS ||--o{ ATTRIBUTE_PRODUCT : "allows attributes"
     MATERIALS ||--o{ ORDERS : "uses"
     MATERIALS ||--o{ PRICING : "priced as"
     MATERIALS ||--o{ MATERIAL_PRODUCT : "compatible with"
@@ -41,6 +43,8 @@ erDiagram
     MATERIALS ||--o{ PURCHASE_ITEMS : "purchased as"
 
     ATTRIBUTE_TYPES ||--o{ ATTRIBUTES : "classifies"
+    ATTRIBUTE_TYPES ||--o{ ATTRIBUTE_TYPE_PRODUCT : "allowed on"
+    ATTRIBUTES ||--o{ ATTRIBUTE_PRODUCT : "compatible with"
     ATTRIBUTES ||--o{ ORDER_ATTRIBUTES : "selected as"
     ATTRIBUTES ||--o{ ATTRIBUTE_PRICING : "modifies"
     PRICING ||--o{ ATTRIBUTE_PRICING : "modifiers"
@@ -118,6 +122,8 @@ erDiagram
         uuid product_category_id FK
         string name
         string pricing_type
+        boolean requires_material
+        boolean uses_attributes
         boolean is_active
         timestamp deleted_at
     }
@@ -125,6 +131,20 @@ erDiagram
     MATERIAL_PRODUCT {
         uuid product_id FK
         uuid material_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ATTRIBUTE_TYPE_PRODUCT {
+        uuid product_id FK
+        uuid attribute_type_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ATTRIBUTE_PRODUCT {
+        uuid product_id FK
+        uuid attribute_id FK
         timestamp created_at
         timestamp updated_at
     }
@@ -443,6 +463,8 @@ erDiagram
 25. **Material retirement is two-level.** `materials.is_active` (default true) is the global retire flag; `material_branch_stock.is_active` (default true) is branch availability. Neither changes `current_stock` nor writes `stock_ledgers`. A material is available for new quote/invoice lines only when both flags are true and a branch-stock row exists; a missing row means unavailable, not inactive. An invoice edit may reuse an inactive material already on the locked invoice, while a soft-deleted material is never available, even when an order used it. `POST /materials/{material}/activate` sets an existing inactive stock row active; it creates a missing row as before.
 26. **`attribute_types` is master data, not a lookup foreign key.** `name` and `slug` are each unique and capped at 100 characters; `slug` is generated from the name on create, is immutable on update, and is the route key. There is no delete endpoint (a 404 tombstone); `is_active = false` is retirement. The migration seeds Finishing, Potong (`cut`), and Display at sort order 1/2/3, then backfills every other non-empty legacy `attributes.type` with its exact slug and a headline name. Attribute creation requires an active type; updates keep the current type even when inactive and require an active type when the type changes.
 27. **`users.is_active` is the account lifecycle flag; `deleted_at` stays administrative.** Default `true`. Deactivation keeps the row, blocks login, and rejects the account on its next authenticated `/api/v1` request; an owner can reactivate it. Soft-deleted users stay hidden by default, and restore sets `is_active = true`. `users.is_active` is not accepted by user store/update requests.
+28. **Product composition is stored on `products` plus two pivots.** `products.requires_material` and `products.uses_attributes` are boolean, default `true`, and cast to boolean. `attribute_type_product` and `attribute_product` use composite primary keys `(product_id, attribute_type_id)` and `(product_id, attribute_id)`, UUID foreign keys with `cascadeOnDelete()`, and `created_at`/`updated_at` timestamps from `withTimestamps()`. The `Product` relations are explicitly named `attributeTypes()` (pivot `attribute_type_product`) and `compatibleAttributes()` (pivot `attribute_product`); there is no `attributes()` relation. An empty type pivot means all active `attribute_types`; an empty attribute pivot means all active attributes of the allowed types. `uses_attributes = false` rejects new client attribute selections while preserving both pivots so re-enabling restores them. Every `ProductResource` producer eager-loads `category`, `materials`, `attributeTypes`, and `compatibleAttributes.typeInfo` (catalog list, quote options, and product create/update/restore): an unloaded pivot yields empty arrays, which silently means all. The resource exposes `attribute_type_ids`/`attribute_ids` for writes and filtering plus display-only `attribute_types`/`compatible_attributes` name arrays. Owner writes the flags and pivots; Manager reads them.
+29. **`pricing.material_id` is nullable.** `2026_11_27_000008_make_pricing_material_id_nullable.php` changes the column to nullable with no backfill; existing rows are untouched, and a null material is valid only for a product with `requires_material = false`. `PricingService` uses `whereNull('material_id')` for the null-material lookup, including the Reguler fallback, and keeps `pricing.cost` authoritative. SQLite `change()` rebuilds the table; the `materials` foreign key is preserved. PostgreSQL DDL is documented in `docs/architecture/deployment.md` and not executed by the SQLite suite. `down()` throws `RuntimeException` while any `pricing` row has a null `material_id`, so rollback requires deleting or backfilling those rows first.
 
 ---
 
@@ -509,6 +531,7 @@ Both expense types are summed into `expenses_total` and subtracted from `net_pro
 | `branches` | `code` unique |
 | `users` | `username` unique |
 | `material_branch_stock` | `(material_id, branch_id)` unique |
+| `material_product`, `attribute_type_product`, `attribute_product` | Composite primary keys on the two ID columns; both new B2 pivots cascade on product/type/attribute delete |
 | `invoices` | `invoice_number` unique |
 | `attribute_types` | `name` unique; `slug` unique; no delete; activation is retirement |
 | `order_attributes` (target-only, no table) | `(order_id, type)` unique; one attribute per type per order |

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
@@ -9,6 +9,7 @@ import { Card, CardBody } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { pricingTypeLabel } from '../../lib/labels';
+import { productCompositionLabels } from './productOptions';
 
 async function fetchAllMaterials(): Promise<Material[]> {
     const first = await api.materials({ page: 1 });
@@ -31,10 +32,21 @@ export function ProductsPage({
     queryKeyPrefix: 'owner' | 'manager';
     readOnly?: boolean;
 }) {
+    const queryClient = useQueryClient();
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
     const materials = useQuery({
         queryKey: ['materials', 'all-options'],
         queryFn: fetchAllMaterials,
+        enabled: !readOnly,
+    });
+    const attributeTypes = useQuery({
+        queryKey: ['attribute-types', 'product-options'],
+        queryFn: api.attributeTypes,
+        enabled: !readOnly,
+    });
+    const attributes = useQuery({
+        queryKey: ['attributes', 'product-options'],
+        queryFn: () => api.attributes(),
         enabled: !readOnly,
     });
     const [searchInput, setSearchInput] = useState('');
@@ -56,6 +68,17 @@ export function ProductsPage({
         value: material.id,
         label: material.name,
     }));
+    const activeTypes = (attributeTypes.data?.data ?? []).filter((type) => type.is_active);
+    const attributeTypeOptions = [...activeTypes]
+        .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+        .map((type) => ({ value: type.id, label: type.name }));
+    const activeTypeSlugs = new Set(activeTypes.map((type) => type.slug));
+    const attributeOptions = (attributes.data?.data ?? [])
+        .filter((attribute) => attribute.is_active && activeTypeSlugs.has(attribute.type))
+        .map((attribute) => ({
+            value: attribute.id,
+            label: `${attribute.name} · ${attribute.type_name}`,
+        }));
 
     const fields: Array<CrudField<Product>> = [
         { key: 'name', label: 'Nama', required: true },
@@ -80,12 +103,42 @@ export function ProductsPage({
             getValue: (product) => product.pricing_type,
         },
         {
+            key: 'requires_material',
+            label: 'Perlu bahan',
+            type: 'checkbox',
+            defaultValue: true,
+            getValue: (product) => product.requires_material,
+        },
+        {
+            key: 'uses_attributes',
+            label: 'Gunakan atribut',
+            type: 'checkbox',
+            defaultValue: true,
+            getValue: (product) => product.uses_attributes,
+        },
+        {
             key: 'material_ids',
             label: 'Bahan yang Kompatibel',
             type: 'multiselect',
             defaultValue: [],
             options: materialOptions,
             getValue: (product) => product.material_ids ?? [],
+        },
+        {
+            key: 'attribute_type_ids',
+            label: 'Tipe Atribut yang Kompatibel',
+            type: 'multiselect',
+            defaultValue: [],
+            options: attributeTypeOptions,
+            getValue: (product) => product.attribute_type_ids ?? [],
+        },
+        {
+            key: 'attribute_ids',
+            label: 'Atribut yang Kompatibel',
+            type: 'multiselect',
+            defaultValue: [],
+            options: attributeOptions,
+            getValue: (product) => product.attribute_ids ?? [],
         },
         {
             key: 'is_active',
@@ -190,10 +243,17 @@ export function ProductsPage({
                 {
                     header: 'Bahan',
                     className: 'hidden lg:table-cell',
-                    cell: (product) =>
-                        (product.materials ?? []).length === 0
-                            ? 'Semua bahan'
-                            : product.materials.map((material) => material.name).join(', '),
+                    cell: (product) => productCompositionLabels(product).materials,
+                },
+                {
+                    header: 'Tipe Atribut',
+                    className: 'hidden xl:table-cell',
+                    cell: (product) => productCompositionLabels(product).types,
+                },
+                {
+                    header: 'Atribut',
+                    className: 'hidden xl:table-cell',
+                    cell: (product) => productCompositionLabels(product).attributes,
                 },
                 {
                     header: 'Status',
@@ -209,26 +269,50 @@ export function ProductsPage({
             create={
                 readOnly
                     ? undefined
-                    : (values) =>
-                          api.admin.createProduct({
+                    : async (values) => {
+                          const result = await api.admin.createProduct({
                               ...values,
                               is_active: Boolean(values.is_active),
+                              requires_material: Boolean(values.requires_material),
+                              uses_attributes: Boolean(values.uses_attributes),
                               material_ids: Array.isArray(values.material_ids)
                                   ? values.material_ids
                                   : [],
-                          })
+                              attribute_type_ids: Array.isArray(values.attribute_type_ids)
+                                  ? values.attribute_type_ids
+                                  : [],
+                              attribute_ids: Array.isArray(values.attribute_ids)
+                                  ? values.attribute_ids
+                                  : [],
+                          });
+                          void queryClient.invalidateQueries({ queryKey: ['quote-options'] });
+
+                          return result;
+                      }
             }
             update={
                 readOnly
                     ? undefined
-                    : (id, values) =>
-                          api.admin.updateProduct(id, {
+                    : async (id, values) => {
+                          const result = await api.admin.updateProduct(id, {
                               ...values,
                               is_active: Boolean(values.is_active),
+                              requires_material: Boolean(values.requires_material),
+                              uses_attributes: Boolean(values.uses_attributes),
                               material_ids: Array.isArray(values.material_ids)
                                   ? values.material_ids
                                   : [],
-                          })
+                              attribute_type_ids: Array.isArray(values.attribute_type_ids)
+                                  ? values.attribute_type_ids
+                                  : [],
+                              attribute_ids: Array.isArray(values.attribute_ids)
+                                  ? values.attribute_ids
+                                  : [],
+                          });
+                          void queryClient.invalidateQueries({ queryKey: ['quote-options'] });
+
+                          return result;
+                      }
             }
             createLabel="Tambah produk"
         />

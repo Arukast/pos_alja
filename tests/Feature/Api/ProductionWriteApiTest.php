@@ -193,6 +193,7 @@ class ProductionWriteApiTest extends TestCase
         ]);
         $this->assertDatabaseCount('order_status_logs', 0);
         $this->assertDatabaseCount('stock_ledgers', 0);
+        $this->assertSame(10.0, (float) $this->material->stocks()->first()?->current_stock);
     }
 
     public function test_start_falls_back_to_quantity_for_materials_with_the_default_unit(): void
@@ -212,6 +213,83 @@ class ProductionWriteApiTest extends TestCase
             'used_stock' => 2,
             'remaining_stock' => 8,
         ]);
+    }
+
+    public function test_start_allows_a_no_material_order_for_a_no_material_product(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(false);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk()
+            ->assertJsonPath('order.status', 1);
+
+        $this->assertDatabaseCount('stock_ledgers', 0);
+        $this->assertDatabaseCount('wasted_materials', 0);
+
+        $log = ActivityLog::query()
+            ->where('action', 'ORDER_START')
+            ->where('model_id', $order->id)
+            ->firstOrFail();
+
+        $this->assertSame([], $log->payload['material_usage']);
+    }
+
+    public function test_start_rejects_a_null_material_order_for_a_material_product(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(true);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 0,
+            'operator_id' => null,
+        ]);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_fail_and_complete_are_allowed_for_a_no_material_order(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(false);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk()
+            ->assertJsonPath('order.status', 1);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/fail", ['note' => 'Cetak gagal'])
+            ->assertOk()
+            ->assertJsonPath('order.status', 3);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/reopen")
+            ->assertOk();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/complete")
+            ->assertOk()
+            ->assertJsonPath('order.status', 2);
+
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_production_queue_lists_a_no_material_order(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(false);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $order->id]);
     }
 
     public function test_complete_requires_processing_and_sets_completed(): void
@@ -724,6 +802,36 @@ class ProductionWriteApiTest extends TestCase
         return [
             'material' => $material,
             'order' => $this->order($this->invoice, $pricing, $area, $quantity),
+        ];
+    }
+
+    /**
+     * @return array{product: Product, pricing: Pricing, order: Order}
+     */
+    private function noMaterialOrder(bool $requiresMaterial): array
+    {
+        $product = Product::create([
+            'name' => 'Layanan Digital',
+            'pricing_type' => 'area',
+            'product_category_id' => $this->pricing->product->product_category_id,
+            'requires_material' => $requiresMaterial,
+        ]);
+
+        $pricing = Pricing::create([
+            'branch_id' => $this->branchOne->id,
+            'product_id' => $product->id,
+            'material_id' => null,
+            'customer_type' => 'Reguler',
+            'min_qty' => 1,
+            'price' => 50000,
+            'cost' => 10000,
+            'profit' => 40000,
+        ]);
+
+        return [
+            'product' => $product,
+            'pricing' => $pricing,
+            'order' => $this->order($this->invoice, $pricing, 3, 2),
         ];
     }
 

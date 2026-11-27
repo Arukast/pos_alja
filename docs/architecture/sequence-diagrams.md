@@ -162,6 +162,48 @@ sequenceDiagram
 
 Categories, products, and attributes are retired with `is_active`; category and attribute delete routes return 404. Managers can manage only own-branch attributes and edit only their own branch's minimum stock; global attributes are read-only. There is no discount-tier administration: the pricing matrix remains the price source and category quantity-discount tiers are removed.
 
+### 2.3 Product Compatibility Write And Read
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Owner
+    actor M as Manager
+    actor D as Designer
+    participant SPA
+    participant API
+    participant Policy
+    participant DB
+    participant R as Reverb
+
+    A->>SPA: Edit product flags, allowed types, compatible attributes, materials
+    SPA->>API: POST/PUT /api/v1/products
+    API->>Policy: Authorize manageProducts
+    alt Not owner
+        Policy-->>API: Deny
+        API-->>SPA: 403
+    else Owner
+        API->>API: Validate new type IDs active and new attributes active, in an active allowed type
+        Note over API: IDs already mapped to the product remain valid when inactive; uses_attributes=false keeps the pivots
+        API->>DB: BEGIN, update product, sync material_product, attribute_type_product, attribute_product, PUT records audit before/after (POST create records a flat snapshot), COMMIT
+        API-->>SPA: ProductResource with flags, ID arrays, and display-only name arrays
+        API->>R: OrderUpdated
+        Note over SPA: Product create/update also invalidates ['quote-options']
+    end
+
+    M->>SPA: Open read-only /manager/products
+    SPA->>API: GET /api/v1/products
+    API->>DB: Eager-load category, materials, attributeTypes, compatibleAttributes.typeInfo
+    API-->>SPA: Semua bahan/Semua tipe/Semua atribut or names from the resource arrays
+
+    D->>SPA: Open designer quote options
+    SPA->>API: GET /api/v1/quotes/options
+    API->>DB: Eager-load the same product relations
+    API-->>SPA: Product flags, ID arrays, name arrays for filtering; API still enforces compatibility
+```
+
+On both read paths, an empty type or attribute mapping means all active types/attributes. Every `ProductResource` producer must eager-load both pivots; a missing load produces empty arrays and silently means all. The display-only name arrays are not authoritative for writes or quote filtering.
+
 ## 3. Sales And Orders
 
 ### 3.1 Create Invoice
@@ -260,6 +302,83 @@ sequenceDiagram
         API->>R: OrderUpdated
     end
 ```
+
+### 3.4 No-Material Quote And Invoice Create
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor D as Designer
+    participant SPA
+    participant API
+    participant PriceCalc
+    participant DB
+    participant R as Reverb
+
+    D->>SPA: Choose a product with requires_material=false
+    SPA->>SPA: Hide the Bahan select; attribute selects follow uses_attributes and the product mappings
+    SPA->>API: POST /api/v1/quotes {product_id, material_id: null, quantity, selected_attributes?}
+    API->>DB: QuoteRequest: material_id nullable; reject a material for a no-material product
+    alt Material required but absent, or supplied for a no-material product
+        API-->>SPA: 422 material_id
+    else Attributes supplied for uses_attributes=false product
+        API-->>SPA: 422 selected_attributes
+    else Valid
+        API->>API: Skip MaterialAvailability because material_id is null
+        API->>PriceCalc: Enforce product/material/type/attribute capability and one attribute per type
+        PriceCalc->>DB: PricingService whereNull(material_id) lookup, including the Reguler fallback
+        PriceCalc-->>API: Unit price, cost, subtotal from the pricing row and attribute modifiers
+        API-->>SPA: Quote with pricing_id; no cost/profit for the designer
+    end
+
+    SPA->>API: POST /api/v1/invoices {items:[{pricing_id, quantity, selected_attributes?}]}
+    API->>DB: BEGIN, lock branch numbering, check each pricing row product/material compatibility
+    alt Null material on a material-required product, or incompatible mapped material
+        API-->>SPA: 422 items.{index}.pricing_id
+    else Capability attribute violation
+        API-->>SPA: 422 items.{index}.selected_attributes
+    else Valid
+        API->>API: Skip availability for null material; branch, customer type, and min_qty still apply
+        API->>DB: Write invoice, orders with selected_attributes, status logs, audit, COMMIT
+        API-->>SPA: 201 invoice
+        API->>R: OrderUpdated
+    end
+```
+
+A null material skips only stock availability. Pricing, branch scope, customer type, `min_qty`, active product, one-attribute-per-type, and active/catalog checks still apply, and all prices are recomputed server-side.
+
+### 3.5 Invoice Edit Grandfather Decision
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor D as Designer
+    participant SPA
+    participant API
+    participant DB
+    participant R as Reverb
+
+    D->>SPA: Open an unpaid, pre-production invoice and change items
+    SPA->>API: PUT /api/v1/invoices/{id}/items with each item's id, pricing_id, material, and selected_attributes
+    API->>DB: BEGIN, lock invoice and existing orders
+    API->>DB: Derive invoice-wide inactive material/attribute allowances from the locked orders
+    loop Each submitted line
+        API->>API: Compare locked pricing_id, pricing material_id, and normalized selected_attributes set
+        alt Whole line unchanged
+            Note over API: Grandfathered; skip product capability checks and keep the invoice-wide allowances
+        else New line or any signature part changed
+            API->>API: Enforce material requirement/compatibility, allowed types, compatible attributes, uses_attributes
+            alt Incompatible
+                API-->>SPA: 422 items.{index}.pricing_id or items.{index}.selected_attributes
+            end
+        end
+    end
+    API->>DB: Recalculate prices, totals, and receivable; preserve payments; audit before/after; COMMIT
+    API-->>SPA: Updated invoice
+    API->>R: OrderUpdated
+```
+
+The signature is `pricing_id` + pricing `material_id` + the lowercased, de-duplicated, sorted `selected_attributes` set, all derived from locked orders. No client flag, reordered list, or changed pricing row widens it; a new line that reuses an old pricing id is still enforced.
 
 ## 4. Payments And Pickup
 
@@ -567,6 +686,35 @@ sequenceDiagram
     R-->>SPA: Private branch/owner channel event
     SPA->>API: Refetch affected queries
 ```
+
+### 6.5 No-Material Production Start
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Production
+    participant SPA
+    participant API
+    participant Inventory
+    participant DB
+    participant R as Reverb
+
+    P->>SPA: Start a queued order whose pricing material is null
+    SPA->>API: POST /api/v1/orders/{id}/start
+    API->>DB: BEGIN, lock order, eager-load pricing.material and pricing.product, require status 0
+    alt pricing.material_id is null but product requires_material=true, or material is soft-deleted
+        API-->>SPA: 422 material "Bahan untuk pesanan ini tidak ditemukan."
+    else Product allows no material
+        API->>DB: Set status 1 and operator, write status log "Production started"
+        Note over API,Inventory: No m2 area guard (no material unit), no stock deduction, no usage ledger
+        API->>DB: Audit ORDER_START with material_usage=[]
+        API->>DB: COMMIT
+        API-->>SPA: Order with status 1
+        API->>R: OrderUpdated
+    end
+```
+
+No new permission or route is introduced: this is the existing start action with the C1 guard. Fail, complete, and reopen use the existing paths; waste remains material-only, so a no-material order produces no waste row unless a material is supplied later.
 
 ## 7. Reporting And System
 

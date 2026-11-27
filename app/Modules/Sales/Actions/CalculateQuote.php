@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Sales\Actions;
 
 use App\Exceptions\InvalidAttributeSelectionException;
+use App\Exceptions\InvalidMaterialSelectionException;
+use App\Exceptions\InvalidProductAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
 use App\Models\Attribute;
 use App\Models\Pricing;
+use App\Models\Product;
 use App\Services\PricingService;
 use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
@@ -38,6 +41,20 @@ final class CalculateQuote
             ? $customerType
             : 'Reguler';
 
+        // Internal only: never populated from a request.
+        $skipCapabilityChecks = ($params['skip_product_capability_checks'] ?? false) === true;
+
+        $product = Product::query()
+            ->with(['materials:id', 'attributeTypes:id,slug', 'compatibleAttributes:id'])
+            ->find($params['product_id'] ?? null);
+
+        if (! $product instanceof Product || ! $product->is_active) {
+            throw new InvalidArgumentException('Produk tidak aktif atau tidak ditemukan.');
+        }
+
+        $materialId = $params['material_id'] ?? null;
+        $materialId = is_string($materialId) && $materialId !== '' ? strtolower($materialId) : null;
+
         // Server-derived list of attribute IDs that an existing invoice may keep unchanged.
         $allowance = $params['inactive_attribute_allowance'] ?? [];
         $allowance = is_array($allowance)
@@ -48,62 +65,98 @@ final class CalculateQuote
             : [];
 
         $selected = $params['selected_attributes'] ?? [];
-
-        if (is_array($selected) && $selected !== []) {
-            $selectedIds = array_values(array_unique(array_filter(array_map(
+        $selectedIds = is_array($selected) && $selected !== []
+            ? array_values(array_unique(array_filter(array_map(
                 static fn (mixed $id): ?string => is_string($id) && $id !== '' ? strtolower($id) : null,
                 $selected
-            ))));
+            ))))
+            : [];
 
-            if ($selectedIds !== []) {
-                $branchId = is_string($params['branch_id'] ?? null) && $params['branch_id'] !== ''
-                    ? $params['branch_id']
-                    : null;
+        if (! $skipCapabilityChecks) {
+            if ($product->requires_material && $materialId === null) {
+                throw new InvalidMaterialSelectionException('Bahan wajib dipilih untuk produk ini.');
+            }
 
-                $attributes = Attribute::query()
-                    ->whereIn('id', $selectedIds)
-                    ->with('typeInfo')
-                    ->when($branchId !== null, function (Builder $query) use ($branchId): void {
-                        $query->where(function (Builder $scoped) use ($branchId): void {
-                            $scoped->where('branch_id', $branchId)->orWhereNull('branch_id');
-                        });
-                    })
-                    ->get();
+            if (! $product->requires_material && $materialId !== null) {
+                throw new InvalidMaterialSelectionException('Produk ini tidak menggunakan bahan.');
+            }
 
-                if ($attributes->count() !== count($selectedIds)) {
+            if ($materialId !== null
+                && $product->materials->isNotEmpty()
+                && ! $product->materials->contains('id', $materialId)) {
+                throw new InvalidMaterialSelectionException('Bahan tidak kompatibel dengan produk ini.');
+            }
+
+            if (! $product->uses_attributes && $selectedIds !== []) {
+                throw new InvalidProductAttributeSelectionException('Produk ini tidak menggunakan atribut.');
+            }
+        }
+
+        if ($selectedIds !== []) {
+            $branchId = is_string($params['branch_id'] ?? null) && $params['branch_id'] !== ''
+                ? $params['branch_id']
+                : null;
+
+            $attributes = Attribute::query()
+                ->whereIn('id', $selectedIds)
+                ->with('typeInfo')
+                ->when($branchId !== null, function (Builder $query) use ($branchId): void {
+                    $query->where(function (Builder $scoped) use ($branchId): void {
+                        $scoped->where('branch_id', $branchId)->orWhereNull('branch_id');
+                    });
+                })
+                ->get();
+
+            if ($attributes->count() !== count($selectedIds)) {
+                throw new InvalidAttributeSelectionException(
+                    'Atribut tidak valid untuk cabang ini.'
+                );
+            }
+
+            $hasDuplicateType = $attributes
+                ->groupBy('type')
+                ->contains(static fn ($group): bool => $group->count() > 1);
+
+            if ($hasDuplicateType) {
+                throw new InvalidAttributeSelectionException(
+                    'Setiap item hanya dapat memilih satu opsi per jenis atribut.'
+                );
+            }
+
+            $allowedTypeSlugs = $product->attributeTypes->pluck('slug')->all();
+            $allowedAttributeIds = $product->compatibleAttributes->pluck('id')->all();
+
+            foreach ($attributes as $attribute) {
+                $typeActive = $attribute->typeInfo?->is_active === true;
+
+                if ((! $attribute->is_active || ! $typeActive)
+                    && ! in_array($attribute->id, $allowance, true)) {
                     throw new InvalidAttributeSelectionException(
-                        'Atribut tidak valid untuk cabang ini.'
+                        'Atribut tidak aktif atau jenis atributnya tidak aktif.'
                     );
                 }
 
-                $hasDuplicateType = $attributes
-                    ->groupBy('type')
-                    ->contains(static fn ($group): bool => $group->count() > 1);
+                if (! $skipCapabilityChecks) {
+                    if ($allowedTypeSlugs !== [] && ! in_array($attribute->type, $allowedTypeSlugs, true)) {
+                        throw new InvalidProductAttributeSelectionException(
+                            'Atribut tidak diizinkan untuk produk ini.'
+                        );
+                    }
 
-                if ($hasDuplicateType) {
-                    throw new InvalidAttributeSelectionException(
-                        'Setiap item hanya dapat memilih satu opsi per jenis atribut.'
-                    );
-                }
-
-                foreach ($attributes as $attribute) {
-                    $typeActive = $attribute->typeInfo?->is_active === true;
-
-                    if ((! $attribute->is_active || ! $typeActive)
-                        && ! in_array($attribute->id, $allowance, true)) {
-                        throw new InvalidAttributeSelectionException(
-                            'Atribut tidak aktif atau jenis atributnya tidak aktif.'
+                    if ($allowedAttributeIds !== [] && ! in_array($attribute->id, $allowedAttributeIds, true)) {
+                        throw new InvalidProductAttributeSelectionException(
+                            'Atribut tidak diizinkan untuk produk ini.'
                         );
                     }
                 }
-
-                $byType = $attributes->keyBy('type');
-
-                $params['finishing_id'] = $byType->get('finishing')?->id;
-                $params['cut_id'] = $byType->get('cut')?->id;
-                $params['display_id'] = $byType->get('display')?->id;
-                $params['selected_attributes'] = $selectedIds;
             }
+
+            $byType = $attributes->keyBy('type');
+
+            $params['finishing_id'] = $byType->get('finishing')?->id;
+            $params['cut_id'] = $byType->get('cut')?->id;
+            $params['display_id'] = $byType->get('display')?->id;
+            $params['selected_attributes'] = $selectedIds;
         }
 
         return $this->pricingService->calculateQuote($params);
@@ -124,7 +177,8 @@ final class CalculateQuote
         array $item,
         string $branchId,
         string $customerType,
-        array $inactiveAttributeAllowance = []
+        array $inactiveAttributeAllowance = [],
+        bool $skipProductCapabilityChecks = false
     ): array {
         return $this->execute([
             'product_id' => $pricing->product_id,
@@ -136,6 +190,7 @@ final class CalculateQuote
             'customer_type' => $customerType,
             'branch_id' => $branchId,
             'inactive_attribute_allowance' => $inactiveAttributeAllowance,
+            'skip_product_capability_checks' => $skipProductCapabilityChecks,
         ]);
     }
 }

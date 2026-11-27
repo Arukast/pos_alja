@@ -70,6 +70,26 @@ it('adds an inactive type only when one of its attributes is selected', () => {
     ]);
 });
 
+it('restricts types to allowed type ids', () => {
+    expect(typesForSelection(types, attributes, [], false, ['t1']).map((t) => t.id))
+        .toEqual(['t1']);
+});
+
+it('keeps a selected type outside the allowed list', () => {
+    expect(typesForSelection(types, attributes, ['a3'], true, ['t1']).map((t) => t.id))
+        .toContain('t2');
+});
+
+it('restricts attributes to allowed ids and keeps selected ones', () => {
+    expect(selectableAttributes(attributes, 'finishing', [], ['a1']).map((a) => a.id))
+        .toEqual(['a1']);
+    // An active attribute outside the allowed list must be excluded, not just the inactive one.
+    expect(selectableAttributes(attributes, 'finishing', [], ['a2']).map((a) => a.id))
+        .toEqual([]);
+    expect(selectableAttributes(attributes, 'finishing', ['a2'], ['a1']).map((a) => a.id))
+        .toContain('a2');
+});
+
 it('finds the first selected attribute of a type', () => {
     expect(selectedAttributeId(attributes, ['a3', 'a1'], 'finishing')).toBe('a1');
     expect(selectedAttributeId(attributes, ['a3', 'a1'], 'display')).toBe('a3');
