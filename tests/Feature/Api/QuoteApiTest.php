@@ -355,6 +355,8 @@ class QuoteApiTest extends TestCase
             'type' => 'cut',
         ]);
 
+        $this->product->compatibleAttributes()->sync([$this->attribute->id]);
+
         DB::enableQueryLog();
 
         $this->actingAs($this->designer)
@@ -365,7 +367,8 @@ class QuoteApiTest extends TestCase
             ->filter(fn (array $query): bool => str_contains($query['query'], 'attribute_types'))
             ->count();
 
-        $this->assertSame(3, $typeQueries);
+        // attribute_types list + attributeTypes pivot + attributes typeInfo + compatibleAttributes typeInfo.
+        $this->assertSame(4, $typeQueries);
     }
 
     public function test_quote_options_categories_do_not_report_a_product_count(): void
