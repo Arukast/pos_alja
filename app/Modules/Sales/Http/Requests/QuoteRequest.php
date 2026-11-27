@@ -50,7 +50,13 @@ final class QuoteRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $product = Product::query()->find($this->input('product_id'));
+            $productId = $this->input('product_id');
+
+            if (! is_string($productId)) {
+                return;
+            }
+
+            $product = Product::query()->find($productId);
 
             if ($product === null) {
                 return;

@@ -476,6 +476,20 @@ class QuoteApiTest extends TestCase
             ->assertJsonValidationErrors('quote');
     }
 
+    public function test_quote_rejects_array_product_id_with_validation_error(): void
+    {
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => [$this->product->id],
+                'material_id' => $this->material->id,
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('product_id');
+    }
+
     public function test_quote_rejects_a_soft_deleted_pricing_row(): void
     {
         $this->pricing->delete();

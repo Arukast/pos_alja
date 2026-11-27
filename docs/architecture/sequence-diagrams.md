@@ -185,7 +185,7 @@ sequenceDiagram
     else Owner
         API->>API: Validate new type IDs active and new attributes active, in an active allowed type
         Note over API: IDs already mapped to the product remain valid when inactive; uses_attributes=false keeps the pivots
-        API->>DB: BEGIN, update product, sync material_product, attribute_type_product, attribute_product, audit before/after, COMMIT
+        API->>DB: BEGIN, update product, sync material_product, attribute_type_product, attribute_product, PUT records audit before/after (POST create records a flat snapshot), COMMIT
         API-->>SPA: ProductResource with flags, ID arrays, and display-only name arrays
         API->>R: OrderUpdated
         Note over SPA: Product create/update also invalidates ['quote-options']
