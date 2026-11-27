@@ -93,6 +93,17 @@ export interface Product {
     category: { id: string; name: string; is_active: boolean } | null;
     materials: Array<{ id: string; name: string }>;
     material_ids: string[];
+    requires_material: boolean;
+    uses_attributes: boolean;
+    attribute_types: Array<{ id: string; name: string }>;
+    attribute_type_ids: string[];
+    compatible_attributes: Array<{
+        id: string;
+        name: string;
+        type: string;
+        type_name: string;
+    }>;
+    attribute_ids: string[];
 }
 
 export interface MaterialStock {
