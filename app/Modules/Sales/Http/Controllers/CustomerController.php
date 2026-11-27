@@ -34,8 +34,7 @@ final class CustomerController extends Controller
                 });
             })
             ->orderBy('name')
-            ->limit(8)
-            ->get();
+            ->paginate(20);
 
         return CustomerResource::collection($customers);
     }

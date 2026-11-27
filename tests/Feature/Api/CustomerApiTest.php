@@ -439,4 +439,66 @@ final class CustomerApiTest extends TestCase
         $this->assertSame(['Sekolah'], $customer->institutions);
         $this->assertDatabaseCount('activity_logs', 0);
     }
+
+    /** The customer index paginates twenty rows per page with links and meta. */
+    public function test_customer_index_is_paginated_twenty_per_page(): void
+    {
+        $branch = Branch::create(['name' => 'Paginate Branch', 'code' => 'PAG']);
+        $designer = User::factory()->create(['role' => 'designer', 'branch_id' => $branch->id]);
+
+        foreach (range(1, 21) as $number) {
+            Customer::create([
+                'name' => sprintf('Pelanggan %02d', $number),
+                'institution' => 'Sekolah',
+                'institutions' => ['Sekolah'],
+            ]);
+        }
+
+        $response = $this->actingAs($designer)->getJson('/api/v1/customers')
+            ->assertOk()
+            ->assertJsonPath('meta.per_page', 20)
+            ->assertJsonPath('meta.total', 21)
+            ->assertJsonCount(20, 'data');
+
+        $this->assertNotNull($response->json('links.next'));
+
+        $this->actingAs($designer)->getJson('/api/v1/customers?page=2')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    /** Cashier and designer can still search by name or phone and see institution labels. */
+    public function test_customer_search_still_matches_name_and_phone_and_returns_institutions(): void
+    {
+        $branch = Branch::create(['name' => 'Index Search Branch', 'code' => 'IDX']);
+        $customer = Customer::create([
+            'name' => 'Jane Contoh',
+            'phone' => '0812345678',
+            'institution' => 'Sekolah',
+            'institutions' => ['Sekolah'],
+        ]);
+
+        foreach (['designer', 'cashier'] as $role) {
+            $user = User::factory()->create(['role' => $role, 'branch_id' => $branch->id]);
+
+            $this->actingAs($user)->getJson('/api/v1/customers?search=Jane')
+                ->assertOk()
+                ->assertJsonFragment(['id' => $customer->id, 'institutions' => ['Sekolah']]);
+
+            $this->actingAs($user)->getJson('/api/v1/customers?search=081234')
+                ->assertOk()
+                ->assertJsonFragment(['id' => $customer->id, 'institutions' => ['Sekolah']]);
+        }
+    }
+
+    /** Guests and production are denied the customer index. */
+    public function test_customer_index_guest_and_production_statuses(): void
+    {
+        $this->getJson('/api/v1/customers')->assertUnauthorized();
+
+        $branch = Branch::create(['name' => 'Index Guard Branch', 'code' => 'IGR']);
+        $production = User::factory()->create(['role' => 'production', 'branch_id' => $branch->id]);
+
+        $this->actingAs($production)->getJson('/api/v1/customers')->assertForbidden();
+    }
 }
