@@ -44,7 +44,7 @@ export function LoginPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                         <img
                             src="/images/logo-alja.webp"
-                            alt="Alja Digital Printing"
+                            alt=""
                             className="h-auto w-40"
                         />
                         <div>

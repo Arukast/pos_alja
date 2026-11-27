@@ -157,8 +157,8 @@ function SettingsCard({
 
     return (
         <Card>
-            <CardHeader className="flex-wrap">
-                <div>
+            <CardHeader className="flex-col gap-3 sm:flex-row">
+                <div className="min-w-0">
                     <h2 className="text-light-text text-sm font-semibold dark:text-gray-100">
                         Pengaturan Backup
                     </h2>

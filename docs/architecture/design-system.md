@@ -34,9 +34,10 @@ Outfit only, with tabular numerals for money and counts.
 - Page title: 28px/800 with tight tracking (`PageBanner`).
 - KPI value: 22px/800 (`StatCard`).
 - Panel heading: caller-owned. `Card` renders no title, so each caller sets the heading size. The nominal size
-  is 16px at `font-semibold` (600), and the `CrudPage` section header uses 16px/700. Callers may deviate: the
-  "Salin tingkat harga" panel on `/manager/pricing` uses 18px (`text-lg`). The 16px/700 rule in the design source
-  is a convention for section headers, not something a component enforces.
+  is 16px at `font-semibold` (600); the `CrudPage` card header carries only the right-aligned create action and
+  renders no section heading. Callers may deviate: the "Salin tingkat harga" panel on `/manager/pricing` uses
+  18px (`text-lg`). The 16px/700 rule in the design source is a convention for section headers, not something a
+  component enforces.
 - Body copy: 14px (`text-sm`) on cards, forms, tables, and descriptions. The base element has no global
   14px rule.
 - Table text: 14px (`text-sm`). The design source said 13px; the build uses 14px for readability.
@@ -107,7 +108,7 @@ width 1600px.
 - Login: light grey canvas (`login-mesh`) with a 4rem grid mesh, a centred 448px (`max-w-md`) white card with
   the 3px brand stripe, the full Alja lockup above the wordmark below `sm` and beside it at `sm` and above,
   and one primary button. This screen has no CMYK squares.
-- Brand mark: the square mark is the leading `A` glyph cropped from the source artwork's ALJA word, on a 512px opaque black tile (`frontend/public/images/logo-alja-mark.png`). The full lockup (`frontend/public/images/logo-alja.webp`) appears on Login and 404 at 160px wide. Favicons use the mark at 16/32/48 plus an ICO; Apple 180 and PWA 192/512 use the same black tile with the mark inside the central 80% safe zone. Manifest theme is `#E91E8C` on `#FFFFFF`.
+- Brand mark: the square mark is the leading `A` glyph cropped from the source artwork's ALJA word, on a 512px opaque near-black (`#252324`) tile (`frontend/public/images/logo-alja-mark.png`). The full lockup (`frontend/public/images/logo-alja.webp`) appears on Login and 404 at 160px wide. Favicons use the mark at 16/32/48 plus an ICO; Apple 180 and PWA 192/512 use the same near-black tile with the mark inside the central 80% safe zone. Manifest theme is `#E91E8C` on `#FFFFFF`.
 
 ### Banner deviations
 
@@ -129,7 +130,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
   `teal-400/10`); the banner's blurred circle uses `brand-primary/15`. Tinted borders sit at 25%.
 - Filled brand controls keep `#D01A7E` with white text.
 - Dark mode never changes composition, only colour.
-- The full lockup carries its own white sticker border; the mark and generated icons are opaque near-black tiles with no white backing. Verify contrast on both themes.
+- The full lockup carries its own white sticker border; the mark and generated icons are opaque near-black (`#252324`) tiles with no white backing and are legible on both themes.
 
 ## Print
 
