@@ -6,7 +6,7 @@
 - PostgreSQL 16.
 - `postgresql-client-16` from the PGDG apt repository, so `pg_dump` and `pg_restore` match the server major version. Debian bookworm's default client is 15, which refuses a PostgreSQL 16 server.
 - A queue `worker` and a `scheduler` run the same app image as `app`. Scheduled backups need the scheduler, and every queued run needs the worker.
-- Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM, with 600-second FastCGI timeouts on `/api` and `/sanctum` for large backup downloads.
+- Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM, with 600-second FastCGI timeouts on `/api` and `/sanctum` for large backup downloads. An exact location serves `/site.webmanifest` with `application/manifest+json`; `try_files $uri =404` keeps a missing manifest a 404, and the generic `location /` still provides the SPA fallback for client routes.
 - Laravel Reverb runs on container port 8080 and host port 8084.
 
 ## 2. Deployment Modes
