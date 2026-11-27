@@ -5,6 +5,7 @@ import {
     activeAttributeTypes,
     selectableAttributes,
     selectedAttributeId,
+    selectedAttributeNames,
     setSelectedAttribute,
     typesForSelection,
 } from './attributeOptions';
@@ -100,4 +101,13 @@ it('replaces, removes, and preserves selections per attribute type', () => {
     expect(setSelectedAttribute(attributes, ['a1', 'a3'], 'finishing', 'a2')).toEqual(['a3', 'a2']);
     expect(setSelectedAttribute(attributes, ['a1', 'a3'], 'finishing', '')).toEqual(['a3']);
     expect(setSelectedAttribute(attributes, ['a3'], 'cut', 'a5')).toEqual(['a3', 'a5']);
+});
+
+it('maps selected attribute ids to their names in selection order', () => {
+    expect(selectedAttributeNames(attributes, ['a2', 'a1'])).toEqual(['Matte', 'Glossy']);
+});
+
+it('drops unknown attribute ids so raw UUIDs are never shown', () => {
+    expect(selectedAttributeNames(attributes, ['a1', '00000000-0000-4000-8000-000000000000'])).toEqual(['Glossy']);
+    expect(selectedAttributeNames(attributes, [])).toEqual([]);
 });

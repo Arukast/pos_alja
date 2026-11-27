@@ -46,6 +46,15 @@ export function typesForSelection(
         .sort(byOrderThenName);
 }
 
+/** Human-readable names for selected attribute IDs; unknown IDs are dropped so no UUID is displayed. */
+export function selectedAttributeNames(attributes: Attribute[], selectedIds: string[]): string[] {
+    return selectedIds.flatMap((id) => {
+        const name = attributes.find((attribute) => attribute.id === id)?.name;
+
+        return name === undefined ? [] : [name];
+    });
+}
+
 /** First selected attribute ID of the type, or an empty string. */
 export function selectedAttributeId(attributes: Attribute[], selectedIds: string[], type: string): string {
     return selectedIds.find(

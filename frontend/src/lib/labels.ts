@@ -102,6 +102,10 @@ export function paymentMethodLabel(method: string): string {
     return paymentMethods[method] ?? method;
 }
 
+export function paymentTypeLabel(type: string): string {
+    return type === 'down_payment' ? 'DP' : 'Pelunasan';
+}
+
 export function attributeTypeLabel(type: string): string {
     return attributeTypes[type] ?? type;
 }

@@ -15,7 +15,9 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
+import { paymentMethodLabel, paymentTypeLabel } from '../../lib/labels';
 import { formatMoney, formatQuantity } from '../../lib/money';
+import { selectedAttributeNames } from './attributeOptions';
 import { editEligibility } from './editEligibility';
 
 /**
@@ -48,6 +50,12 @@ export function DesignerOrdersPage() {
         queryKey: ['invoice', 'detail', selectedInvoiceId],
         queryFn: () => api.invoice(selectedInvoiceId ?? ''),
         enabled: selectedInvoiceId !== null,
+    });
+
+    // Shares the edit page's cache; inactive attributes must still resolve for saved orders.
+    const optionsQuery = useQuery({
+        queryKey: ['quote-options', 'edit'],
+        queryFn: () => api.quoteOptions({ include_inactive_attributes: 1 }),
     });
 
     /**
@@ -177,7 +185,7 @@ export function DesignerOrdersPage() {
                                                                 Edit
                                                             </Link>
                                                         ) : (
-                                                            <span className="text-light-muted text-sm">Terkunci{eligibility.reason ? ` — ${eligibility.reason}` : ''}</span>
+                                                            <span className="text-light-muted text-sm dark:text-gray-400">Terkunci{eligibility.reason ? ` — ${eligibility.reason}` : ''}</span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="hidden lg:table-cell">
@@ -316,7 +324,10 @@ export function DesignerOrdersPage() {
                                         const dimensions = order.length != null && order.width != null
                                             ? `${formatQuantity(order.length)} x ${formatQuantity(order.width)}`
                                             : formatQuantity(order.area);
-                                        const attributes = order.selected_attributes ?? [];
+                                        const attributeNames = selectedAttributeNames(
+                                            optionsQuery.data?.attributes ?? [],
+                                            order.selected_attributes ?? []
+                                        );
 
                                         return (
                                             <TableRow key={order.id}>
@@ -330,9 +341,9 @@ export function DesignerOrdersPage() {
                                                     <p className="text-light-muted-strong text-xs dark:text-gray-400">
                                                         {dimensions}
                                                     </p>
-                                                    {attributes.length > 0 ? (
+                                                    {attributeNames.length > 0 ? (
                                                         <p className="text-light-muted-strong text-xs dark:text-gray-400">
-                                                            {attributes.join(', ')}
+                                                            {attributeNames.join(', ')}
                                                         </p>
                                                     ) : null}
                                                     {order.notes ? (
@@ -379,8 +390,8 @@ export function DesignerOrdersPage() {
                                             <TableCell className="whitespace-nowrap tabular-nums">
                                                 {formatMoney(payment.amount)}
                                             </TableCell>
-                                            <TableCell>{payment.payment_method || '-'}</TableCell>
-                                            <TableCell>{payment.type || '-'}</TableCell>
+                                            <TableCell>{paymentMethodLabel(payment.payment_method || '-')}</TableCell>
+                                            <TableCell>{paymentTypeLabel(payment.type)}</TableCell>
                                             <TableCell>{payment.cashier_name || '-'}</TableCell>
                                             <TableCell className="whitespace-nowrap">
                                                 {payment.created_at ? formatDate(payment.created_at) : '-'}
