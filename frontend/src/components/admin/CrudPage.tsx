@@ -22,7 +22,7 @@ export interface CrudField<T> {
     key: string;
     label: string;
     type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox' | 'multiselect';
-    options?: Array<{ value: string; label: string }>;
+    options?: Array<{ value: string; label: string }> | ((row: T | null) => Array<{ value: string; label: string }>);
     emptyOptionLabel?: string;
     required?: boolean;
     defaultValue?: string | number | boolean | string[];
@@ -55,6 +55,7 @@ export function CrudPage<T extends { id: string }>({
     rowClassName,
     footer,
     paginated = true,
+    hideBanner = false,
     notice,
     onNoticeChange,
 }: {
@@ -79,6 +80,7 @@ export function CrudPage<T extends { id: string }>({
     rowClassName?: (row: T) => string | undefined;
     footer?: ReactNode;
     paginated?: boolean;
+    hideBanner?: boolean;
     notice?: { message: string; tone: 'success' | 'error' } | null;
     onNoticeChange?: (notice: { message: string; tone: 'success' | 'error' } | null) => void;
 }) {
@@ -198,19 +200,23 @@ export function CrudPage<T extends { id: string }>({
 
     return (
         <div className="space-y-6">
-            <PageBanner eyebrow={eyebrow} title={title} description={description} />
+            {hideBanner ? null : (
+                <PageBanner eyebrow={eyebrow} title={title} description={description} />
+            )}
 
             {summary}
 
             {toolbar}
 
             <Card>
-                {create ? (
+                {create || hideBanner ? (
                     <CardHeader>
                         <h2 className="font-semibold">{cardTitle ?? listCardTitle(title)}</h2>
-                        <Button size="sm" className="ml-auto" onClick={openCreate}>
-                            {createLabel}
-                        </Button>
+                        {create ? (
+                            <Button size="sm" className="ml-auto" onClick={openCreate}>
+                                {createLabel}
+                            </Button>
+                        ) : null}
                     </CardHeader>
                 ) : null}
                 <CardBody>
@@ -347,6 +353,9 @@ export function CrudPage<T extends { id: string }>({
                         const value = values[field.key] ?? '';
                         const error = errors[field.key];
                         const label = field.labelFor?.(values) ?? field.label;
+                        const fieldOptions = typeof field.options === 'function'
+                            ? field.options(editing)
+                            : field.options;
 
                         if (field.type === 'multiselect') {
                             const selectedIds = Array.isArray(value) ? value : [];
@@ -357,12 +366,12 @@ export function CrudPage<T extends { id: string }>({
                                         {label}
                                     </legend>
                                     <div className="border-light-border dark:border-surface-300 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-3">
-                                        {(field.options ?? []).length === 0 ? (
+                                        {(fieldOptions ?? []).length === 0 ? (
                                             <p className="text-light-muted text-xs dark:text-gray-400">
                                                 Belum ada pilihan.
                                             </p>
                                         ) : (
-                                            (field.options ?? []).map((option) => {
+                                            (fieldOptions ?? []).map((option) => {
                                                 const checked = selectedIds.includes(option.value);
 
                                                 return (
@@ -426,7 +435,7 @@ export function CrudPage<T extends { id: string }>({
                                     }
                                 >
                                     <option value="">{field.emptyOptionLabel ?? 'Pilih'}</option>
-                                    {(field.options ?? []).map((option) => (
+                                    {(fieldOptions ?? []).map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}
                                         </option>

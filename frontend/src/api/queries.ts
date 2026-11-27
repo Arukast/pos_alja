@@ -2,6 +2,7 @@ import { API_BASE, apiDownload, apiFetch } from '../lib/api';
 import type {
     ActivityLog,
     Attribute,
+    AttributeType,
     Backup,
     BackupSettings,
     BaseCostReport,
@@ -65,6 +66,7 @@ export interface QuoteOptions {
     products: Product[];
     materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null }>;
     attributes: Attribute[];
+    attribute_types: AttributeType[];
 }
 
 export interface Quote {
@@ -98,6 +100,8 @@ export const api = {
 
     attributes: (params: QueryParams = {}) =>
         apiFetch<{ data: Attribute[] }>(`/attributes${queryString(params)}`),
+
+    attributeTypes: () => apiFetch<{ data: AttributeType[] }>('/attribute-types'),
 
     products: (params: QueryParams = {}) =>
         apiFetch<Paginated<Product>>(`/products${queryString(params)}`),
@@ -311,6 +315,11 @@ export const api = {
             mutate<{ attribute: Attribute }>('/attributes', 'POST', data),
         updateAttribute: (id: string, data: MutationBody) =>
             mutate<{ attribute: Attribute }>(`/attributes/${id}`, 'PUT', data),
+
+        createAttributeType: (data: MutationBody) =>
+            mutate<{ attribute_type: AttributeType }>('/attribute-types', 'POST', data),
+        updateAttributeType: (slug: string, data: MutationBody) =>
+            mutate<{ attribute_type: AttributeType }>(`/attribute-types/${slug}`, 'PUT', data),
 
         createPricing: (data: MutationBody) =>
             mutate<{ pricing: Pricing }>('/pricing', 'POST', data),

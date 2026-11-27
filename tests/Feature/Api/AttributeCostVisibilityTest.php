@@ -116,6 +116,66 @@ class AttributeCostVisibilityTest extends TestCase
         $this->assertArrayNotHasKey('profit', $attribute);
     }
 
+    public function test_type_name_is_present_for_every_role(): void
+    {
+        foreach ([$this->owner, $this->manager] as $user) {
+            $rows = $this->actingAs($user)
+                ->getJson('/api/v1/attributes')
+                ->assertOk()
+                ->json('data');
+
+            $row = collect($rows)->firstWhere('id', $this->attribute->id);
+
+            $this->assertNotNull($row);
+            $this->assertSame('Finishing', $row['type_name']);
+        }
+
+        $quoteAttributes = $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk()
+            ->json('attributes');
+
+        $row = collect($quoteAttributes)->firstWhere('id', $this->attribute->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame('Finishing', $row['type_name']);
+        $this->assertArrayNotHasKey('cost', $row);
+    }
+
+    public function test_orphan_type_attribute_reports_the_raw_slug_for_every_role(): void
+    {
+        $orphan = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Orphan',
+            'type' => 'orphan',
+            'price' => 1500,
+            'cost' => 700,
+            'is_active' => true,
+        ]);
+
+        foreach ([$this->owner, $this->manager] as $user) {
+            $rows = $this->actingAs($user)
+                ->getJson('/api/v1/attributes')
+                ->assertOk()
+                ->json('data');
+
+            $row = collect($rows)->firstWhere('id', $orphan->id);
+
+            $this->assertNotNull($row);
+            $this->assertSame('orphan', $row['type_name']);
+        }
+
+        $quoteAttributes = $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk()
+            ->json('attributes');
+
+        $row = collect($quoteAttributes)->firstWhere('id', $orphan->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame('orphan', $row['type_name']);
+    }
+
     private function user(string $role, ?Branch $branch): User
     {
         return User::factory()->create([

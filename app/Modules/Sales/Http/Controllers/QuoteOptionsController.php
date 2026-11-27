@@ -12,15 +12,17 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Modules\Catalog\Http\Resources\AttributeResource;
+use App\Modules\Catalog\Http\Resources\AttributeTypeResource;
 use App\Modules\Catalog\Http\Resources\CategoryResource;
 use App\Modules\Catalog\Http\Resources\ProductResource;
+use App\Modules\Catalog\Queries\CatalogQueries;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
 final class QuoteOptionsController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(CatalogQueries $queries): JsonResponse
     {
         Gate::authorize('viewQuoteOptions', Invoice::class);
 
@@ -55,6 +57,7 @@ final class QuoteOptionsController extends Controller
             ->values();
 
         $attributes = Attribute::query()
+            ->with('typeInfo')
             ->when(
                 ! $includeInactiveAttributes,
                 fn (Builder $query) => $query->where('is_active', true)
@@ -85,6 +88,7 @@ final class QuoteOptionsController extends Controller
             ),
             'materials' => $materials,
             'attributes' => AttributeResource::collection($attributes),
+            'attribute_types' => AttributeTypeResource::collection($queries->attributeTypes()),
         ]);
     }
 }

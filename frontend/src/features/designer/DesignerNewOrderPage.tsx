@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast, type ToastTone } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
+import { activeAttributeTypes, selectedAttributeId, setSelectedAttribute } from './attributeOptions';
 
 /**
  * Representasi satu baris item pesanan yang sudah dihitung penawarannya di keranjang.
@@ -40,8 +41,7 @@ interface CartLine {
 interface DraftItemState {
     product_id: string;
     material_id: string;
-    finishing_id: string;
-    display_id: string;
+    selected_attributes: string[];
     quantity: number;
     width: number;
     length: number;
@@ -60,8 +60,7 @@ interface NoticeState {
 const emptyItem: DraftItemState = {
     product_id: '',
     material_id: '',
-    finishing_id: '',
-    display_id: '',
+    selected_attributes: [],
     quantity: 1,
     width: 1,
     length: 1,
@@ -73,7 +72,7 @@ const emptyItem: DraftItemState = {
  * Halaman pembuatan pesanan baru untuk peran desainer (FR8 / PB-02).
  *
  * Menyediakan pencarian pelanggan sebagai alur bawaan beserta pembuatan pelanggan baru,
- * alur pemilihan Produk -> Bahan -> Finishing -> Display, pratinjau penawaran server-side,
+ * alur pemilihan Produk -> Bahan -> atribut, pratinjau penawaran server-side,
  * dan pengiriman invoice dalam satu transaksi.
  */
 export function DesignerNewOrderPage() {
@@ -109,12 +108,7 @@ export function DesignerNewOrderPage() {
         (material) => mappedMaterialIds.length === 0 || mappedMaterialIds.includes(material.id)
     );
 
-    const finishingOptions = (options?.attributes ?? []).filter(
-        (attribute) => attribute.type === 'finishing'
-    );
-    const displayOptions = (options?.attributes ?? []).filter(
-        (attribute) => attribute.type === 'display'
-    );
+    const attributeTypes = activeAttributeTypes(options?.attribute_types ?? []);
 
     const customerList = customersQuery.data?.data ?? [];
 
@@ -160,7 +154,7 @@ export function DesignerNewOrderPage() {
                 throw new Error('Panjang harus lebih besar dari nol untuk produk ini.');
             }
 
-            const selectedAttributes = [item.finishing_id, item.display_id].filter(Boolean);
+            const selectedAttributes = item.selected_attributes;
 
             return api.quote({
                 product_id: item.product_id,
@@ -242,7 +236,7 @@ export function DesignerNewOrderPage() {
         const productName = selectedProduct?.name ?? 'Produk';
         const materialName =
             (options?.materials ?? []).find((material) => material.id === item.material_id)?.name ?? 'Bahan';
-        const selectedAttributes = [item.finishing_id, item.display_id].filter(Boolean);
+        const selectedAttributes = item.selected_attributes;
         const attributeLabels = selectedAttributes
             .map((id) => (options?.attributes ?? []).find((attribute) => attribute.id === id)?.name)
             .filter((name): name is string => Boolean(name));
@@ -445,8 +439,7 @@ export function DesignerNewOrderPage() {
                                                     material_id: keepMaterial
                                                         ? item.material_id
                                                         : '',
-                                                    finishing_id: '',
-                                                    display_id: '',
+                                                    selected_attributes: [],
                                                 });
                                             }}
                                         >
@@ -471,38 +464,36 @@ export function DesignerNewOrderPage() {
                                                 </option>
                                             ))}
                                         </Select>
-                                        {finishingOptions.length > 0 ? (
+                                        {attributeTypes.map((type) => (
                                             <Select
-                                                label="Finishing"
-                                                value={item.finishing_id}
+                                                key={type.slug}
+                                                label={type.name}
+                                                value={selectedAttributeId(
+                                                    options?.attributes ?? [],
+                                                    item.selected_attributes,
+                                                    type.slug
+                                                )}
                                                 onChange={(event) =>
-                                                    updatePricingItem({ finishing_id: event.target.value })
+                                                    updatePricingItem({
+                                                        selected_attributes: setSelectedAttribute(
+                                                            options?.attributes ?? [],
+                                                            item.selected_attributes,
+                                                            type.slug,
+                                                            event.target.value
+                                                        ),
+                                                    })
                                                 }
                                             >
-                                                <option value="">Tanpa finishing</option>
-                                                {finishingOptions.map((attribute) => (
-                                                    <option key={attribute.id} value={attribute.id}>
-                                                        {attribute.name}
-                                                    </option>
-                                                ))}
+                                                <option value="">Tanpa {type.name}</option>
+                                                {(options?.attributes ?? [])
+                                                    .filter((attribute) => attribute.type === type.slug)
+                                                    .map((attribute) => (
+                                                        <option key={attribute.id} value={attribute.id}>
+                                                            {attribute.name}
+                                                        </option>
+                                                    ))}
                                             </Select>
-                                        ) : null}
-                                        {displayOptions.length > 0 ? (
-                                            <Select
-                                                label="Display"
-                                                value={item.display_id}
-                                                onChange={(event) =>
-                                                    updatePricingItem({ display_id: event.target.value })
-                                                }
-                                            >
-                                                <option value="">Tanpa display</option>
-                                                {displayOptions.map((attribute) => (
-                                                    <option key={attribute.id} value={attribute.id}>
-                                                        {attribute.name}
-                                                    </option>
-                                                ))}
-                                            </Select>
-                                        ) : null}
+                                        ))}
                                         <Input
                                             label="Jml"
                                             type="number"

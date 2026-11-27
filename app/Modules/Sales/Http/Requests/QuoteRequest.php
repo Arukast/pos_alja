@@ -14,6 +14,20 @@ final class QuoteRequest extends FormRequest
         return $this->user()?->can('createQuote', Invoice::class) === true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $selected = $this->input('selected_attributes');
+
+        if (is_array($selected)) {
+            $this->merge([
+                'selected_attributes' => array_map(
+                    static fn (mixed $id): mixed => is_string($id) ? strtolower($id) : $id,
+                    $selected
+                ),
+            ]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */

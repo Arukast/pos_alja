@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\PricingNotFoundException;
+use App\Models\Attribute;
 use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Pricing;
@@ -70,23 +71,60 @@ class PricingService
             );
         }
 
-        // Fetch additive attribute modifier pricings dynamically using selected_attributes list
+        // Fetch additive attribute pricings: a pricing-specific modifier row wins (including 0),
+        // otherwise the attribute's own price/cost applies. selected_attributes is canonical;
+        // legacy single-ID params remain for direct callers with no selection.
         $attributePriceSum = 0.0;
         $attributeCostSum = 0.0;
 
         $selectedAttributes = $params['selected_attributes'] ?? [];
-        if (empty($selectedAttributes)) {
+
+        if (! is_array($selectedAttributes)) {
+            $selectedAttributes = [];
+        }
+
+        if ($selectedAttributes === []) {
             // Support backward compatibility or direct ID pass in params
             $selectedAttributes = array_filter([$finishingId, $cutId, $displayId]);
         }
 
-        if (! empty($selectedAttributes)) {
-            $attrPricings = AttributePricing::where('pricing_id', $pricing->id)
+        // Request UUIDs may be uppercase while database IDs are lowercase.
+        $normalizedAttributes = [];
+
+        foreach ($selectedAttributes as $attributeId) {
+            if (is_string($attributeId) && $attributeId !== '') {
+                $normalizedAttributes[] = strtolower($attributeId);
+            }
+        }
+
+        $selectedAttributes = array_values(array_unique($normalizedAttributes));
+
+        if ($selectedAttributes !== []) {
+            $modifiers = AttributePricing::where('pricing_id', $pricing->id)
                 ->whereIn('attribute_id', $selectedAttributes)
-                ->get();
-            foreach ($attrPricings as $ap) {
-                $attributePriceSum += (float) $ap->price;
-                $attributeCostSum += (float) $ap->cost;
+                ->get()
+                ->keyBy('attribute_id');
+
+            $attributes = Attribute::whereIn('id', $selectedAttributes)
+                ->get()
+                ->keyBy('id');
+
+            foreach ($selectedAttributes as $attributeId) {
+                $modifier = $modifiers->get($attributeId);
+
+                if ($modifier !== null) {
+                    $attributePriceSum += (float) $modifier->price;
+                    $attributeCostSum += (float) $modifier->cost;
+
+                    continue;
+                }
+
+                $attribute = $attributes->get($attributeId);
+
+                if ($attribute !== null) {
+                    $attributePriceSum += (float) $attribute->price;
+                    $attributeCostSum += (float) $attribute->cost;
+                }
             }
         }
 

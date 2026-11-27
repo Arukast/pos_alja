@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Audit\Http\Controllers\BackupController;
 use App\Modules\Audit\Http\Controllers\BackupSettingController;
 use App\Modules\Catalog\Http\Controllers\AttributeController;
+use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
 use App\Modules\Catalog\Http\Controllers\MaterialController;
 use App\Modules\Catalog\Http\Controllers\PricingController;
@@ -56,6 +57,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/users/{user}/restore', [UserController::class, 'restore']);
 
         Route::get('/categories', [CategoryController::class, 'index']);
+        Route::get('/attribute-types', [AttributeTypeController::class, 'index']);
         Route::get('/attributes', [AttributeController::class, 'index']);
         Route::get('/products', [ProductController::class, 'index']);
         Route::post('/products', [ProductController::class, 'store']);
@@ -86,6 +88,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::post('/attributes', [AttributeController::class, 'store']);
         Route::put('/attributes/{attribute}', [AttributeController::class, 'update']);
+
+        Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
+        Route::put('/attribute-types/{type}', [AttributeTypeController::class, 'update']);
 
         Route::post('/pricing/clone-tiers', [PricingController::class, 'cloneTiers']);
         Route::post('/pricing', [PricingController::class, 'store']);
@@ -145,6 +150,11 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
     // Tombstone: attribute deletion is removed, but DELETE must stay detectable as 404, not 405.
     Route::delete('/attributes/{attribute}', static function (): void {
+        abort(404);
+    });
+
+    // Tombstone: attribute type deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/attribute-types/{type}', static function (): void {
         abort(404);
     });
 });

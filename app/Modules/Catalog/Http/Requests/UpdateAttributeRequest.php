@@ -24,7 +24,7 @@ final class UpdateAttributeRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:finishing,display'],
+            'type' => ['required', 'string', 'max:100', 'exists:attribute_types,slug'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'cost' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'is_active' => ['sometimes', 'boolean'],

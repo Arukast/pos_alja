@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Queries;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -26,11 +27,19 @@ final class CatalogQueries
     }
 
     /**
+     * @return Collection<int, AttributeType>
+     */
+    public function attributeTypes(): Collection
+    {
+        return AttributeType::query()->orderBy('sort_order')->orderBy('name')->get();
+    }
+
+    /**
      * @return Collection<int, Attribute>
      */
     public function attributes(User $actor, ?string $branchId): Collection
     {
-        $query = Attribute::query()->with('branch');
+        $query = Attribute::query()->with(['branch', 'typeInfo']);
 
         if ($actor->role === 'owner') {
             if ($branchId !== null && $branchId !== '' && $branchId !== 'all') {

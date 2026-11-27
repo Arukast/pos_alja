@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
@@ -13,6 +14,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -281,6 +283,91 @@ class QuoteApiTest extends TestCase
         $this->assertNotContains($trashed->id, $ids);
     }
 
+    public function test_quote_options_return_all_types_ordered(): void
+    {
+        $inactiveType = AttributeType::create([
+            'name' => 'Stempel',
+            'slug' => 'stempel',
+            'sort_order' => 4,
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk()
+            ->assertJsonStructure([
+                'attribute_types' => [['id', 'name', 'slug', 'sort_order', 'is_active']],
+            ]);
+
+        $types = collect($response->json('attribute_types'));
+
+        $this->assertSame(
+            ['finishing', 'cut', 'display', $inactiveType->slug],
+            $types->pluck('slug')->all()
+        );
+        $this->assertTrue($types->firstWhere('slug', 'finishing')['is_active']);
+        $this->assertFalse($types->firstWhere('slug', $inactiveType->slug)['is_active']);
+    }
+
+    public function test_quote_options_attributes_include_type_name(): void
+    {
+        $inactive = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Matte',
+            'type' => 'finishing',
+            'is_active' => false,
+        ]);
+
+        $rows = collect(
+            $this->actingAs($this->designer)
+                ->getJson('/api/v1/quotes/options')
+                ->assertOk()
+                ->json('attributes')
+        );
+
+        $this->assertNotNull($rows->firstWhere('id', $this->attribute->id));
+        $this->assertSame('Finishing', $rows->firstWhere('id', $this->attribute->id)['type_name']);
+        $this->assertNotContains($inactive->id, $rows->pluck('id')->all());
+
+        $withInactive = collect(
+            $this->actingAs($this->designer)
+                ->getJson('/api/v1/quotes/options?include_inactive_attributes=1')
+                ->assertOk()
+                ->json('attributes')
+        );
+
+        $inactiveRow = $withInactive->firstWhere('id', $inactive->id);
+
+        $this->assertNotNull($inactiveRow);
+        $this->assertSame('Finishing', $inactiveRow['type_name']);
+    }
+
+    public function test_quote_options_eager_load_attribute_type_info(): void
+    {
+        Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'display',
+        ]);
+        Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Potong Lurus',
+            'type' => 'cut',
+        ]);
+
+        DB::enableQueryLog();
+
+        $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk();
+
+        $typeQueries = collect(DB::getQueryLog())
+            ->filter(fn (array $query): bool => str_contains($query['query'], 'attribute_types'))
+            ->count();
+
+        $this->assertSame(2, $typeQueries);
+    }
+
     public function test_quote_options_categories_do_not_report_a_product_count(): void
     {
         $response = $this->actingAs($this->designer)
@@ -399,6 +486,225 @@ class QuoteApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('quote');
+    }
+
+    public function test_quote_uses_a_custom_type_attribute_price(): void
+    {
+        $type = AttributeType::create([
+            'name' => 'Mata Ayam',
+            'slug' => 'mata-ayam',
+            'sort_order' => 4,
+            'is_active' => true,
+        ]);
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam 12mm',
+            'type' => $type->slug,
+            'price' => 5000,
+            'cost' => 3000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$attribute->id],
+                'quantity' => 2,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.unit_price', '55000.00')
+            ->assertJsonPath('quote.subtotal', '660000.00')
+            ->assertJsonMissingPath('quote.unit_cost')
+            ->assertJsonMissingPath('quote.cost')
+            ->assertJsonMissingPath('quote.profit');
+    }
+
+    public function test_quote_rejects_an_inactive_attribute(): void
+    {
+        $inactive = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Glossy',
+            'type' => 'finishing',
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$inactive->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('quote');
+
+        $this->assertStringContainsString(
+            'atribut',
+            strtolower((string) $response->json('errors.quote.0'))
+        );
+    }
+
+    public function test_quote_rejects_an_attribute_whose_type_is_inactive(): void
+    {
+        $type = AttributeType::create([
+            'name' => 'Stempel',
+            'slug' => 'stempel',
+            'sort_order' => 4,
+            'is_active' => false,
+        ]);
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Stempel Karet',
+            'type' => $type->slug,
+            'price' => 1000,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$attribute->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('quote');
+
+        $this->assertStringContainsString(
+            'atribut',
+            strtolower((string) $response->json('errors.quote.0'))
+        );
+    }
+
+    public function test_quote_enforces_one_attribute_per_type(): void
+    {
+        $secondFinishing = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Laminasi Glossy',
+            'type' => 'finishing',
+            'price' => 1000,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$this->attribute->id, $secondFinishing->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('quote');
+    }
+
+    public function test_quote_allows_more_than_three_types(): void
+    {
+        $customType = AttributeType::create([
+            'name' => 'Mata Ayam',
+            'slug' => 'mata-ayam',
+            'sort_order' => 4,
+            'is_active' => true,
+        ]);
+
+        $cut = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Potong Lurus',
+            'type' => 'cut',
+        ]);
+        $display = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'X-Banner',
+            'type' => 'display',
+        ]);
+        $custom = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam 12mm',
+            'type' => $customType->slug,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [
+                    $this->attribute->id,
+                    $cut->id,
+                    $display->id,
+                    $custom->id,
+                ],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk();
+    }
+
+    public function test_quote_accepts_an_uppercase_attribute_uuid(): void
+    {
+        $this->attribute->update(['price' => 5000, 'cost' => 3000]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [strtoupper($this->attribute->id)],
+                'quantity' => 2,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.unit_price', '55000.00')
+            ->assertJsonPath('quote.subtotal', '660000.00');
+    }
+
+    public function test_quote_deduplicates_repeated_attribute_ids(): void
+    {
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$this->attribute->id, $this->attribute->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk();
+    }
+
+    public function test_quote_error_copy_does_not_say_finishing_or_display(): void
+    {
+        $inactive = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Glossy',
+            'type' => 'finishing',
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => $this->material->id,
+                'selected_attributes' => [$inactive->id],
+                'quantity' => 1,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('quote');
+
+        $message = strtolower((string) $response->json('errors.quote.0'));
+
+        $this->assertStringContainsString('atribut', $message);
+        $this->assertStringNotContainsString('finishing', $message);
+        $this->assertStringNotContainsString('display', $message);
     }
 
     public function test_non_designer_cannot_calculate_a_quote(): void

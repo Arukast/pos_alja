@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
@@ -14,6 +15,7 @@ use App\Models\ProductCategory;
 use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -198,13 +200,10 @@ class CatalogApiTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_attribute_type_endpoints_and_table_are_removed(): void
+    public function test_attribute_types_table_exists(): void
     {
-        $this->getJson('/api/v1/attribute-types')->assertNotFound();
-        $this->actingAs($this->owner)->getJson('/api/v1/attribute-types')->assertNotFound();
-        $this->actingAs($this->owner)->postJson('/api/v1/attribute-types', [])->assertNotFound();
-        $this->actingAs($this->owner)->deleteJson('/api/v1/attribute-types/00000000-0000-0000-0000-000000000000')->assertNotFound();
-        $this->assertFalse(Schema::hasTable('attribute_types'));
+        $this->assertTrue(Schema::hasTable('attribute_types'));
+        $this->assertTrue(Schema::hasColumns('attribute_types', ['id', 'name', 'slug', 'sort_order', 'is_active']));
     }
 
     public function test_manager_reads_own_branch_catalog_scope(): void
@@ -517,6 +516,56 @@ class CatalogApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_attribute_list_returns_type_name(): void
+    {
+        $longName = str_repeat('T', 100);
+        $longSlug = str_repeat('a', 100);
+
+        AttributeType::create([
+            'name' => $longName,
+            'slug' => $longSlug,
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        $longAttribute = Attribute::create([
+            'branch_id' => null,
+            'name' => 'Long Type',
+            'type' => $longSlug,
+        ]);
+
+        $rows = $this->actingAs($this->owner)
+            ->getJson('/api/v1/attributes')
+            ->assertOk()
+            ->json('data');
+
+        $finishing = collect($rows)->firstWhere('id', $this->attributeOne->id);
+
+        $this->assertNotNull($finishing);
+        $this->assertSame('Finishing', $finishing['type_name']);
+
+        $longRow = collect($rows)->firstWhere('id', $longAttribute->id);
+
+        $this->assertNotNull($longRow);
+        $this->assertSame($longName, $longRow['type_name']);
+        $this->assertSame(100, strlen($longRow['type_name']));
+    }
+
+    public function test_attribute_list_eager_loads_type_info(): void
+    {
+        DB::enableQueryLog();
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/attributes')
+            ->assertOk();
+
+        $typeQueries = collect(DB::getQueryLog())
+            ->filter(fn (array $query): bool => str_contains($query['query'], 'attribute_types'))
+            ->count();
+
+        $this->assertSame(1, $typeQueries);
+    }
+
     public function test_stock_ledgers_carry_traceability_fields(): void
     {
         $this->actingAs($this->manager)
@@ -542,6 +591,33 @@ class CatalogApiTest extends TestCase
 
         $this->assertCount(1, $response->json('data'));
         $this->assertNull($response->json('data.0.material'));
+    }
+
+    public function test_attribute_type_endpoints_enforce_read_roles(): void
+    {
+        $this->getJson('/api/v1/attribute-types')->assertUnauthorized();
+
+        $this->actingAs($this->owner)->getJson('/api/v1/attribute-types')->assertOk();
+        $this->actingAs($this->manager)->getJson('/api/v1/attribute-types')->assertOk();
+        $this->actingAs($this->designer)->getJson('/api/v1/attribute-types')->assertForbidden();
+    }
+
+    public function test_attribute_type_writes_are_owner_only_and_delete_is_a_tombstone(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/attribute-types', ['name' => 'Packaging'])
+            ->assertCreated()
+            ->assertJsonPath('attribute_type.slug', 'packaging');
+
+        $this->actingAs($this->manager)
+            ->postJson('/api/v1/attribute-types', ['name' => 'Manager Packaging'])
+            ->assertForbidden();
+
+        $this->actingAs($this->owner)
+            ->deleteJson('/api/v1/attribute-types/finishing')
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('attribute_types', ['slug' => 'finishing']);
     }
 
     private function branch(string $name): Branch

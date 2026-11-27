@@ -121,6 +121,26 @@ describe('api.products and admin product mutations', () => {
         });
     });
 
+    it('calls attribute type endpoints', async () => {
+        await api.attributeTypes();
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attribute-types');
+
+        await api.admin.createAttributeType({ name: 'Packaging', is_active: true });
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attribute-types', {
+            method: 'POST',
+            body: JSON.stringify({ name: 'Packaging', is_active: true }),
+        });
+
+        await api.admin.updateAttributeType('packaging', {
+            name: 'Packaging Baru',
+            is_active: false,
+        });
+        expect(mockedApiFetch).toHaveBeenCalledWith('/attribute-types/packaging', {
+            method: 'PUT',
+            body: JSON.stringify({ name: 'Packaging Baru', is_active: false }),
+        });
+    });
+
     it('serializes the include_inactive_attributes flag for quote options', async () => {
         await api.quoteOptions({ include_inactive_attributes: 1 });
         expect(mockedApiFetch).toHaveBeenCalledWith(

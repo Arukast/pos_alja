@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
+use App\Exceptions\InvalidAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -89,6 +90,10 @@ final class CreateInvoice
                         $branchId,
                         $customerType
                     );
+                } catch (InvalidAttributeSelectionException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.selected_attributes" => $exception->getMessage(),
+                    ]);
                 } catch (PricingNotFoundException|InvalidArgumentException $exception) {
                     throw ValidationException::withMessages([
                         "items.{$index}.pricing_id" => $exception->getMessage(),
