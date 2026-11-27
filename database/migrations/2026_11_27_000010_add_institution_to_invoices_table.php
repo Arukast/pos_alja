@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Support\CustomerInstitution;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -16,8 +17,24 @@ return new class extends Migration
             $table->string('institution', 50)->nullable();
         });
 
-        // Do not remove or move App\Support\CustomerInstitution: this migration's backfill depends on it.
-        CustomerInstitution::backfillInvoices();
+        DB::table('invoices')
+            ->whereNull('institution')
+            ->chunkById(200, static function (Collection $invoices): void {
+                $customerIds = $invoices->pluck('customer_id')->filter()->unique()->all();
+                $labels = DB::table('customers')
+                    ->whereIn('id', $customerIds)
+                    ->pluck('institution', 'id');
+
+                foreach ($invoices as $invoice) {
+                    $label = $labels->get($invoice->customer_id);
+
+                    if ($label !== null) {
+                        DB::table('invoices')
+                            ->where('id', $invoice->id)
+                            ->update(['institution' => $label]);
+                    }
+                }
+            });
     }
 
     /** Remove the per-invoice institution snapshot column. */

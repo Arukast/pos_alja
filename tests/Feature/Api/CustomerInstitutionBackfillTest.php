@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Models\Customer;
-use App\Models\Invoice;
 use App\Support\CustomerInstitution;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Tests\TestCase;
 
-/** Feature coverage for customer institution backfill and normalization. */
+/** Feature coverage for institution backfills replayed through the real migrations. */
 final class CustomerInstitutionBackfillTest extends TestCase
 {
     use RefreshDatabase;
@@ -25,63 +26,56 @@ final class CustomerInstitutionBackfillTest extends TestCase
         $this->assertSame(['Masyarakat/Retail'], $customer->fresh()->institutions);
     }
 
-    /** The backfill wraps each legacy primary label in a single-element list. */
+    /** Replaying the labels migration wraps each legacy primary label in a single-element list. */
     public function test_backfill_wraps_each_existing_primary_label(): void
     {
-        $sekolah = Customer::create([
-            'name' => 'Sekolah Contoh',
-            'institution' => 'Sekolah',
-            'institutions' => null,
-        ]);
-        $universitas = Customer::create([
-            'name' => 'Universitas Contoh',
-            'institution' => 'Universitas',
-            'institutions' => null,
-        ]);
-        $default = Customer::create([
-            'name' => 'Retail Contoh',
-            'institutions' => null,
+        Artisan::call('migrate:rollback', ['--step' => 2]);
+
+        DB::table('customers')->insert([
+            $this->legacyCustomer('Sekolah Contoh', 'Sekolah'),
+            $this->legacyCustomer('Universitas Contoh', 'Universitas'),
+            $this->legacyCustomer('Retail Contoh', 'Masyarakat/Retail'),
         ]);
 
-        CustomerInstitution::backfillCustomers();
+        Artisan::call('migrate');
 
-        $this->assertSame(['Sekolah'], $sekolah->fresh()->institutions);
-        $this->assertSame(['Universitas'], $universitas->fresh()->institutions);
-        $this->assertSame(['Masyarakat/Retail'], $default->fresh()->institutions);
+        $this->assertSame(['Sekolah'], $this->institutionsOf('Sekolah Contoh'));
+        $this->assertSame(['Universitas'], $this->institutionsOf('Universitas Contoh'));
+        $this->assertSame(['Masyarakat/Retail'], $this->institutionsOf('Retail Contoh'));
     }
 
     /** Unknown legacy labels are preserved verbatim instead of being dropped. */
     public function test_backfill_preserves_legacy_unknown_label(): void
     {
-        $customer = Customer::create([
-            'name' => 'Legacy Contoh',
-            'institution' => 'Lainnya',
-            'institutions' => null,
-        ]);
+        Artisan::call('migrate:rollback', ['--step' => 2]);
 
-        CustomerInstitution::backfillCustomers();
+        DB::table('customers')->insert(
+            $this->legacyCustomer('Legacy Contoh', 'Lainnya')
+        );
 
-        $this->assertSame(['Lainnya'], $customer->fresh()->institutions);
+        Artisan::call('migrate');
+
+        $this->assertSame(['Lainnya'], $this->institutionsOf('Legacy Contoh'));
     }
 
-    /** The backfill covers every row across more than one chunk. */
+    /** The replayed backfill covers every row across more than one chunk. */
     public function test_backfill_handles_more_than_one_chunk(): void
     {
+        Artisan::call('migrate:rollback', ['--step' => 2]);
+
         $customers = [];
 
         for ($i = 0; $i < 205; $i++) {
-            $customers[] = Customer::create([
-                'name' => sprintf('Pelanggan %03d', $i),
-                'institution' => 'Sekolah',
-                'institutions' => null,
-            ]);
+            $customers[] = $this->legacyCustomer(sprintf('Pelanggan %03d', $i), 'Sekolah');
         }
 
-        CustomerInstitution::backfillCustomers();
+        DB::table('customers')->insert($customers);
 
-        $this->assertSame(['Sekolah'], $customers[0]->fresh()->institutions);
-        $this->assertSame(['Sekolah'], $customers[102]->fresh()->institutions);
-        $this->assertSame(['Sekolah'], $customers[204]->fresh()->institutions);
+        Artisan::call('migrate');
+
+        $this->assertSame(['Sekolah'], $this->institutionsOf('Pelanggan 000'));
+        $this->assertSame(['Sekolah'], $this->institutionsOf('Pelanggan 102'));
+        $this->assertSame(['Sekolah'], $this->institutionsOf('Pelanggan 204'));
     }
 
     /** Normalization dedupes, orders by the canonical list, and rejects unknown labels. */
@@ -104,11 +98,15 @@ final class CustomerInstitutionBackfillTest extends TestCase
             'name' => 'Sekolah Contoh',
             'institution' => 'Sekolah',
         ]);
-        $invoice = $this->invoice($customer);
 
-        CustomerInstitution::backfillInvoices();
+        Artisan::call('migrate:rollback', ['--step' => 1]);
 
-        $this->assertSame('Sekolah', $invoice->fresh()->institution);
+        $invoice = $this->legacyInvoice($customer->id);
+        DB::table('invoices')->insert($invoice);
+
+        Artisan::call('migrate');
+
+        $this->assertSame('Sekolah', $this->invoiceInstitution($invoice['invoice_number']));
     }
 
     /** A soft-deleted customer still supplies the label for its historical invoices. */
@@ -118,17 +116,20 @@ final class CustomerInstitutionBackfillTest extends TestCase
             'name' => 'Sekolah Contoh',
             'institution' => 'Sekolah',
         ]);
-        $invoice = $this->invoice($customer);
-
         $customer->delete();
 
-        CustomerInstitution::backfillInvoices();
+        Artisan::call('migrate:rollback', ['--step' => 1]);
 
-        $this->assertSame('Sekolah', $invoice->fresh()->institution);
+        $invoice = $this->legacyInvoice($customer->id);
+        DB::table('invoices')->insert($invoice);
+
+        Artisan::call('migrate');
+
+        $this->assertSame('Sekolah', $this->invoiceInstitution($invoice['invoice_number']));
     }
 
-    /** The invoice backfill spans more than one chunk and never overwrites an existing snapshot. */
-    public function test_invoice_backfill_is_chunked_and_skips_rows_with_a_snapshot(): void
+    /** The replayed invoice backfill spans more than one chunk. */
+    public function test_invoice_backfill_is_chunked(): void
     {
         $sekolah = Customer::create([
             'name' => 'Sekolah Contoh',
@@ -139,38 +140,83 @@ final class CustomerInstitutionBackfillTest extends TestCase
             'institution' => 'Pemerintahan',
         ]);
 
+        Artisan::call('migrate:rollback', ['--step' => 1]);
+
         $invoices = [];
 
         for ($i = 0; $i < 205; $i++) {
-            $invoices[] = $this->invoice($i % 2 === 0 ? $sekolah : $pemerintahan);
+            $invoices[] = $this->legacyInvoice($i % 2 === 0 ? $sekolah->id : $pemerintahan->id, $i);
         }
 
-        $snapshotted = $this->invoice($sekolah, 'Universitas');
+        DB::table('invoices')->insert($invoices);
 
-        CustomerInstitution::backfillInvoices();
+        Artisan::call('migrate');
 
-        $this->assertSame('Sekolah', $invoices[0]->fresh()->institution);
-        $this->assertSame('Pemerintahan', $invoices[101]->fresh()->institution);
-        $this->assertSame('Sekolah', $invoices[204]->fresh()->institution);
-        $this->assertSame('Universitas', $snapshotted->fresh()->institution);
-
-        CustomerInstitution::backfillInvoices();
-
-        $this->assertSame('Universitas', $snapshotted->fresh()->institution);
+        $this->assertSame('Sekolah', $this->invoiceInstitution($invoices[0]['invoice_number']));
+        $this->assertSame('Pemerintahan', $this->invoiceInstitution($invoices[101]['invoice_number']));
+        $this->assertSame('Sekolah', $this->invoiceInstitution($invoices[204]['invoice_number']));
     }
 
     /**
-     * Create a minimal invoice eligible for the historical backfill.
-     *
-     * @param  string|null  $institution  pre-existing snapshot, left untouched by the backfill
+     * @return array{id: string, name: string, institution: string, created_at: string, updated_at: string, deleted_at?: string}
      */
-    private function invoice(Customer $customer, ?string $institution = null): Invoice
-    {
-        return Invoice::create([
-            'invoice_number' => 'INV-BF-'.Str::upper(Str::random(8)),
-            'created_date' => now()->toDateString(),
-            'customer_id' => $customer->id,
+    private function legacyCustomer(
+        string $name,
+        string $institution,
+        ?string $id = null,
+        ?string $deletedAt = null
+    ): array {
+        $now = now()->toDateTimeString();
+        $row = [
+            'id' => $id ?? (string) Str::uuid(),
+            'name' => $name,
             'institution' => $institution,
-        ]);
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        if ($deletedAt !== null) {
+            $row['deleted_at'] = $deletedAt;
+        }
+
+        return $row;
+    }
+
+    /**
+     * @return array{id: string, invoice_number: string, created_date: string, customer_id: string, created_at: string, updated_at: string}
+     */
+    private function legacyInvoice(string $customerId, ?int $sequence = null): array
+    {
+        $now = now()->toDateTimeString();
+
+        return [
+            'id' => (string) Str::uuid(),
+            'invoice_number' => sprintf('INV-BF-%s-%s', $sequence ?? random_int(0, PHP_INT_MAX), Str::upper(Str::random(6))),
+            'created_date' => $now,
+            'customer_id' => $customerId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+    }
+
+    /** @return list<string> */
+    private function institutionsOf(string $name): array
+    {
+        $json = DB::table('customers')->where('name', $name)->value('institutions');
+        $this->assertIsString($json);
+
+        /** @var list<string> $decoded */
+        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+        return $decoded;
+    }
+
+    private function invoiceInstitution(string $invoiceNumber): ?string
+    {
+        $institution = DB::table('invoices')
+            ->where('invoice_number', $invoiceNumber)
+            ->value('institution');
+
+        return $institution === null ? null : (string) $institution;
     }
 }

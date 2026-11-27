@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\Customer;
-use App\Support\CustomerInstitution;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -19,13 +19,22 @@ return new class extends Migration
             $table->json('institutions')->nullable();
         });
 
-        // Do not remove or move App\Support\CustomerInstitution: this migration's backfill depends on it.
-        CustomerInstitution::backfillCustomers();
+        DB::table('customers')
+            ->whereNull('institutions')
+            ->chunkById(200, static function (Collection $customers): void {
+                foreach ($customers as $customer) {
+                    DB::table('customers')
+                        ->where('id', $customer->id)
+                        ->update([
+                            'institutions' => json_encode([$customer->institution], JSON_THROW_ON_ERROR),
+                        ]);
+                }
+            });
 
         Schema::table('customers', function (Blueprint $table): void {
             $table->json('institutions')
                 ->nullable()
-                ->default(json_encode([Customer::INSTITUTIONS[0]], JSON_THROW_ON_ERROR))
+                ->default(json_encode(['Masyarakat/Retail'], JSON_THROW_ON_ERROR))
                 ->change();
         });
     }

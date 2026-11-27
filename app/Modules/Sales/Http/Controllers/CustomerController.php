@@ -12,7 +12,7 @@ use App\Modules\Sales\Actions\UpdateCustomer;
 use App\Modules\Sales\Http\Requests\StoreCustomerRequest;
 use App\Modules\Sales\Http\Requests\UpdateCustomerRequest;
 use App\Modules\Sales\Http\Resources\CustomerResource;
-use Illuminate\Database\Eloquent\Builder;
+use App\Modules\Sales\Queries\CustomerList;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,23 +20,15 @@ use Illuminate\Support\Facades\Gate;
 
 final class CustomerController extends Controller
 {
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, CustomerList $customers): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', Customer::class);
 
         $search = trim($request->string('search')->toString());
 
-        $customers = Customer::query()
-            ->when($search !== '', function (Builder $query) use ($search): void {
-                $query->where(function (Builder $query) use ($search): void {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
-                });
-            })
-            ->orderBy('name')
-            ->paginate(20);
-
-        return CustomerResource::collection($customers);
+        return CustomerResource::collection(
+            $customers->paginate($search === '' ? null : $search)
+        );
     }
 
     public function store(
