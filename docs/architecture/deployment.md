@@ -307,6 +307,24 @@ SELECT count(*) FROM attributes WHERE type = ''; -- expect 0; inspect before dep
 
 SQLite does not enforce varchar length, so the widening, the seed/backfill, and long-slug storage must be verified on PostgreSQL, not by the SQLite test suite.
 
+### Product Composition And Nullable Pricing (B2)
+
+Two new migrations are additive in `up()` and run in filename order:
+
+1. `2026_11_27_000007_add_product_composition_columns_and_pivots.php` adds `products.requires_material` and `products.uses_attributes` (boolean, default `true`, cast boolean) and creates `attribute_type_product` and `attribute_product`. Each pivot has a composite primary key on its two UUID columns, foreign keys to `products` and `attribute_types`/`attributes` with `cascadeOnDelete()`, and timestamps. There is no backfill: existing products keep both flags true and both pivots empty, which means all active types/attributes, so current behavior is preserved until an Owner edits the product. `down()` drops both pivots and the two columns; configured memberships are lost on rollback.
+2. `2026_11_27_000008_make_pricing_material_id_nullable.php` changes `pricing.material_id` to nullable with `change()` and no backfill; existing rows are untouched. On SQLite `change()` rebuilds the table; `NoMaterialPricingApiTest` asserts the rebuilt table still has the `material_id` foreign key to `materials` with `cascade` on delete. On PostgreSQL run the migration normally and verify the column and constraint explicitly (the SQLite suite does not execute PostgreSQL DDL):
+
+   ```bash
+   docker compose exec app php artisan migrate --force
+   docker compose exec db psql -U <user> -d <database> -c "select column_name, is_nullable from information_schema.columns where table_name = 'pricing' and column_name = 'material_id';" -c "select conname, confrelid::regclass from pg_constraint where conrelid = 'pricing'::regclass and confrelid = 'materials'::regclass;"
+   ```
+
+   Expect `is_nullable = YES` and a foreign key from `pricing` to `materials`. A null `material_id` is only valid for a product with `requires_material = false`; the API rejects other pairings.
+
+`down()` on the nullable migration refuses to run while any `pricing` row still has a null `material_id`: it throws `RuntimeException` with `Tidak dapat mengembalikan pricing.material_id menjadi NOT NULL selama masih ada baris tanpa bahan.` Rollback procedure: take a verified backup first, then either delete the no-material pricing rows or backfill `material_id` with valid material UUIDs, verify with `select count(*) from pricing where material_id is null;` (expect 0), and only then run `php artisan migrate:rollback --step=1`. Never backfill a material for a product that has `requires_material = false`. The pivot-migration rollback is a separate step and drops configured memberships.
+
+Rollout order: deploy the product flags/pivots migration and API first, then the nullable `pricing` migration and API, then the SPA. The old SPA ignores the new flags and name arrays and keeps working against the new API; the `Tanpa bahan` option and product capability selects require the new SPA. No new route or environment variable is introduced. PostgreSQL DDL and the `down()` rollback with null rows present remain unverified in this environment (SQLite tests only).
+
 ## 8. Deployment Checklist
 
 1. Set production `.env` values, including HTTPS session and Sanctum domains.
@@ -321,3 +339,4 @@ SQLite does not enforce varchar length, so the widening, the seed/backfill, and 
 10. Open `/owner/backups`; save settings, run one manual backup, confirm it leaves `queued`, and download the file. Inspect `backups` and the `BACKUP` audit row.
 11. Run the restore drill in section 7.5 and record the result; until then RPO/RTO stay unclaimed.
 12. Record any skipped verification in the change description.
+13. For B2, verify `attribute_type_product`, `attribute_product`, both new `products` flags, and the nullable `pricing.material_id` as described in section 7; record that PostgreSQL DDL and the null-row rollback remain unverified here.
