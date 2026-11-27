@@ -31,6 +31,7 @@ class Invoice extends Model
         'pickup_status',
         'pickup_date',
         'source',
+        'institution',
     ];
 
     /**

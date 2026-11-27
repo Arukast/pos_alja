@@ -104,6 +104,7 @@ erDiagram
         text address
         string email
         string institution
+        json institutions
         string type
         timestamp deleted_at
     }
@@ -235,6 +236,7 @@ erDiagram
         integer pickup_status
         timestamp pickup_date
         integer source
+        string institution nullable
     }
 
     ORDERS {
@@ -443,7 +445,7 @@ erDiagram
     - `materials.is_active` for global retirement and `material_branch_stock.is_active` for branch availability, both boolean default `true`; implemented by `2026_11_27_000005_add_is_active_to_materials_and_material_branch_stock.php` with no backfill beyond the default and no index.
     - `attributes.price`, `attributes.cost`, and `attributes.is_active`; implemented by `2026_11_25_000001_add_price_cost_is_active_to_attributes_table.php`.
     - `orders.product_id`, `material_id`, `customer_type`, `reseller_discount_percent`, `discount_amount`, `design_status`, `design_approved_at`, `design_approved_by`, and `priority`.
-    - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`.
+    - `customers.institution` for customer classification; implemented by `2026_11_25_000000_add_institution_to_customers_table.php`. `customers.institutions` (JSON, default `["Masyarakat/Retail"]`) holds the full ordered label list; added by `2026_11_27_000009_add_institutions_to_customers_table.php`, which backfills each legacy primary label. `invoices.institution` (nullable string) holds the per-order snapshot; added by `2026_11_27_000010_add_institution_to_invoices_table.php`, which backfills historical invoices from their customer's current label. Both are portable additive migrations; no merged migration was edited.
     - The transitional order quote-input columns `width`, `length`, and `selected_attributes` are added by `2026_11_26_100000_add_order_edit_specifications.php` and persisted by invoice create/update so pre-production edits can reprice from the saved specifications. `selected_attributes` is a dynamic list with at most one attribute per type.
     - `order_attributes` for attribute snapshots.
     - `expenses.user_id` and `recorded_by_name`.
@@ -466,6 +468,7 @@ erDiagram
 27. **`users.is_active` is the account lifecycle flag; `deleted_at` stays administrative.** Default `true`. Deactivation keeps the row, blocks login, and rejects the account on its next authenticated `/api/v1` request; an owner can reactivate it. Soft-deleted users stay hidden by default, and restore sets `is_active = true`. `users.is_active` is not accepted by user store/update requests.
 28. **Product composition is stored on `products` plus two pivots.** `products.requires_material` and `products.uses_attributes` are boolean, default `true`, and cast to boolean. `attribute_type_product` and `attribute_product` use composite primary keys `(product_id, attribute_type_id)` and `(product_id, attribute_id)`, UUID foreign keys with `cascadeOnDelete()`, and `created_at`/`updated_at` timestamps from `withTimestamps()`. The `Product` relations are explicitly named `attributeTypes()` (pivot `attribute_type_product`) and `compatibleAttributes()` (pivot `attribute_product`); there is no `attributes()` relation. An empty type pivot means all active `attribute_types`; an empty attribute pivot means all active attributes of the allowed types. `uses_attributes = false` rejects new client attribute selections while preserving both pivots so re-enabling restores them. Every `ProductResource` producer eager-loads `category`, `materials`, `attributeTypes`, and `compatibleAttributes.typeInfo` (catalog list, quote options, and product create/update/restore): an unloaded pivot yields empty arrays, which silently means all. The resource exposes `attribute_type_ids`/`attribute_ids` for writes and filtering plus display-only `attribute_types`/`compatible_attributes` name arrays. Owner writes the flags and pivots; Manager reads them.
 29. **`pricing.material_id` is nullable.** `2026_11_27_000008_make_pricing_material_id_nullable.php` changes the column to nullable with no backfill; existing rows are untouched, and a null material is valid only for a product with `requires_material = false`. `PricingService` uses `whereNull('material_id')` for the null-material lookup, including the Reguler fallback, and keeps `pricing.cost` authoritative. SQLite `change()` rebuilds the table; the `materials` foreign key is preserved. PostgreSQL DDL is documented in `docs/architecture/deployment.md` and not executed by the SQLite suite. `down()` throws `RuntimeException` while any `pricing` row has a null `material_id`, so rollback requires deleting or backfilling those rows first.
+30. **Customer institutions are a label list; invoice institution is a snapshot.** `customers.institutions` is a JSON array of at most six allowed labels in constant order (`Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`, `Bisnis/Perusahaan`, `Organisasi/Yayasan`). The legacy singular `customers.institution` is kept as the mirrored first label so existing readers and payloads keep working; unknown legacy labels are preserved during backfill rather than dropped. `invoices.institution` stores the label chosen for that order and is immutable after creation, so a later customer edit changes neither past invoices nor their API responses. `InvoiceResource` falls back to the live `customer.institution` only for invoices with no snapshot. Customers are global and carry no branch id.
 
 ---
 

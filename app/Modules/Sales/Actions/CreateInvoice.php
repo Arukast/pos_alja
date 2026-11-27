@@ -59,6 +59,16 @@ final class CreateInvoice
             $today = $now->toDateString();
             $customer = Customer::findOrFail($data['customer_id']);
             $customerType = $customer->type ?: 'Reguler';
+            $allowed = $customer->institutions ?: [$customer->institution];
+            $requested = $data['institution'] ?? null;
+
+            if ($requested !== null && ! in_array($requested, $allowed, true)) {
+                throw ValidationException::withMessages([
+                    'institution' => 'Institusi tidak termasuk pilihan pelanggan ini.',
+                ]);
+            }
+
+            $snapshot = $requested ?? $allowed[0];
 
             // Serialize invoice numbering per branch.
             $branch = Branch::query()->whereKey($branchId)->lockForUpdate()->first();
@@ -197,6 +207,7 @@ final class CreateInvoice
                 'branch_id' => $branchId,
                 'created_date' => $today,
                 'customer_id' => $customer->id,
+                'institution' => $snapshot,
                 'designer_id' => $designer->id,
                 'status' => 0,
                 'discount' => $discount,

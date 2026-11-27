@@ -13,7 +13,7 @@ The problem owner accepted the login and SPA visual direction, the five-role spl
 
 | No | Problem Owner Feedback | Decision | FR | Follow-up Sprint |
 | :---: | :--- | :--- | :--- | :--- |
-| 1 | Customer search is the default; create customer on a separate page | Adopted | FR8 | Sprint 2 |
+| 1 | Customer search is the default; create customer on a separate page | Adopted, then superseded on 2026-11-27: search-first picker feeding a shared `/customers` management page instead of a separate designer create page | FR8 | Sprint 2 |
 | 2 | Order flow is Product -> Material -> Finishing -> Display; remove machine selection | Adopted | FR6, FR8 | Sprint 2 |
 | 3 | Each material allows one finishing and one display option, not multi-select | Adopted | FR6, FR8 | Sprint 2 |
 | 4 | Designer can edit an order that has a down payment but is not fully paid | Adopted; fully paid invoices are blocked | FR9 | Sprint 2 |
@@ -65,7 +65,9 @@ There is one invoice document. The separate work-order ticket is removed from th
 
 ## 6. Customer And Expense Lists
 
-Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
+Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`, `Bisnis/Perusahaan`, `Organisasi/Yayasan`. The last two were added by the 2026-11-27 customer-management change; a customer may now hold several labels, and the label chosen for an order is snapshotted on the invoice.
+
+Customer management moved from the separate `/designer/customers/new` page to one shared `/customers` page: owner, manager, and designer create and edit; cashier reads; production is denied. It replaces the earlier "create customer on a separate page" decision recorded in section 2, item 1.
 
 Expense categories: `Bahan Baku`, `Gaji`, `Sewa`, `Listrik & Air`, `Maintenance`, `Transport`, `Marketing`, `Operasional`, `Lain-lain`.
 

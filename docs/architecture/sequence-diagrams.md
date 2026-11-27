@@ -219,27 +219,32 @@ sequenceDiagram
     participant R as Reverb
 
     D->>SPA: Search customer, then choose product, material, one attribute per active type, specs
-    SPA->>API: GET /api/v1/customers?search
-    API-->>SPA: Matching customers
-    opt New customer
-        SPA->>API: POST /api/v1/customers
-        API-->>SPA: Created customer
+    SPA->>API: GET /api/v1/customers?search&page
+    API-->>SPA: Paginated matching customers with institutions[]
+    opt Add or edit a customer
+        D->>SPA: Open shared /customers management page
+        SPA->>API: POST /api/v1/customers or PUT /api/v1/customers/{id}
+        API-->>SPA: Saved customer; return to the order flow
     end
+    SPA->>SPA: Choose institution in the “Institusi pesanan” select from the customer's labels
     SPA->>API: GET /api/v1/quotes/options
     API-->>SPA: Branch catalog, no cost/profit for designer
     SPA->>API: POST /api/v1/quotes
     API->>PriceCalc: Enforce active types and one attribute per type; material + selected attribute price, customer type, branch reseller discount
     PriceCalc-->>API: Unit price, area, subtotal
     API-->>SPA: Quote
-    SPA->>API: POST /api/v1/invoices
+    SPA->>API: POST /api/v1/invoices (institution = chosen customer label)
     API->>DB: BEGIN, lock branch for numbering, recompute every line
-    API->>DB: Create invoice, orders (with selected_attributes), status logs, audit
+    API->>API: Validate institution against customer.institutions; default to first label when omitted
+    API->>DB: Create invoice (institution snapshot), orders (with selected_attributes), status logs, audit
     API->>DB: COMMIT
     API-->>SPA: 201 invoice
     API->>R: OrderUpdated on branch/owners
     SPA->>API: GET /api/v1/invoices/{id}/print
     API-->>SPA: Invoice print data with money
 ```
+
+The institution shown on the invoice comes from the `invoices.institution` snapshot, never from the customer's live labels, so a later `PUT /api/v1/customers/{customer}` does not change past invoices. A label outside the customer's `institutions` list is rejected with 422 on `institution` before the invoice transaction commits.
 
 ### 3.2 Update Order Before Production
 

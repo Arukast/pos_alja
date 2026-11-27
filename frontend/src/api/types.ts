@@ -14,6 +14,15 @@ export interface Paginated<T> {
     };
 }
 
+export const CUSTOMER_INSTITUTIONS: readonly string[] = [
+    'Masyarakat/Retail',
+    'Sekolah',
+    'Universitas',
+    'Pemerintahan',
+    'Bisnis/Perusahaan',
+    'Organisasi/Yayasan',
+];
+
 export interface MaterialPage<T> extends Paginated<T> {
     available_total?: number;
 }
@@ -53,6 +62,7 @@ export interface Customer {
     email: string | null;
     address: string | null;
     institution: string;
+    institutions: string[];
     type: string | null;
 }
 
@@ -244,6 +254,7 @@ export interface Invoice {
         address?: string | null;
         email?: string | null;
         type?: string | null;
+        institution?: string | null;
     } | null;
     designer: { id: string; name: string } | null;
     created_date: string;

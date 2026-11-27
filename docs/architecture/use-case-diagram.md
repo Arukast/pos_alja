@@ -163,7 +163,7 @@ flowchart LR
 
 Notes:
 
-- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only. Cashier customer access is search-only (`UC29`), not customer management.
+- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only. Cashier has read-only access to the shared `/customers` management page, including customer search (`UC29`), consistent with `docs/requirements/access-matrix.md` rule 22.
 - **Designer `U`** covers order changes before production (FR9), design-status updates (FR10), and customer create/update.
 - **Manager `Data Stok`** is branch-scoped stock management; global catalog and discount configuration are Owner-only.
 - **Owner and Manager `Data Stok`** both use the reason-required adjustment workflow (FR18).

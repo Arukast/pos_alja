@@ -15,6 +15,11 @@ final class CustomerPolicy
 
     public function create(User $user): bool
     {
-        return $user->role === 'designer';
+        return in_array($user->role, ['owner', 'manager', 'designer'], true);
+    }
+
+    public function update(User $user): bool
+    {
+        return in_array($user->role, ['owner', 'manager', 'designer'], true);
     }
 }
