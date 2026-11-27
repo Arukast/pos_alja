@@ -13,7 +13,7 @@ import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
-import { selectableAttributes } from './attributeOptions';
+import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
 import { hasMissingLinearLength } from './orderSpecs';
 
 interface EditableOrderItem {
@@ -114,13 +114,17 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
         ));
     };
 
-    /** Replaces only one selected attribute type, preserving the other single-select option. */
-    const handleAttributeChange = (index: number, type: 'finishing' | 'display', value: string) => {
+    /** Replaces only one selected attribute type, preserving the other option per type. */
+    const handleAttributeChange = (index: number, type: string, value: string) => {
         const current = items[index];
-        const retained = current.selected_attributes.filter((attributeId) =>
-            optionsQuery.data?.attributes.find((attribute) => attribute.id === attributeId)?.type !== type
-        );
-        handleItemChange(index, { selected_attributes: value ? [...retained, value] : retained });
+        handleItemChange(index, {
+            selected_attributes: setSelectedAttribute(
+                optionsQuery.data?.attributes ?? [],
+                current.selected_attributes,
+                type,
+                value
+            ),
+        });
     };
 
     /** Adds a new line using an existing invoice price configuration as its starting point. */
@@ -165,6 +169,7 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
             label: [order.pricing?.product, order.pricing?.material].filter(Boolean).join(' · ') || 'Konfigurasi item',
         }])).values());
     const attributes = optionsQuery.data?.attributes ?? [];
+    const attributeTypes = optionsQuery.data?.attribute_types ?? [];
 
     return (
         <div className="space-y-6">
@@ -191,12 +196,26 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
                                 <Input label="Jumlah" type="number" min="0.01" step="0.01" value={item.quantity} error={errors[`items.${index}.quantity`]} onChange={(event) => handleItemChange(index, { quantity: event.target.value })} />
                                 <Input label="Lebar (m)" type="number" min="0.01" step="0.01" value={item.width} error={errors[`items.${index}.width`]} onChange={(event) => handleItemChange(index, { width: event.target.value })} />
                                 <Input label="Panjang (m)" type="number" min="0.01" step="0.01" value={item.length} error={errors[`items.${index}.length`]} onChange={(event) => handleItemChange(index, { length: event.target.value })} />
-                                <Select label="Finishing" value={attributes.find((attribute) => attribute.type === 'finishing' && item.selected_attributes.includes(attribute.id))?.id ?? ''} onChange={(event) => handleAttributeChange(index, 'finishing', event.target.value)}>
-                                    <option value="">Tanpa finishing</option>{selectableAttributes(attributes, 'finishing', item.selected_attributes).map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}{attribute.is_active ? '' : ' (nonaktif)'}</option>)}
-                                </Select>
-                                <Select label="Display" value={attributes.find((attribute) => attribute.type === 'display' && item.selected_attributes.includes(attribute.id))?.id ?? ''} onChange={(event) => handleAttributeChange(index, 'display', event.target.value)}>
-                                    <option value="">Tanpa display</option>{selectableAttributes(attributes, 'display', item.selected_attributes).map((attribute) => <option key={attribute.id} value={attribute.id}>{attribute.name}{attribute.is_active ? '' : ' (nonaktif)'}</option>)}
-                                </Select>
+                                {typesForSelection(attributeTypes, attributes, item.selected_attributes, true).map((type) => {
+                                    const label = type.is_active ? type.name : `${type.name} (nonaktif)`;
+                                    const optionsForType = selectableAttributes(attributes, type.slug, item.selected_attributes);
+
+                                    return (
+                                        <Select
+                                            key={type.slug}
+                                            label={label}
+                                            value={selectedAttributeId(attributes, item.selected_attributes, type.slug)}
+                                            onChange={(event) => handleAttributeChange(index, type.slug, event.target.value)}
+                                        >
+                                            <option value="">Tanpa {type.name}</option>
+                                            {optionsForType.map((attribute) => (
+                                                <option key={attribute.id} value={attribute.id}>
+                                                    {attribute.name}{attribute.is_active ? '' : ' (nonaktif)'}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                    );
+                                })}
                                 <Input label="Catatan" value={item.notes} error={errors[`items.${index}.notes`]} onChange={(event) => handleItemChange(index, { notes: event.target.value })} />
                             </div>
                         </section>
