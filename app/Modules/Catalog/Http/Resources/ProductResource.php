@@ -30,7 +30,7 @@ final class ProductResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'pricing_type' => $this->pricing_type,
+            'selling_unit' => $this->selling_unit,
             'is_active' => (bool) $this->is_active,
             'deleted_at' => $this->deleted_at?->toIso8601String(),
             'category' => $this->category ? [

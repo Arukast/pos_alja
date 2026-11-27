@@ -318,12 +318,17 @@ class InvoiceApiTest extends TestCase
             ])
             ->assertCreated();
 
-        $this->actingAs($this->designer)
+        $response = $this->actingAs($this->designer)
             ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
             ->assertOk()
             ->assertJsonPath('invoice.orders.0.pricing.product', 'Spanduk Flexy')
             ->assertJsonPath('invoice.orders.0.pricing.material', 'Flexy 340gr')
-            ->assertJsonPath('invoice.orders.0.pricing.pricing_type', 'area');
+            ->assertJsonPath('invoice.orders.0.pricing.selling_unit', 'm2');
+
+        $this->assertArrayNotHasKey(
+            'pricing_type',
+            $response->json('invoice.orders.0.pricing'),
+        );
     }
 
     /**
@@ -741,7 +746,7 @@ class InvoiceApiTest extends TestCase
 
         $product = Product::create([
             'name' => 'Spanduk Flexy',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
