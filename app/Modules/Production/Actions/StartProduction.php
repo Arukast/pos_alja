@@ -24,7 +24,7 @@ final class StartProduction
     {
         $updated = DB::transaction(function () use ($order, $operator): Order {
             $locked = Order::query()
-                ->with(['invoice', 'pricing.material'])
+                ->with(['invoice', 'pricing.material', 'pricing.product'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -40,7 +40,13 @@ final class StartProduction
 
             $pricing = $locked->pricing;
 
-            if ($pricing !== null && $pricing->material === null) {
+            // A null material is only valid for a product that needs no material;
+            // a soft-deleted material keeps material_id set but material null, so it stays rejected.
+            $isNoMaterialOrder = $pricing !== null
+                && $pricing->material_id === null
+                && $pricing->product?->requires_material === false;
+
+            if (! $isNoMaterialOrder && $pricing !== null && $pricing->material === null) {
                 throw ValidationException::withMessages([
                     'material' => 'Bahan untuk pesanan ini tidak ditemukan.',
                 ]);
@@ -61,7 +67,7 @@ final class StartProduction
 
             $materialUsage = [];
 
-            if ($pricing !== null) {
+            if ($pricing !== null && $pricing->material_id !== null) {
                 $quantity = $unit === 'm2'
                     ? $area * (float) $locked->quantity
                     : (float) $locked->quantity;
