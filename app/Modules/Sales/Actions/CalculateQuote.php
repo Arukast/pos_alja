@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
+use App\Exceptions\InvalidAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
 use App\Models\Attribute;
 use App\Models\Pricing;
@@ -37,6 +38,15 @@ final class CalculateQuote
             ? $customerType
             : 'Reguler';
 
+        // Server-derived list of attribute IDs that an existing invoice may keep unchanged.
+        $allowance = $params['inactive_attribute_allowance'] ?? [];
+        $allowance = is_array($allowance)
+            ? array_values(array_unique(array_filter(array_map(
+                static fn (mixed $id): ?string => is_string($id) && $id !== '' ? strtolower($id) : null,
+                $allowance
+            ))))
+            : [];
+
         $selected = $params['selected_attributes'] ?? [];
 
         if (is_array($selected) && $selected !== []) {
@@ -52,6 +62,7 @@ final class CalculateQuote
 
                 $attributes = Attribute::query()
                     ->whereIn('id', $selectedIds)
+                    ->with('typeInfo')
                     ->when($branchId !== null, function (Builder $query) use ($branchId): void {
                         $query->where(function (Builder $scoped) use ($branchId): void {
                             $scoped->where('branch_id', $branchId)->orWhereNull('branch_id');
@@ -60,8 +71,8 @@ final class CalculateQuote
                     ->get();
 
                 if ($attributes->count() !== count($selectedIds)) {
-                    throw new InvalidArgumentException(
-                        'Atribut finishing atau display tidak valid untuk cabang ini.'
+                    throw new InvalidAttributeSelectionException(
+                        'Atribut tidak valid untuk cabang ini.'
                     );
                 }
 
@@ -70,9 +81,20 @@ final class CalculateQuote
                     ->contains(static fn ($group): bool => $group->count() > 1);
 
                 if ($hasDuplicateType) {
-                    throw new InvalidArgumentException(
+                    throw new InvalidAttributeSelectionException(
                         'Setiap item hanya dapat memilih satu opsi per jenis atribut.'
                     );
+                }
+
+                foreach ($attributes as $attribute) {
+                    $typeActive = $attribute->typeInfo?->is_active === true;
+
+                    if ((! $attribute->is_active || ! $typeActive)
+                        && ! in_array($attribute->id, $allowance, true)) {
+                        throw new InvalidAttributeSelectionException(
+                            'Atribut tidak aktif atau jenis atributnya tidak aktif.'
+                        );
+                    }
                 }
 
                 $byType = $attributes->keyBy('type');
@@ -80,11 +102,7 @@ final class CalculateQuote
                 $params['finishing_id'] = $byType->get('finishing')?->id;
                 $params['cut_id'] = $byType->get('cut')?->id;
                 $params['display_id'] = $byType->get('display')?->id;
-                $params['selected_attributes'] = array_values(array_filter([
-                    $params['finishing_id'],
-                    $params['cut_id'],
-                    $params['display_id'],
-                ]));
+                $params['selected_attributes'] = $selectedIds;
             }
         }
 
@@ -95,6 +113,7 @@ final class CalculateQuote
      * Menghitung penawaran untuk baris harga tertentu pada pembuatan invoice.
      *
      * @param  array<string, mixed>  $item
+     * @param  list<string>  $inactiveAttributeAllowance
      * @return array<string, mixed>
      *
      * @throws PricingNotFoundException
@@ -104,7 +123,8 @@ final class CalculateQuote
         Pricing $pricing,
         array $item,
         string $branchId,
-        string $customerType
+        string $customerType,
+        array $inactiveAttributeAllowance = []
     ): array {
         return $this->execute([
             'product_id' => $pricing->product_id,
@@ -115,6 +135,7 @@ final class CalculateQuote
             'length' => $item['length'] ?? 0,
             'customer_type' => $customerType,
             'branch_id' => $branchId,
+            'inactive_attribute_allowance' => $inactiveAttributeAllowance,
         ]);
     }
 }

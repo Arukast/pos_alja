@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
+use App\Exceptions\InvalidAttributeSelectionException;
 use App\Exceptions\PricingNotFoundException;
-use App\Models\Attribute;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
@@ -15,7 +15,6 @@ use App\Services\AuditLogger;
 use App\Services\MaterialAvailability;
 use App\Support\Decimal;
 use App\Support\SafeBroadcast;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -55,6 +54,15 @@ final class UpdateInvoiceItems
                 ->lockForUpdate()
                 ->firstOrFail();
             $existingOrders = $lockedInvoice->orders()->with('pricing')->lockForUpdate()->get();
+
+            // Invoice-wide allowance: any attribute already stored on this invoice may be kept.
+            $invoiceAttributeIds = $existingOrders
+                ->flatMap(static fn (Order $order): array => is_array($order->selected_attributes)
+                    ? $order->selected_attributes
+                    : [])
+                ->unique()
+                ->values()
+                ->all();
 
             if ($lockedInvoice->status === 2 || $existingOrders->contains(
                 static fn (Order $order): bool => $order->status !== 0
@@ -103,23 +111,8 @@ final class UpdateInvoiceItems
                 }
 
                 $selectedAttributes = is_array($item['selected_attributes'] ?? null)
-                    ? $item['selected_attributes']
+                    ? array_values($item['selected_attributes'])
                     : [];
-                $attributes = Attribute::query()
-                    ->whereIn('id', $selectedAttributes)
-                    ->where(function (Builder $query) use ($branchId): void {
-                        $query->where('branch_id', $branchId)->orWhereNull('branch_id');
-                    })
-                    ->get();
-
-                if ($attributes->count() !== count($selectedAttributes)
-                    || $attributes->groupBy('type')->contains(
-                        static fn ($group): bool => $group->count() > 1
-                    )) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.selected_attributes" => 'Pilihan finishing/display tidak valid untuk item ini.',
-                    ]);
-                }
 
                 $existingOrder = null;
 
@@ -136,7 +129,17 @@ final class UpdateInvoiceItems
                 }
 
                 try {
-                    $quote = $this->quote->forPricing($pricing, $item, $branchId, $customerType);
+                    $quote = $this->quote->forPricing(
+                        $pricing,
+                        $item,
+                        $branchId,
+                        $customerType,
+                        $invoiceAttributeIds
+                    );
+                } catch (InvalidAttributeSelectionException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.selected_attributes" => $exception->getMessage(),
+                    ]);
                 } catch (PricingNotFoundException|InvalidArgumentException $exception) {
                     throw ValidationException::withMessages([
                         "items.{$index}.pricing_id" => $exception->getMessage(),
@@ -157,7 +160,7 @@ final class UpdateInvoiceItems
                     'area' => $quote['area'],
                     'width' => $item['width'] ?? null,
                     'length' => $item['length'] ?? null,
-                    'selected_attributes' => array_values($selectedAttributes),
+                    'selected_attributes' => $selectedAttributes,
                     'quantity' => $quote['quantity'],
                     'unit_price' => $quote['unit_price'],
                     'subtotal' => $quote['subtotal'],

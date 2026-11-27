@@ -34,7 +34,7 @@ final class UpdateInvoiceItemsRequest extends FormRequest
             'items.*.width' => ['nullable', 'numeric', 'gt:0', 'max:999'],
             'items.*.length' => ['nullable', 'numeric', 'gt:0', 'max:999'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:100000'],
-            'items.*.selected_attributes' => ['nullable', 'array', 'max:3'],
+            'items.*.selected_attributes' => ['nullable', 'array'],
             'items.*.selected_attributes.*' => ['uuid', 'distinct', 'exists:attributes,id'],
         ];
     }

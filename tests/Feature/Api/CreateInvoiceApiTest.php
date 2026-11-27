@@ -6,6 +6,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\ActivityLog;
 use App\Models\Attribute;
+use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -350,6 +351,293 @@ class CreateInvoiceApiTest extends TestCase
         $this->assertEquals(1.5, (float) $order->width);
         $this->assertEquals(2.5, (float) $order->length);
         $this->assertSame([$attribute->id], $order->selected_attributes);
+    }
+
+    public function test_invoice_creation_rejects_an_inactive_attribute(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Finishing',
+            'type' => 'finishing',
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.selected_attributes');
+
+        $errorBag = $response->json('errors');
+
+        $this->assertStringContainsString(
+            'atribut',
+            strtolower((string) ($errorBag['items.0.selected_attributes'][0] ?? ''))
+        );
+    }
+
+    public function test_invoice_creation_rejects_an_inactive_type(): void
+    {
+        $type = AttributeType::create([
+            'name' => 'Stempel',
+            'slug' => 'stempel',
+            'sort_order' => 4,
+            'is_active' => false,
+        ]);
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Stempel Karet',
+            'type' => $type->slug,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.selected_attributes');
+    }
+
+    public function test_invoice_creation_accepts_a_custom_type_attribute(): void
+    {
+        $type = AttributeType::create([
+            'name' => 'Mata Ayam',
+            'slug' => 'mata-ayam',
+            'sort_order' => 4,
+            'is_active' => true,
+        ]);
+
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam 12mm',
+            'type' => $type->slug,
+            'price' => 5000,
+            'cost' => 3000,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('invoice.orders.0.unit_price', '55000.00')
+            ->assertJsonPath('invoice.grand_total', '660000.00')
+            ->assertJsonPath('invoice.orders.0.selected_attributes.0', $attribute->id);
+
+        $order = Order::query()->where('invoice_id', $response->json('invoice.id'))->firstOrFail();
+
+        $this->assertSame([$attribute->id], $order->selected_attributes);
+    }
+
+    public function test_invoice_edit_keeps_an_inactive_attribute_already_on_the_invoice(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ]))
+            ->assertCreated();
+
+        $attribute->update(['is_active' => false]);
+        AttributeType::query()->where('slug', 'finishing')->update(['is_active' => false]);
+
+        $this->actingAs($this->designer)
+            ->putJson('/api/v1/invoices/'.$created->json('invoice.id').'/items', [
+                'items' => [$this->item([
+                    'id' => $created->json('invoice.orders.0.id'),
+                    'selected_attributes' => [$attribute->id],
+                ])],
+            ])
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.selected_attributes.0', $attribute->id);
+    }
+
+    public function test_invoice_edit_keeps_an_attribute_of_an_inactive_type_already_on_the_invoice(): void
+    {
+        $attribute = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$attribute->id]])],
+            ]))
+            ->assertCreated();
+
+        AttributeType::query()->where('slug', 'finishing')->update(['is_active' => false]);
+
+        $this->actingAs($this->designer)
+            ->putJson('/api/v1/invoices/'.$created->json('invoice.id').'/items', [
+                'items' => [$this->item([
+                    'id' => $created->json('invoice.orders.0.id'),
+                    'selected_attributes' => [$attribute->id],
+                ])],
+            ])
+            ->assertOk();
+    }
+
+    public function test_invoice_edit_rejects_a_different_inactive_attribute(): void
+    {
+        $onInvoice = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$onInvoice->id]])],
+            ]))
+            ->assertCreated();
+
+        $other = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Laminasi',
+            'type' => 'finishing',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->putJson('/api/v1/invoices/'.$created->json('invoice.id').'/items', [
+                'items' => [$this->item([
+                    'id' => $created->json('invoice.orders.0.id'),
+                    'selected_attributes' => [$other->id],
+                ])],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.selected_attributes');
+    }
+
+    public function test_invoice_edit_allowance_is_invoice_wide_across_items(): void
+    {
+        $finishing = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+        $display = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'X-Banner',
+            'type' => 'display',
+        ]);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [
+                    $this->item(['selected_attributes' => [$finishing->id]]),
+                    $this->item(['selected_attributes' => [$display->id]]),
+                ],
+            ]))
+            ->assertCreated();
+
+        $finishing->update(['is_active' => false]);
+        $display->update(['is_active' => false]);
+
+        $orderIds = collect($created->json('invoice.orders'))->pluck('id')->all();
+
+        $this->actingAs($this->designer)
+            ->putJson('/api/v1/invoices/'.$created->json('invoice.id').'/items', [
+                'items' => [
+                    $this->item(['id' => $orderIds[0], 'selected_attributes' => [$finishing->id]]),
+                    $this->item(['id' => $orderIds[1], 'selected_attributes' => [$display->id]]),
+                ],
+            ])
+            ->assertOk();
+    }
+
+    public function test_invoice_edit_ignores_a_client_supplied_allowance(): void
+    {
+        $onInvoice = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Mata Ayam',
+            'type' => 'finishing',
+        ]);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => [$onInvoice->id]])],
+            ]))
+            ->assertCreated();
+
+        $other = Attribute::create([
+            'branch_id' => $this->branchOne->id,
+            'name' => 'Inactive Laminasi',
+            'type' => 'finishing',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->putJson('/api/v1/invoices/'.$created->json('invoice.id').'/items', [
+                'inactive_attribute_allowance' => [$other->id],
+                'allow_inactive_attributes' => true,
+                'items' => [$this->item([
+                    'id' => $created->json('invoice.orders.0.id'),
+                    'selected_attributes' => [$other->id],
+                    'inactive_attribute_allowance' => [$other->id],
+                ])],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.selected_attributes');
+    }
+
+    public function test_invoice_edit_allows_more_than_three_attributes(): void
+    {
+        $customType = AttributeType::create([
+            'name' => 'Mata Ayam',
+            'slug' => 'mata-ayam',
+            'sort_order' => 4,
+            'is_active' => true,
+        ]);
+
+        $attributes = [
+            Attribute::create([
+                'branch_id' => $this->branchOne->id,
+                'name' => 'Glossy',
+                'type' => 'finishing',
+            ]),
+            Attribute::create([
+                'branch_id' => $this->branchOne->id,
+                'name' => 'Potong Lurus',
+                'type' => 'cut',
+            ]),
+            Attribute::create([
+                'branch_id' => $this->branchOne->id,
+                'name' => 'X-Banner',
+                'type' => 'display',
+            ]),
+            Attribute::create([
+                'branch_id' => $this->branchOne->id,
+                'name' => 'Mata Ayam 12mm',
+                'type' => $customType->slug,
+            ]),
+        ];
+        $ids = array_map(static fn (Attribute $attribute): string => $attribute->id, $attributes);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload([
+                'items' => [$this->item(['selected_attributes' => $ids])],
+            ]))
+            ->assertCreated()
+            ->assertJsonCount(4, 'invoice.orders.0.selected_attributes');
+
+        $this->actingAs($this->designer)
+            ->putJson('/api/v1/invoices/'.$created->json('invoice.id').'/items', [
+                'items' => [$this->item([
+                    'id' => $created->json('invoice.orders.0.id'),
+                    'selected_attributes' => $ids,
+                ])],
+            ])
+            ->assertOk()
+            ->assertJsonCount(4, 'invoice.orders.0.selected_attributes');
     }
 
     public function test_invoice_item_update_preserves_an_omitted_deadline_and_clears_an_explicit_null(): void
