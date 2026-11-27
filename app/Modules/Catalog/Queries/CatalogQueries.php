@@ -6,7 +6,6 @@ namespace App\Modules\Catalog\Queries;
 
 use App\Models\Attribute;
 use App\Models\AttributeType;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockLedger;
@@ -101,26 +100,6 @@ final class CatalogQueries
             ->orderBy('id')
             ->paginate(10)
             ->withQueryString();
-    }
-
-    /**
-     * @param  array{branch_id?: string|null}  $filters
-     */
-    public function pricing(User $actor, array $filters): LengthAwarePaginator
-    {
-        $query = Pricing::query()->with(['product', 'material', 'branch']);
-
-        if ($actor->role === 'owner') {
-            $branchId = $filters['branch_id'] ?? null;
-
-            if (is_string($branchId) && $branchId !== '' && $branchId !== 'all') {
-                $query->where('branch_id', $branchId);
-            }
-        } else {
-            BranchScope::apply($query, $actor);
-        }
-
-        return $query->orderBy('min_qty')->paginate(20)->withQueryString();
     }
 
     /**

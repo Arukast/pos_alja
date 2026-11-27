@@ -8,8 +8,8 @@ use App\Modules\Catalog\Http\Controllers\AttributeController;
 use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
 use App\Modules\Catalog\Http\Controllers\MaterialController;
-use App\Modules\Catalog\Http\Controllers\PricingController;
 use App\Modules\Catalog\Http\Controllers\ProductController;
+use App\Modules\Catalog\Http\Controllers\ProductQuantityDiscountController;
 use App\Modules\Catalog\Http\Controllers\StockLedgerController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\BranchController;
@@ -65,7 +65,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::delete('/products/{product}', [ProductController::class, 'destroy']);
         Route::post('/products/{product}/restore', [ProductController::class, 'restore']);
         Route::get('/materials', [MaterialController::class, 'index']);
-        Route::get('/pricing', [PricingController::class, 'index']);
+        Route::get('/product-quantity-discounts', [ProductQuantityDiscountController::class, 'index']);
         Route::get('/stock-ledgers', [StockLedgerController::class, 'index']);
 
         Route::get('/materials/similar', [MaterialController::class, 'similar']);
@@ -92,10 +92,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
         Route::put('/attribute-types/{type}', [AttributeTypeController::class, 'update']);
 
-        Route::post('/pricing/clone-tiers', [PricingController::class, 'cloneTiers']);
-        Route::post('/pricing', [PricingController::class, 'store']);
-        Route::put('/pricing/{pricing}', [PricingController::class, 'update']);
-        Route::delete('/pricing/{pricing}', [PricingController::class, 'destroy']);
+        Route::post('/product-quantity-discounts', [ProductQuantityDiscountController::class, 'store']);
+        Route::put('/product-quantity-discounts/{tier}', [ProductQuantityDiscountController::class, 'update']);
+        Route::delete('/product-quantity-discounts/{tier}', [ProductQuantityDiscountController::class, 'destroy']);
 
         Route::get('/customers', [CustomerController::class, 'index']);
         Route::post('/customers', [CustomerController::class, 'store']);

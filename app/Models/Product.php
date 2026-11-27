@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -33,11 +32,6 @@ class Product extends Model
         'requires_material' => 'boolean',
         'uses_attributes' => 'boolean',
     ];
-
-    public function pricings(): HasMany
-    {
-        return $this->hasMany(Pricing::class);
-    }
 
     /**
      * @return BelongsTo<ProductCategory, $this>
