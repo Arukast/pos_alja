@@ -151,6 +151,7 @@ Sprint Review 1 Sales acceptance, superseded in part by the customer-management 
 - **Acceptance criteria:**
   - Allowed only while every order on the invoice has `status = 0` and the invoice status is `0` or `1`.
   - A request on a fully paid invoice (`status = 2`), after production starts, or for an invoice containing an `is_manual_price` order is rejected with HTTP 409.
+  - The designer list and edit page share one eligibility check with exactly four Indonesian lock reasons: `lunas`, `sudah diproduksi`, `tarif tidak tersedia`, and `harga manual`. The list shows `Terkunci — <reason>` instead of the `Edit` link when locked, and the edit page shows the `Invoice tidak dapat diubah` empty state; the backend 409 rule is unchanged.
   - The Designer may add, remove, or change items, quantities, specifications, and the deadline. An omitted `deadline` preserves the stored value; an explicit `null` clears it.
   - Invoice `grand_total`, `total_cost`, `total_profit`, and `accounts_receivable` are recalculated; existing payments are preserved.
   - Invoice status is recalculated: `2` when the receivable is zero, `1` when a receivable remains after a payment.
@@ -275,6 +276,7 @@ Sprint Review 1 Sales acceptance, superseded in part by the customer-management 
 - **Acceptance criteria:**
   - Sort: `created_at ASC`, then `id`. The target rule is `deadline ASC (nulls last)`, `priority DESC`, `created_at ASC`; it is not implemented.
   - The implemented queue returns status `0`, `1`, and `3`; status `2` is excluded. `status` accepts 0/1/3 (422 otherwise) and `search` matches invoice number, file name, or exact order UUID. The owner may also filter by branch.
+  - Orders whose invoice status is `0` (Belum Dibayar) are excluded from the queue and from all four `/production/summary` counts; invoices with DP (`1`) or Lunas (`2`) remain visible.
   - Each row shows order, customer, deadline, status, designer, and operator.
   - Branch-bound users see only their branch; owner may view all or one branch.
   - Statuses: `0` (Antre Produksi), `1` (Diproses), `3` (Gagal). Status `2` (Selesai) is not queued.
