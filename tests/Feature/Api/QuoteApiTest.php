@@ -106,6 +106,26 @@ class QuoteApiTest extends TestCase
         $this->assertSame($this->material->id, $response->json('materials.0.id'));
     }
 
+    public function test_quote_options_include_product_tiers_for_designer(): void
+    {
+        ProductQuantityDiscount::create([
+            'product_id' => $this->product->id,
+            'min_qty' => 10,
+            'discount_percent' => 5,
+        ]);
+
+        $response = $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk();
+
+        $product = collect($response->json('products'))->firstWhere('id', $this->product->id);
+
+        $this->assertNotNull($product);
+        $this->assertCount(1, $product['tiers']);
+        $this->assertSame(10, $product['tiers'][0]['min_qty']);
+        $this->assertSame('5.00', $product['tiers'][0]['discount_percent']);
+    }
+
     public function test_quote_options_excludes_inactive_products(): void
     {
         $inactive = Product::create([

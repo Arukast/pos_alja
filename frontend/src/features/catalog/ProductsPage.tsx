@@ -38,17 +38,14 @@ export function ProductsPage({
     const materials = useQuery({
         queryKey: ['materials', 'all-options'],
         queryFn: fetchAllMaterials,
-        enabled: !readOnly,
     });
     const attributeTypes = useQuery({
         queryKey: ['attribute-types', 'product-options'],
         queryFn: api.attributeTypes,
-        enabled: !readOnly,
     });
     const attributes = useQuery({
         queryKey: ['attributes', 'product-options'],
         queryFn: () => api.attributes(),
-        enabled: !readOnly,
     });
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
