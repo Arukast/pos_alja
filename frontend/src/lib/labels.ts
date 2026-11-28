@@ -33,7 +33,6 @@ const modelTypes: Record<string, string> = {
     Order: 'Pesanan',
     OrderStatusLog: 'Riwayat Status Pesanan',
     Payment: 'Pembayaran',
-    ProductQuantityDiscount: 'Tier Jumlah',
     Product: 'Produk',
     ProductCategory: 'Kategori Produk',
     ProductCategoryDiscount: 'Diskon Kategori Produk',

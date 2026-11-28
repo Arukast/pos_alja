@@ -144,7 +144,6 @@ export function ManagerDashboardPage() {
                         <div className="grid gap-4 sm:grid-cols-3">
                             <StatCard label="Bahan Tersedia" value={String(data.counts.materials)} />
                             <StatCard label="Staf Aktif" value={String(data.counts.staff)} />
-                            <StatCard label="Tier Jumlah" value={String(data.counts.product_quantity_discounts)} />
                         </div>
                     </div>
 

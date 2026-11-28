@@ -12,6 +12,7 @@ const tabRoutes: Record<string, Record<string, string>> = {
         materials: '/owner/materials',
         categories: '/owner/categories',
         products: '/owner/products',
+        quantity_tiers: '/owner/products',
         attributes: '/owner/attributes',
     },
     manager: {
@@ -22,8 +23,8 @@ const tabRoutes: Record<string, Record<string, string>> = {
         materials: '/manager/materials',
         ledgers: '/manager/ledgers',
         finishing: '/manager/finishing',
-        pricing: '/manager/quantity-tiers',
-        quantity_tiers: '/manager/quantity-tiers',
+        pricing: '/manager/products',
+        quantity_tiers: '/manager/products',
         leaderboard: '/manager/leaderboard',
         users: '/manager/users',
         categories: '/manager/categories',

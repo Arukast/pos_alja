@@ -1,7 +1,6 @@
 import {
     Box,
     Building2,
-    CircleDollarSign,
     ClipboardList,
     CreditCard,
     DatabaseBackup,
@@ -60,7 +59,6 @@ export const roleLinks: Record<string, NavGroup[]> = {
                 { to: '/owner/attributes', label: 'Atribut', icon: Tags },
                 { to: '/owner/materials', label: 'Bahan & Stok', icon: Package },
                 { to: '/owner/purchases', label: 'Pembelian', icon: ShoppingCart },
-                { to: '/owner/quantity-tiers', label: 'Tier Jumlah', icon: CircleDollarSign },
                 { to: '/owner/backups', label: 'Backup Data', icon: DatabaseBackup },
             ],
         },
@@ -96,7 +94,6 @@ export const roleLinks: Record<string, NavGroup[]> = {
                 { to: '/manager/finishing', label: 'Atribut', icon: Tags },
                 { to: '/manager/categories', label: 'Kategori Produk', icon: Tags },
                 { to: '/manager/products', label: 'Produk', icon: Box },
-                { to: '/manager/quantity-tiers', label: 'Tier Jumlah', icon: CircleDollarSign },
             ],
         },
         {

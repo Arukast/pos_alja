@@ -18,7 +18,6 @@ import {
     OwnerCategoriesPage,
     OwnerMaterialsPage,
     OwnerProductsPage,
-    OwnerQuantityTiersPage,
     OwnerUsersPage,
 } from '../features/owner/AdminPages';
 import { AuditPage } from '../features/owner/AuditPage';
@@ -35,7 +34,6 @@ import {
     ManagerLedgersPage,
     ManagerMaterialsPage,
     ManagerProductsPage,
-    ManagerQuantityTiersPage,
     ManagerUsersPage,
 } from '../features/manager/AdminPages';
 import { ManagerDashboardPage } from '../features/manager/ManagerDashboardPage';
@@ -91,7 +89,10 @@ export const router = createBrowserRouter([
                             { path: 'products', element: <OwnerProductsPage /> },
                             { path: 'attributes', element: <OwnerAttributesPage /> },
                             { path: 'materials', element: <OwnerMaterialsPage /> },
-                            { path: 'quantity-tiers', element: <OwnerQuantityTiersPage /> },
+                            {
+                                path: 'quantity-tiers',
+                                element: <Navigate to="/owner/products" replace />,
+                            },
                             { path: 'purchases', element: <PurchasesPage /> },
                         ],
                     },
@@ -110,9 +111,12 @@ export const router = createBrowserRouter([
                             { path: 'finishing', element: <ManagerFinishingPage /> },
                             {
                                 path: 'pricing',
-                                element: <Navigate to="/manager/quantity-tiers" replace />,
+                                element: <Navigate to="/manager/products" replace />,
                             },
-                            { path: 'quantity-tiers', element: <ManagerQuantityTiersPage /> },
+                            {
+                                path: 'quantity-tiers',
+                                element: <Navigate to="/manager/products" replace />,
+                            },
                             { path: 'leaderboard', element: <ManagerLeaderboardPage /> },
                             { path: 'users', element: <ManagerUsersPage /> },
                             { path: 'categories', element: <ManagerCategoriesPage /> },
