@@ -204,4 +204,19 @@ describe('api.products and admin product mutations', () => {
             body: JSON.stringify(tierBody),
         });
     });
+
+    it('test_product_mutations_serialize_nested_tiers', async () => {
+        const body = {
+            name: 'Banner Vinyl', product_category_id: 'cat-1', selling_unit: 'm2',
+            is_active: true, requires_material: true, uses_attributes: true,
+            material_ids: ['mat-1'], attribute_type_ids: [], attribute_ids: [],
+            tiers: [{ id: 't1', min_qty: 10, discount_percent: '5.00' }],
+        };
+
+        await api.admin.createProduct(body);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/products', { method: 'POST', body: JSON.stringify(body) });
+
+        await api.admin.updateProduct('prod-1', body);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/products/prod-1', { method: 'PUT', body: JSON.stringify(body) });
+    });
 });

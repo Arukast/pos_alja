@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { unitLabel, unitOptions } from '../../lib/units';
 import { productCompositionLabels } from './productOptions';
+import { ProductTiersField, productPayload, type ProductTierValue } from './ProductTiersField';
 
 async function fetchAllMaterials(): Promise<Material[]> {
     const first = await api.materials({ page: 1 });
@@ -125,6 +126,7 @@ export function ProductsPage({
             options: materialOptions,
             getValue: (product) => product.material_ids ?? [],
             disabledWhen: (values) => !values.requires_material,
+            hideWhen: (values) => !values.requires_material,
             labelFor: (values) =>
                 values.requires_material ? materialLabel : `${materialLabel} (diabaikan)`,
         },
@@ -136,6 +138,7 @@ export function ProductsPage({
             options: attributeTypeOptions,
             getValue: (product) => product.attribute_type_ids ?? [],
             disabledWhen: (values) => !values.uses_attributes,
+            hideWhen: (values) => !values.uses_attributes,
             labelFor: (values) =>
                 values.uses_attributes ? attributeTypeLabel : `${attributeTypeLabel} (diabaikan)`,
         },
@@ -147,6 +150,7 @@ export function ProductsPage({
             options: attributeOptions,
             getValue: (product) => product.attribute_ids ?? [],
             disabledWhen: (values) => !values.uses_attributes,
+            hideWhen: (values) => !values.uses_attributes,
             labelFor: (values) =>
                 values.uses_attributes ? attributeLabel : `${attributeLabel} (diabaikan)`,
         },
@@ -156,6 +160,20 @@ export function ProductsPage({
             type: 'checkbox',
             defaultValue: true,
             getValue: (product) => product.is_active,
+        },
+        {
+            key: 'tiers',
+            label: 'Tier Jumlah',
+            type: 'custom',
+            getValue: (product) => product.tiers ?? [],
+            render: (values, setValues, errors) => (
+                <ProductTiersField
+                    value={Array.isArray(values.tiers) ? (values.tiers as ProductTierValue[]) : []}
+                    onChange={(tiers) => setValues({ ...values, tiers })}
+                    errors={errors}
+                    disabled={readOnly}
+                />
+            ),
         },
     ];
 
@@ -280,21 +298,7 @@ export function ProductsPage({
                 readOnly
                     ? undefined
                     : async (values) => {
-                          const result = await api.admin.createProduct({
-                              ...values,
-                              is_active: Boolean(values.is_active),
-                              requires_material: Boolean(values.requires_material),
-                              uses_attributes: Boolean(values.uses_attributes),
-                              material_ids: Array.isArray(values.material_ids)
-                                  ? values.material_ids
-                                  : [],
-                              attribute_type_ids: Array.isArray(values.attribute_type_ids)
-                                  ? values.attribute_type_ids
-                                  : [],
-                              attribute_ids: Array.isArray(values.attribute_ids)
-                                  ? values.attribute_ids
-                                  : [],
-                          });
+                          const result = await api.admin.createProduct(productPayload(values));
                           void queryClient.invalidateQueries({ queryKey: ['quote-options'] });
 
                           return result;
@@ -304,26 +308,14 @@ export function ProductsPage({
                 readOnly
                     ? undefined
                     : async (id, values) => {
-                          const result = await api.admin.updateProduct(id, {
-                              ...values,
-                              is_active: Boolean(values.is_active),
-                              requires_material: Boolean(values.requires_material),
-                              uses_attributes: Boolean(values.uses_attributes),
-                              material_ids: Array.isArray(values.material_ids)
-                                  ? values.material_ids
-                                  : [],
-                              attribute_type_ids: Array.isArray(values.attribute_type_ids)
-                                  ? values.attribute_type_ids
-                                  : [],
-                              attribute_ids: Array.isArray(values.attribute_ids)
-                                  ? values.attribute_ids
-                                  : [],
-                          });
+                          const result = await api.admin.updateProduct(id, productPayload(values));
                           void queryClient.invalidateQueries({ queryKey: ['quote-options'] });
 
                           return result;
                       }
             }
+            readOnly={readOnly}
+            viewTitle="Lihat produk"
             createLabel="Tambah produk"
         />
     );
