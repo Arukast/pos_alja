@@ -98,7 +98,7 @@ final class UpdateProduct
             ->delete();
 
         foreach ($tiers as $tier) {
-            if (isset($tier['id'])) {
+            if (! empty($tier['id'])) {
                 ProductQuantityDiscount::query()
                     ->whereKey($tier['id'])
                     ->where('product_id', $product->id)

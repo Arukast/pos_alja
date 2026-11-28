@@ -17,6 +17,7 @@ use App\Models\StockLedger;
 use App\Models\User;
 use App\Support\Decimal;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -1787,6 +1788,33 @@ class CatalogWriteApiTest extends TestCase
             ->where('model_id', $created)->firstOrFail();
         $this->assertSame([25], array_column($updateLog->payload['before']['tiers'], 'min_qty'));
         $this->assertSame([30], array_column($updateLog->payload['after']['tiers'], 'min_qty'));
+    }
+
+    public function test_tier_with_empty_id_is_inserted_without_deleting_existing_tiers(): void
+    {
+        $existingId = ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 10, 'discount_percent' => 5,
+        ])->id;
+
+        // Keep the raw '' in the payload so the validator sees exactly the value the review traced.
+        $this->withoutMiddleware(ConvertEmptyStringsToNull::class);
+
+        $this->actingAs($this->owner)->putJson("/api/v1/products/{$this->product->id}", [
+            'name' => $this->product->name,
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+            'tiers' => [
+                ['id' => $existingId, 'min_qty' => 10, 'discount_percent' => '5.00'],
+                ['id' => '', 'min_qty' => 30, 'discount_percent' => '9.00'],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('product.tiers.0.min_qty', 10)
+            ->assertJsonPath('product.tiers.1.min_qty', 30);
+
+        $this->assertSame([10, 30], $this->product->quantityDiscounts()->orderBy('min_qty')->pluck('min_qty')->all());
+        $this->assertDatabaseHas('product_quantity_discounts', [
+            'id' => $existingId, 'min_qty' => 10, 'discount_percent' => 5,
+        ]);
     }
 
     private function branch(string $name): Branch
