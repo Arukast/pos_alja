@@ -37,9 +37,8 @@ Outfit only, with tabular numerals for money and counts.
   is 16px at `font-semibold` (600); `CrudPage` list cards that pass a `create` action render a short `Daftar`
   list title on the left (a leading `Manajemen ` is stripped; `cardTitle` overrides it) with the small create
   action on the right. `ResourceTable` has no `cardTitle` or create action; when given `cardActions` it
-  renders the same derived title on the left and those generic actions on the right. The read-only
-  quantity-tier cards keep that 16px title and add the note "Hanya pemilik dapat mengubah tier."
-  beside it. The 16px/700 rule in the design source is a convention for section headers, not something
+  renders the same derived title on the left and those generic actions on the right. The 16px/700
+  rule in the design source is a convention for section headers, not something
   a component enforces.
 - Body copy: 14px (`text-sm`) on cards, forms, tables, and descriptions. The base element has no global
   14px rule.
@@ -107,7 +106,10 @@ width 1600px.
 - Forms: 10px/600 uppercase label, 40px control, 12px radius, 1px `#6B7280` border, white surface, 2px
   magenta focus ring at 40%.
 - Dialog: centred 560px by default, 16px radius, 1px border, flat `brand-dark/55` dim, one primary and one
-  secondary action.
+  secondary action. The product modal adds an inline `Tier Jumlah` section with repeatable `Jumlah minimum`
+  and `Diskon` rows and `Tambah tier`/`Hapus tier` actions, using the same form labels and control sizing;
+  it starts with no rows. The Manager's read-only `Lihat` modal uses the same layout with those controls
+  disabled. The former standalone quantity-tier cards were removed with their pages.
 - Chart (`Sparkline`): one magenta area series, 3px line, area gradient from 28% to transparent, three
   quarter gridlines plus a dashed zero baseline, and 3.5px point markers.
 - Login: light grey canvas (`login-mesh`) with a 4rem grid mesh, a centred 448px (`max-w-md`) white card with

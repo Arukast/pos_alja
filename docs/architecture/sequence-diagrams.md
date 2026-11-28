@@ -141,26 +141,26 @@ sequenceDiagram
     participant R as Reverb
 
     alt Owner
-        A->>SPA: Create or edit product, category, material, attribute type, a global/branch attribute option, or a global product quantity tier
-        SPA->>API: POST/PUT /api/v1/products, /categories, /attribute-types, /attributes, /materials, /product-quantity-discounts
+        A->>SPA: Create or edit product (with inline tiers), category, material, attribute type, or a global/branch attribute option
+        SPA->>API: POST/PUT /api/v1/products with tiers[], /categories, /attribute-types, /attributes, /materials
         SPA->>API: PATCH /api/v1/materials/{id}/min-stock
         API->>Policy: Authorize CatalogPolicy::manageCategories, manageProducts, createAttribute/updateAttribute, AttributeTypePolicy::create/update, manageProductQuantityDiscounts, or MaterialPolicy::update/setMinimumStock
     else Manager
-        M->>SPA: Edit own-branch attribute option or branch minimum stock; read global quantity tiers
-        SPA->>API: POST/PUT /api/v1/attributes or PATCH /api/v1/materials/{id}/min-stock; GET /api/v1/product-quantity-discounts
+        M->>SPA: Edit own-branch attribute option or branch minimum stock; open read-only product modal with tiers
+        SPA->>API: POST/PUT /api/v1/attributes or PATCH /api/v1/materials/{id}/min-stock; GET /api/v1/products
         API->>Policy: Authorize CatalogPolicy::createAttribute/updateAttribute, viewProductQuantityDiscounts, or MaterialPolicy::setMinimumStock for own branch
     end
     alt Denied
         Policy-->>API: Deny
         API-->>SPA: 403
     else Allowed
-        API->>DB: BEGIN, validate, write catalog row or is_active flag (no category/attribute delete), audit product writes, COMMIT
+        API->>DB: BEGIN, validate (nested tiers, dotted 422 keys), write catalog row or is_active flag, sync tiers (delete omitted, update retained, insert new), audit product writes including tiers, COMMIT
         API-->>SPA: Resource
         API->>R: OrderUpdated
     end
 ```
 
-Categories, products, and attributes are retired with `is_active`; category and attribute delete routes return 404. Managers can manage only own-branch attributes and edit only their own branch's minimum stock; global attributes are read-only. Product quantity tiers are global, unique per `(product_id, min_qty)`, Owner-written and Manager-read; the pricing matrix and category tiers are gone, and all prices compute from material and attribute rows plus the tier and reseller discounts.
+Categories, products, and attributes are retired with `is_active`; category and attribute delete routes return 404. Managers can manage only own-branch attributes and edit only their own branch's minimum stock; global attributes are read-only. Product quantity tiers are global, unique per `(product_id, min_qty)`, Owner-written and Manager-read; the pricing matrix and category tiers are gone, and all prices compute from material and attribute rows plus the tier and reseller discounts. Tiers are now edited inside the product modal; on PUT an absent or empty `tiers` array clears all rows, and the standalone tier pages are gone in favour of redirects to the products pages (the tier REST endpoints remain).
 
 ### 2.3 Product Compatibility Write And Read
 
@@ -176,8 +176,8 @@ sequenceDiagram
     participant DB
     participant R as Reverb
 
-    A->>SPA: Edit product flags, allowed types, compatible attributes, materials
-    SPA->>API: POST/PUT /api/v1/products
+    A->>SPA: Edit product flags, allowed types, compatible attributes, materials, and inline quantity tiers
+    SPA->>API: POST/PUT /api/v1/products with tiers[]
     API->>Policy: Authorize manageProducts
     alt Not owner
         Policy-->>API: Deny
@@ -185,24 +185,24 @@ sequenceDiagram
     else Owner
         API->>API: Validate new type IDs active and new attributes active, in an active allowed type
         Note over API: IDs already mapped to the product remain valid when inactive; uses_attributes=false keeps the pivots
-        API->>DB: BEGIN, update product, sync material_product, attribute_type_product, attribute_product, PUT records audit before/after (POST create records a flat snapshot), COMMIT
-        API-->>SPA: ProductResource with flags, ID arrays, and display-only name arrays
+        API->>DB: BEGIN, update product, sync material_product, attribute_type_product, attribute_product and quantityDiscounts (delete before update/insert), PUT records audit before/after including tiers (POST create records a flat snapshot with tiers), COMMIT
+        API-->>SPA: ProductResource with flags, ID arrays, display-only name arrays, and tiers for Owner/Manager/Designer only
         API->>R: OrderUpdated
         Note over SPA: Product create/update also invalidates ['quote-options']
     end
 
-    M->>SPA: Open read-only /manager/products
+    M->>SPA: Open read-only /manager/products and click Lihat
     SPA->>API: GET /api/v1/products
-    API->>DB: Eager-load category, materials, attributeTypes, compatibleAttributes.typeInfo
-    API-->>SPA: Semua bahan/Semua tipe/Semua atribut or names from the resource arrays
+    API->>DB: Eager-load category, materials, attributeTypes, compatibleAttributes.typeInfo, quantityDiscounts
+    API-->>SPA: Semua bahan/Semua tipe/Semua atribut or names from the resource arrays, plus tiers; every modal field disabled
 
     D->>SPA: Open designer quote options
     SPA->>API: GET /api/v1/quotes/options
-    API->>DB: Eager-load the same product relations
+    API->>DB: Eager-load the same product relations (tiers gated by role)
     API-->>SPA: Product flags, ID arrays, name arrays for filtering; API still enforces compatibility
 ```
 
-On both read paths, an empty type or attribute mapping means all active types/attributes. Every `ProductResource` producer must eager-load both pivots; a missing load produces empty arrays and silently means all. The display-only name arrays are not authoritative for writes or quote filtering.
+On both read paths, an empty type or attribute mapping means all active types/attributes. Every `ProductResource` producer must eager-load both pivots; a missing load produces empty arrays and silently means all, and a missing `quantityDiscounts` load would make an edit form silently delete all tiers. The display-only name arrays are not authoritative for writes or quote filtering. Cashier and Production receive no `tiers` key.
 
 ## 3. Sales And Orders
 
