@@ -98,6 +98,8 @@ export interface Product {
     id: string;
     name: string;
     selling_unit: string;
+    price: string;
+    cost?: string;
     is_active: boolean;
     deleted_at?: string | null;
     category: { id: string; name: string; is_active: boolean } | null;

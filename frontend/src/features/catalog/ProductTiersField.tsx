@@ -88,6 +88,8 @@ export function productPayload(values: FormValues): Record<string, unknown> {
         name: values.name,
         product_category_id: values.product_category_id,
         selling_unit: values.selling_unit,
+        price: String(values.price ?? '0.00'),
+        cost: String(values.cost ?? '0.00'),
         is_active: Boolean(values.is_active),
         requires_material: Boolean(values.requires_material),
         uses_attributes: Boolean(values.uses_attributes),
