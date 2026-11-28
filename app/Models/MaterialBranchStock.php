@@ -29,6 +29,14 @@ class MaterialBranchStock extends Model
         'branch_id',
         'current_stock',
         'min_stock',
+        'is_active',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     /**

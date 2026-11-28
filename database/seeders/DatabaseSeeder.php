@@ -3,19 +3,16 @@
 namespace Database\Seeders;
 
 use App\Models\Attribute;
-use App\Models\AttributePricing;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Machine;
-use App\Models\MachinePricing;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -99,17 +96,17 @@ class DatabaseSeeder extends Seeder
 
         // 3. Products
         $products = [
-            ['name' => 'Merchandise', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Merchandise']->id],
-            ['name' => 'Jasa Desain', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Jasa Desain']->id],
-            ['name' => 'Display', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Display']->id],
-            ['name' => 'Print Kertas', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Print Kertas']->id],
-            ['name' => 'Large Format', 'pricing_type' => 'area', 'product_category_id' => $categoriesMap['Large Format']->id],
-            ['name' => 'ID Card', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['ID Card']->id],
-            ['name' => 'Stempel', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Stempel']->id],
-            ['name' => 'Kartu Nama', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Kartu Nama']->id],
-            ['name' => 'Produk Jadi', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['Produk Jadi']->id],
-            ['name' => 'NOTA', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['NOTA']->id],
-            ['name' => 'DTF Large Format', 'pricing_type' => 'unit', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
+            ['name' => 'Merchandise', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Merchandise']->id],
+            ['name' => 'Jasa Desain', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Jasa Desain']->id],
+            ['name' => 'Display', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Display']->id],
+            ['name' => 'Print Kertas', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Print Kertas']->id],
+            ['name' => 'Large Format', 'selling_unit' => 'm2', 'product_category_id' => $categoriesMap['Large Format']->id],
+            ['name' => 'ID Card', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['ID Card']->id],
+            ['name' => 'Stempel', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Stempel']->id],
+            ['name' => 'Kartu Nama', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Kartu Nama']->id],
+            ['name' => 'Produk Jadi', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['Produk Jadi']->id],
+            ['name' => 'NOTA', 'selling_unit' => 'pcs', 'product_category_id' => $categoriesMap['NOTA']->id],
+            ['name' => 'DTF Large Format', 'selling_unit' => 'm2', 'product_category_id' => $categoriesMap['DTF Large Format']->id],
         ];
 
         $productModels = [];
@@ -119,10 +116,10 @@ class DatabaseSeeder extends Seeder
 
         // 4. Materials
         $materials = [
-            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 8000, 'price' => 15000],
-            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'cost' => 15000, 'price' => 30000],
-            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'cost' => 1200, 'price' => 3500],
-            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'cost' => 150, 'price' => 500],
+            ['name' => 'Flexi China 280g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 8000, 'price' => 15000],
+            ['name' => 'Flexi Korea 440g', 'product_category_id' => $categoriesMap['Large Format']->id, 'type' => 'Outdoor', 'dimensions' => '3.2m', 'unit' => 'm2', 'cost' => 15000, 'price' => 30000],
+            ['name' => 'Art Paper 260g A3+', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '32x48cm', 'unit' => 'lembar', 'cost' => 1200, 'price' => 3500],
+            ['name' => 'HVS 80g A4', 'product_category_id' => $categoriesMap['Print Kertas']->id, 'type' => 'Kertas', 'dimensions' => '21x29.7cm', 'unit' => 'lembar', 'cost' => 150, 'price' => 500],
         ];
 
         $stocksMap = [
@@ -146,33 +143,33 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 5. Machines
-        $machines = [
-            ['name' => 'Konica Minolta C1085', 'branch_id' => $branchMain->id],
-            ['name' => 'Challenger FY-3208R', 'branch_id' => $branchMain->id],
-        ];
+        foreach ($productModels as $productModel) {
+            $matchingMaterialIds = collect($materialModels)
+                ->where('product_category_id', $productModel->product_category_id)
+                ->pluck('id')
+                ->values()
+                ->all();
 
-        $machineModels = [];
-        foreach ($machines as $mac) {
-            $machineModels[$mac['name']] = Machine::create($mac);
+            if ($matchingMaterialIds !== []) {
+                $productModel->materials()->sync($matchingMaterialIds);
+            }
         }
 
-        // 6. Attributes (Finishing, Cuts, Displays)
+        // 5. Attributes (Finishing, Cuts, Displays)
         $attributes = [
-            ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branchMain->id],
-            ['name' => 'Laminating Doff', 'type' => 'finishing', 'branch_id' => $branchMain->id],
-            ['name' => 'Mata Ayam (Eyelets)', 'type' => 'finishing', 'branch_id' => $branchMain->id],
-            ['name' => 'Half Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id],
-            ['name' => 'Die Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id],
-            ['name' => 'X-Banner Stand', 'type' => 'display', 'branch_id' => $branchMain->id],
+            ['name' => 'Laminating Glossy', 'type' => 'finishing', 'branch_id' => $branchMain->id, 'price' => 3000, 'cost' => 1500],
+            ['name' => 'Laminating Doff', 'type' => 'finishing', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'Mata Ayam (Eyelets)', 'type' => 'finishing', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'Half Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'Die Cut (Stiker)', 'type' => 'cut', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
+            ['name' => 'X-Banner Stand', 'type' => 'display', 'branch_id' => $branchMain->id, 'price' => 0, 'cost' => 0],
         ];
 
-        $attributeModels = [];
         foreach ($attributes as $a) {
-            $attributeModels[$a['name']] = Attribute::create($a);
+            Attribute::create($a);
         }
 
-        // 7. Customers
+        // 6. Customers
         $customerReguler = Customer::create([
             'name' => 'Budi Santoso',
             'phone' => '081234567890',
@@ -189,130 +186,20 @@ class DatabaseSeeder extends Seeder
             'type' => 'Mitra',
         ]);
 
-        // 8. Pricing
-        // Large Format (Pricing type = area)
-        $p1 = Pricing::create([
-            'branch_id' => $branchMain->id,
+        // 7. Product quantity tiers
+        ProductQuantityDiscount::create([
             'product_id' => $productModels['Large Format']->id,
-            'material_id' => $materialModels['Flexi China 280g']->id,
-            'price' => 20000,
-            'cost' => 10000,
-            'profit' => 10000,
-            'min_qty' => 1,
-            'customer_type' => 'Reguler',
-        ]);
-
-        // Machine pricing modifier
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p1->id,
-            'machine_id' => $machineModels['Challenger FY-3208R']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // Attribute pricing modifier
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p1->id,
-            'attribute_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // Large Format Bulk Discount (Tiered)
-        $p2 = Pricing::create([
-            'branch_id' => $branchMain->id,
-            'product_id' => $productModels['Large Format']->id,
-            'material_id' => $materialModels['Flexi China 280g']->id,
-            'price' => 15000, // Discounted from 20000 to 15000 for 100+ meters
-            'cost' => 10000,
-            'profit' => 5000,
             'min_qty' => 100,
-            'customer_type' => 'Reguler',
+            'discount_percent' => 10,
         ]);
 
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p2->id,
-            'machine_id' => $machineModels['Challenger FY-3208R']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p2->id,
-            'attribute_id' => $attributeModels['Mata Ayam (Eyelets)']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // Print Kertas (A3+ Art Paper)
-        $p3 = Pricing::create([
-            'branch_id' => $branchMain->id,
+        ProductQuantityDiscount::create([
             'product_id' => $productModels['Print Kertas']->id,
-            'material_id' => $materialModels['Art Paper 260g A3+']->id,
-            'price' => 5000,
-            'cost' => 2000,
-            'profit' => 3000,
-            'min_qty' => 1,
-            'customer_type' => 'Reguler',
-        ]);
-
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p3->id,
-            'machine_id' => $machineModels['Konica Minolta C1085']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p3->id,
-            'attribute_id' => $attributeModels['Laminating Glossy']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // Print Kertas Bulk Discount (Tiered)
-        $p4 = Pricing::create([
-            'branch_id' => $branchMain->id,
-            'product_id' => $productModels['Print Kertas']->id,
-            'material_id' => $materialModels['Art Paper 260g A3+']->id,
-            'price' => 4000, // Discounted for 100+ sheets
-            'cost' => 2000,
-            'profit' => 2000,
             'min_qty' => 100,
-            'customer_type' => 'Reguler',
+            'discount_percent' => 5,
         ]);
 
-        MachinePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p4->id,
-            'machine_id' => $machineModels['Konica Minolta C1085']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        AttributePricing::create([
-            'branch_id' => $branchMain->id,
-            'pricing_id' => $p4->id,
-            'attribute_id' => $attributeModels['Laminating Glossy']->id,
-            'price' => 0,
-            'cost' => 0,
-            'profit' => 0,
-        ]);
-
-        // 9. Sample Transactions
+        // 8. Sample Transactions
         $designerUser = User::where('role', 'designer')->first();
         $cashierUser = User::where('role', 'cashier')->first();
 
@@ -335,10 +222,14 @@ class DatabaseSeeder extends Seeder
             'pickup_date' => now()->toIso8601String(),
         ]);
 
-        $pricingLargeFormat = Pricing::where('product_id', $productModels['Large Format']->id)->first();
         Order::create([
             'invoice_id' => $invoice1->id,
-            'pricing_id' => $pricingLargeFormat->id,
+            'product_id' => $productModels['Large Format']->id,
+            'material_id' => $materialModels['Flexi China 280g']->id,
+            'customer_type' => 'Reguler',
+            'reseller_discount_percent' => 0,
+            'quantity_discount_percent' => 0,
+            'discount_amount' => 0,
             'file_name' => 'spanduk_toko.pdf',
             'area' => 5.0, // 5 sqm
             'quantity' => 1,

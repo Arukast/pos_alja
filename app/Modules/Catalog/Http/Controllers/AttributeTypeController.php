@@ -6,44 +6,56 @@ namespace App\Modules\Catalog\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttributeType;
+use App\Models\User;
+use App\Modules\Catalog\Actions\CreateAttributeType;
+use App\Modules\Catalog\Actions\UpdateAttributeType;
+use App\Modules\Catalog\Http\Requests\StoreAttributeTypeRequest;
+use App\Modules\Catalog\Http\Requests\UpdateAttributeTypeRequest;
 use App\Modules\Catalog\Http\Resources\AttributeTypeResource;
 use App\Modules\Catalog\Queries\CatalogQueries;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 final class AttributeTypeController extends Controller
 {
     public function index(CatalogQueries $queries): AnonymousResourceCollection
     {
-        Gate::authorize('viewAttributeTypes', AttributeType::class);
+        Gate::authorize('viewAny', AttributeType::class);
 
         return AttributeTypeResource::collection($queries->attributeTypes());
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreAttributeTypeRequest $request, CreateAttributeType $action): JsonResponse
     {
-        Gate::authorize('manageAttributeTypes', AttributeType::class);
+        $actor = $request->user();
 
-        $type = AttributeType::create($request->validate([
-            'name' => ['required', 'string', 'max:100', 'unique:attribute_types,name'],
-            'calculation_archetype' => [
-                'required',
-                'string',
-                'in:per_piece,surface_area,linear_dimension,tiered_volume',
-            ],
-        ]));
+        if (! $actor instanceof User) {
+            abort(401);
+        }
 
-        return response()->json(['attribute_type' => new AttributeTypeResource($type)], 201);
+        $type = $action->execute($request->validated(), $actor);
+
+        return response()->json([
+            'attribute_type' => new AttributeTypeResource($type),
+        ], 201);
     }
 
-    public function destroy(AttributeType $attributeType): Response
-    {
-        Gate::authorize('manageAttributeTypes', AttributeType::class);
-        $attributeType->delete();
+    public function update(
+        UpdateAttributeTypeRequest $request,
+        AttributeType $type,
+        UpdateAttributeType $action
+    ): JsonResponse {
+        $actor = $request->user();
 
-        return response()->noContent();
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $updated = $action->execute($type, $request->validated(), $actor);
+
+        return response()->json([
+            'attribute_type' => new AttributeTypeResource($updated),
+        ]);
     }
 }

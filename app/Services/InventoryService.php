@@ -20,7 +20,7 @@ class InventoryService
 {
     private const MAX_STOCK = 99999999.99;
 
-    private const MOVEMENT_TYPES = ['initial', 'purchase', 'usage', 'waste', 'adjustment', 'restock'];
+    private const MOVEMENT_TYPES = ['initial', 'purchase', 'usage', 'usage_reversal', 'waste', 'adjustment', 'restock'];
 
     /**
      * Create a global material catalog entry.
@@ -40,6 +40,7 @@ class InventoryService
                     'product_category_id' => $data['product_category_id'],
                     'type' => $data['type'] ?? null,
                     'dimensions' => $data['dimensions'] ?? null,
+                    'unit' => $data['unit'] ?? 'pcs',
                     'cost' => (float) ($data['cost'] ?? 0.0),
                     'price' => (float) ($data['price'] ?? 0.0),
                 ]);
@@ -56,19 +57,23 @@ class InventoryService
 
     /**
      * Initialize branch stock junction footprint.
+     *
+     * @return array{stock: MaterialBranchStock, created: bool}
      */
-    public function initializeBranchStock(string $materialId, string $branchId, float $initialStock, float $minStock): void
+    public function initializeBranchStock(string $materialId, string $branchId, float $initialStock, float $minStock): array
     {
         $userId = auth()->id();
 
         try {
-            DB::transaction(function () use ($materialId, $branchId, $initialStock, $minStock) {
+            return DB::transaction(function () use ($materialId, $branchId, $initialStock, $minStock): array {
                 $stock = MaterialBranchStock::firstOrCreate(
                     ['material_id' => $materialId, 'branch_id' => $branchId],
                     ['current_stock' => 0, 'min_stock' => $minStock]
                 );
 
-                if ($stock->wasRecentlyCreated && $initialStock > 0) {
+                $created = $stock->wasRecentlyCreated;
+
+                if ($created && $initialStock > 0) {
                     $this->applyMovement(
                         $materialId,
                         $branchId,
@@ -76,7 +81,11 @@ class InventoryService
                         $initialStock,
                         notes: 'Initial stock registered on material creation.',
                     );
+
+                    $stock->refresh();
                 }
+
+                return ['stock' => $stock, 'created' => $created];
             });
         } catch (\Throwable $e) {
             Log::error('Branch stock initialization failed.', [
@@ -94,7 +103,7 @@ class InventoryService
      *
      * Callers must hold a transaction; this method never opens its own.
      *
-     * @return array{old_stock: float, new_stock: float}
+     * @return array{old_stock: float, new_stock: float, ledger_id: string}
      */
     public function applyMovement(
         string $materialId,
@@ -162,7 +171,7 @@ class InventoryService
         $stock->current_stock = $newStock;
         $stock->save();
 
-        StockLedger::create([
+        $ledger = StockLedger::create([
             'branch_id' => $branchId,
             'material_id' => $materialId,
             'type' => $type,
@@ -179,7 +188,7 @@ class InventoryService
             'notes' => $notes,
         ]);
 
-        return ['old_stock' => $oldStock, 'new_stock' => $newStock];
+        return ['old_stock' => $oldStock, 'new_stock' => $newStock, 'ledger_id' => (string) $ledger->id];
     }
 
     /**
@@ -208,23 +217,23 @@ class InventoryService
 
     /**
      * Add new stock to material and log in stock ledger.
+     *
+     * @return array{old_stock: float, new_stock: float, ledger_id: string}
      */
-    public function addStock(Material $material, float $quantity, ?string $notes = null, ?string $branchId = null): Material
+    public function addStock(Material $material, float $quantity, ?string $notes = null, ?string $branchId = null): array
     {
         $userId = auth()->id();
         $branchId = $branchId ?: (auth()->user()->branch_id ?? Branch::value('id'));
 
         try {
-            return DB::transaction(function () use ($material, $quantity, $notes, $branchId) {
-                $this->applyMovement(
+            return DB::transaction(function () use ($material, $quantity, $notes, $branchId): array {
+                return $this->applyMovement(
                     $material->id,
                     $branchId,
                     'restock',
                     $quantity,
                     notes: $notes ?: "Manual stock addition: +{$quantity}",
                 );
-
-                return $material;
             });
         } catch (\Throwable $e) {
             Log::error('Adding stock failed.', [
@@ -239,14 +248,16 @@ class InventoryService
 
     /**
      * Log print waste/failure, decrement current stock cache, and write to stock ledger.
+     *
+     * @return array{waste: WastedMaterial, old_stock: float, new_stock: float, ledger_id: string}
      */
-    public function logWaste(array $params): WastedMaterial
+    public function logWaste(array $params): array
     {
         $userId = auth()->id();
         $branchId = $params['branch_id'] ?? (auth()->user()->branch_id ?? Branch::value('id'));
 
         try {
-            return DB::transaction(function () use ($params, $branchId) {
+            return DB::transaction(function () use ($params, $branchId): array {
                 $materialId = $params['material_id'];
                 $quantity = (float) $params['quantity'];
                 $dimensions = $params['dimensions'] ?? null;
@@ -269,7 +280,7 @@ class InventoryService
                     'notes' => $notes,
                 ]);
 
-                $this->applyMovement(
+                $movement = $this->applyMovement(
                     $materialId,
                     $branchId,
                     'waste',
@@ -280,7 +291,12 @@ class InventoryService
                     actor: $actor,
                 );
 
-                return $waste;
+                return [
+                    'waste' => $waste,
+                    'old_stock' => $movement['old_stock'],
+                    'new_stock' => $movement['new_stock'],
+                    'ledger_id' => $movement['ledger_id'],
+                ];
             });
         } catch (\Throwable $e) {
             Log::error('Logging waste failed.', [
@@ -293,7 +309,7 @@ class InventoryService
     }
 
     /**
-     * Deduct stock for printed layout items.
+     * Deduct stock for printed layout items and return the created ledger row.
      */
     public function deductStockOnPrint(
         string $materialId,
@@ -301,15 +317,15 @@ class InventoryService
         ?string $branchId = null,
         ?string $orderId = null,
         ?User $operator = null,
-    ): Material {
+    ): StockLedger {
         $userId = auth()->id();
         $branchId = $branchId ?: (auth()->user()->branch_id ?? Branch::value('id'));
 
         try {
-            return DB::transaction(function () use ($materialId, $quantity, $branchId, $orderId, $operator) {
-                $material = Material::findOrFail($materialId);
+            return DB::transaction(function () use ($materialId, $quantity, $branchId, $orderId, $operator): StockLedger {
+                Material::findOrFail($materialId);
 
-                $this->applyMovement(
+                $movement = $this->applyMovement(
                     $materialId,
                     $branchId,
                     'usage',
@@ -320,7 +336,7 @@ class InventoryService
                     actor: $operator,
                 );
 
-                return $material;
+                return StockLedger::query()->findOrFail($movement['ledger_id']);
             });
         } catch (\Throwable $e) {
             Log::error('Deducting stock on print failed.', [

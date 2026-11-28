@@ -45,6 +45,7 @@ final class WasteList
                 'id' => $material->id,
                 'name' => $material->name,
                 'type' => $material->type,
+                'unit' => $material->unit,
                 'dimensions' => $material->dimensions,
             ])
             ->values()
@@ -52,6 +53,7 @@ final class WasteList
 
         $designers = User::query()
             ->where('role', 'designer')
+            ->where('is_active', true)
             ->where('branch_id', $branchId)
             ->orderBy('name')
             ->get(['id', 'name'])

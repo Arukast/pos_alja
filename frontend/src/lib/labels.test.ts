@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    archetypeLabel,
     attributeTypeLabel,
     expenseTypeLabel,
+    modelTypeLabel,
     paymentMethodLabel,
-    pricingTypeLabel,
+    paymentTypeLabel,
     ledgerTypeLabel,
+    listCardTitle,
     roleLabel,
+    roleTone,
+    usernameLabel,
 } from './labels';
 
 describe('roleLabel', () => {
@@ -17,10 +20,76 @@ describe('roleLabel', () => {
         expect(roleLabel('cashier')).toBe('Kasir');
         expect(roleLabel('designer')).toBe('Desainer');
         expect(roleLabel('production')).toBe('Produksi');
+        expect(roleLabel('system')).toBe('Sistem');
     });
 
     it('falls back to the input for an unknown role', () => {
         expect(roleLabel('auditor')).toBe('auditor');
+    });
+});
+
+describe('roleTone', () => {
+    it('maps every stored role to a badge tone', () => {
+        expect(roleTone('owner')).toBe('brand');
+        expect(roleTone('manager')).toBe('info');
+        expect(roleTone('cashier')).toBe('success');
+        expect(roleTone('designer')).toBe('violet');
+        expect(roleTone('production')).toBe('warning');
+        expect(roleTone('system')).toBe('neutral');
+    });
+
+    it('falls back to neutral for an unknown role', () => {
+        expect(roleTone('auditor')).toBe('neutral');
+    });
+});
+
+describe('listCardTitle', () => {
+    it('prefixes a short list title', () => {
+        expect(listCardTitle('Pembelian')).toBe('Daftar Pembelian');
+        expect(listCardTitle('Bahan & Stok')).toBe('Daftar Bahan & Stok');
+    });
+
+    it('strips a leading Manajemen prefix', () => {
+        expect(listCardTitle('Manajemen Pengguna')).toBe('Daftar Pengguna');
+        expect(listCardTitle('Manajemen Produk')).toBe('Daftar Produk');
+        expect(listCardTitle('Manajemen Cabang')).toBe('Daftar Cabang');
+    });
+
+    it('keeps an existing Daftar title unchanged', () => {
+        expect(listCardTitle('Daftar Pesanan')).toBe('Daftar Pesanan');
+    });
+
+    it('only strips Manajemen at the start', () => {
+        expect(listCardTitle('Bukan Manajemen Pengguna')).toBe(
+            'Daftar Bukan Manajemen Pengguna'
+        );
+    });
+});
+
+describe('usernameLabel', () => {
+    it('renders the system actor in Indonesian', () => {
+        expect(usernameLabel('system')).toBe('Sistem');
+    });
+
+    it('keeps a human username', () => {
+        expect(usernameLabel('owner-contoh')).toBe('owner-contoh');
+    });
+});
+
+describe('modelTypeLabel', () => {
+    it('maps known model classes to Indonesian nouns', () => {
+        expect(modelTypeLabel('App\\Models\\BackupSetting')).toBe('Pengaturan Backup');
+        expect(modelTypeLabel('App\\Models\\Order')).toBe('Pesanan');
+        expect(modelTypeLabel('App\\Models\\Invoice')).toBe('Invoice');
+        expect(modelTypeLabel('App\\Models\\Material')).toBe('Material');
+    });
+
+    it('falls back to the class basename for an unknown model', () => {
+        expect(modelTypeLabel('App\\Models\\UnknownThing')).toBe('UnknownThing');
+    });
+
+    it('renders a dash for a missing model type', () => {
+        expect(modelTypeLabel(null)).toBe('-');
     });
 });
 
@@ -36,16 +105,11 @@ describe('paymentMethodLabel', () => {
     });
 });
 
-describe('archetypeLabel', () => {
-    it('labels every stored archetype', () => {
-        expect(archetypeLabel('per_piece')).toBe('Per Potong');
-        expect(archetypeLabel('surface_area')).toBe('Per Meter Persegi');
-        expect(archetypeLabel('linear_dimension')).toBe('Per Meter Lari');
-        expect(archetypeLabel('tiered_volume')).toBe('Harga Bertingkat');
-    });
-
-    it('falls back to the input for an unknown archetype', () => {
-        expect(archetypeLabel('flat_rate')).toBe('flat_rate');
+describe('paymentTypeLabel', () => {
+    it('labels a down payment as DP and anything else as Pelunasan', () => {
+        expect(paymentTypeLabel('down_payment')).toBe('DP');
+        expect(paymentTypeLabel('settlement')).toBe('Pelunasan');
+        expect(paymentTypeLabel('')).toBe('Pelunasan');
     });
 });
 
@@ -72,25 +136,15 @@ describe('attributeTypeLabel', () => {
     });
 });
 
-describe('pricingTypeLabel', () => {
-    it('labels every stored pricing type', () => {
-        expect(pricingTypeLabel('unit')).toBe('Per Satuan');
-        expect(pricingTypeLabel('area')).toBe('Per Area (m²)');
-    });
-
-    it('falls back to the input for an unknown pricing type', () => {
-        expect(pricingTypeLabel('custom')).toBe('custom');
-    });
-});
-
 describe('ledgerTypeLabel', () => {
     it('labels every stored ledger type', () => {
         expect(ledgerTypeLabel('initial')).toBe('Stok Awal');
         expect(ledgerTypeLabel('purchase')).toBe('Pembelian');
         expect(ledgerTypeLabel('usage')).toBe('Pemakaian');
-        expect(ledgerTypeLabel('waste')).toBe('Sisa Bahan');
+        expect(ledgerTypeLabel('waste')).toBe('Bahan Terbuang');
         expect(ledgerTypeLabel('adjustment')).toBe('Koreksi');
         expect(ledgerTypeLabel('restock')).toBe('Tambah Stok');
+        expect(ledgerTypeLabel('usage_reversal')).toBe('Pengembalian Pemakaian');
     });
 
     it('falls back to the input for an unknown type', () => {

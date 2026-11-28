@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Catalog\Http\Requests;
+
+use App\Models\Attribute;
+use Illuminate\Foundation\Http\FormRequest;
+
+final class StoreAttributeRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can('createAttribute', Attribute::class) === true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'string', 'max:100', 'exists:attribute_types,slug'],
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
+            'cost' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
+            'is_active' => ['sometimes', 'boolean'],
+        ];
+    }
+}

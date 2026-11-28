@@ -16,23 +16,53 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast } from '../ui/Toast';
 import type { ResourceColumn } from '../ResourceTable';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { listCardTitle } from '../../lib/labels';
+
+export type FormValue = string | number | boolean | string[] | Array<Record<string, unknown>>;
+export type FormValues = Record<string, FormValue>;
 
 export interface CrudField<T> {
     key: string;
     label: string;
-    type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox';
-    options?: Array<{ value: string; label: string }>;
+    type?: 'text' | 'number' | 'email' | 'password' | 'select' | 'checkbox' | 'multiselect' | 'custom';
+    options?: Array<{ value: string; label: string }> | ((row: T | null) => Array<{ value: string; label: string }>);
+    emptyOptionLabel?: string;
     required?: boolean;
-    defaultValue?: string | number | boolean;
-    getValue?: (row: T) => string | number | boolean | null | undefined;
+    defaultValue?: FormValue;
+    getValue?: (row: T) => FormValue | null | undefined;
+    labelFor?: (values: FormValues) => string;
+    disabledWhen?: (values: FormValues) => boolean;
+    hideWhen?: (values: FormValues) => boolean;
+    render?: (values: FormValues, setValues: (values: FormValues) => void, errors: Record<string, string>) => ReactNode;
     hideOnEdit?: boolean;
+    min?: string | number;
+    max?: string | number;
 }
 
-type FormValues = Record<string, string | number | boolean>;
+export function valuesForFields<T extends { id: string }>(row: T | null, fields: Array<CrudField<T>>): FormValues {
+    const next: FormValues = {};
+
+    for (const field of fields) {
+        const current = row
+            ? (field.getValue?.(row) ?? (row as Record<string, unknown>)[field.key])
+            : field.defaultValue;
+
+        if (field.type === 'multiselect' || field.type === 'custom') {
+            next[field.key] = Array.isArray(current) ? current : [];
+            continue;
+        }
+
+        next[field.key] = (current ?? '') as string | number | boolean;
+    }
+
+    return next;
+}
 
 export function CrudPage<T extends { id: string }>({
     eyebrow,
     title,
+    cardTitle,
+    cardNote,
     description,
     queryKey,
     queryFn,
@@ -41,8 +71,11 @@ export function CrudPage<T extends { id: string }>({
     create,
     update,
     remove,
+    canEditRow,
     pageResetKey,
     rowActions,
+    rowLabel,
+    editTitle,
     createLabel = 'Tambah data',
     summary,
     toolbar,
@@ -50,9 +83,15 @@ export function CrudPage<T extends { id: string }>({
     footer,
     paginated = true,
     hideBanner = false,
+    notice,
+    onNoticeChange,
+    readOnly = false,
+    viewTitle,
 }: {
     eyebrow: string;
     title: string;
+    cardTitle?: string;
+    cardNote?: string;
     description?: string;
     queryKey: readonly unknown[];
     queryFn: (page: number) => Promise<Paginated<T>>;
@@ -61,8 +100,11 @@ export function CrudPage<T extends { id: string }>({
     create?: (values: FormValues) => Promise<unknown>;
     update?: (id: string, values: FormValues) => Promise<unknown>;
     remove?: (id: string) => Promise<unknown>;
+    canEditRow?: (row: T) => boolean;
     pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
+    rowLabel?: (row: T) => string;
+    editTitle?: (row: T) => string;
     createLabel?: string;
     summary?: ReactNode;
     toolbar?: ReactNode;
@@ -70,6 +112,10 @@ export function CrudPage<T extends { id: string }>({
     footer?: ReactNode;
     paginated?: boolean;
     hideBanner?: boolean;
+    notice?: { message: string; tone: 'success' | 'error' } | null;
+    onNoticeChange?: (notice: { message: string; tone: 'success' | 'error' } | null) => void;
+    readOnly?: boolean;
+    viewTitle?: string;
 }) {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -82,29 +128,19 @@ export function CrudPage<T extends { id: string }>({
     const [editing, setEditing] = useState<T | null>(null);
     const [values, setValues] = useState<FormValues>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [notice, setNotice] = useState<{
+    const [internalNotice, setInternalNotice] = useState<{
         message: string;
         tone: 'success' | 'error';
     } | null>(null);
+    const activeNotice = notice !== undefined ? notice : internalNotice;
+    const updateNotice = onNoticeChange ?? setInternalNotice;
 
     const query = useQuery({
         queryKey: [...queryKey, page],
         queryFn: () => queryFn(page),
     });
 
-    const valuesFor = (row: T | null): FormValues => {
-        const next: FormValues = {};
-
-        for (const field of fields) {
-            const current = row
-                ? (field.getValue?.(row) ?? (row as Record<string, unknown>)[field.key])
-                : field.defaultValue;
-
-            next[field.key] = (current ?? '') as string | number | boolean;
-        }
-
-        return next;
-    };
+    const valuesFor = (row: T | null): FormValues => valuesForFields(row, fields);
 
     const invalidate = () => {
         void queryClient.invalidateQueries({ queryKey });
@@ -127,14 +163,14 @@ export function CrudPage<T extends { id: string }>({
             invalidate();
             setOpen(false);
             setEditing(null);
-            setNotice({
+            updateNotice({
                 message: editing ? 'Data diperbarui.' : 'Data ditambahkan.',
                 tone: 'success',
             });
         },
         onError: (error) => {
             setErrors(mapApiErrors(error));
-            setNotice({ message: errorMessage(error), tone: 'error' });
+            updateNotice({ message: errorMessage(error), tone: 'error' });
         },
     });
 
@@ -148,9 +184,9 @@ export function CrudPage<T extends { id: string }>({
         },
         onSuccess: () => {
             invalidate();
-            setNotice({ message: 'Data dihapus.', tone: 'success' });
+            updateNotice({ message: 'Data dihapus.', tone: 'success' });
         },
-        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+        onError: (error) => updateNotice({ message: errorMessage(error), tone: 'error' }),
     });
 
     const openCreate = () => {
@@ -167,23 +203,21 @@ export function CrudPage<T extends { id: string }>({
         setOpen(true);
     };
 
-    const hasActions = Boolean(update || remove || rowActions);
+    const hasActions = Boolean(update || remove || rowActions || readOnly);
+
+    const closeModal = () => {
+        if (save.isPending) {
+            return;
+        }
+
+        setOpen(false);
+        setEditing(null);
+    };
 
     return (
         <div className="space-y-6">
             {hideBanner ? null : (
-                <PageBanner
-                    eyebrow={eyebrow}
-                    title={title}
-                    description={description}
-                    actions={
-                        create ? (
-                            <Button size="sm" onClick={openCreate}>
-                                {createLabel}
-                            </Button>
-                        ) : null
-                    }
-                />
+                <PageBanner eyebrow={eyebrow} title={title} description={description} />
             )}
 
             {summary}
@@ -191,16 +225,16 @@ export function CrudPage<T extends { id: string }>({
             {toolbar}
 
             <Card>
-                {hideBanner ? (
+                {create || hideBanner || cardTitle ? (
                     <CardHeader>
-                        <div className="space-y-1">
-                            <h2 className="text-light-text text-base font-bold dark:text-gray-100">{title}</h2>
-                            {description ? (
-                                <p className="text-light-muted-strong text-sm dark:text-gray-400">{description}</p>
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <h2 className="font-semibold">{cardTitle ?? listCardTitle(title)}</h2>
+                            {cardNote ? (
+                                <p className="text-light-muted-strong text-xs dark:text-gray-400">{cardNote}</p>
                             ) : null}
                         </div>
-                        {create ? (
-                            <Button size="sm" onClick={openCreate}>
+                        {create && !readOnly ? (
+                            <Button size="sm" className="ml-auto" onClick={openCreate}>
                                 {createLabel}
                             </Button>
                         ) : null}
@@ -244,48 +278,70 @@ export function CrudPage<T extends { id: string }>({
                                             Belum ada data.
                                         </TableEmpty>
                                     ) : (
-                                        (query.data?.data ?? []).map((row) => (
-                                            <TableRow key={row.id} className={rowClassName?.(row)}>
-                                                {columns.map((column) => (
-                                                    <TableCell key={column.header} className={column.className}>
-                                                        {column.cell(row)}
-                                                    </TableCell>
-                                                ))}
-                                                {hasActions ? (
-                                                    <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
-                                                        <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
-                                                            {rowActions?.(row)}
-                                                            {update ? (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="secondary"
-                                                                    onClick={() => openEdit(row)}
-                                                                >
-                                                                    Ubah
-                                                                </Button>
-                                                            ) : null}
-                                                            {remove ? (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="danger"
-                                                                    onClick={() => {
-                                                                        if (
-                                                                            window.confirm(
-                                                                                'Hapus data ini?'
-                                                                            )
-                                                                        ) {
-                                                                            destroy.mutate(row.id);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    Hapus
-                                                                </Button>
-                                                            ) : null}
-                                                        </div>
-                                                    </TableCell>
-                                                ) : null}
-                                            </TableRow>
-                                        ))
+                                        (query.data?.data ?? []).map((row) => {
+                                            const label = rowLabel?.(row) ?? (row as { name?: string }).name;
+                                            const showEdit =
+                                                update !== undefined && (canEditRow?.(row) ?? true);
+                                            const showDelete = remove !== undefined;
+
+                                            return (
+                                                <TableRow key={row.id} className={rowClassName?.(row)}>
+                                                    {columns.map((column) => (
+                                                        <TableCell key={column.header} className={column.className}>
+                                                            {column.cell(row)}
+                                                        </TableCell>
+                                                    ))}
+                                                    {hasActions ? (
+                                                        <TableCell className="border-light-border sticky right-0 border-l bg-light-surface shadow-[-8px_0_12px_-10px_rgb(0_0_0/0.35)] dark:border-surface-300 dark:bg-surface-700">
+                                                            <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:gap-2">
+                                                                {rowActions?.(row)}
+                                                                {readOnly ? (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        aria-label={label ? `Lihat ${label}` : undefined}
+                                                                        onClick={() => openEdit(row)}
+                                                                    >
+                                                                        Lihat
+                                                                    </Button>
+                                                                ) : (
+                                                                    <>
+                                                                        {showEdit ? (
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="secondary"
+                                                                                aria-label={label ? `Ubah ${label}` : undefined}
+                                                                                onClick={() => openEdit(row)}
+                                                                            >
+                                                                                Ubah
+                                                                            </Button>
+                                                                        ) : null}
+                                                                        {showDelete ? (
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="danger"
+                                                                                aria-label={label ? `Hapus ${label}` : undefined}
+                                                                                onClick={() => {
+                                                                                    if (
+                                                                                        window.confirm(
+                                                                                            'Hapus data ini?'
+                                                                                        )
+                                                                                    ) {
+                                                                                        destroy.mutate(row.id);
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                Hapus
+                                                                            </Button>
+                                                                        ) : null}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                    ) : null}
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
@@ -309,11 +365,24 @@ export function CrudPage<T extends { id: string }>({
 
             <Modal
                 open={open}
-                onClose={() => {
-                    setOpen(false);
-                    setEditing(null);
-                }}
-                title={editing ? 'Ubah data' : createLabel}
+                onClose={closeModal}
+                title={readOnly ? (viewTitle ?? 'Lihat data') : (editing ? (editTitle?.(editing) ?? 'Ubah data') : createLabel)}
+                footer={
+                    readOnly ? (
+                        <Button variant="secondary" onClick={closeModal}>
+                            Tutup
+                        </Button>
+                    ) : (
+                        <>
+                            <Button variant="secondary" disabled={save.isPending} onClick={closeModal}>
+                                Batal
+                            </Button>
+                            <Button loading={save.isPending} onClick={() => save.mutate()}>
+                                Simpan
+                            </Button>
+                        </>
+                    )
+                }
             >
                 <div className="space-y-4">
                     {fields.map((field) => {
@@ -321,16 +390,75 @@ export function CrudPage<T extends { id: string }>({
                             return null;
                         }
 
+                        if (field.hideWhen?.(values)) {
+                            return null;
+                        }
+
                         const value = values[field.key] ?? '';
                         const error = errors[field.key];
+                        const label = field.labelFor?.(values) ?? field.label;
+                        const fieldOptions = typeof field.options === 'function'
+                            ? field.options(editing)
+                            : field.options;
+
+                        if (field.type === 'multiselect') {
+                            const selectedIds = (Array.isArray(value) ? value : []) as string[];
+                            const disabled = field.disabledWhen?.(values) ?? false;
+
+                            return (
+                                <fieldset key={field.key} className="space-y-2">
+                                    <legend className="text-light-muted block text-[10px] font-semibold tracking-wider uppercase dark:text-gray-400">
+                                        {label}
+                                    </legend>
+                                    <div className="border-light-border dark:border-surface-300 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-3">
+                                        {(fieldOptions ?? []).length === 0 ? (
+                                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                                Belum ada pilihan.
+                                            </p>
+                                        ) : (
+                                            (fieldOptions ?? []).map((option) => {
+                                                const checked = selectedIds.includes(option.value);
+
+                                                return (
+                                                    <Checkbox
+                                                        key={option.value}
+                                                        label={option.label}
+                                                        checked={checked}
+                                                        disabled={readOnly || disabled}
+                                                        onChange={(event) => {
+                                                            const next = event.target.checked
+                                                                ? [...selectedIds, option.value]
+                                                                : selectedIds.filter(
+                                                                      (id) => id !== option.value
+                                                                  );
+
+                                                            setValues({
+                                                                ...values,
+                                                                [field.key]: next,
+                                                            });
+                                                        }}
+                                                    />
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                    {error ? (
+                                        <p className="text-xs text-red-600 dark:text-red-400">
+                                            {error}
+                                        </p>
+                                    ) : null}
+                                </fieldset>
+                            );
+                        }
 
                         if (field.type === 'checkbox') {
                             return (
                                 <Checkbox
                                     key={field.key}
-                                    label={field.label}
+                                    label={label}
                                     checked={Boolean(value)}
                                     error={error}
+                                    disabled={readOnly}
                                     onChange={(event) =>
                                         setValues({
                                             ...values,
@@ -345,15 +473,17 @@ export function CrudPage<T extends { id: string }>({
                             return (
                                 <Select
                                     key={field.key}
-                                    label={field.label}
+                                    label={label}
                                     value={String(value)}
                                     error={error}
+                                    required={field.required}
+                                    disabled={readOnly}
                                     onChange={(event) =>
                                         setValues({ ...values, [field.key]: event.target.value })
                                     }
                                 >
-                                    <option value="">Pilih</option>
-                                    {(field.options ?? []).map((option) => (
+                                    <option value="">{field.emptyOptionLabel ?? 'Pilih'}</option>
+                                    {(fieldOptions ?? []).map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}
                                         </option>
@@ -362,13 +492,21 @@ export function CrudPage<T extends { id: string }>({
                             );
                         }
 
+                        if (field.type === 'custom') {
+                            return <div key={field.key}>{field.render?.(values, setValues, errors) ?? null}</div>;
+                        }
+
                         return (
                             <Input
                                 key={field.key}
-                                label={field.label}
+                                label={label}
                                 type={field.type ?? 'text'}
                                 value={String(value)}
                                 error={error}
+                                required={field.required}
+                                min={field.min}
+                                max={field.max}
+                                disabled={readOnly}
                                 onChange={(event) =>
                                     setValues({ ...values, [field.key]: event.target.value })
                                 }
@@ -376,25 +514,15 @@ export function CrudPage<T extends { id: string }>({
                         );
                     })}
 
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            variant="secondary"
-                            onClick={() => {
-                                setOpen(false);
-                                setEditing(null);
-                            }}
-                        >
-                            Batal
-                        </Button>
-                        <Button loading={save.isPending} onClick={() => save.mutate()}>
-                            Simpan
-                        </Button>
-                    </div>
                 </div>
             </Modal>
 
-            {notice ? (
-                <Toast message={notice.message} tone={notice.tone} onClose={() => setNotice(null)} />
+            {activeNotice ? (
+                <Toast
+                    message={activeNotice.message}
+                    tone={activeNotice.tone}
+                    onClose={() => updateNotice(null)}
+                />
             ) : null}
         </div>
     );

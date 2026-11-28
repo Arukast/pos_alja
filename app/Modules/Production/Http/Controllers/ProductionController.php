@@ -7,11 +7,14 @@ namespace App\Modules\Production\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
-use App\Models\WastedMaterial;
 use App\Modules\Production\Actions\CompleteProduction;
+use App\Modules\Production\Actions\FailProduction;
+use App\Modules\Production\Actions\ReopenProduction;
 use App\Modules\Production\Actions\StartProduction;
+use App\Modules\Production\Http\Requests\FailProductionRequest;
 use App\Modules\Production\Http\Resources\ProductionQueueResource;
 use App\Modules\Production\Queries\ProductionQueue;
+use App\Modules\Production\Queries\WasteByUnit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,10 +35,16 @@ final class ProductionController extends Controller
 
         Gate::authorize('viewQueue', Order::class);
 
+        $validated = $request->validate([
+            'status' => ['nullable', 'integer', 'in:0,1,3'],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
         $branchId = $request->query('branch_id');
 
         return ProductionQueueResource::collection($queue->paginate($actor, [
             'branch_id' => is_string($branchId) ? $branchId : null,
+            'status' => isset($validated['status']) ? (int) $validated['status'] : null,
+            'search' => $validated['search'] ?? null,
         ]));
     }
 
@@ -75,7 +84,43 @@ final class ProductionController extends Controller
         ]);
     }
 
-    public function summary(Request $request): JsonResponse
+    public function fail(
+        FailProductionRequest $request,
+        Order $order,
+        FailProduction $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        return response()->json([
+            'order' => new ProductionQueueResource(
+                $action->execute($order, $actor, (string) $request->validated('note'))
+            ),
+        ]);
+    }
+
+    public function reopen(
+        Request $request,
+        Order $order,
+        ReopenProduction $action
+    ): JsonResponse {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        Gate::authorize('reopen', $order);
+
+        return response()->json([
+            'order' => new ProductionQueueResource($action->execute($order, $actor)),
+        ]);
+    }
+
+    public function summary(Request $request, WasteByUnit $wasteByUnit): JsonResponse
     {
         $actor = $request->user();
 
@@ -90,6 +135,9 @@ final class ProductionController extends Controller
         $orders = Order::query()->whereHas(
             'invoice',
             fn (Builder $query) => $query->where('branch_id', $branchId)
+        )->whereHas(
+            'invoice',
+            fn (Builder $query) => $query->whereIn('status', [1, 2])
         );
 
         $queued = (clone $orders)->where('status', 0)->count();
@@ -98,17 +146,14 @@ final class ProductionController extends Controller
             ->where('status', 2)
             ->whereDate('updated_at', now()->toDateString())
             ->count();
-
-        $wasteToday = WastedMaterial::query()
-            ->where('branch_id', $branchId)
-            ->whereBetween('logged_at', [now()->startOfDay(), now()->endOfDay()])
-            ->sum('quantity');
+        $failed = (clone $orders)->where('status', 3)->count();
 
         return response()->json([
             'queued' => $queued,
             'processing' => $processing,
             'completed_today' => $completedToday,
-            'waste_today' => (float) $wasteToday,
+            'failed' => $failed,
+            'waste_today_by_unit' => $wasteByUnit->forBranch($branchId),
         ]);
     }
 }

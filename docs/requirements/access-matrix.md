@@ -8,31 +8,45 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Login, own password | yes | yes | yes | yes | yes |
 | Edit own name/email | yes | yes | no | no | no |
-| Delete own account | yes | yes | no | no | no |
+| Deactivate own account (profile; current password required) | yes | yes | no | no | no |
 | Branch CRUD | all | no | no | no | no |
-| User CRUD | all | own branch staff only | no | no | no |
-| Categories, attribute types, attributes, quantity discounts | all | read | no | no | no |
-| Products | CRUD | read | read | read | no |
-| Materials master | CRUD; read all branches including low stock; global delete | create (own-branch stock only); restock/activate/adjust own branch; read own branch including low stock; no master edit/delete | no | no | read own branch including low stock |
-| Prices and finishing/display prices | all | read | no | no | no |
-| Customers | create/read/update | create/read/update | search | search/create/update | no |
+| User CRUD and status toggle | all; delete/restore administrative owner-only | own-branch cashier/designer/production create/update/toggle; no delete or restore | no | no | no |
+| Categories | all | read | no | no | no |
+| Attributes (finishing, cut, display, and custom types) | all | global read-only; create/update own branch | no | no | no |
+| Attribute types | CRUD (no delete; activate/deactivate) | read | no | no | no |
+| Order attribute selection | no | no | no | yes, product-filtered active types/attributes; invoice edit keeps invoice-wide inactive selections | no |
+| Product quantity tiers (global; inline on product form) | CRUD; tier ids sent inside product POST/PUT | read only; no tier add/edit/delete controls | no | no | no |
+| `ProductResource.tiers` payload key | yes | yes | no | yes | no |
+| Material base cost/price | write | create with own-branch stock only | no | no | no |
+| Products | CRUD | read via read-only `Lihat` modal (no create/edit/delete) | read | read | no |
+| Product flags (bahan/atribut), allowed attribute types, compatible attributes | write | read | read | read via quote options | no |
+| Product base `price` / `cost` | write both | read both (read-only `Lihat`) | read `price` only | read `price` only via `/quotes/options` | no money fields |
+| Materials master | CRUD; global active toggle; read all branches including low stock; global delete | create (own-branch stock only); restock/activate/adjust own branch; branch active toggle; read own branch including low stock; no master edit/delete and no global toggle | no | no | read own branch including low stock |
+| Customers (shared `/customers`) | create/read/update | create/read/update | read only (including search) | create/read/update | no |
 | Invoices/orders | read all | read branch | read branch | create; read branch | read branch |
 | Invoice update (pre-production, not fully paid) | no | no | no | own branch | no |
 | Design status | all | own branch override | no | own branch | no |
 | Invoice print | all | branch | branch | branch | no |
 | Down payments/settlements | no | no | own branch | no | no |
 | Pickup | no | no | own branch | no | no |
-| Production start/complete | no | no | no | no | own branch |
+| Production start/complete/fail/reopen | no | no | no | no | own branch; status-gated; no-material start only for a `requires_material=false` product (C1), no new write permission |
 | Production queue read | all | own branch | own branch | own branch | own branch |
-| Waste logging | no | no | no | no | own branch |
+| Waste logging | no | no | no | no | own branch; status 0, 1, or 3 |
 | Purchases | create/read all | create/read own branch | no | no | no |
 | Stock adjustment | all | own branch | no | no | no |
+| Minimum stock threshold | all branches | own branch | no | no | no |
 | Receipt | all | branch | branch | branch | no |
 | Dashboard | full | branch | branch | branch | branch |
-| Owner financial reports | all | no | no | no | no |
+| Financial reports (gross revenue, base cost, net profit, expenses) | all | own branch | no | no | no |
+| Report export (Excel/PDF) | all | own branch | no | no | no |
+| Revenue sparkline | all | no | no | no | no |
 | Designer leaderboard | no | own branch | no | no | no |
 | Audit trail | all | no | no | no | no |
-| Expenses | create/read all | create/read own branch | no | no | no |
+| Backup page (history, run) | all | no | no | no | no |
+| Backup download | all | no | no | no | no |
+| Backup pin/unpin | all | no | no | no | no |
+| Backup settings (schedule, retention) | all | no | no | no | no |
+| Expenses | read all | read own branch | create/read own branch | no | no |
 | Real-time channels | owners + any branch | own branch | own branch | own branch | own branch |
 
 ## Rules
@@ -41,15 +55,31 @@
 2. Managers cannot assign a user to another branch; branch ids from the client are ignored or rejected.
 3. Production responses omit price, cost, profit, discount, receivable, and payment fields.
 4. Invoice and receipt print are denied to production because both contain money. Production uses the queue, which has no money.
-5. Customers are global and materials master data is global, matching the ERD. Stock rows are branch-scoped.
+5. Customers are global and materials master data is global, matching the ERD. Stock rows are branch-scoped. `materials.is_active` is the global retire flag; `material_branch_stock.is_active` is branch availability. Both default true.
 6. Invoice and receipt payloads enforce the same branch rule as the invoice.
-7. Quantity discounts are configured by the Owner per product category. Staff cannot override the tier from the client.
-8. Expense categories are a fixed dropdown. Cashier has no expense access.
-9. Global catalog and category/discount writes are Owner-only, except materials, which a manager may create. Manager-created materials initialize branch stock only for the manager's own branch. Branch Manager reads the catalog and manages branch stock.
-10. The Owner configures `branches.reseller_discount_percent` through Branch CRUD (`0–100`, default `0`). Manager has no branch write access.
+7. Category quantity-discount tiers and the pricing matrix are removed. Discounts are the branch reseller percent (Reseller lines) and global product quantity tiers, both server-applied; staff cannot override either from the client.
+8. Expense categories are a fixed dropdown. Cashier is the only role that creates expenses and writes to their own branch; Owner and Manager can read them.
+9. Category, product, quantity-tier, and branch reseller-discount writes are Owner-only. Attribute-type writes are Owner-only and Manager reads the list. Managers may create materials and manage own-branch attributes (including `price`/`cost`) and read global quantity tiers; global attributes and tiers are read-only for them. Manager-created materials initialize branch stock only for the manager's own branch. Branch Manager reads products and categories and manages branch stock.
+10. The Owner may write branch master data, including `reseller_discount_percent` (`0–100`, default `0`), through Branch CRUD; `BranchService` mirrors it into `branches.settings.reseller_discount_percent`. Manager has no branch write access.
 11. Designer updates an invoice only before production and while it is not fully paid. Owner and Branch Manager may override a design-status transition; Designer cannot move backward.
 12. A non-owner without a branch is never treated as global. Purchase requests return 403, branch-scoped lists return no rows, and actions that need a branch fail; a null branch is not `all`.
+13. Fail and reopen are production-only and branch-scoped. Fail requires status `1`; reopen requires status `3`; any other source status returns 422 with no stock or log change. Waste is allowed on status `0`, `1`, and `3`. The machine master, its pricing, its endpoints, and machine selection no longer exist.
+14. Catalog rows are retired with `is_active`; category, attribute, and attribute-type delete endpoints are removed; product and material delete/restore remain Owner-only recovery APIs with no SPA action. The materials SPA action is removed, so Hapus no longer appears. Attributes soft-deleted before Unit A have no restore path.
+15. Editing a branch `min_stock` writes no `stock_ledgers` row and no activity log; `current_stock` changes only through restock, adjustment, purchase, or usage. The branch-stock row must already exist; otherwise the request returns 422 on `branch_id` and creates nothing. An explicit branch other than the manager's own is 403, and a manager without a branch is denied.
+16. Audit and backup are owner-only and global, not branch-filtered. `backup:tick` is a system actor (`user_id = null`, `username = system`, `role = system`, `branch_id = null`); manual runs carry the owner's user id.
+17. Customers are global. `CustomerPolicy::create` and `CustomerPolicy::update` allow owner, manager, and designer; cashier is read-only and production is denied, at both the API and the shared `/customers` page. A non-owner with no branch can still create or update a customer because customer writes are not branch-scoped, so the audit row records `branch_id = null`. This remains a pre-existing access gap, not resolved by PB-10 or the customer-management change; see the "no-branch customer write" debt in `docs/requirements/implementation-gaps.md`.
+18. Material availability toggles: `PATCH /materials/{material}/active` is Owner-only and writes one `UPDATE` audit row with the flag before/after. It writes no `stock_ledgers` row and leaves `current_stock` unchanged. The audit row inherits the actor's `branch_id` (null when the owner has no branch). `PATCH /materials/{material}/branch-availability` is Owner any branch and Manager own branch only; a manager's explicit other branch is 403, a branchless manager is denied, the owner must name the branch, and a missing branch-stock row returns 422 with no row created. It writes no audit row and no ledger row; this is accepted FR25 debt. `POST /materials/{material}/activate` sets an existing inactive branch-stock row active and keeps its existing audit payload.
+19. New quote and invoice lines require the material to be globally active and to have an active branch-stock row in the branch; otherwise the request returns 422 on `material_id` (quote) or `items.{index}.material_id` (invoice). An invoice edit allows an inactive material already on the locked existing invoice, including a new line that reuses that material; a different unavailable material returns 422. A soft-deleted material is always unavailable, even when already used, so the allowance applies only to inactive-but-present materials. `available_total`, the manager `Bahan Aktif` stat, and the manager dashboard `Bahan Tersedia` count globally active materials; a named branch adds the active branch-stock predicate, while an owner request with `branch_id=all` or omitted counts globally active materials only.
+20. Attribute resources omit `cost` for every non-owner/manager role (cashier and production included, though only designers can read quote options); Owner and Manager keep `cost`. `price` is unchanged.
+21. Inactive users, and non-owner users of an inactive, trashed, or missing branch, lose access on their next authenticated `/api/v1` request: `EnsureAccountIsActive` returns 401 after invalidating the session. Owners are exempt from branch checks, and a non-owner with a null branch keeps the existing behavior. Login rejects the same accounts through the generic `auth.failed` response.
+22. The last active owner (`role = owner`, `is_active = true`, not trashed) cannot be deactivated, deleted, or demoted through profile deactivation (`is_active` key), `DELETE /users/{id}` (`user` key), or `PUT /users/{id}` (`role` key); each returns 422 with `Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.` The status route cannot reach the guard: a sole owner toggling themselves hits the self-toggle rule, and any other target implies a second active owner. The guard runs inside the caller transaction with `lockForUpdate()`, and the service-level guard is tested.
+23. Inactive users are excluded from new-work assignment: waste designer options and validation, and the manager active-staff count. Historical reads (invoices, payments, orders, activity logs, and the designer leaderboard) keep their attribution and are not filtered by `is_active`. Restoring a soft-deleted user sets `is_active = true`.
+24. Product capability writes (`requires_material`, `uses_attributes`, `attribute_type_ids`, `attribute_ids`, alongside `material_ids`) are Owner-only; the Manager product page is read-only. `ProductResource` exposes the flags, both ID arrays, and display-only name arrays. Empty type/attribute mappings mean all active types/attributes; `uses_attributes = false` disables attributes while preserving the stored mappings. Designer selections are filtered by the product on both new-order and edit pages, and no request field widens the server-side capability check.
+25. No new production write is introduced by B2 or B4. `production` keeps its existing queue/start/fail/reopen and waste permissions and its money redaction; starting a null-material order is allowed only when the order's own product has `requires_material = false`, skips stock deduction and material usage, keeps `material_usage = []`, and adds no material-free waste path. A soft-deleted material on the order is rejected at start.
+26. The designer order detail modal is read-only and renders discount, down payment, payment rows, unit price, subtotal, total, and outstanding from the existing `GET /api/v1/invoices/{id}` response. `cost`, `profit`, `total_cost`, and `total_profit` stay hidden from designers in both the API and the SPA; B4 exposes the order-owned `quantity_discount_percent` and `discount_amount` snapshots to designers, and no further money field or endpoint is introduced.
+27. Product tier configuration is edited inline in the product modal. Owner writes products and their `tiers[]`; Manager opens the same modal with every field, including tier rows, disabled. `ProductResource` emits `tiers` only to Owner, Manager, and Designer; Cashier and Production receive no tier key. A `tiers.*.id` on update must belong to the product being updated (otherwise 422 with a dotted key). The standalone `Tier Jumlah` UI pages and nav entries are removed and their URLs redirect to the products pages, while the tier REST endpoints stay Owner-write/Manager-read. Tier configuration visibility is distinct from money visibility: applied discounts in quotes and invoices keep the existing money rules.
+28. Product base `price` and `cost` are optional `decimal(12,2)` money columns on `products`, default `0.00`, and are additive to the material/attribute price and cost in the authoritative quote formula. Owner writes both; Manager reads both in the read-only `Lihat` modal; Cashier and Designer see `price` only; Production sees neither. `/quotes/options` product objects carry `price` without `cost`. The columns are global across branches; per-branch service pricing is deferred. The product form always shows both fields and a non-blocking hint `Biaya dasar lebih besar dari harga dasar — cek kembali` when base cost exceeds base price and cost is greater than zero; the hint never blocks saving. Cost is not discounted in the quote/invoice chain, and no client-supplied base price or cost is trusted for quote or invoice lines.
 
 ## Revision Note
 
-Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, removed the machine and pricing-matrix rows, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`.
+Sprint Review 1 moved expense creation from Cashier to Owner/Branch Manager, added stock adjustment for Owner/Manager, and replaced the ticket with the invoice print. See `docs/requirements/sprint-review-1.md`. The PB-05/PB-07 follow-up dropped the machine tables and endpoints, added unit-aware production with fail/reopen, and allows waste on failed orders; the pricing matrix remains. The Unit A catalog cleanup removed category discount tiers and attribute types, made categories retire-only with `description`/`is_active`, allowed Manager own-branch attributes, and added branch minimum-stock editing without a stock ledger or audit row. PB-10 adds owner-only backup page, download, pin/unpin, and settings; the audit trail stays owner-only and global. B1a (2026-11-26) adds material retirement with a global active flag and per-branch stock availability, quote/invoice availability enforcement, the material Hapus removal, `available_total` counts, and designer attribute `cost` omission. The admin active lifecycle adds profile deactivation, the status toggle with owner-only delete/restore, and rules 21-23 for next-request revocation, last-owner protection, and inactive-user assignment filters. PB-09 opens periodic financial reports and server-side Excel/PDF exports to Branch Managers strictly scoped to `auth()->user()->branch_id` (`403` when passing `branch_id=all` or another branch); sparkline remains Owner-only. B1b (2026-11-27) reintroduces attribute types as Owner-managed master data (Manager read-only), makes cut a first-class type, and widens order attribute selection to one option per active type. B2 (2026-11-27) adds Owner-only product capability flags and type/attribute compatibility (Manager read-only), product-filtered Designer selections, server-side quote/invoice enforcement with whole-line invoice-edit grandfathering, nullable no-material pricing, and the C1 no-material production start guard without a new permission. B4 (2026-11-27) removes the pricing matrix, makes global product quantity tiers Owner-write/Manager-read, keeps Manager's own-branch attribute rights and Production money redaction unchanged, and sources production material from the order snapshot.

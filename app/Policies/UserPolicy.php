@@ -39,12 +39,12 @@ final class UserPolicy
 
     public function delete(User $user, User $target): bool
     {
-        return $this->view($user, $target);
+        return $user->role === 'owner';
     }
 
     public function restore(User $user, User $target): bool
     {
-        return $this->view($user, $target);
+        return $user->role === 'owner';
     }
 
     public function updateOwnProfile(User $user): bool

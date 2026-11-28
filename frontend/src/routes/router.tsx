@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 
 import { RequireAuth, RequireRole, RoleRedirect } from '../auth/RequireAuth';
 import { AppShell } from '../components/AppShell';
@@ -7,18 +7,21 @@ import { CashierExpensesPage } from '../features/cashier/CashierExpensesPage';
 import { CashierPaymentsPage } from '../features/cashier/CashierPaymentsPage';
 import { CashierPickupPage } from '../features/cashier/CashierPickupPage';
 import { DesignerDashboardPage } from '../features/designer/DesignerDashboardPage';
+import { DesignerEditOrderPage } from '../features/designer/DesignerEditOrderPage';
+import { CustomerManagementPage } from '../features/customers/CustomerManagementPage';
 import { DesignerNewOrderPage } from '../features/designer/DesignerNewOrderPage';
 import { DesignerOrdersPage } from '../features/designer/DesignerOrdersPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import {
     BranchesPage,
+    OwnerAttributesPage,
     OwnerCategoriesPage,
-    OwnerMachinesPage,
     OwnerMaterialsPage,
     OwnerProductsPage,
     OwnerUsersPage,
 } from '../features/owner/AdminPages';
 import { AuditPage } from '../features/owner/AuditPage';
+import { BackupPage } from '../features/owner/BackupPage';
 import { BaseCostPage } from '../features/owner/BaseCostPage';
 import { ExpensesPage } from '../features/owner/ExpensesPage';
 import { GrossRevenuePage } from '../features/owner/GrossRevenuePage';
@@ -29,9 +32,7 @@ import {
     ManagerFinishingPage,
     ManagerLeaderboardPage,
     ManagerLedgersPage,
-    ManagerMachinesPage,
     ManagerMaterialsPage,
-    ManagerPricingPage,
     ManagerProductsPage,
     ManagerUsersPage,
 } from '../features/manager/AdminPages';
@@ -65,6 +66,13 @@ export const router = createBrowserRouter([
                     { path: 'profile', element: <ProfilePage /> },
                     { path: 'dashboard', element: <LegacyDashboardRedirect /> },
                     {
+                        path: 'customers',
+                        element: (
+                            <RequireRole roles={['owner', 'manager', 'designer', 'cashier']} />
+                        ),
+                        children: [{ index: true, element: <CustomerManagementPage /> }],
+                    },
+                    {
                         path: 'owner',
                         element: <RequireRole roles={['owner']} />,
                         children: [
@@ -74,12 +82,17 @@ export const router = createBrowserRouter([
                             { path: 'net-profit', element: <NetProfitPage /> },
                             { path: 'expenses', element: <ExpensesPage /> },
                             { path: 'audit', element: <AuditPage /> },
+                            { path: 'backups', element: <BackupPage /> },
                             { path: 'users', element: <OwnerUsersPage /> },
                             { path: 'branches', element: <BranchesPage /> },
                             { path: 'categories', element: <OwnerCategoriesPage /> },
                             { path: 'products', element: <OwnerProductsPage /> },
-                            { path: 'machines', element: <OwnerMachinesPage /> },
+                            { path: 'attributes', element: <OwnerAttributesPage /> },
                             { path: 'materials', element: <OwnerMaterialsPage /> },
+                            {
+                                path: 'quantity-tiers',
+                                element: <Navigate to="/owner/products" replace />,
+                            },
                             { path: 'purchases', element: <PurchasesPage /> },
                         ],
                     },
@@ -88,16 +101,26 @@ export const router = createBrowserRouter([
                         element: <RequireRole roles={['manager']} />,
                         children: [
                             { index: true, element: <ManagerDashboardPage /> },
+                            { path: 'revenue', element: <GrossRevenuePage /> },
+                            { path: 'base-cost', element: <BaseCostPage /> },
+                            { path: 'net-profit', element: <NetProfitPage /> },
+                            { path: 'expenses', element: <ExpensesPage /> },
                             { path: 'materials', element: <ManagerMaterialsPage /> },
                             { path: 'purchases', element: <PurchasesPage /> },
                             { path: 'ledgers', element: <ManagerLedgersPage /> },
                             { path: 'finishing', element: <ManagerFinishingPage /> },
-                            { path: 'pricing', element: <ManagerPricingPage /> },
+                            {
+                                path: 'pricing',
+                                element: <Navigate to="/manager/products" replace />,
+                            },
+                            {
+                                path: 'quantity-tiers',
+                                element: <Navigate to="/manager/products" replace />,
+                            },
                             { path: 'leaderboard', element: <ManagerLeaderboardPage /> },
                             { path: 'users', element: <ManagerUsersPage /> },
                             { path: 'categories', element: <ManagerCategoriesPage /> },
                             { path: 'products', element: <ManagerProductsPage /> },
-                            { path: 'machines', element: <ManagerMachinesPage /> },
                         ],
                     },
                     {
@@ -117,6 +140,7 @@ export const router = createBrowserRouter([
                             { index: true, element: <DesignerDashboardPage /> },
                             { path: 'new-order', element: <DesignerNewOrderPage /> },
                             { path: 'orders', element: <DesignerOrdersPage /> },
+                            { path: 'orders/:id/edit', element: <DesignerEditOrderPage /> },
                         ],
                     },
                     {

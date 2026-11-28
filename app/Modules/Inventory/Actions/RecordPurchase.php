@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Inventory\Actions;
 
-use App\Models\ActivityLog;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\BranchScope;
 use App\Support\Decimal;
@@ -16,7 +16,10 @@ use Illuminate\Support\Facades\DB;
 
 final class RecordPurchase
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -117,21 +120,18 @@ final class RecordPurchase
             );
         }
 
-        ActivityLog::create([
-            'branch_id' => $branchId,
-            'user_id' => $actor->id,
-            'username' => $actor->username,
-            'role' => $actor->role,
-            'action' => 'CREATE',
-            'description' => 'Mencatat pembelian bahan',
-            'model_type' => Purchase::class,
-            'model_id' => $purchase->id,
-            'payload' => [
+        $this->audit->record(
+            $actor,
+            'CREATE',
+            'Mencatat pembelian bahan',
+            $purchase,
+            [
                 'supplier' => $data['supplier'] ?? null,
                 'total_amount' => $totalAmount,
                 'item_count' => count($lines),
             ],
-        ]);
+            $branchId,
+        );
 
         return $purchase->load(['branch', 'user', 'items.material']);
     }

@@ -7,6 +7,7 @@ namespace App\Modules\Production\Actions;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\InventoryService;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
@@ -14,13 +15,16 @@ use Illuminate\Validation\ValidationException;
 
 final class StartProduction
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly AuditLogger $audit,
+    ) {}
 
     public function execute(Order $order, User $operator): Order
     {
         $updated = DB::transaction(function () use ($order, $operator): Order {
             $locked = Order::query()
-                ->with(['invoice', 'pricing.product.category'])
+                ->with(['invoice', 'material', 'product'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -31,29 +35,61 @@ final class StartProduction
                 ]);
             }
 
+            $statusBefore = $locked->status;
+            $operatorBefore = $locked->operator_id;
+
+            $material = $locked->material;
+
+            // A null material is valid only for a no-material product or a legacy order
+            // with no product identity; a soft-deleted material stays rejected.
+            if ($material === null && (
+                $locked->material_id !== null
+                || ($locked->product !== null && $locked->product->requires_material === true)
+            )) {
+                throw ValidationException::withMessages([
+                    'material' => 'Bahan untuk pesanan ini tidak ditemukan.',
+                ]);
+            }
+
+            $unit = $material?->unit;
+            $area = (float) $locked->area;
+
+            if ($unit === 'm2' && $area <= 0) {
+                throw ValidationException::withMessages([
+                    'area' => 'Luas pesanan harus lebih dari 0 untuk bahan bersatuan m².',
+                ]);
+            }
+
             $locked->status = 1;
             $locked->operator_id = $operator->id;
             $locked->save();
 
-            $pricing = $locked->pricing;
+            $materialUsage = [];
 
-            if ($pricing !== null) {
-                $archetype = $pricing->product?->category?->calculation_archetype;
-                // shortcut: orders store area but not length, so linear jobs fall back to quantity.
-                $quantity = $archetype === 'surface_area'
-                    ? (float) $locked->area * (float) $locked->quantity
+            if ($locked->material_id !== null) {
+                $quantity = $unit === 'm2'
+                    ? $area * (float) $locked->quantity
                     : (float) $locked->quantity;
 
                 $branchId = $operator->branch_id ?? $locked->invoice?->branch_id;
 
                 if ($branchId !== null) {
-                    $this->inventory->deductStockOnPrint(
-                        $pricing->material_id,
+                    $usageLedger = $this->inventory->deductStockOnPrint(
+                        $locked->material_id,
                         $quantity,
                         $branchId,
                         $locked->id,
                         $operator,
                     );
+
+                    $materialUsage[] = [
+                        'material_id' => $locked->material_id,
+                        'quantity' => round($quantity, 2),
+                        'stock_before' => (float) $usageLedger->initial_stock,
+                        'stock_after' => (float) $usageLedger->remaining_stock,
+                        'ledger_id' => $usageLedger->id,
+                        'direction' => 'usage',
+                    ];
                 }
             }
 
@@ -65,11 +101,25 @@ final class StartProduction
                 'notes' => 'Production started',
             ]);
 
+            $this->audit->record(
+                $operator,
+                'ORDER_START',
+                'Memulai produksi pesanan '.$locked->file_name,
+                $locked,
+                [
+                    'status_before' => $statusBefore,
+                    'status_after' => $locked->status,
+                    'operator_before' => $operatorBefore,
+                    'operator_after' => $locked->operator_id,
+                    'material_usage' => $materialUsage,
+                ],
+            );
+
             return $locked;
         });
 
         SafeBroadcast::orderUpdated($updated->invoice->branch_id, $operator);
 
-        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'pricing']);
+        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'material']);
     }
 }

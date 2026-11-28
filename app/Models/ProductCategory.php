@@ -15,27 +15,17 @@ class ProductCategory extends Model
 
     protected $fillable = [
         'name',
+        'description',
+        'is_active',
         'calculation_archetype',
-        'allowed_attribute_types',
-    ];
-
-    protected $casts = [
-        'allowed_attribute_types' => 'array',
     ];
 
     /**
-     * Determine if an attribute (or type string) is permitted within this category.
+     * @var array<string, string>
      */
-    public function isAttributeAllowed(string|Attribute $attribute): bool
-    {
-        $type = $attribute instanceof Attribute ? $attribute->type : $attribute;
-
-        if (empty($this->allowed_attribute_types)) {
-            return true;
-        }
-
-        return in_array($type, $this->allowed_attribute_types, true);
-    }
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 
     /**
      * Get the products for this category.
@@ -54,11 +44,16 @@ class ProductCategory extends Model
     }
 
     /**
-     * @return HasMany<ProductCategoryDiscount, $this>
+     * Stable audit snapshot of the API-visible category fields.
+     *
+     * @return array{name: string, description: string|null, is_active: bool}
      */
-    public function discountTiers(): HasMany
+    public function auditSnapshot(): array
     {
-        return $this->hasMany(ProductCategoryDiscount::class, 'product_category_id')
-            ->orderBy('min_qty');
+        return [
+            'name' => $this->name,
+            'description' => $this->description,
+            'is_active' => (bool) $this->is_active,
+        ];
     }
 }

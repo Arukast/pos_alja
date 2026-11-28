@@ -102,6 +102,23 @@ final class UserController extends Controller
         ]);
     }
 
+    public function status(User $user, UserService $service): JsonResponse
+    {
+        Gate::authorize('update', $user);
+
+        $actor = request()->user();
+
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $updated = $service->toggleUserStatus($user, $actor);
+
+        return response()->json([
+            'user' => new UserResource($updated->loadMissing('branch')),
+        ]);
+    }
+
     public function destroy(User $user, UserService $service): Response
     {
         Gate::authorize('delete', $user);

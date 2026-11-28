@@ -4,27 +4,45 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Actions;
 
-use App\Exceptions\PricingNotFoundException;
-use App\Models\ActivityLog;
+use App\Exceptions\InvalidAttributeSelectionException;
+use App\Exceptions\InvalidMaterialSelectionException;
+use App\Exceptions\InvalidProductAttributeSelectionException;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
-use App\Models\Pricing;
+use App\Models\Product;
 use App\Models\User;
+use App\Services\AuditLogger;
+use App\Services\MaterialAvailability;
 use App\Support\Decimal;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
+/**
+ * Membuat invoice baru beserta item pesanan, log status awal, dan jejak audit dalam satu transaksi.
+ */
 final class CreateInvoice
 {
-    public function __construct(private readonly CalculateQuote $quote) {}
+    /**
+     * Membuat instance aksi pembuatan invoice.
+     */
+    public function __construct(
+        private readonly CalculateQuote $quote,
+        private readonly MaterialAvailability $availability,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
+     * Menghitung ulang harga dari server, menyimpan invoice beserta item pesanan, dan menyiarkan pembaruan.
+     *
      * @param  array<string, mixed>  $data
+     *
+     * @throws ValidationException
      */
     public function execute(array $data, User $designer): Invoice
     {
@@ -37,37 +55,65 @@ final class CreateInvoice
         }
 
         $invoice = DB::transaction(function () use ($data, $designer, $branchId): Invoice {
+            $now = now();
+            $today = $now->toDateString();
             $customer = Customer::findOrFail($data['customer_id']);
             $customerType = $customer->type ?: 'Reguler';
+            $allowed = $customer->institutions ?: [$customer->institution];
+            $requested = $data['institution'] ?? null;
+
+            if ($requested !== null && ! in_array($requested, $allowed, true)) {
+                throw ValidationException::withMessages([
+                    'institution' => 'Institusi tidak termasuk pilihan pelanggan ini.',
+                ]);
+            }
+
+            $snapshot = $requested ?? $allowed[0];
 
             // Serialize invoice numbering per branch.
-            Branch::query()->whereKey($branchId)->lockForUpdate()->first();
+            $branch = Branch::query()->whereKey($branchId)->lockForUpdate()->first();
 
             $lines = [];
+            $orderIds = [];
             $subtotal = 0.0;
             $totalCost = 0.0;
 
             foreach ($data['items'] as $index => $item) {
-                $pricing = Pricing::query()
-                    ->with(['product.category', 'material'])
-                    ->findOrFail($item['pricing_id']);
+                $product = Product::query()->with(['category'])->findOrFail($item['product_id']);
+                $materialId = $item['material_id'] ?? null;
 
-                if ($pricing->branch_id !== $branchId) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => 'Baris harga ini milik cabang lain.',
-                    ]);
+                if ($materialId !== null) {
+                    $material = Material::query()->withTrashed()->findOrFail($materialId);
+
+                    if (! $this->availability->isAvailable($material, $branchId)) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.material_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
+                        ]);
+                    }
                 }
 
                 try {
-                    $quote = $this->quote->forPricing(
-                        $pricing,
-                        $item,
-                        $branchId,
-                        $customerType
-                    );
-                } catch (PricingNotFoundException|InvalidArgumentException $exception) {
+                    $quote = $this->quote->execute([
+                        'product_id' => $item['product_id'],
+                        'material_id' => $materialId,
+                        'selected_attributes' => $item['selected_attributes'] ?? [],
+                        'quantity' => $item['quantity'],
+                        'width' => $item['width'] ?? null,
+                        'length' => $item['length'] ?? null,
+                        'customer_type' => $customerType,
+                        'branch_id' => $branchId,
+                    ]);
+                } catch (InvalidMaterialSelectionException $exception) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                        "items.{$index}.material_id" => $exception->getMessage(),
+                    ]);
+                } catch (InvalidAttributeSelectionException|InvalidProductAttributeSelectionException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.selected_attributes" => $exception->getMessage(),
+                    ]);
+                } catch (InvalidArgumentException $exception) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.product_id" => $exception->getMessage(),
                     ]);
                 }
 
@@ -86,12 +132,9 @@ final class CreateInvoice
                         ]);
                     }
 
-                    $archetype = $pricing->product?->category?->calculation_archetype;
-                    $factor = match ($archetype) {
-                        'surface_area' => (float) $quote['area'],
-                        'linear_dimension' => (float) ($item['length'] ?? 0),
-                        default => 1.0,
-                    };
+                    $factor = $product->selling_unit === 'm2'
+                        ? (float) $quote['area']
+                        : 1.0;
 
                     $unitPrice = round((float) $item['unit_price'], 2);
                     $unitCost = round((float) $item['cost'], 2);
@@ -110,14 +153,25 @@ final class CreateInvoice
                         'subtotal' => $lineSubtotal,
                         'cost' => $lineCost,
                         'profit' => round($lineSubtotal - $lineCost, 2),
+                        'discount_amount' => '0.00',
+                        'reseller_discount_percent' => '0.00',
+                        'quantity_discount_percent' => '0.00',
                     ]);
                 }
 
                 $lines[] = [
-                    'pricing_id' => $quote['pricing_id'],
-                    'file_name' => $item['file_name'] ?? null,
-                    'notes' => $item['notes'] ?? null,
+                    'product_id' => $quote['product_id'],
+                    'material_id' => $quote['material_id'],
+                    'customer_type' => $quote['customer_type'],
+                    'reseller_discount_percent' => $quote['reseller_discount_percent'],
+                    'quantity_discount_percent' => $quote['quantity_discount_percent'],
+                    'discount_amount' => $quote['discount_amount'],
+                    'file_name' => $this->normalizeOptionalText($item['file_name'] ?? null),
+                    'notes' => $this->normalizeOptionalText($item['notes'] ?? null),
                     'area' => $quote['area'],
+                    'width' => $item['width'] ?? null,
+                    'length' => $item['length'] ?? null,
+                    'selected_attributes' => array_values($item['selected_attributes'] ?? []),
                     'quantity' => $quote['quantity'],
                     'unit_price' => $quote['unit_price'],
                     'subtotal' => $quote['subtotal'],
@@ -132,6 +186,12 @@ final class CreateInvoice
 
             $discount = round((float) ($data['discount'] ?? 0), 2);
 
+            if ($discount < 0) {
+                throw ValidationException::withMessages([
+                    'discount' => 'Diskon tidak boleh bernilai negatif.',
+                ]);
+            }
+
             if ($discount > $subtotal) {
                 throw ValidationException::withMessages([
                     'discount' => 'Diskon tidak boleh melebihi subtotal invoice.',
@@ -140,21 +200,22 @@ final class CreateInvoice
 
             $grandTotal = round(max(0, $subtotal - $discount), 2);
             $totalProfit = round($grandTotal - $totalCost, 2);
-            $branch = Branch::find($branchId);
-            $prefix = $branch?->code !== null && $branch->code !== ''
-                ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $branch->code) ?? 'BR')
-                : $this->branchPrefix($branch?->name);
+            $cleanedCode = $branch?->code !== null
+                ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $branch->code) ?? '')
+                : '';
+            $prefix = $cleanedCode !== '' ? $cleanedCode : $this->branchPrefix($branch?->name);
             $count = Invoice::query()
-                ->where('created_date', now()->toDateString())
+                ->where('created_date', $today)
                 ->where('branch_id', $branchId)
                 ->count();
-            $invoiceNumber = 'INV-'.$prefix.'-'.now()->format('Ymd').'-'.str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT);
+            $invoiceNumber = 'INV-'.$prefix.'-'.$now->format('Ymd').'-'.str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT);
 
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'branch_id' => $branchId,
-                'created_date' => now()->toDateString(),
+                'created_date' => $today,
                 'customer_id' => $customer->id,
+                'institution' => $snapshot,
                 'designer_id' => $designer->id,
                 'status' => 0,
                 'discount' => $discount,
@@ -171,21 +232,31 @@ final class CreateInvoice
             foreach ($lines as $line) {
                 $order = Order::create([
                     'invoice_id' => $invoice->id,
-                    'pricing_id' => $line['pricing_id'],
+                    'product_id' => $line['product_id'],
+                    'material_id' => $line['material_id'],
+                    'customer_type' => $line['customer_type'],
+                    'reseller_discount_percent' => $line['reseller_discount_percent'],
+                    'quantity_discount_percent' => $line['quantity_discount_percent'],
+                    'discount_amount' => $line['discount_amount'],
                     'operator_id' => null,
                     'file_name' => $line['file_name'],
                     'notes' => $line['notes'],
                     'area' => $line['area'],
+                    'width' => $line['width'],
+                    'length' => $line['length'],
                     'quantity' => $line['quantity'],
+                    'selected_attributes' => $line['selected_attributes'],
                     'unit_price' => $line['unit_price'],
                     'subtotal' => $line['subtotal'],
                     'cost' => $line['cost'],
                     'profit' => $line['profit'],
-                    'ordered_at' => now()->toDateString(),
+                    'ordered_at' => $today,
                     'status' => 0,
                     'pickup_status' => 0,
                     'is_manual_price' => $line['is_manual_price'],
                 ]);
+
+                $orderIds[] = $order->id;
 
                 OrderStatusLog::create([
                     'order_id' => $order->id,
@@ -195,41 +266,54 @@ final class CreateInvoice
                     'notes' => 'Order created',
                 ]);
 
+                $this->audit->record(
+                    $designer,
+                    'CREATE',
+                    'Membuat pesanan '.($line['file_name'] ?? 'item pesanan'),
+                    $order,
+                    [
+                        'invoice_id' => $order->invoice_id,
+                        'file_name' => $order->file_name,
+                        'width' => $order->width,
+                        'length' => $order->length,
+                        'area' => $order->area,
+                        'quantity' => $order->quantity,
+                    ],
+                    $branchId,
+                );
+
                 if ($line['is_manual_price']) {
-                    ActivityLog::create([
-                        'branch_id' => $branchId,
-                        'user_id' => $designer->id,
-                        'username' => $designer->username,
-                        'role' => $designer->role,
-                        'action' => 'MANUAL_PRICE',
-                        'description' => 'Harga manual diterapkan pada '.($line['file_name'] ?? 'item pesanan'),
-                        'model_type' => Order::class,
-                        'model_id' => $order->id,
-                        'payload' => [
+                    $this->audit->record(
+                        $designer,
+                        'MANUAL_PRICE',
+                        'Harga manual diterapkan pada '.($line['file_name'] ?? 'item pesanan'),
+                        $order,
+                        [
                             'unit_price' => Decimal::money($line['unit_price']),
                             'cost' => Decimal::money($line['cost']),
                             'subtotal' => Decimal::money($line['subtotal']),
+                            'discount_amount' => Decimal::money($line['discount_amount']),
                         ],
-                    ]);
+                        $branchId,
+                    );
                 }
             }
 
-            ActivityLog::create([
-                'branch_id' => $branchId,
-                'user_id' => $designer->id,
-                'username' => $designer->username,
-                'role' => $designer->role,
-                'action' => 'CREATE',
-                'description' => 'Membuat invoice '.$invoiceNumber,
-                'model_type' => Invoice::class,
-                'model_id' => $invoice->id,
-                'payload' => [
+            $this->audit->record(
+                $designer,
+                'CREATE',
+                'Membuat invoice '.$invoiceNumber,
+                $invoice,
+                [
                     'invoice_number' => $invoiceNumber,
                     'grand_total' => Decimal::money($grandTotal),
                     'total_cost' => Decimal::money($totalCost),
                     'total_profit' => Decimal::money($totalProfit),
+                    'discount' => Decimal::money($discount),
+                    'order_ids' => $orderIds,
                 ],
-            ]);
+                $branchId,
+            );
 
             return $invoice->load(['customer', 'branch', 'designer', 'orders', 'payments']);
         });
@@ -239,6 +323,9 @@ final class CreateInvoice
         return $invoice;
     }
 
+    /**
+     * Menghasilkan awalan dua huruf dari nama cabang saat kode cabang belum tersedia.
+     */
     private function branchPrefix(?string $name): string
     {
         if ($name === null || $name === '') {
@@ -253,5 +340,19 @@ final class CreateInvoice
         }
 
         return strtoupper(substr($cleaned, 0, 2)) ?: 'BR';
+    }
+
+    /**
+     * Merapikan teks opsional agar spasi kosong disimpan sebagai null.
+     */
+    private function normalizeOptionalText(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }

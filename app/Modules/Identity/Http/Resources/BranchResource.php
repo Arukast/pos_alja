@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Resources;
 
 use App\Models\Branch;
+use App\Support\Decimal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,6 +24,7 @@ final class BranchResource extends JsonResource
             'address' => $this->address,
             'phone' => $this->phone,
             'is_active' => $this->is_active,
+            'reseller_discount_percent' => Decimal::money($this->reseller_discount_percent),
             'settings' => $this->settings,
         ];
     }

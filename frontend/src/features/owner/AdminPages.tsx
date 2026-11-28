@@ -1,12 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Branch, Machine, Material, UserRecord } from '../../api/types';
+import type { Branch, Material, UserRecord } from '../../api/types';
+import { useAuth } from '../../auth/useAuth';
+import { ActiveToggleButton } from '../../components/admin/ActiveToggleButton';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
+import { RoleBadge } from '../../components/RoleBadge';
+import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
+import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
@@ -14,29 +20,54 @@ import { Checkbox } from '../../components/ui/Checkbox';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useBranches } from '../../hooks/useBranches';
+import { errorMessage } from '../../lib/errors';
 import { roleLabel } from '../../lib/labels';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney } from '../../lib/money';
+import { quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
 
-const branchOptions = (branches: Array<{ id: string; name: string }>) =>
-    branches.map((branch) => ({ value: branch.id, label: branch.name }));
+const branchOptions = (branches: Array<{ id: string; name: string; is_active: boolean }>) =>
+    branches.map((branch) => ({
+        value: branch.id,
+        label: branch.is_active ? branch.name : `${branch.name} (nonaktif)`,
+    }));
 
 const roleOptions = ['owner', 'manager', 'cashier', 'designer', 'production'].map((role) => ({
     value: role,
     label: roleLabel(role),
 }));
 
+const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
+
 export function OwnerUsersPage() {
+    const { user: authUser } = useAuth();
+    const queryClient = useQueryClient();
     const branches = useBranches();
     const options = branchOptions(branches.data?.data ?? []);
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
     const [role, setRole] = useState('');
+    const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'error' } | null>(
+        null
+    );
 
     useEffect(() => {
         const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
 
         return () => window.clearTimeout(timer);
     }, [searchInput]);
+
+    const toggleStatus = useMutation({
+        mutationFn: (id: string) => api.admin.toggleUser(id),
+        onSuccess: (response) => {
+            void queryClient.invalidateQueries({ queryKey: ['owner', 'users'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            setNotice({
+                message: `Akun ${response.user.name} ${response.user.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`,
+                tone: 'success',
+            });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
 
     const fields: Array<CrudField<UserRecord>> = [
         { key: 'name', label: 'Nama', required: true },
@@ -51,96 +82,220 @@ export function OwnerUsersPage() {
     ];
 
     return (
-        <CrudPage
-            pageResetKey={`${search}:${role}`}
-            eyebrow="Pemilik"
-            title="Manajemen Pengguna"
-            description="Akun staf, peran, dan penugasan cabang untuk semua cabang."
-            queryKey={['owner', 'users', search, role]}
-            queryFn={(page) =>
-                api.users({ page, include_deleted: 1, search, role })
-            }
-            summary={
-                <Card>
-                    <CardBody>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="w-full sm:max-w-xs">
-                                <Input
-                                    label="Cari pengguna"
-                                    type="search"
-                                    placeholder="Nama atau nama pengguna"
-                                    value={searchInput}
-                                    onChange={(event) => setSearchInput(event.target.value)}
-                                />
+        <>
+            <CrudPage
+                pageResetKey={`${search}:${role}`}
+                eyebrow="Pemilik"
+                title="Manajemen Pengguna"
+                description="Akun staf, peran, dan penugasan cabang untuk semua cabang."
+                queryKey={['owner', 'users', search, role]}
+                queryFn={(page) => api.users({ page, search, role })}
+                summary={
+                    <Card>
+                        <CardBody>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                <div className="w-full sm:max-w-xs">
+                                    <Input
+                                        label="Cari pengguna"
+                                        type="search"
+                                        placeholder="Nama atau nama pengguna"
+                                        value={searchInput}
+                                        onChange={(event) => setSearchInput(event.target.value)}
+                                    />
+                                </div>
+                                <div className="w-full sm:w-48">
+                                    <Select
+                                        label="Peran"
+                                        value={role}
+                                        onChange={(event) => setRole(event.target.value)}
+                                    >
+                                        <option value="">Semua peran</option>
+                                        {roleOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="w-full sm:w-48">
-                                <Select
-                                    label="Peran"
-                                    value={role}
-                                    onChange={(event) => setRole(event.target.value)}
-                                >
-                                    <option value="">Semua peran</option>
-                                    {roleOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </Select>
+                        </CardBody>
+                    </Card>
+                }
+                columns={[
+                    {
+                        header: 'Nama',
+                        cell: (user) => (
+                            <div>
+                                <span className="block font-medium break-words">{user.name}</span>
+                                <span className="mt-1 block md:hidden">
+                                    <span className="sr-only">Peran: </span>
+                                    <RoleBadge role={user.role} />
+                                </span>
+                                {user.id === authUser?.id ? (
+                                    <span className="text-light-muted mt-1 block text-xs dark:text-gray-400">
+                                        Akun Anda — kelola dari Profil.
+                                    </span>
+                                ) : null}
                             </div>
-                        </div>
-                    </CardBody>
-                </Card>
-            }
-            columns={[
-                { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
-                { header: 'Nama Pengguna', className: 'hidden sm:table-cell', cell: (user) => user.username },
-                { header: 'Peran', cell: (user) => <Badge tone="neutral">{roleLabel(user.role)}</Badge> },
-                { header: 'Cabang', className: 'hidden sm:table-cell', cell: (user) => user.branch?.name ?? 'Global' },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createUser(values)}
-            update={(id, values) => api.admin.updateUser(id, values)}
-            remove={(id) => api.admin.deleteUser(id)}
-            createLabel="Tambah pengguna"
-        />
+                        ),
+                    },
+                    {
+                        header: 'Nama Pengguna',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => (
+                            <span className="block max-w-[12rem] truncate" title={user.username}>
+                                {user.username}
+                            </span>
+                        ),
+                    },
+                    {
+                        header: 'Peran',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => <RoleBadge role={user.role} />,
+                    },
+                    {
+                        header: 'Status',
+                        cell: (user) => (
+                            <Badge tone={user.is_active ? 'success' : 'neutral'}>
+                                {user.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        ),
+                    },
+                    {
+                        header: 'Cabang',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => (
+                            <span
+                                className="block max-w-[12rem] truncate"
+                                title={user.branch?.name ?? 'Global'}
+                            >
+                                {user.branch?.name ?? 'Global'}
+                            </span>
+                        ),
+                    },
+                ]}
+                fields={fields}
+                rowLabel={(user) => user.name}
+                create={(values) => api.admin.createUser(values)}
+                update={(id, values) => api.admin.updateUser(id, values)}
+                rowActions={(user) =>
+                    user.id === authUser?.id ? null : (
+                        <ActiveToggleButton
+                            active={user.is_active}
+                            pending={toggleStatus.isPending && toggleStatus.variables === user.id}
+                            confirmMessage={`Nonaktifkan ${user.name}? Pengguna akan langsung kehilangan akses pada permintaan berikutnya dan tidak dapat masuk sampai diaktifkan kembali.`}
+                            ariaLabel={`${user.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${user.name}`}
+                            onClick={() => toggleStatus.mutate(user.id)}
+                        />
+                    )
+                }
+                createLabel="Tambah pengguna"
+                notice={notice}
+                onNoticeChange={setNotice}
+            />
+        </>
     );
 }
 
 export function BranchesPage() {
+    const queryClient = useQueryClient();
+    const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'error' } | null>(
+        null
+    );
+
+    const toggleBranch = useMutation({
+        mutationFn: (id: string) => api.admin.toggleBranch(id),
+        onSuccess: (response) => {
+            void queryClient.invalidateQueries({ queryKey: ['owner', 'branches'] });
+            void queryClient.invalidateQueries({ queryKey: ['branches', 'selector'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            setNotice({
+                message: `${response.branch.name} ${response.branch.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`,
+                tone: 'success',
+            });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
+
     const fields: Array<CrudField<Branch>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'code', label: 'Kode' },
         { key: 'phone', label: 'Telepon' },
         { key: 'address', label: 'Alamat' },
-        { key: 'is_active', label: 'Aktif', type: 'checkbox', defaultValue: true },
+        {
+            key: 'reseller_discount_percent',
+            label: 'Diskon Reseller (%)',
+            type: 'number',
+            defaultValue: 0,
+            getValue: (branch) => branch.reseller_discount_percent,
+        },
     ];
 
     return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Manajemen Cabang"
-            description="Data cabang, detail kontak, dan status aktif."
-            queryKey={['owner', 'branches']}
-            queryFn={(page) => api.branches({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Nama', cell: (branch) => <span className="font-medium">{branch.name}</span> },
-                { header: 'Kode', cell: (branch) => branch.code ?? '-' },
-                { header: 'Telepon', cell: (branch) => branch.phone ?? '-' },
-                {
-                    header: 'Status',
-                    cell: (branch) => (
-                        <Badge tone={branch.is_active ? 'success' : 'neutral'}>
-                            {branch.is_active ? 'Aktif' : 'Nonaktif'}
-                        </Badge>
-                    ),
-                },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createBranch(values)}
-            update={(id, values) => api.admin.updateBranch(id, values)}
-            remove={(id) => api.admin.deleteBranch(id)}
-            createLabel="Tambah cabang"
-        />
+        <>
+            <CrudPage
+                eyebrow="Administrasi"
+                title="Manajemen Cabang"
+                description="Data cabang, detail kontak, diskon reseller, dan status aktif."
+                queryKey={['owner', 'branches']}
+                queryFn={(page) => api.branches({ page })}
+                columns={[
+                    {
+                        header: 'Nama',
+                        cell: (branch) => (
+                            <span className="block font-medium break-words">{branch.name}</span>
+                        ),
+                    },
+                    { header: 'Kode', className: 'hidden md:table-cell', cell: (branch) => branch.code ?? '-' },
+                    { header: 'Telepon', className: 'hidden md:table-cell', cell: (branch) => branch.phone ?? '-' },
+                    {
+                        header: 'Diskon Reseller',
+                        className: 'hidden text-right tabular-nums whitespace-nowrap md:table-cell',
+                        cell: (branch) => `${Number(branch.reseller_discount_percent)}%`,
+                    },
+                    {
+                        header: 'Status',
+                        cell: (branch) => (
+                            <Badge tone={branch.is_active ? 'success' : 'neutral'}>
+                                {branch.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        ),
+                    },
+                ]}
+                fields={fields}
+                rowLabel={(branch) => branch.name}
+                create={(values) =>
+                    api.admin.createBranch({
+                        ...values,
+                        reseller_discount_percent:
+                            values.reseller_discount_percent === ''
+                                ? 0
+                                : Number(values.reseller_discount_percent),
+                    })
+                }
+                update={(id, values) =>
+                    api.admin.updateBranch(id, {
+                        ...values,
+                        reseller_discount_percent:
+                            values.reseller_discount_percent === ''
+                                ? 0
+                                : Number(values.reseller_discount_percent),
+                    })
+                }
+                rowActions={(branch) => (
+                    <ActiveToggleButton
+                        active={branch.is_active}
+                        pending={toggleBranch.isPending && toggleBranch.variables === branch.id}
+                        confirmMessage={`Nonaktifkan cabang ${branch.name}? Semua staf cabang ini akan langsung kehilangan akses pada permintaan berikutnya sampai cabang diaktifkan kembali.`}
+                        ariaLabel={`${branch.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${branch.name}`}
+                        onClick={() => toggleBranch.mutate(branch.id)}
+                    />
+                )}
+                createLabel="Tambah cabang"
+                notice={notice}
+                onNoticeChange={setNotice}
+            />
+        </>
     );
 }
 
@@ -161,13 +316,68 @@ export function OwnerMaterialsPage() {
             options: categoryOptions,
             getValue: (material) => material.category?.id ?? '',
         },
-        { key: 'type', label: 'Jenis' },
-        { key: 'dimensions', label: 'Dimensi' },
-        { key: 'cost', label: 'Biaya', type: 'number' },
-        { key: 'price', label: 'Harga', type: 'number' },
+        { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
+        {
+            key: 'cost',
+            label: 'Biaya',
+            type: 'number',
+            labelFor: (values) => `Biaya per ${unitLabelFor(values)}`,
+        },
+        {
+            key: 'price',
+            label: 'Harga',
+            type: 'number',
+            labelFor: (values) => `Harga per ${unitLabelFor(values)}`,
+        },
         { key: 'initial_stock', label: 'Stok awal', type: 'number', hideOnEdit: true },
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
+
+    const renderStocks = (material: Material) =>
+        material.stocks.length === 0 ? (
+            '-'
+        ) : (
+            <ul className="min-w-[9rem] space-y-2">
+                {material.stocks.map((stock) => (
+                    <li key={stock.branch_id}>
+                        <span className="block font-medium">
+                            {stock.branch_name ?? '-'}
+                        </span>
+                        <span className="block tabular-nums">
+                            {quantityWithUnit(stock.current_stock, material.unit)}
+                        </span>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Badge tone={stock.is_active ? 'success' : 'danger'}>
+                                {stock.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                            <MaterialActiveToggle
+                                scope="branch"
+                                materialId={material.id}
+                                isActive={stock.is_active}
+                                branchId={stock.branch_id}
+                                branchName={stock.branch_name ?? 'cabang'}
+                                materialName={material.name}
+                            />
+                        </div>
+                        <div className="text-light-muted flex flex-wrap items-center gap-1 text-xs dark:text-gray-400">
+                            <span>min</span>
+                            <MinimumStockInline
+                                materialId={material.id}
+                                branchId={stock.branch_id}
+                                label={stock.branch_name ?? 'cabang'}
+                                value={stock.min_stock}
+                                unit={material.unit}
+                            />
+                        </div>
+                        {stock.is_low_stock ? (
+                            <span className="block font-semibold text-amber-700 dark:text-amber-300">
+                                menipis
+                            </span>
+                        ) : null}
+                    </li>
+                ))}
+            </ul>
+        );
 
     return (
         <CrudPage
@@ -195,41 +405,54 @@ export function OwnerMaterialsPage() {
                 </Card>
             }
             columns={[
-                { header: 'Bahan', cell: (material) => <span className="font-medium">{material.name}</span> },
-                { header: 'Kategori', cell: (material) => material.category?.name ?? '-' },
+                { header: 'Bahan', cell: (material) => (
+                    <div>
+                        <span
+                            className="block font-medium break-words"
+                            title={material.name}
+                        >
+                            {material.name}
+                        </span>
+                        <Badge
+                            tone={material.is_active ? 'success' : 'danger'}
+                            className="mt-1"
+                        >
+                            {material.is_active ? 'Aktif' : 'Nonaktif'}
+                        </Badge>
+                        {material.category && !material.category.is_active ? (
+                            <Badge tone="warning" className="mt-1">
+                                Kategori nonaktif
+                            </Badge>
+                        ) : null}
+                        <p className="text-light-muted text-xs dark:text-gray-400">
+                            {[material.type, material.dimensions, unitLabel(material.unit)]
+                                .filter(Boolean)
+                                .join(' · ')}
+                        </p>
+                        <div className="mt-2 sm:hidden">{renderStocks(material)}</div>
+                    </div>
+                ) },
+                { header: 'Kategori', className: 'hidden sm:table-cell', cell: (material) => material.category?.name ?? '-' },
                 {
                     header: 'Stok per cabang',
-                    cell: (material) =>
-                        material.stocks.length === 0 ? (
-                            '-'
-                        ) : (
-                            <ul className="flex flex-wrap gap-x-3 gap-y-1">
-                                {material.stocks.map((stock) => (
-                                    <li key={stock.branch_id}>
-                                        <span>
-                                            {stock.branch_name ?? '-'}:{' '}
-                                            {formatQuantity(stock.current_stock)} /{' '}
-                                            {formatQuantity(stock.min_stock)}
-                                        </span>
-                                        {stock.is_low_stock ? (
-                                            <span className="ml-1 font-semibold text-amber-700 dark:text-amber-300">
-                                                menipis
-                                            </span>
-                                        ) : null}
-                                    </li>
-                                ))}
-                            </ul>
-                        ),
+                    className: 'hidden sm:table-cell',
+                    cell: (material) => renderStocks(material),
                 },
-                { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.cost) },
-                { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (material) => formatMoney(material.price) },
+                { header: 'Biaya', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.cost) },
+                { header: 'Harga', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (material) => formatMoney(material.price) },
             ]}
             fields={fields}
+            rowLabel={(material) => material.name}
             create={(values) => api.admin.createMaterial(values)}
             update={(id, values) => api.admin.updateMaterial(id, values)}
-            remove={(id) => api.admin.deleteMaterial(id)}
             rowActions={(material) => (
                 <>
+                    <MaterialActiveToggle
+                        scope="global"
+                        materialId={material.id}
+                        isActive={material.is_active}
+                        materialName={material.name}
+                    />
                     <RestockMaterialButton material={material} />
                     <AdjustMaterialModal material={material} />
                 </>
@@ -243,37 +466,10 @@ export function OwnerCategoriesPage() {
     return <CategoriesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }
 
-export function OwnerMachinesPage() {
-    const branches = useBranches();
-    const options = branchOptions(branches.data?.data ?? []);
-
-    const fields: Array<CrudField<Machine>> = [
-        { key: 'name', label: 'Nama', required: true },
-        { key: 'branch_id', label: 'Cabang', type: 'select', options, getValue: (machine) => machine.branch?.id ?? '' },
-        { key: 'cost', label: 'Biaya Dasar', type: 'number' },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Mesin Cetak"
-            description="Data mesin dan biaya dasar."
-            queryKey={['owner', 'machines']}
-            queryFn={(page) => api.machines({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Cabang', cell: (machine) => machine.branch?.name ?? 'Global' },
-                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createMachine(values)}
-            update={(id, values) => api.admin.updateMachine(id, values)}
-            remove={(id) => api.admin.deleteMachine(id)}
-            createLabel="Tambah mesin"
-        />
-    );
-}
-
 export function OwnerProductsPage() {
     return <ProductsPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
+}
+
+export function OwnerAttributesPage() {
+    return <AttributesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }

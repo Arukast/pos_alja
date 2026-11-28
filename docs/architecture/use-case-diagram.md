@@ -30,7 +30,7 @@ flowchart LR
             UC05(["Kelola Kategori Produk"])
             UC06(["Kelola Harga Bahan & Finishing"])
             UC07(["Cari & Filter Produk"])
-            UC08(["Kelola Diskon Kategori"])
+            UC08(["Kelola Minimum Stok"])
         end
 
         subgraph INV["Inventaris"]
@@ -102,6 +102,7 @@ flowchart LR
 
     Manager --- UC01
     Manager --- UC07
+    Manager --- UC08
     Manager --- UC09
     Manager --- UC11
     Manager --- UC12
@@ -162,15 +163,15 @@ flowchart LR
 
 Notes:
 
-- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only. Cashier customer access is search-only (`UC29`), not customer management.
+- **Kasir `U`** covers pickup status only (FR21); order changes are Designer-only. Cashier has read-only access to the shared `/customers` management page, including customer search (`UC29`), consistent with `docs/requirements/access-matrix.md` rule 22.
 - **Designer `U`** covers order changes before production (FR9), design-status updates (FR10), and customer create/update.
 - **Manager `Data Stok`** is branch-scoped stock management; global catalog and discount configuration are Owner-only.
 - **Owner and Manager `Data Stok`** both use the reason-required adjustment workflow (FR18).
 - **Kasir `Data Stok`:** no stock access. Purchases and adjustments are Owner/Branch Manager; stock visibility is Owner/Branch Manager/Production.
 - **Production `Data Stok`** is read plus usage/waste updates.
 - **Invoice and receipt print** are denied to Production because both contain money. Production uses the queue.
-- **Machine management** is removed; machine cost is folded into material cost.
-- **Quantity discounts** are configured per product category by the Owner, not per pricing-matrix row.
+- **Machine management** is removed; there is no machine selection or machine cost in the current build.
+- **Minimum stock** is edited per branch by the Owner or the branch's Manager on the existing branch-stock row; it writes no stock movement and no audit row. Category quantity-discount tiers are removed.
 
 ## Notes
 

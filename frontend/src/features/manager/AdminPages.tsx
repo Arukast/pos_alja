@@ -2,31 +2,56 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Attribute, AttributeType, Machine, Material, Pricing, UserRecord } from '../../api/types';
+import type { Material, UserRecord } from '../../api/types';
 import { useAuth } from '../../auth/useAuth';
+import { ActiveToggleButton } from '../../components/admin/ActiveToggleButton';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { PageBanner } from '../../components/PageBanner';
 import { ResourceTable } from '../../components/ResourceTable';
+import { RoleBadge } from '../../components/RoleBadge';
+import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
+import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
+import { MinimumStockInline } from '../catalog/MinimumStockInline';
 import { RestockMaterialButton } from '../catalog/RestockMaterialButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Checkbox } from '../../components/ui/Checkbox';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { StatCard } from '../../components/ui/StatCard';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
-import { collectionAsPage } from '../../lib/pagination';
-import { archetypeLabel, attributeTypeLabel, ledgerTypeLabel, roleLabel } from '../../lib/labels';
+import { ledgerTypeLabel, roleLabel } from '../../lib/labels';
 import { formatDate } from '../../lib/dates';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { errorMessage } from '../../lib/errors';
+import { formatMoney } from '../../lib/money';
+import { ledgerQuantity, quantityWithUnit, unitLabel, unitOptions } from '../../lib/units';
+
+const unitLabelFor = (values: Record<string, unknown>) => unitLabel(String(values.unit ?? ''));
 
 export function ManagerUsersPage() {
-    const { user } = useAuth();
+    const { user: authUser } = useAuth();
+    const queryClient = useQueryClient();
+    const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'error' } | null>(
+        null
+    );
+
+    const toggleStatus = useMutation({
+        mutationFn: (id: string) => api.admin.toggleUser(id),
+        onSuccess: (response) => {
+            void queryClient.invalidateQueries({ queryKey: ['manager', 'users'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+            setNotice({
+                message: `Akun ${response.user.name} ${response.user.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`,
+                tone: 'success',
+            });
+        },
+        onError: (error) => setNotice({ message: errorMessage(error), tone: 'error' }),
+    });
+
     const fields: Array<CrudField<UserRecord>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'username', label: 'Nama Pengguna', required: true },
@@ -48,27 +73,78 @@ export function ManagerUsersPage() {
     ];
 
     return (
-        <CrudPage
-            eyebrow="Administrasi"
-            title="Manajemen Pengguna"
-            description="Akun staf cabang dan penugasan peran."
-            queryKey={['manager', 'users']}
-            queryFn={(page) => api.users({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Nama', cell: (user) => <span className="font-medium">{user.name}</span> },
-                { header: 'Nama Pengguna', cell: (user) => user.username },
-                { header: 'Peran', cell: (user) => <Badge tone="brand">{roleLabel(user.role)}</Badge> },
-            ]}
-            fields={fields}
-            create={(values) =>
-                api.admin.createUser({ ...values, branch_id: user?.branch?.id })
-            }
-            update={(id, values) =>
-                api.admin.updateUser(id, { ...values, branch_id: user?.branch?.id })
-            }
-            remove={(id) => api.admin.deleteUser(id)}
-            createLabel="Tambah akun staf"
-        />
+        <>
+            <CrudPage
+                eyebrow="Administrasi"
+                title="Manajemen Pengguna"
+                description="Akun staf cabang dan penugasan peran."
+                queryKey={['manager', 'users']}
+                queryFn={(page) => api.users({ page })}
+                columns={[
+                    {
+                        header: 'Nama',
+                        cell: (user) => (
+                            <div>
+                                <span className="block font-medium break-words">{user.name}</span>
+                                <span className="mt-1 block md:hidden">
+                                    <span className="sr-only">Peran: </span>
+                                    <RoleBadge role={user.role} />
+                                </span>
+                                {user.id === authUser?.id ? (
+                                    <span className="text-light-muted mt-1 block text-xs dark:text-gray-400">
+                                        Akun Anda — kelola dari Profil.
+                                    </span>
+                                ) : null}
+                            </div>
+                        ),
+                    },
+                    {
+                        header: 'Nama Pengguna',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => (
+                            <span className="block max-w-[12rem] truncate" title={user.username}>
+                                {user.username}
+                            </span>
+                        ),
+                    },
+                    {
+                        header: 'Peran',
+                        className: 'hidden md:table-cell',
+                        cell: (user) => <RoleBadge role={user.role} />,
+                    },
+                    {
+                        header: 'Status',
+                        cell: (user) => (
+                            <Badge tone={user.is_active ? 'success' : 'neutral'}>
+                                {user.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                        ),
+                    },
+                ]}
+                fields={fields}
+                rowLabel={(user) => user.name}
+                create={(values) =>
+                    api.admin.createUser({ ...values, branch_id: authUser?.branch?.id })
+                }
+                update={(id, values) =>
+                    api.admin.updateUser(id, { ...values, branch_id: authUser?.branch?.id })
+                }
+                rowActions={(user) =>
+                    user.id === authUser?.id ? null : (
+                        <ActiveToggleButton
+                            active={user.is_active}
+                            pending={toggleStatus.isPending && toggleStatus.variables === user.id}
+                            confirmMessage={`Nonaktifkan ${user.name}? Pengguna akan langsung kehilangan akses pada permintaan berikutnya dan tidak dapat masuk sampai diaktifkan kembali.`}
+                            ariaLabel={`${user.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${user.name}`}
+                            onClick={() => toggleStatus.mutate(user.id)}
+                        />
+                    )
+                }
+                createLabel="Tambah akun staf"
+                notice={notice}
+                onNoticeChange={setNotice}
+            />
+        </>
     );
 }
 
@@ -78,10 +154,6 @@ export function ManagerMaterialsPage() {
     const materialCount = useQuery({
         queryKey: ['manager', 'materials', 'count'],
         queryFn: () => api.materials({ page: 1, per_page: 1 }),
-    });
-    const machineCount = useQuery({
-        queryKey: ['manager', 'machines', 'count'],
-        queryFn: () => api.machines({ page: 1, per_page: 1 }),
     });
     const ledgers = useQuery({
         queryKey: ['manager', 'materials', 'ledgers'],
@@ -96,10 +168,19 @@ export function ManagerMaterialsPage() {
     const fields: Array<CrudField<Material>> = [
         { key: 'name', label: 'Nama', required: true },
         { key: 'product_category_id', label: 'Kategori', type: 'select', options, getValue: (material) => material.category?.id ?? '' },
-        { key: 'type', label: 'Jenis' },
-        { key: 'dimensions', label: 'Dimensi' },
-        { key: 'cost', label: 'Biaya', type: 'number' },
-        { key: 'price', label: 'Harga', type: 'number' },
+        { key: 'unit', label: 'Satuan', type: 'select', options: unitOptions, defaultValue: 'pcs' },
+        {
+            key: 'cost',
+            label: 'Biaya',
+            type: 'number',
+            labelFor: (values) => `Biaya per ${unitLabelFor(values)}`,
+        },
+        {
+            key: 'price',
+            label: 'Harga',
+            type: 'number',
+            labelFor: (values) => `Harga per ${unitLabelFor(values)}`,
+        },
         { key: 'initial_stock', label: 'Stok awal', type: 'number', hideOnEdit: true },
         { key: 'min_stock', label: 'Stok minimum', type: 'number', hideOnEdit: true },
     ];
@@ -115,18 +196,18 @@ export function ManagerMaterialsPage() {
             queryKey={['manager', 'materials', lowStock]}
             queryFn={(page) => api.materials({ page, low_stock: lowStock ? 1 : undefined })}
             summary={
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <StatCard
                         label="Bahan Aktif"
-                        value={materialCount.isSuccess ? String(materialCount.data.meta.total) : '—'}
+                        value={
+                            materialCount.isSuccess
+                                ? String(materialCount.data.available_total ?? 0)
+                                : '—'
+                        }
                     />
                     <StatCard
                         label="Kategori"
                         value={categories.isSuccess ? String(categories.data.data.length) : '—'}
-                    />
-                    <StatCard
-                        label="Mesin Aktif"
-                        value={machineCount.isSuccess ? String(machineCount.data.meta.total) : '—'}
                     />
                 </div>
             }
@@ -151,11 +232,42 @@ export function ManagerMaterialsPage() {
                     header: 'Bahan',
                     cell: (material) => (
                         <div>
-                            <span className="font-medium">{material.name}</span>
-                            {material.type || material.dimensions ? (
-                                <p className="text-light-muted text-xs dark:text-gray-400">
-                                    {[material.type, material.dimensions].filter(Boolean).join(' · ')}
-                                </p>
+                            <span className="block font-medium">{material.name}</span>
+                            {material.is_active === false ? (
+                                <Badge tone="danger" className="mt-1">
+                                    Nonaktif
+                                </Badge>
+                            ) : null}
+                            {material.category && !material.category.is_active ? (
+                                <Badge tone="warning" className="mt-1">
+                                    Kategori nonaktif
+                                </Badge>
+                            ) : null}
+                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                {[material.type, material.dimensions, unitLabel(material.unit)]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </p>
+                            {material.stocks[0]?.is_active === false ? (
+                                <span className="mt-1 block sm:hidden">
+                                    <Badge tone="danger">Nonaktif di cabang</Badge>
+                                </span>
+                            ) : null}
+                            <div className="text-light-muted mt-1 flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 sm:hidden">
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    Min
+                                </span>
+                                <MinimumStockInline
+                                    materialId={material.id}
+                                    label="cabang ini"
+                                    value={material.min_stock ?? '0'}
+                                    unit={material.unit}
+                                />
+                            </div>
+                            {material.is_low_stock === true ? (
+                                <span className="mt-1 block sm:hidden">
+                                    <Badge tone="warning">Menipis</Badge>
+                                </span>
                             ) : null}
                         </div>
                     ),
@@ -164,23 +276,34 @@ export function ManagerMaterialsPage() {
                 {
                     header: 'Stok',
                     className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => formatQuantity(material.current_stock),
+                    cell: (material) => quantityWithUnit(material.current_stock, material.unit),
                 },
                 {
                     header: 'Minimum',
-                    className: 'text-right tabular-nums whitespace-nowrap',
-                    cell: (material) => formatQuantity(material.min_stock),
+                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    cell: (material) => (
+                        <MinimumStockInline
+                            materialId={material.id}
+                            label="cabang ini"
+                            value={material.min_stock ?? '0'}
+                            unit={material.unit}
+                        />
+                    ),
                 },
                 {
                     header: 'Biaya',
-                    className: 'hidden text-right tabular-nums whitespace-nowrap sm:table-cell',
+                    className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell',
                     cell: (material) => formatMoney(material.cost),
                 },
                 {
                     header: 'Status',
                     className: 'hidden sm:table-cell',
                     cell: (material) =>
-                        material.is_low_stock === null ? (
+                        material.is_active === false ||
+                        (material.stocks.length > 0 &&
+                            material.stocks[0].is_active === false) ? (
+                            <Badge tone="danger">Nonaktif</Badge>
+                        ) : material.is_low_stock === null ? (
                             '-'
                         ) : material.is_low_stock ? (
                             <Badge tone="warning">Menipis</Badge>
@@ -190,9 +313,20 @@ export function ManagerMaterialsPage() {
                 },
             ]}
             fields={fields}
+            rowLabel={(material) => material.name}
             create={(values) => api.admin.createMaterial(values)}
             rowActions={(material) => (
                 <>
+                    {material.stocks.length > 0 ? (
+                        <MaterialActiveToggle
+                            scope="branch"
+                            materialId={material.id}
+                            isActive={material.stocks[0].is_active}
+                            branchId={material.stocks[0].branch_id}
+                            branchName={material.stocks[0].branch_name ?? 'cabang ini'}
+                            materialName={material.name}
+                        />
+                    ) : null}
                     <RestockMaterialButton material={material} />
                     <AdjustMaterialModal material={material} />
                 </>
@@ -224,7 +358,7 @@ export function ManagerMaterialsPage() {
                                     <TableRow>
                                         <TableHeaderCell>Tanggal</TableHeaderCell>
                                         <TableHeaderCell>Bahan</TableHeaderCell>
-                                        <TableHeaderCell>Ditambahkan</TableHeaderCell>
+                                        <TableHeaderCell className="hidden sm:table-cell">Ditambahkan</TableHeaderCell>
                                         <TableHeaderCell>Digunakan</TableHeaderCell>
                                         <TableHeaderCell>Tersisa</TableHeaderCell>
                                     </TableRow>
@@ -241,9 +375,9 @@ export function ManagerMaterialsPage() {
                                                     {formatDate(ledger.logged_at)}
                                                 </TableCell>
                                                 <TableCell>{ledger.material?.name ?? '-'}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.added_stock)}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.used_stock)}</TableCell>
-                                                <TableCell>{formatQuantity(ledger.remaining_stock)}</TableCell>
+                                                <TableCell className="hidden sm:table-cell">{ledgerQuantity(ledger.added_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell>{ledgerQuantity(ledger.used_stock, ledger.material?.unit)}</TableCell>
+                                                <TableCell>{quantityWithUnit(ledger.remaining_stock, ledger.material?.unit)}</TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -266,50 +400,39 @@ export function ManagerLedgersPage() {
             queryKey={['manager', 'ledgers']}
             queryFn={(page) => api.stockLedgers({ page })}
             columns={[
-                { header: 'Tanggal', className: 'whitespace-nowrap', cell: (ledger) => formatDate(ledger.logged_at) },
-                { header: 'Bahan', cell: (ledger) => ledger.material?.name ?? '-' },
+                { header: 'Tanggal', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => formatDate(ledger.logged_at) },
+                {
+                    header: 'Bahan',
+                    cell: (ledger) => (
+                        <div>
+                            <span
+                                className="block max-w-[7rem] truncate font-medium sm:max-w-none"
+                                title={ledger.material?.name ?? undefined}
+                            >
+                                {ledger.material?.name ?? '-'}
+                            </span>
+                            <span className="text-light-muted text-xs whitespace-nowrap sm:hidden">
+                                {formatDate(ledger.logged_at)}
+                            </span>
+                        </div>
+                    ),
+                },
                 { header: 'Tipe', cell: (ledger) => ledgerTypeLabel(ledger.type) },
                 {
                     header: 'Alasan',
-                    className: 'hidden lg:table-cell',
+                    className: 'hidden md:table-cell',
                     cell: (ledger) => (
-                        <span className="block max-w-[18rem] truncate" title={ledger.reason ?? undefined}>
+                        <span className="block max-w-[9rem] truncate" title={ledger.reason ?? undefined}>
                             {ledger.reason ?? '-'}
                         </span>
                     ),
                 },
-                { header: 'Pengguna', className: 'hidden sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
-                { header: 'Ditambahkan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.added_stock) },
-                { header: 'Digunakan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.used_stock) },
-                { header: 'Sisa Bahan', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.wasted_stock) },
-                { header: 'Tersisa', className: 'text-right tabular-nums whitespace-nowrap', cell: (ledger) => formatQuantity(ledger.remaining_stock) },
+                { header: 'Pengguna', className: 'hidden whitespace-nowrap sm:table-cell', cell: (ledger) => ledger.user?.name ?? '-' },
+                { header: 'Ditambahkan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.added_stock, ledger.material?.unit) },
+                { header: 'Digunakan', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.used_stock, ledger.material?.unit) },
+                { header: 'Bahan Terbuang', className: 'hidden text-right tabular-nums whitespace-nowrap lg:table-cell', cell: (ledger) => ledgerQuantity(ledger.wasted_stock, ledger.material?.unit) },
+                { header: 'Tersisa', className: 'text-right tabular-nums sm:whitespace-nowrap', cell: (ledger) => quantityWithUnit(ledger.remaining_stock, ledger.material?.unit) },
             ]}
-        />
-    );
-}
-
-export function ManagerMachinesPage() {
-    const fields: Array<CrudField<Machine>> = [
-        { key: 'name', label: 'Nama', required: true },
-        { key: 'cost', label: 'Biaya Dasar', type: 'number' },
-    ];
-
-    return (
-        <CrudPage
-            eyebrow="Konfigurasi"
-            title="Mesin Cetak"
-            description="Data mesin dan biaya dasar untuk cabang Anda."
-            queryKey={['manager', 'machines']}
-            queryFn={(page) => api.machines({ page, include_deleted: 1 })}
-            columns={[
-                { header: 'Mesin', cell: (machine) => <span className="font-medium">{machine.name}</span> },
-                { header: 'Biaya Dasar', className: 'text-right tabular-nums whitespace-nowrap', cell: (machine) => formatMoney(machine.cost) },
-            ]}
-            fields={fields}
-            create={(values) => api.admin.createMachine(values)}
-            update={(id, values) => api.admin.updateMachine(id, values)}
-            remove={(id) => api.admin.deleteMachine(id)}
-            createLabel="Tambah mesin"
         />
     );
 }
@@ -319,204 +442,11 @@ export function ManagerCategoriesPage() {
 }
 
 export function ManagerFinishingPage() {
-    const typeFields: Array<CrudField<AttributeType>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'calculation_archetype',
-            label: 'Arketipe',
-            type: 'select',
-            options: [
-                { value: 'per_piece', label: archetypeLabel('per_piece') },
-                { value: 'surface_area', label: archetypeLabel('surface_area') },
-                { value: 'linear_dimension', label: archetypeLabel('linear_dimension') },
-                { value: 'tiered_volume', label: archetypeLabel('tiered_volume') },
-            ],
-        },
-    ];
-
-    const attributeFields: Array<CrudField<Attribute>> = [
-        { key: 'name', label: 'Nama', required: true },
-        {
-            key: 'type',
-            label: 'Tipe',
-            type: 'select',
-            options: [
-                { value: 'finishing', label: attributeTypeLabel('finishing') },
-                { value: 'cut', label: attributeTypeLabel('cut') },
-                { value: 'display', label: attributeTypeLabel('display') },
-            ],
-        },
-    ];
-
-    return (
-        <div className="space-y-8">
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Display & Finishing"
-                description="Kelola atribut finishing, potong, dan display."
-                queryKey={['manager', 'attributes']}
-                queryFn={() => api.attributes().then((response) => collectionAsPage(response.data))}
-                columns={[
-                    { header: 'Nama', cell: (attribute) => <span className="font-medium">{attribute.name}</span> },
-                    { header: 'Tipe', cell: (attribute) => attributeTypeLabel(attribute.type) },
-                ]}
-                fields={attributeFields}
-                create={(values) => api.admin.createAttribute(values)}
-                update={(id, values) => api.admin.updateAttribute(id, values)}
-                remove={(id) => api.admin.deleteAttribute(id)}
-                createLabel="Tambah atribut"
-                paginated={false}
-            />
-
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Tipe Atribut"
-                description="Tipe yang digunakan oleh perhitungan harga."
-                queryKey={['manager', 'attribute-types']}
-                queryFn={() => api.attributeTypes().then((response) => collectionAsPage(response.data))}
-                columns={[
-                    { header: 'Nama', cell: (type) => <span className="font-medium">{type.name}</span> },
-                    { header: 'Arketipe', cell: (type) => archetypeLabel(type.calculation_archetype) },
-                ]}
-                fields={typeFields}
-                create={(values) => api.admin.createAttributeType(values)}
-                remove={(id) => api.admin.deleteAttributeType(id)}
-                createLabel="Tambah tipe atribut"
-                paginated={false}
-                hideBanner
-            />
-        </div>
-    );
+    return <AttributesPage eyebrow="Konfigurasi" queryKeyPrefix="manager" />;
 }
 
 export function ManagerProductsPage() {
     return <ProductsPage eyebrow="Konfigurasi" queryKeyPrefix="manager" readOnly />;
-}
-
-export function ManagerPricingPage() {
-    const products = useQuery({
-        queryKey: ['products', 'options'],
-        queryFn: () => api.products({ is_active: 1 }),
-    });
-    const materials = useQuery({ queryKey: ['materials', 'options'], queryFn: () => api.materials() });
-
-    const productOptions = (products.data?.data ?? []).map((product) => ({
-        value: product.id,
-        label: product.name,
-    }));
-    const materialOptions = (materials.data?.data ?? []).map((material) => ({
-        value: material.id,
-        label: material.name,
-    }));
-
-    const fields: Array<CrudField<Pricing>> = [
-        { key: 'product_id', label: 'Produk', type: 'select', options: productOptions, getValue: (pricing) => pricing.product?.id ?? '' },
-        { key: 'material_id', label: 'Bahan', type: 'select', options: materialOptions, getValue: (pricing) => pricing.material?.id ?? '' },
-        {
-            key: 'customer_type',
-            label: 'Tipe Pelanggan',
-            type: 'select',
-            options: [
-                { value: 'Reguler', label: 'Reguler' },
-                { value: 'Reseller', label: 'Reseller' },
-            ],
-            getValue: (pricing) => pricing.customer_type,
-        },
-        { key: 'min_qty', label: 'Jml min', type: 'number', defaultValue: 1, getValue: (pricing) => pricing.min_qty },
-        { key: 'price', label: 'Harga jual', type: 'number', getValue: (pricing) => pricing.price },
-        { key: 'cost', label: 'Biaya', type: 'number', getValue: (pricing) => pricing.cost },
-    ];
-
-    return (
-        <div className="space-y-8">
-            <CrudPage
-                eyebrow="Konfigurasi"
-                title="Matriks Harga"
-                description="Baris harga bertingkat dan aturan penyesuaian."
-                queryKey={['manager', 'pricing']}
-                queryFn={(page) => api.pricing({ page })}
-                columns={[
-                    { header: 'Produk', cell: (pricing) => pricing.product?.name ?? '-' },
-                    { header: 'Bahan', cell: (pricing) => pricing.material?.name ?? '-' },
-                    { header: 'Tipe', cell: (pricing) => pricing.customer_type },
-                    { header: 'Jml min', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => pricing.min_qty },
-                    { header: 'Harga', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.price) },
-                    { header: 'Biaya', className: 'text-right tabular-nums whitespace-nowrap', cell: (pricing) => formatMoney(pricing.cost) },
-                ]}
-                fields={fields}
-                create={(values) => api.admin.createPricing(values)}
-                update={(id, values) => api.admin.updatePricing(id, values)}
-                remove={(id) => api.admin.deletePricing(id)}
-                createLabel="Tambah baris harga"
-            />
-
-            <PricingClonePanel />
-        </div>
-    );
-}
-
-function PricingClonePanel() {
-    const queryClient = useQueryClient();
-    const materials = useQuery({ queryKey: ['materials', 'clone'], queryFn: () => api.materials() });
-    const [from, setFrom] = useState('');
-    const [to, setTo] = useState('');
-    const [notice, setNotice] = useState<string | null>(null);
-
-    const clone = useMutation({
-        mutationFn: () =>
-            api.admin.clonePricing({ from_material_id: from, to_material_id: to }),
-        onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ['manager', 'pricing'] });
-            setNotice('Tingkat harga disalin.');
-        },
-        onError: () => setNotice('Gagal menyalin tingkat harga.'),
-    });
-
-    const options = materials.data?.data ?? [];
-
-    return (
-        <Card>
-            <CardBody className="space-y-4">
-                <div className="space-y-1">
-                    <p className="text-light-muted text-[10px] font-semibold uppercase tracking-widest dark:text-gray-400">
-                        Konfigurasi
-                    </p>
-                    <h2 className="text-light-text text-lg font-semibold dark:text-gray-100">
-                        Salin tingkat harga
-                    </h2>
-                    <p className="text-light-muted text-sm dark:text-gray-400">
-                        Salin setiap baris harga dari satu bahan ke bahan lain di cabang Anda.
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-end gap-3">
-                    <Select label="Dari bahan" value={from} onChange={(event) => setFrom(event.target.value)}>
-                        <option value="">Pilih</option>
-                        {options.map((material) => (
-                            <option key={material.id} value={material.id}>
-                                {material.name}
-                            </option>
-                        ))}
-                    </Select>
-                    <Select label="Ke bahan" value={to} onChange={(event) => setTo(event.target.value)}>
-                        <option value="">Pilih</option>
-                        {options.map((material) => (
-                            <option key={material.id} value={material.id}>
-                                {material.name}
-                            </option>
-                        ))}
-                    </Select>
-                    <Button
-                        loading={clone.isPending}
-                        disabled={!from || !to || from === to}
-                        onClick={() => clone.mutate()}
-                    >
-                        Salin tingkat
-                    </Button>
-                </div>
-                {notice ? <p className="text-sm">{notice}</p> : null}
-            </CardBody>
-        </Card>
-    );
 }
 
 export function ManagerLeaderboardPage() {
@@ -530,7 +460,7 @@ export function ManagerLeaderboardPage() {
             <PageBanner
                 eyebrow="Ringkasan"
                 title="Papan Peringkat Desainer"
-                description="Pendapatan, jumlah pesanan, dan akurasi sisa bahan bulan ini."
+                description="Pendapatan, jumlah pesanan, dan akurasi bahan terbuang bulan ini."
             />
             <Card>
                 <CardBody>
@@ -557,7 +487,7 @@ export function ManagerLeaderboardPage() {
                                     <TableHeaderCell>Pesanan</TableHeaderCell>
                                     <TableHeaderCell className="text-right whitespace-nowrap">Pendapatan</TableHeaderCell>
                                     <TableHeaderCell className="text-right whitespace-nowrap">Rata-rata pesanan</TableHeaderCell>
-                                    <TableHeaderCell>Catatan sisa bahan</TableHeaderCell>
+                                    <TableHeaderCell>Catatan bahan terbuang</TableHeaderCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>

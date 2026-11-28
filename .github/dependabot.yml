@@ -3,17 +3,43 @@ updates:
   # Maintain dependencies for Composer
   - package-ecosystem: "composer"
     directory: "/"
+    target-branch: "staging"
     schedule:
       interval: "weekly"
+    groups:
+      composer-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
-  # Maintain dependencies for npm
+  # Maintain dev tooling npm dependencies at the repository root
   - package-ecosystem: "npm"
     directory: "/"
+    target-branch: "staging"
     schedule:
       interval: "weekly"
+    groups:
+      npm-root-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Maintain npm dependencies for the SPA
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-frontend-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "staging"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

@@ -4,7 +4,9 @@
 
 - PHP 8.5 FPM with `pdo_pgsql`, `bcmath`, `intl`, `gd`, `zip`, `pcntl`, and `opcache`.
 - PostgreSQL 16.
-- Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM.
+- `postgresql-client-16` from the PGDG apt repository, so `pg_dump` and `pg_restore` match the server major version. Debian bookworm's default client is 15, which refuses a PostgreSQL 16 server.
+- A queue `worker` and a `scheduler` run the same app image as `app`. Scheduled backups need the scheduler, and every queued run needs the worker.
+- Nginx serves `frontend/dist` and proxies `/api`, `/sanctum`, `/broadcasting`, and `/up` to PHP-FPM, with 600-second FastCGI timeouts on `/api` and `/sanctum` for large backup downloads. An exact location serves `/site.webmanifest` with `application/manifest+json`; `try_files $uri =404` keeps a missing manifest a 404, and the generic `location /` still provides the SPA fallback for client routes.
 - Laravel Reverb runs on container port 8080 and host port 8084.
 
 ## 2. Deployment Modes
@@ -30,7 +32,7 @@ flowchart LR
     Browser -->|"ws://localhost:8080"| Reverb
 ```
 
-Use this mode for development and local demos. It runs on one machine, does not use TLS, and does not integrate two branches.
+Use this mode for development and local demos. It runs on one machine, does not use TLS, and does not integrate two branches. Native development defaults to SQLite; the backup dumper refuses a non-`pgsql` connection, so real backups require the Docker/PostgreSQL runtime.
 
 ### 2.2 Online Multi-Branch (Primary)
 
@@ -48,10 +50,13 @@ flowchart LR
     subgraph HOST["Central Docker Compose host"]
         Nginx["nginx :80"]
         App["app :9000<br/>Laravel API"]
+        Worker["worker<br/>queue:work + pg_dump"]
+        Scheduler["scheduler<br/>schedule:work"]
         Reverb["reverb :8080"]
         DB[("PostgreSQL 16<br/>one central database")]
+        Volume[("backupdata<br/>local dumps")]
     end
-    Backup[("S3-compatible object storage<br/>Cloudflare R2 recommended<br/>FR26 target")]
+    Backup[("S3-compatible object storage<br/>Cloudflare R2<br/>remote dumps")]
 
     A -->|"HTTPS/WSS 443"| TLS
     B -->|"HTTPS/WSS 443"| TLS
@@ -59,11 +64,14 @@ flowchart LR
     TLS -->|"WSS /app"| Reverb
     Nginx -->|"FastCGI /api /sanctum /broadcasting"| App
     App -->|"SQL :5432"| DB
+    App -->|"queue jobs"| Worker
+    Scheduler -->|"backup:tick"| DB
+    Worker -->|"local dump"| Volume
+    Worker -->|"remote dump"| Backup
     App -->|"broadcast :8080"| Reverb
     Reverb -->|"events"| TLS
     TLS -->|"events"| A
     TLS -->|"events"| B
-    App -->|"backup"| Backup
 ```
 
 This is the primary deployment for integration between Cabang A and Cabang B:
@@ -73,7 +81,7 @@ This is the primary deployment for integration between Cabang A and Cabang B:
 3. Owner sees all branches; manager, cashier, designer, and production are branch-scoped.
 4. SPA, API, and CSRF traffic go through the HTTPS edge to Nginx.
 5. Reverb events go through the same edge as WSS on `443`, not `ws://host:8084`.
-6. The backup arrow points to S3-compatible object storage, with Cloudflare R2 recommended. It is solid because it is part of the target topology; FR26 is still target.
+6. The backup arrows are implemented PB-10 flows: the `worker` writes the requested local dump to the `backupdata` volume and uploads the remote copy to S3-compatible object storage, with Cloudflare R2 recommended.
 
 ### 2.3 Optional Edge
 
@@ -110,6 +118,17 @@ Set these in the production `.env` before starting Compose:
 | `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET` | Reverb credentials |
 | `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` | Server-side Reverb target |
 | `VITE_REVERB_APP_KEY`, `VITE_REVERB_HOST`, `VITE_REVERB_PORT`, `VITE_REVERB_SCHEME` | SPA build-time Reverb values |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | R2/S3 token (operator-only; never shown to the owner UI) |
+| `AWS_DEFAULT_REGION` | `auto` for R2; confirm with the operator |
+| `AWS_ENDPOINT` | R2/S3 endpoint URL |
+| `AWS_BACKUP_BUCKET` | Private backup bucket. Leave the key absent to fall back to `AWS_BUCKET`, or set it explicitly; an empty `AWS_BACKUP_BUCKET=` suppresses the fallback and remote backup counts as unconfigured |
+| `AWS_BACKUP_PREFIX` | Object key prefix, default `pos-alja-backups` |
+| `AWS_USE_PATH_STYLE_ENDPOINT` | `false` for R2 unless the operator requires path-style |
+| `BACKUP_REMOTE_ENABLED` | Seeds `backup_settings.remote_enabled` on first access; the owner UI is authoritative afterwards |
+| `BACKUP_LOCAL_AT=02:00`, `BACKUP_REMOTE_AT=02:30` | Seed times, application timezone |
+| `BACKUP_TIMEOUT=600` | `pg_dump` and job timeout, seconds |
+| `BACKUP_REMOTE_QUOTA_MB=10240` | Quota used for the usage percentage and warnings |
+| `BACKUP_PG_DUMP` | Optional `pg_dump` binary override; empty means `pg_dump` on `PATH` |
 | `TRUSTED_PROXIES` | Exact proxy CIDRs, never `*` unless the proxy is fully trusted |
 
 The SPA is built during the Docker image build. Rebuild the `nginx` target whenever the `VITE_REVERB_*` values change.
@@ -126,11 +145,17 @@ docker compose exec app php artisan migrate --force
 Services:
 
 - `app`: PHP-FPM, Laravel API.
-- `nginx`: static SPA plus API proxy.
+- `nginx`: static SPA plus API proxy; `fastcgi_read_timeout` and `fastcgi_send_timeout` are 600s on `/api` and `/sanctum` only, so large backup downloads are not cut at the default 60s.
 - `db`: PostgreSQL with a named volume.
 - `reverb`: Reverb WebSocket server.
+- `worker`: same image as `app`, command `php artisan queue:work --sleep=3 --tries=1 --timeout=600`, mounts `backupdata`.
+- `scheduler`: same image as `app`, command `php artisan schedule:work`; it only dispatches `backup:tick`, so it does not mount `backupdata`.
 
-The Compose file reads `.env` through `env_file`. `DB_PASSWORD` is required; there is no default. Run `docker compose config` with your production `.env` before starting.
+Named volumes: `pgdata` for PostgreSQL and `backupdata` mounted at `/var/www/html/storage/app/backups` on `app` and `worker`. `app`, `worker`, and `scheduler` share the same Compose environment anchor (`APP_ENV`, `DB_CONNECTION=pgsql`, `DB_HOST=db`, `SESSION_DRIVER=database`, `CACHE_STORE=database`, `QUEUE_CONNECTION=database`, `BROADCAST_CONNECTION=reverb`, etc.), not only `env_file: .env`.
+
+`DB_QUEUE_RETRY_AFTER=900` is set in the Compose environment. It must stay above the job timeout (`BACKUP_TIMEOUT`, default 600) so a long dump is not retried while it is still running. `RunBackup` has `$tries = 1`; a failed job is not retried automatically.
+
+The Compose file reads `.env` through `env_file`. `DB_PASSWORD` is required; there is no default. Do not run `docker compose config` on a production `.env`, because it prints interpolated secrets; use `docker compose config --services` or `--quiet` for validation.
 
 ## 5. Native Development
 
@@ -154,38 +179,161 @@ CI does not auto-commit formatting changes.
 
 ## 7. Backups
 
-FR26 (manual and scheduled database backup) is not implemented yet. The target storage is **S3-compatible object storage**, with **Cloudflare R2 recommended** because it is S3-compatible, has no egress fee, and fits the Cloudflare Tunnel edge.
+PB-10 implements FR26. There are three independent run types, all recorded in `backups` and audited:
 
-Target flow:
+1. **Manual by the owner.** `POST /api/v1/backups` returns `202` and queues the job; the dump never runs in the request. Destination is `both` (local + R2) when remote backup is enabled and configured, `local` when remote is disabled, and `422` with no row when remote is enabled but unconfigured.
+2. **Scheduled local.** `backup:tick` queues a local run when the owner-set local time is due and local backup is enabled.
+3. **Scheduled remote (R2/S3).** `backup:tick` queues a remote-only run when the owner-set remote time is due and remote backup is enabled.
 
-```text
-cron / systemd timer or Laravel scheduler
-  -> pg_dump -Fc
-  -> encrypt with age or rclone crypt
-  -> rclone copy to r2:pos-alja-backups/YYYY/MM/DD/
-  -> apply lifecycle retention
-  -> record success/failure and audit log
+### 7.1 Scheduling And Settings
+
+- `routes/console.php` schedules `backup:tick` every minute with `withoutOverlapping(5)`: the mutex expires after five minutes, not the framework default 24 hours.
+- The tick reads `backup_settings` every run, so owner time/retention changes apply on the next tick without a scheduler restart. A missed time catches up on the next tick after downtime; `last_local_date`/`last_remote_date` stop duplicate daily runs.
+- Defaults seed from `config/backup.php` on first access: local enabled at `02:00`, remote at `02:30` (application timezone, `Asia/Jakarta`), remote disabled by `BACKUP_REMOTE_ENABLED=false`. After the row exists, the database is the source of truth and env values are initial defaults only.
+- The owner edits enable flags, times, and retention at `/owner/backups`. R2 credentials are never editable there; the operator sets them in `.env`.
+
+### 7.2 Retention And Quota
+
+- Retention is GFS per destination, applied only to the destinations written by that run.
+- Default windows: local 30/12/12/3 and remote 7/4/12/3 (daily/weekly/monthly/yearly). The owner may change them within 7-90, 4-52, 6-24, and 1-10.
+- Selection keeps the newest file overall, the newest file in the current and previous daily/weekly/monthly/yearly periods, and every pinned filename. Everything else in the destination tree `YYYY/MM/DD/*.dump` is deleted; the matching `local_path` or `remote_path` is set to `null` and the history row remains.
+- Pinned files are exempt from deletion, still count toward usage, and can still be downloaded. Unpinning makes a file eligible on the next successful run.
+- A retention window below 1 fails closed (the prune throws) rather than deleting everything; the failure is recorded in `meta.retention_error` and does not change a successful dump/upload status.
+- Lowering retention is irreversible on the next successful run; raising it cannot restore deleted files.
+- R2 quota defaults to 10 GB (`BACKUP_REMOTE_QUOTA_MB=10240`). `remote_usage_percent = remote_usage_bytes / remote_quota_bytes * 100`, computed from tracked rows. The page warns at 80% (amber) and 100% (red); the app never deletes archives or rewrites retention to meet the quota.
+
+### 7.3 Image And Compose
+
+- The app image adds the PGDG repository and `postgresql-client-16`, then creates `storage/app/backups` and `storage/app/backup-tmp` before the `www-data` chown. `pg_dump` and `pg_restore` must be on `PATH` for `www-data`.
+- Application code stays root-owned and read-only at runtime; the image normalizes it with `chmod -R a+rX,go-w` so `www-data` can read and traverse it, and only `storage` and `bootstrap/cache` are chowned to `www-data` for writes.
+- The web stage normalizes `/usr/share/nginx/html` the same way, because build contexts with a restrictive umask produce 600 files that nginx workers cannot read.
+- `worker` runs `php artisan queue:work --sleep=3 --tries=1 --timeout=600` and mounts the `backupdata` volume at `/var/www/html/storage/app/backups`. A backup is queued, never inline; without a worker the row stays `queued`.
+- `scheduler` runs `php artisan schedule:work` and does not mount the volume.
+- `DB_QUEUE_RETRY_AFTER=900` must exceed the job timeout (`BACKUP_TIMEOUT=600`).
+- nginx sets `fastcgi_read_timeout 600s` and `fastcgi_send_timeout 600s` on the `/api` and `/sanctum` locations only; `/broadcasting`, `/up`, and static files keep nginx defaults. A large local or R2 download is not cut at 60 seconds.
+- Remote-only runs dump to `storage/app/backup-tmp` and delete the temporary file after upload; `both` dumps once to the local volume and uploads that file. Retention never sees temp files.
+
+### 7.4 Required Environment
+
+The backup and R2 variables are listed once in the required-environment table in section 3. This section adds only the production requirements: keep the bucket private, enable R2 server-side encryption, use TLS, and scope the token to the backup bucket. Client-side encryption is deferred; the dump is not encrypted by the app. `.env.example` ships `AWS_DEFAULT_REGION=us-east-1`; R2 needs `auto`, so confirm that value and `AWS_USE_PATH_STYLE_ENDPOINT` with the operator.
+
+### 7.5 Restore Procedure
+
+No restore API or UI exists. Restore is an operator procedure. Never restore over the application database.
+
+1. Create a scratch database in the running PostgreSQL:
+
+   ```bash
+   docker compose exec -e PGPASSWORD=<password> worker createdb -h db -U <user> <scratch_db>
+   ```
+
+2. For a local volume backup, restore the dump into the scratch database:
+
+   ```bash
+   docker compose exec -e PGPASSWORD=<password> worker pg_restore --clean --if-exists --no-owner -h db -U <user> -d <scratch_db> /var/www/html/storage/app/backups/YYYY/MM/DD/<file>.dump
+   ```
+
+3. For an R2 backup, download the object first (an S3 client or `rclone copy` from `<bucket>/<prefix>/YYYY/MM/DD/<file>.dump` on the host), copy it into the worker with `docker compose cp ./<file>.dump worker:/tmp/<file>.dump`, then run the same `pg_restore` with `/tmp/<file>.dump`.
+
+4. Verify the restored copy and drop the scratch database:
+
+   ```bash
+   docker compose exec -e DB_DATABASE=<scratch_db> worker php artisan migrate:status
+   docker compose exec -e PGPASSWORD=<password> worker psql -h db -U <user> -d <scratch_db> -c "select count(*) from invoices;"
+   docker compose exec -e PGPASSWORD=<password> worker psql -h db -U <user> -d <scratch_db> -c "select count(*) from payments;"
+   docker compose exec -e PGPASSWORD=<password> worker dropdb -h db -U <user> <scratch_db>
+   ```
+
+5. Record the drill in this section and in the session handoff.
+
+| Drill owner | Date | Dump file | Local/R2 | Result |
+| :--- | :--- | :--- | :--- | :--- |
+| Not run | - | - | - | RPO/RTO unclaimed |
+
+Drill status: **not verified.** This environment has no Docker CLI, no PostgreSQL 16 server, and no `pg_dump`/`psql`, so no restore was executed and no RPO (<= 24 h) or RTO (<= 4 h) evidence exists. The test suite runs on SQLite with a fake dumper and `Storage::fake('backups-s3')`. A live R2 upload is also unverified.
+
+### 7.6 Known Limitations
+
+- The dump covers PostgreSQL only. Uploaded files and object-storage assets are not backed up.
+- No client-side encryption, no point-in-time recovery, and no WAL archiving.
+- No in-app restore and no backup of the backup.
+- No stale-run cleanup or automatic retry. A killed worker leaves a `running` row; the page labels it `Mungkin macet` after 30 minutes. A queued row with no worker stays `queued`.
+- The first real dump size is unknown, so whether the lean R2 set fits the free tier is unmeasured. The defaults are 7/4/12/3 on R2 and 30/12/12/3 locally.
+- The `change()` migration (`backups.filename` nullable), the Docker image with `postgresql-client-16`, and the nginx config are unverified in this environment (no Docker, no `pg_dump`, no nginx binary).
+- UI smoke and 390/768/1440 screenshots are recorded in `.ai-docs/screens/pb10/`; dark mode remains unverified.
+
+### 7.1 Irreversible Drop Migrations
+
+The Unit A drop migrations (`2026_11_27_000003_drop_product_category_discounts_table.php` and `2026_11_27_000004_drop_attribute_types_table.php`) are irreversible. Their `down()` methods recreate empty tables only; dropped rows cannot be recovered.
+
+Before `php artisan migrate --force` on any database that may contain rows in `product_category_discounts` or `attribute_types`, take and verify a backup: at minimum `pg_dump -Fc -t product_category_discounts -t attribute_types <database>` (a full database dump is also acceptable), confirm it restores, and get Owner approval to proceed. If either table is non-empty and no verified backup exists, stop.
+
+### B4 Pricing Redesign (Irreversible Drop)
+
+Four migrations run in filename order: `2026_11_27_000011_create_product_quantity_discounts_table.php` (new global tiers), `000012_add_pricing_snapshots_to_orders_table.php` (six order columns), `000013_drop_pricing_id_from_orders_table.php`, and `000014_drop_pricing_and_attribute_pricing_tables.php`. They use only portable Schema/Builder operations with no platform-specific raw SQL; SQLite rebuilds tables for column drops while PostgreSQL issues native `DROP COLUMN`/`DROP TABLE`. The automated suite exercises them on SQLite; PostgreSQL DDL and rollback on a populated database remain unverified here.
+
+The last two migrations are irreversible: every `pricing` and `attribute_pricing` row and every `orders.pricing_id` value is deleted with no backfill. Historical orders keep their money snapshots but render null product/material identity. `down()` restores only empty tables or the `pricing_id` column, never the dropped rows.
+
+Before deploying to any database that may hold matrix rows, take a verified backup (`pg_dump -Fc <database>` or a verified equivalent), confirm it restores to a scratch database, record the dump location and verification result, and get Owner approval. If a verified backup is absent, stop the deploy. Run the backend and migration first, then the SPA: the old SPA shows `Matriks Harga` and sends `pricing_id`, so it cannot operate against the new API. Rollback requires restoring the verified dump; a partial `migrate:rollback` does not recover data.
+
+### Material Availability Flags (Additive)
+
+`2026_11_27_000005_add_is_active_to_materials_and_material_branch_stock.php` adds `materials.is_active` and `material_branch_stock.is_active`, both boolean default `true`. Existing rows read true. It has no backfill, no data loss, and no index. Run `php artisan migrate --force` as usual; `down()` drops only the two flags, so stock, ledger, and history remain.
+
+Take the usual verified pre-deploy backup. The B4 pricing-matrix removal has since dropped the `pricing` table, so this historical pre-flight check is no longer runnable; material availability is now enforced from `materials.is_active` and `material_branch_stock.is_active`, and new quote/invoice lines carry their own `material_id`. Have the Owner decide whether materials should remain orderable; no automatic data change is made. Deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API; the availability toggles require the new API, because the PATCH routes return 404 against an older API.
+
+### Attribute Types (Additive + Column Widening)
+
+`2026_11_27_000006_create_attribute_types_and_widen_attributes_type.php` widens `attributes.type` from 20 to 100 characters and creates `attribute_types` with unique `name` and `slug` (both 100), `sort_order`, `is_active`, and indexes on both. It seeds Finishing (`finishing`), Potong (`cut`), and Display (`display`) at sort orders 1/2/3, then backfills every other non-empty legacy `attributes.type` with its exact slug and a headline name, suffixing a numeric name on collision. Attribute rows are not rewritten; the seed/backfill is idempotent, while `create`/`change` are not re-runnable. `down()` drops the new table; `attributes.type` intentionally stays at 100 so stored values are not truncated.
+
+Take the usual verified pre-deploy backup, then deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API, because the only finishing/display options it sends exist as seeds.
+
+Run these read-only checks on PostgreSQL after migrating:
+
+```sql
+SELECT character_maximum_length FROM information_schema.columns
+WHERE table_name = 'attributes' AND column_name = 'type';
+-- expect 100
+SELECT count(*) FROM attribute_types; -- expect >= 3
+SELECT a.type FROM attributes a
+LEFT JOIN attribute_types t ON t.slug = a.type
+WHERE t.id IS NULL; -- expect 0 rows
+SELECT count(*) FROM attributes WHERE type = ''; -- expect 0; inspect before deploy
 ```
 
-Requirements:
+SQLite does not enforce varchar length, so the widening, the seed/backfill, and long-slug storage must be verified on PostgreSQL, not by the SQLite test suite.
 
-1. Keep the bucket private and scope the R2 token to the backup bucket only.
-2. Encrypt before upload; store the encryption key outside the bucket.
-3. Retention: daily 7 days, weekly 4 weeks, monthly 12 months.
-4. Target RPO <= 24 hours and RTO <= 4 hours, per NFR6.
-5. Run a restore drill: download, decrypt, `pg_restore`, and verify invoice, payment, and stock counts.
-6. Host-level `rclone` needs no PHP dependency. An app-driven backup needs an S3 adapter dependency and explicit approval.
-7. Google Drive via `rclone` remains a fallback, but R2 is preferred for automated backups.
-8. Do not claim backup coverage until FR26 is implemented and the restore drill passes.
+### Product Composition And Nullable Pricing (B2)
+
+Two new migrations are additive in `up()` and run in filename order:
+
+1. `2026_11_27_000007_add_product_composition_columns_and_pivots.php` adds `products.requires_material` and `products.uses_attributes` (boolean, default `true`, cast boolean) and creates `attribute_type_product` and `attribute_product`. Each pivot has a composite primary key on its two UUID columns, foreign keys to `products` and `attribute_types`/`attributes` with `cascadeOnDelete()`, and timestamps. There is no backfill: existing products keep both flags true and both pivots empty, which means all active types/attributes, so current behavior is preserved until an Owner edits the product. `down()` drops both pivots and the two columns; configured memberships are lost on rollback.
+2. `2026_11_27_000008_make_pricing_material_id_nullable.php` changes `pricing.material_id` to nullable with `change()` and no backfill; existing rows are untouched. On SQLite `change()` rebuilds the table; `NoMaterialOrderApiTest` asserts the rebuilt table still has the `material_id` foreign key to `materials` with `cascade` on delete. On PostgreSQL run the migration normally and verify the column and constraint explicitly (the SQLite suite does not execute PostgreSQL DDL):
+
+   ```bash
+   docker compose exec app php artisan migrate --force
+   docker compose exec db psql -U <user> -d <database> -c "select column_name, is_nullable from information_schema.columns where table_name = 'pricing' and column_name = 'material_id';" -c "select conname, confrelid::regclass from pg_constraint where conrelid = 'pricing'::regclass and confrelid = 'materials'::regclass;"
+   ```
+
+   Expect `is_nullable = YES` and a foreign key from `pricing` to `materials`. A null `material_id` is only valid for a product with `requires_material = false`; the API rejects other pairings.
+
+`down()` on the nullable migration refuses to run while any `pricing` row still has a null `material_id`: it throws `RuntimeException` with `Tidak dapat mengembalikan pricing.material_id menjadi NOT NULL selama masih ada baris tanpa bahan.` Rollback procedure: take a verified backup first, then either delete the no-material pricing rows or backfill `material_id` with valid material UUIDs, verify with `select count(*) from pricing where material_id is null;` (expect 0), and only then run `php artisan migrate:rollback --step=1`. Never backfill a material for a product that has `requires_material = false`. The pivot-migration rollback is a separate step and drops configured memberships.
+
+Rollout order: deploy the product flags/pivots migration and API first, then the nullable `pricing` migration and API, then the SPA. The old SPA ignores the new flags and name arrays and keeps working against the new API; the `Tanpa bahan` option and product capability selects require the new SPA. No new route or environment variable is introduced. PostgreSQL DDL and the `down()` rollback with null rows present remain unverified in this environment (SQLite tests only).
 
 ## 8. Deployment Checklist
 
 1. Set production `.env` values, including HTTPS session and Sanctum domains.
 2. Build and start Compose.
-3. Run migrations.
+3. For databases with B4 matrix rows (or Unit A drop-table rows), verify the backup and Owner approval first, then run migrations.
 4. Confirm `/up` returns 200.
 5. Run `php artisan tinker --execute="echo app()->getLocale();"`; it must print `id`.
 6. Log in through the SPA; verify CSRF, cookies, and one flow per role.
 7. Confirm Reverb connects and `OrderUpdated` arrives on the private channel.
 8. Confirm the SPA is served from `frontend/dist` and API paths never return the SPA shell.
-9. Record any skipped verification in the change description.
+9. Confirm the `worker` and `scheduler` services are running; `docker compose exec scheduler php artisan schedule:list` must show `backup:tick` every minute with `withoutOverlapping`.
+10. Open `/owner/backups`; save settings, run one manual backup, confirm it leaves `queued`, and download the file. Inspect `backups` and the `BACKUP` audit row.
+11. Run the restore drill in section 7.5 and record the result; until then RPO/RTO stay unclaimed.
+12. Record any skipped verification in the change description.
+13. For B2, verify `attribute_type_product`, `attribute_product`, and both new `products` flags. The nullable `pricing.material_id` check was relevant before B4 dropped the table; record that PostgreSQL DDL and the null-row rollback remain unverified here.
+14. For B4, confirm the verified pre-deploy backup and Owner approval, then verify `product_quantity_discounts`, the six `orders` snapshots, and the absence of `pricing`, `attribute_pricing`, and `orders.pricing_id`. Confirm the SPA has no `Matriks Harga` page; record that PostgreSQL DDL and a populated-database rollback remain unverified here.

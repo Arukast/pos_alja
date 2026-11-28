@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Actions;
 
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,35 +14,34 @@ use Throwable;
 
 final class CreateCategory
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * @param  array{
      *     name: string,
-     *     calculation_archetype: string,
-     *     allowed_attribute_types?: array<int, string>|null,
-     *     discount_tiers?: array<int, array{min_qty: int|string, discount_percent: int|float|string}>
+     *     description?: string|null,
+     *     is_active?: bool
      * }  $data
      */
     public function execute(array $data, User $actor): ProductCategory
     {
         try {
-            $category = DB::transaction(function () use ($data): ProductCategory {
+            $category = DB::transaction(function () use ($data, $actor): ProductCategory {
                 $category = ProductCategory::create([
                     'name' => $data['name'],
-                    'calculation_archetype' => $data['calculation_archetype'],
-                    'allowed_attribute_types' => $data['allowed_attribute_types'] ?? null,
+                    'description' => $data['description'] ?? null,
+                    'is_active' => (bool) ($data['is_active'] ?? true),
+                    'calculation_archetype' => 'per_piece',
+                    'allowed_attribute_types' => null,
                 ]);
 
-                $tiers = $data['discount_tiers'] ?? [];
-
-                if ($tiers !== []) {
-                    $category->discountTiers()->createMany(array_map(
-                        static fn (array $tier): array => [
-                            'min_qty' => (int) $tier['min_qty'],
-                            'discount_percent' => $tier['discount_percent'],
-                        ],
-                        $tiers
-                    ));
-                }
+                $this->audit->record(
+                    $actor,
+                    'CREATE',
+                    "Membuat kategori: {$category->name}",
+                    $category,
+                    ['after' => $category->auditSnapshot()],
+                );
 
                 return $category;
             });
@@ -56,6 +56,6 @@ final class CreateCategory
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $category->load('discountTiers');
+        return $category;
     }
 }

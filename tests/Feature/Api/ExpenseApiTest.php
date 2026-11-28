@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\User;
@@ -116,6 +117,74 @@ class ExpenseApiTest extends TestCase
             'amount' => 12500,
             'description' => 'Cleaning supplies',
         ]);
+    }
+
+    public function test_cashier_expense_writes_create_audit_with_money_string(): void
+    {
+        $date = now()->toDateString();
+
+        $response = $this->actingAs($this->cashier)
+            ->postJson('/api/v1/expenses', [
+                'amount' => 25000,
+                'type' => 'laba',
+                'incurred_at' => $date,
+                'description' => 'Cleaning supplies',
+                'category' => 'Supplies',
+            ])
+            ->assertCreated();
+
+        $expenseId = (string) $response->json('expense.id');
+
+        $log = ActivityLog::query()
+            ->where('action', 'CREATE')
+            ->where('model_type', Expense::class)
+            ->where('model_id', $expenseId)
+            ->firstOrFail();
+
+        $this->assertSame($this->cashier->id, $log->user_id);
+        $this->assertSame($this->cashier->username, $log->username);
+        $this->assertSame('cashier', $log->role);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+
+        $this->assertSame('25000.00', $log->payload['amount']);
+        $this->assertSame('laba', $log->payload['type']);
+        $this->assertSame('Supplies', $log->payload['category']);
+        $this->assertSame($date, $log->payload['incurred_at']);
+        $this->assertSame('Cleaning supplies', $log->payload['description']);
+
+        $this->assertSame(1, ActivityLog::query()
+            ->where('model_type', Expense::class)
+            ->where('model_id', $expenseId)
+            ->count());
+    }
+
+    public function test_unauthorized_and_invalid_expense_writes_do_not_write_audit(): void
+    {
+        $date = now()->toDateString();
+
+        $this->postJson('/api/v1/expenses', [
+            'amount' => 10000,
+            'type' => 'laba',
+            'incurred_at' => $date,
+        ])->assertUnauthorized();
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/expenses', [
+                'amount' => 10000,
+                'type' => 'laba',
+                'incurred_at' => $date,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($this->cashier)
+            ->postJson('/api/v1/expenses', [
+                'amount' => 0,
+                'type' => 'laba',
+                'incurred_at' => $date,
+            ])
+            ->assertUnprocessable();
+
+        $this->assertDatabaseCount('activity_logs', 0);
     }
 
     public function test_non_cashier_cannot_record_an_expense(): void

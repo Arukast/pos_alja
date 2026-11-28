@@ -17,7 +17,7 @@ final class InvoiceList
      */
     public function paginate(User $actor, array $filters): LengthAwarePaginator
     {
-        $query = Invoice::query()->with(['customer', 'designer', 'branch']);
+        $query = Invoice::query()->with(['customer', 'designer', 'branch', 'orders']);
 
         if ($actor->role === 'owner') {
             $branchId = $filters['branch_id'] ?? null;

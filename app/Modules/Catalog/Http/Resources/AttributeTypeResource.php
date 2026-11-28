@@ -19,7 +19,9 @@ final class AttributeTypeResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'calculation_archetype' => $this->calculation_archetype,
+            'slug' => $this->slug,
+            'sort_order' => (int) $this->sort_order,
+            'is_active' => (bool) $this->is_active,
         ];
     }
 }

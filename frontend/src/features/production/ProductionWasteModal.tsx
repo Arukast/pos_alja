@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
 import type { ProductionQueueItem } from '../../api/types';
@@ -10,6 +10,8 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Spinner';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
+import { unitLabel } from '../../lib/units';
+import { needsWasteReminder } from './wasteReminder';
 
 const emptyForm = {
     material_id: '',
@@ -30,6 +32,7 @@ export function ProductionWasteModal({
     const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [notice, setNotice] = useState<string | null>(null);
+    const [confirmingClose, setConfirmingClose] = useState(false);
 
     const orderId = order?.id ?? null;
 
@@ -71,119 +74,171 @@ export function ProductionWasteModal({
 
     const materials = optionsQuery.data?.materials ?? [];
     const designers = optionsQuery.data?.designers ?? [];
+    const selectedMaterial = materials.find((material) => material.id === form.material_id);
     const canSubmit = optionsQuery.isSuccess && materials.length > 0;
 
     const close = () => {
-        if (!create.isPending) {
-            onClose();
+        if (create.isPending) {
+            return;
         }
+
+        if (order && needsWasteReminder(order)) {
+            setConfirmingClose(!confirmingClose);
+
+            return;
+        }
+
+        onClose();
     };
+
+    const closeConfirmed = () => {
+        setConfirmingClose(false);
+        onClose();
+    };
+
+    // Swapping views unmounts the focused control, so focus the view that just mounted.
+    useEffect(() => {
+        if (!order) {
+            return;
+        }
+
+        document
+            .querySelector<HTMLElement>(
+                confirmingClose ? '#waste-confirm-cancel' : '#waste-material'
+            )
+            ?.focus();
+    }, [order, confirmingClose]);
 
     return (
         <Modal
             open={order !== null}
             onClose={close}
-            title="Catat Sisa Bahan"
-            description={order?.invoice ? `Invoice ${order.invoice.invoice_number}` : undefined}
+            title="Catat Bahan Terbuang"
+            description={
+                order?.invoice
+                    ? `Invoice ${order.invoice.invoice_number}${
+                          order.file_name ? ` · ${order.file_name}` : ''
+                      }`
+                    : undefined
+            }
+            initialFocusSelector="#waste-material"
             footer={
-                canSubmit ? (
+                confirmingClose ? (
+                    <>
+                        <Button
+                            id="waste-confirm-cancel"
+                            variant="secondary"
+                            onClick={() => setConfirmingClose(false)}
+                        >
+                            Batal
+                        </Button>
+                        <Button onClick={closeConfirmed}>Tetap Tutup</Button>
+                    </>
+                ) : (
                     <>
                         <Button variant="secondary" disabled={create.isPending} onClick={close}>
                             Batal
                         </Button>
-                        <Button
-                            disabled={!form.material_id}
-                            loading={create.isPending}
-                            onClick={() => create.mutate()}
-                        >
-                            Simpan
-                        </Button>
+                        {canSubmit ? (
+                            <Button
+                                disabled={!form.material_id}
+                                loading={create.isPending}
+                                onClick={() => create.mutate()}
+                            >
+                                Simpan
+                            </Button>
+                        ) : null}
                     </>
-                ) : undefined
+                )
             }
         >
-            <div className="space-y-4">
-                {notice ? (
-                    <p
-                        role="alert"
-                        className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300"
-                    >
-                        {notice}
-                    </p>
-                ) : null}
-                {optionsQuery.isLoading ? (
-                    <div role="status" className="flex justify-center py-10">
-                        <Spinner className="text-brand-primary h-6 w-6" />
-                    </div>
-                ) : optionsQuery.isError ? (
-                    <EmptyState
-                        title="Pilihan bahan gagal dimuat"
-                        description="Periksa koneksi lalu coba lagi."
-                        action={
-                            <Button variant="secondary" onClick={() => optionsQuery.refetch()}>
-                                Coba lagi
-                            </Button>
-                        }
-                    />
-                ) : materials.length === 0 ? (
-                    <EmptyState
-                        title="Belum ada bahan di cabang ini"
-                        description="Tambahkan stok bahan lewat inventaris sebelum mencatat sisa."
-                    />
-                ) : (
-                    <>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <Select
-                                label="Bahan"
-                                value={form.material_id}
-                                error={errors.material_id}
-                                onChange={(event) => setForm({ ...form, material_id: event.target.value })}
-                            >
-                                <option value="">Pilih bahan</option>
-                                {materials.map((material) => (
-                                    <option key={material.id} value={material.id}>
-                                        {material.name}
-                                    </option>
-                                ))}
-                            </Select>
-                            <Select
-                                label="Desainer"
-                                value={form.designer_id}
-                                error={errors.designer_id}
-                                onChange={(event) => setForm({ ...form, designer_id: event.target.value })}
-                            >
-                                <option value="">Tanpa desainer</option>
-                                {designers.map((designer) => (
-                                    <option key={designer.id} value={designer.id}>
-                                        {designer.name}
-                                    </option>
-                                ))}
-                            </Select>
-                            <Input
-                                label="Jml"
-                                type="number"
-                                min="0.01"
-                                step="any"
-                                value={form.quantity}
-                                error={errors.quantity}
-                                onChange={(event) => setForm({ ...form, quantity: event.target.value })}
-                            />
-                            <Input
-                                label="Dimensi"
-                                value={form.dimensions}
-                                error={errors.dimensions}
-                                onChange={(event) => setForm({ ...form, dimensions: event.target.value })}
-                            />
+            {confirmingClose ? (
+                <p className="text-sm">Belum ada bahan terbuang. Tetap tutup?</p>
+            ) : (
+                <div className="space-y-4">
+                    {notice ? (
+                        <p
+                            role="alert"
+                            className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                        >
+                            {notice}
+                        </p>
+                    ) : null}
+                    {optionsQuery.isLoading ? (
+                        <div role="status" className="flex justify-center py-10">
+                            <Spinner className="text-brand-primary h-6 w-6" />
                         </div>
-                        <Input
-                            label="Catatan"
-                            value={form.notes}
-                            error={errors.notes}
-                            onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                    ) : optionsQuery.isError ? (
+                        <EmptyState
+                            title="Pilihan bahan gagal dimuat"
+                            description="Periksa koneksi lalu coba lagi."
+                            action={
+                                <Button variant="secondary" onClick={() => optionsQuery.refetch()}>
+                                    Coba lagi
+                                </Button>
+                            }
                         />
-                    </>
-                )}
-            </div>
+                    ) : materials.length === 0 ? (
+                        <EmptyState
+                            title="Belum ada bahan di cabang ini"
+                            description="Tambahkan stok bahan lewat inventaris sebelum mencatat bahan terbuang."
+                        />
+                    ) : (
+                        <>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <Select
+                                    id="waste-material"
+                                    label="Bahan"
+                                    value={form.material_id}
+                                    error={errors.material_id}
+                                    onChange={(event) => setForm({ ...form, material_id: event.target.value })}
+                                >
+                                    <option value="">Pilih bahan</option>
+                                    {materials.map((material) => (
+                                        <option key={material.id} value={material.id}>
+                                            {material.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                                <Select
+                                    label="Desainer"
+                                    value={form.designer_id}
+                                    error={errors.designer_id}
+                                    onChange={(event) => setForm({ ...form, designer_id: event.target.value })}
+                                >
+                                    <option value="">Tanpa desainer</option>
+                                    {designers.map((designer) => (
+                                        <option key={designer.id} value={designer.id}>
+                                            {designer.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                                <Input
+                                    label={selectedMaterial ? `Jml (${unitLabel(selectedMaterial.unit)})` : 'Jml'}
+                                    type="number"
+                                    min="0.01"
+                                    step="any"
+                                    value={form.quantity}
+                                    error={errors.quantity}
+                                    onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+                                />
+                                <Input
+                                    label="Dimensi"
+                                    value={form.dimensions}
+                                    error={errors.dimensions}
+                                    onChange={(event) => setForm({ ...form, dimensions: event.target.value })}
+                                />
+                            </div>
+                            <Input
+                                label="Catatan"
+                                value={form.notes}
+                                error={errors.notes}
+                                onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                            />
+                        </>
+                    )}
+                </div>
+            )}
         </Modal>
     );
 }

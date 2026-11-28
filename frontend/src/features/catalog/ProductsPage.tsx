@@ -1,14 +1,28 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { api } from '../../api/queries';
-import type { Product } from '../../api/types';
+import type { Material, Product } from '../../api/types';
 import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardBody } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { pricingTypeLabel } from '../../lib/labels';
+import { unitLabel, unitOptions } from '../../lib/units';
+import { productCompositionLabels } from './productOptions';
+import { ProductTiersField, productPayload, type ProductTierValue } from './ProductTiersField';
+
+async function fetchAllMaterials(): Promise<Material[]> {
+    const first = await api.materials({ page: 1 });
+    const rows = [...first.data];
+
+    for (let nextPage = 2; nextPage <= first.meta.last_page; nextPage++) {
+        const pageResponse = await api.materials({ page: nextPage });
+        rows.push(...pageResponse.data);
+    }
+
+    return rows;
+}
 
 export function ProductsPage({
     eyebrow,
@@ -19,7 +33,20 @@ export function ProductsPage({
     queryKeyPrefix: 'owner' | 'manager';
     readOnly?: boolean;
 }) {
+    const queryClient = useQueryClient();
     const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
+    const materials = useQuery({
+        queryKey: ['materials', 'all-options'],
+        queryFn: fetchAllMaterials,
+    });
+    const attributeTypes = useQuery({
+        queryKey: ['attribute-types', 'product-options'],
+        queryFn: api.attributeTypes,
+    });
+    const attributes = useQuery({
+        queryKey: ['attributes', 'product-options'],
+        queryFn: () => api.attributes(),
+    });
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
     const [categoryId, setCategoryId] = useState('');
@@ -33,8 +60,27 @@ export function ProductsPage({
 
     const categoryOptions = (categories.data?.data ?? []).map((category) => ({
         value: category.id,
-        label: category.name,
+        label: category.is_active ? category.name : `${category.name} (nonaktif)`,
     }));
+    const materialOptions = (materials.data ?? []).map((material) => ({
+        value: material.id,
+        label: material.name,
+    }));
+    const activeTypes = (attributeTypes.data?.data ?? []).filter((type) => type.is_active);
+    const attributeTypeOptions = [...activeTypes]
+        .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+        .map((type) => ({ value: type.id, label: type.name }));
+    const activeTypeSlugs = new Set(activeTypes.map((type) => type.slug));
+    const attributeOptions = (attributes.data?.data ?? [])
+        .filter((attribute) => attribute.is_active && activeTypeSlugs.has(attribute.type))
+        .map((attribute) => ({
+            value: attribute.id,
+            label: `${attribute.name} · ${attribute.type_name}`,
+        }));
+
+    const materialLabel = 'Bahan yang Kompatibel';
+    const attributeTypeLabel = 'Tipe Atribut yang Kompatibel';
+    const attributeLabel = 'Atribut yang Kompatibel';
 
     const fields: Array<CrudField<Product>> = [
         { key: 'name', label: 'Nama', required: true },
@@ -47,16 +93,92 @@ export function ProductsPage({
             getValue: (product) => product.category?.id ?? '',
         },
         {
-            key: 'pricing_type',
-            label: 'Tipe Harga',
+            key: 'selling_unit',
+            label: 'Satuan Jual',
             type: 'select',
             required: true,
-            defaultValue: 'unit',
-            options: [
-                { value: 'unit', label: pricingTypeLabel('unit') },
-                { value: 'area', label: pricingTypeLabel('area') },
-            ],
-            getValue: (product) => product.pricing_type,
+            defaultValue: 'pcs',
+            options: unitOptions,
+            getValue: (product) => product.selling_unit,
+        },
+        {
+            key: 'price',
+            label: 'Harga dasar (ditambahkan ke harga bahan & atribut)',
+            type: 'number',
+            defaultValue: '0.00',
+            getValue: (product) => product.price ?? '0.00',
+        },
+        {
+            key: 'cost',
+            label: 'Biaya dasar (ditambahkan ke biaya bahan & atribut)',
+            type: 'number',
+            defaultValue: '0.00',
+            getValue: (product) => product.cost ?? '0.00',
+        },
+        {
+            key: 'base_cost_hint',
+            label: '',
+            type: 'custom',
+            render: (values) => {
+                const price = Number(values.price);
+                const cost = Number(values.cost);
+
+                return cost > price && cost > 0 ? (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                        Biaya dasar lebih besar dari harga dasar — cek kembali
+                    </p>
+                ) : null;
+            },
+        },
+        {
+            key: 'requires_material',
+            label: 'Perlu bahan',
+            type: 'checkbox',
+            defaultValue: true,
+            getValue: (product) => product.requires_material,
+        },
+        {
+            key: 'uses_attributes',
+            label: 'Gunakan atribut',
+            type: 'checkbox',
+            defaultValue: true,
+            getValue: (product) => product.uses_attributes,
+        },
+        {
+            key: 'material_ids',
+            label: materialLabel,
+            type: 'multiselect',
+            defaultValue: [],
+            options: materialOptions,
+            getValue: (product) => product.material_ids ?? [],
+            disabledWhen: (values) => !values.requires_material,
+            hideWhen: (values) => !values.requires_material,
+            labelFor: (values) =>
+                values.requires_material ? materialLabel : `${materialLabel} (diabaikan)`,
+        },
+        {
+            key: 'attribute_type_ids',
+            label: attributeTypeLabel,
+            type: 'multiselect',
+            defaultValue: [],
+            options: attributeTypeOptions,
+            getValue: (product) => product.attribute_type_ids ?? [],
+            disabledWhen: (values) => !values.uses_attributes,
+            hideWhen: (values) => !values.uses_attributes,
+            labelFor: (values) =>
+                values.uses_attributes ? attributeTypeLabel : `${attributeTypeLabel} (diabaikan)`,
+        },
+        {
+            key: 'attribute_ids',
+            label: attributeLabel,
+            type: 'multiselect',
+            defaultValue: [],
+            options: attributeOptions,
+            getValue: (product) => product.attribute_ids ?? [],
+            disabledWhen: (values) => !values.uses_attributes,
+            hideWhen: (values) => !values.uses_attributes,
+            labelFor: (values) =>
+                values.uses_attributes ? attributeLabel : `${attributeLabel} (diabaikan)`,
         },
         {
             key: 'is_active',
@@ -65,6 +187,20 @@ export function ProductsPage({
             defaultValue: true,
             getValue: (product) => product.is_active,
         },
+        {
+            key: 'tiers',
+            label: 'Tier Jumlah',
+            type: 'custom',
+            getValue: (product) => product.tiers ?? [],
+            render: (values, setValues, errors) => (
+                <ProductTiersField
+                    value={Array.isArray(values.tiers) ? (values.tiers as ProductTierValue[]) : []}
+                    onChange={(tiers) => setValues({ ...values, tiers })}
+                    errors={errors}
+                    disabled={readOnly}
+                />
+            ),
+        },
     ];
 
     return (
@@ -72,7 +208,7 @@ export function ProductsPage({
             pageResetKey={`${search}:${categoryId}:${status}`}
             eyebrow={eyebrow}
             title="Manajemen Produk"
-            description="Daftar produk, kategori, tipe harga, dan status aktif."
+            description="Daftar produk, kategori, satuan jual, dan status aktif."
             queryKey={[queryKeyPrefix, 'products', search, categoryId, status]}
             queryFn={(page) =>
                 api.products({
@@ -127,17 +263,51 @@ export function ProductsPage({
             columns={[
                 {
                     header: 'Nama',
-                    cell: (product) => <span className="font-medium">{product.name}</span>,
+                    cell: (product) => (
+                        <div>
+                            <span className="block font-medium">{product.name}</span>
+                            <div className="mt-1 flex flex-col items-start gap-1 sm:hidden">
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    {product.category?.name ?? '-'}
+                                </span>
+                                {product.category && !product.category.is_active ? (
+                                    <Badge tone="warning">Kategori nonaktif</Badge>
+                                ) : null}
+                            </div>
+                        </div>
+                    ),
                 },
                 {
                     header: 'Kategori',
                     className: 'hidden sm:table-cell',
-                    cell: (product) => product.category?.name ?? '-',
+                    cell: (product) => (
+                        <div className="flex flex-col items-start gap-1">
+                            <span>{product.category?.name ?? '-'}</span>
+                            {product.category && !product.category.is_active ? (
+                                <Badge tone="warning">Kategori nonaktif</Badge>
+                            ) : null}
+                        </div>
+                    ),
                 },
                 {
-                    header: 'Tipe Harga',
+                    header: 'Satuan Jual',
                     className: 'hidden md:table-cell',
-                    cell: (product) => pricingTypeLabel(product.pricing_type),
+                    cell: (product) => unitLabel(product.selling_unit),
+                },
+                {
+                    header: 'Bahan',
+                    className: 'hidden lg:table-cell',
+                    cell: (product) => productCompositionLabels(product).materials,
+                },
+                {
+                    header: 'Tipe Atribut',
+                    className: 'hidden xl:table-cell',
+                    cell: (product) => productCompositionLabels(product).types,
+                },
+                {
+                    header: 'Atribut',
+                    className: 'hidden xl:table-cell',
+                    cell: (product) => productCompositionLabels(product).attributes,
                 },
                 {
                     header: 'Status',
@@ -149,22 +319,29 @@ export function ProductsPage({
                 },
             ]}
             fields={fields}
+            rowLabel={(product) => product.name}
             create={
                 readOnly
                     ? undefined
-                    : (values) =>
-                          api.admin.createProduct({ ...values, is_active: Boolean(values.is_active) })
+                    : async (values) => {
+                          const result = await api.admin.createProduct(productPayload(values));
+                          void queryClient.invalidateQueries({ queryKey: ['quote-options'] });
+
+                          return result;
+                      }
             }
             update={
                 readOnly
                     ? undefined
-                    : (id, values) =>
-                          api.admin.updateProduct(id, {
-                              ...values,
-                              is_active: Boolean(values.is_active),
-                          })
+                    : async (id, values) => {
+                          const result = await api.admin.updateProduct(id, productPayload(values));
+                          void queryClient.invalidateQueries({ queryKey: ['quote-options'] });
+
+                          return result;
+                      }
             }
-            remove={readOnly ? undefined : (id) => api.admin.deleteProduct(id)}
+            readOnly={readOnly}
+            viewTitle="Lihat produk"
             createLabel="Tambah produk"
         />
     );

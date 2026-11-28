@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { errorMessage } from '../../lib/errors';
+import { unitLabel } from '../../lib/units';
 
 const MAX_RESTOCK = 999999.99;
 
@@ -107,7 +108,7 @@ export function RestockMaterialButton({ material }: { material: Material }) {
                         </Select>
                     ) : null}
                     <Input
-                        label="Jml"
+                        label={`Jml (${unitLabel(material.unit)})`}
                         type="number"
                         min="0.01"
                         max={String(MAX_RESTOCK)}

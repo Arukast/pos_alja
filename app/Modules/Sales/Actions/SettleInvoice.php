@@ -7,12 +7,16 @@ namespace App\Modules\Sales\Actions;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\AuditLogger;
+use App\Support\Decimal;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class SettleInvoice
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * @param  array{discount?: numeric|null, payment_method: string, cash_received?: numeric|null}  $data
      */
@@ -26,6 +30,10 @@ final class SettleInvoice
                     'amount' => 'Invoice ini sudah lunas.',
                 ]);
             }
+
+            $statusBefore = $locked->status;
+            $grandTotalBefore = Decimal::money($locked->grand_total);
+            $receivableBefore = Decimal::money($locked->accounts_receivable);
 
             $receivable = round((float) $locked->accounts_receivable, 2);
             $discount = round((float) ($data['discount'] ?? 0), 2);
@@ -72,6 +80,26 @@ final class SettleInvoice
             }
 
             $locked->recalculatePayments();
+
+            $this->audit->record(
+                $cashier,
+                'PAYMENT',
+                'Melunasi invoice '.$locked->invoice_number,
+                $payment ?? $locked,
+                [
+                    'invoice_id' => $locked->id,
+                    'amount' => Decimal::money($amount),
+                    'method' => $data['payment_method'],
+                    'status_before' => $statusBefore,
+                    'status_after' => $locked->status,
+                    'discount' => Decimal::money($discount),
+                    'grand_total_before' => $grandTotalBefore,
+                    'grand_total_after' => Decimal::money($locked->grand_total),
+                    'receivable_before' => $receivableBefore,
+                    'receivable_after' => Decimal::money($locked->accounts_receivable),
+                ],
+                $locked->branch_id,
+            );
 
             return $payment;
         });

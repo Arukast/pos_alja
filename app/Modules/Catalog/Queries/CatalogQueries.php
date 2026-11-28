@@ -6,8 +6,6 @@ namespace App\Modules\Catalog\Queries;
 
 use App\Models\Attribute;
 use App\Models\AttributeType;
-use App\Models\Machine;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockLedger;
@@ -24,7 +22,7 @@ final class CatalogQueries
      */
     public function categories(): Collection
     {
-        return ProductCategory::query()->with('discountTiers')->orderBy('name')->get();
+        return ProductCategory::query()->withCount('products')->orderBy('name')->get();
     }
 
     /**
@@ -32,7 +30,7 @@ final class CatalogQueries
      */
     public function attributeTypes(): Collection
     {
-        return AttributeType::query()->orderBy('name')->get();
+        return AttributeType::query()->orderBy('sort_order')->orderBy('name')->get();
     }
 
     /**
@@ -40,7 +38,7 @@ final class CatalogQueries
      */
     public function attributes(User $actor, ?string $branchId): Collection
     {
-        $query = Attribute::query()->with('branch');
+        $query = Attribute::query()->with(['branch', 'typeInfo']);
 
         if ($actor->role === 'owner') {
             if ($branchId !== null && $branchId !== '' && $branchId !== 'all') {
@@ -57,11 +55,17 @@ final class CatalogQueries
     }
 
     /**
-     * @param  array{search?: string|null, category_id?: string|null, is_active?: bool|null, include_deleted?: bool}  $filters
+     * @param  array{search?: string|null, category_id?: string|null, is_active?: bool|null, include_deleted?: bool, per_page?: int}  $filters
      */
     public function products(array $filters): LengthAwarePaginator
     {
-        $query = Product::query()->with('category');
+        $query = Product::query()->with([
+            'category',
+            'materials',
+            'attributeTypes',
+            'compatibleAttributes.typeInfo',
+            'quantityDiscounts',
+        ]);
 
         if (($filters['include_deleted'] ?? false) === true) {
             $query->withTrashed();
@@ -95,56 +99,8 @@ final class CatalogQueries
             )
             ->orderBy('name')
             ->orderBy('id')
-            ->paginate(10)
+            ->paginate($filters['per_page'] ?? 10)
             ->withQueryString();
-    }
-
-    /**
-     * @param  array{branch_id?: string|null, search?: string|null, include_deleted?: bool}  $filters
-     */
-    public function machines(User $actor, array $filters): LengthAwarePaginator
-    {
-        $query = Machine::query()->with('branch');
-
-        if ($actor->role === 'owner') {
-            $branchId = $filters['branch_id'] ?? null;
-
-            if (is_string($branchId) && $branchId !== '' && $branchId !== 'all') {
-                $query->where('branch_id', $branchId);
-            }
-        } else {
-            BranchScope::apply($query, $actor);
-        }
-
-        if ($filters['include_deleted'] ?? false) {
-            $query->withTrashed();
-        }
-
-        if ($filters['search'] ?? null) {
-            $query->where('name', 'like', '%'.$filters['search'].'%');
-        }
-
-        return $query->orderBy('name')->paginate(15)->withQueryString();
-    }
-
-    /**
-     * @param  array{branch_id?: string|null}  $filters
-     */
-    public function pricing(User $actor, array $filters): LengthAwarePaginator
-    {
-        $query = Pricing::query()->with(['product', 'material', 'branch']);
-
-        if ($actor->role === 'owner') {
-            $branchId = $filters['branch_id'] ?? null;
-
-            if (is_string($branchId) && $branchId !== '' && $branchId !== 'all') {
-                $query->where('branch_id', $branchId);
-            }
-        } else {
-            BranchScope::apply($query, $actor);
-        }
-
-        return $query->orderBy('min_qty')->paginate(20)->withQueryString();
     }
 
     /**

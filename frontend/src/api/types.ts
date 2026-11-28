@@ -14,6 +14,19 @@ export interface Paginated<T> {
     };
 }
 
+export const CUSTOMER_INSTITUTIONS: readonly string[] = [
+    'Masyarakat/Retail',
+    'Sekolah',
+    'Universitas',
+    'Pemerintahan',
+    'Bisnis/Perusahaan',
+    'Organisasi/Yayasan',
+];
+
+export interface MaterialPage<T> extends Paginated<T> {
+    available_total?: number;
+}
+
 export interface CollectionResponse<T> {
     data: T[];
 }
@@ -25,6 +38,7 @@ export interface Branch {
     address: string | null;
     phone: string | null;
     is_active: boolean;
+    reseller_discount_percent: string;
     settings: Record<string, unknown> | null;
 }
 
@@ -35,6 +49,7 @@ export interface UserRecord {
     email: string | null;
     email_verified_at: string | null;
     role: string;
+    is_active: boolean;
     phone: string | null;
     address: string | null;
     branch: { id: string; name: string; code: string | null } | null;
@@ -46,33 +61,35 @@ export interface Customer {
     phone: string | null;
     email: string | null;
     address: string | null;
+    institution: string;
+    institutions: string[];
     type: string | null;
-}
-
-export interface CategoryDiscountTier {
-    id?: string;
-    min_qty: number;
-    discount_percent: string;
 }
 
 export interface Category {
     id: string;
     name: string;
-    calculation_archetype: string;
-    allowed_attribute_types: string[];
-    discount_tiers: CategoryDiscountTier[];
+    description: string | null;
+    is_active: boolean;
+    products_count?: number;
 }
 
 export interface AttributeType {
     id: string;
     name: string;
-    calculation_archetype: string;
+    slug: string;
+    sort_order: number;
+    is_active: boolean;
 }
 
 export interface Attribute {
     id: string;
     name: string;
     type: string;
+    type_name: string;
+    price: string;
+    cost?: string;
+    is_active: boolean;
     branch_id: string | null;
     branch: { id: string; name: string } | null;
 }
@@ -80,10 +97,26 @@ export interface Attribute {
 export interface Product {
     id: string;
     name: string;
-    pricing_type: string;
+    selling_unit: string;
+    price: string;
+    cost?: string;
     is_active: boolean;
     deleted_at?: string | null;
-    category: { id: string; name: string; calculation_archetype: string } | null;
+    category: { id: string; name: string; is_active: boolean } | null;
+    materials: Array<{ id: string; name: string }>;
+    material_ids: string[];
+    requires_material: boolean;
+    uses_attributes: boolean;
+    attribute_types: Array<{ id: string; name: string }>;
+    attribute_type_ids: string[];
+    compatible_attributes: Array<{
+        id: string;
+        name: string;
+        type: string;
+        type_name: string;
+    }>;
+    attribute_ids: string[];
+    tiers?: Array<{ id: string; min_qty: number; discount_percent: string }>;
 }
 
 export interface MaterialStock {
@@ -91,6 +124,7 @@ export interface MaterialStock {
     branch_name: string | null;
     current_stock: string;
     min_stock: string;
+    is_active: boolean;
     is_low_stock: boolean;
 }
 
@@ -99,9 +133,11 @@ export interface Material {
     name: string;
     type: string | null;
     dimensions: string | null;
+    unit: string;
     cost: string;
     price: string;
-    category: { id: string; name: string } | null;
+    is_active: boolean;
+    category: { id: string; name: string; is_active: boolean } | null;
     current_stock: string | null;
     min_stock: string | null;
     is_low_stock: boolean | null;
@@ -113,37 +149,26 @@ export interface ProductionMaterial {
     name: string;
     type: string | null;
     dimensions: string | null;
+    unit: string;
     category: { id: string; name: string } | null;
     current_stock: string | null;
     min_stock: string | null;
     is_low_stock: boolean | null;
 }
 
-export interface Machine {
+export interface ProductQuantityDiscount {
     id: string;
-    name: string;
-    cost: string;
-    branch_id: string | null;
-    branch: { id: string; name: string } | null;
-}
-
-export interface Pricing {
-    id: string;
-    branch_id: string | null;
+    product_id: string;
     product: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
-    customer_type: string;
     min_qty: number;
-    price: string;
-    cost: string;
-    profit: string;
+    discount_percent: string;
 }
 
 export interface StockLedger {
     id: string;
     branch_id: string | null;
     branch: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     type: string | null;
     reason: string | null;
     user: { id: string; name: string } | null;
@@ -160,7 +185,7 @@ export interface StockLedger {
 
 export interface PurchaseItem {
     id: string;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     quantity: string;
     unit_cost: string;
     subtotal: string;
@@ -180,11 +205,20 @@ export interface Purchase {
 
 export interface Order {
     id: string;
-    pricing_id: string | null;
+    product_id: string | null;
+    product?: string | null;
+    material_id: string | null;
+    material: string | null;
+    customer_type: string;
+    quantity_discount_percent?: string;
+    discount_amount?: string;
     file_name: string | null;
     notes: string | null;
     area: string;
+    width: string | null;
+    length: string | null;
     quantity: string;
+    selected_attributes: string[];
     unit_price?: string;
     subtotal?: string;
     cost?: string;
@@ -215,6 +249,7 @@ export interface Invoice {
         address?: string | null;
         email?: string | null;
         type?: string | null;
+        institution?: string | null;
     } | null;
     designer: { id: string; name: string } | null;
     created_date: string;
@@ -254,6 +289,7 @@ export interface ProductionQueueItem {
     ordered_at: string;
     status: number;
     pickup_status: number;
+    has_waste: boolean;
     invoice: {
         id: string;
         invoice_number: string;
@@ -268,7 +304,7 @@ export interface ProductionQueueItem {
 export interface Waste {
     id: string;
     branch: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
+    material: { id: string; name: string; unit: string } | null;
     order_id: string | null;
     designer: { id: string; name: string } | null;
     operator: { id: string; name: string } | null;
@@ -292,6 +328,57 @@ export interface ActivityLog {
     created_at: string;
 }
 
+export type BackupStatus = 'queued' | 'running' | 'success' | 'partial' | 'failed';
+export type BackupDestination = 'local' | 'remote' | 'both';
+export type BackupTrigger = 'manual' | 'scheduled';
+
+export interface BackupMeta {
+    remote_skipped?: boolean;
+    retention_error?: string;
+    pruned?: Record<string, number>;
+    duration_ms?: number;
+    [key: string]: unknown;
+}
+
+export interface Backup {
+    id: string;
+    trigger: BackupTrigger;
+    destination: BackupDestination;
+    status: BackupStatus;
+    filename: string | null;
+    size_bytes: number | null;
+    local_available: boolean;
+    remote_available: boolean;
+    is_pinned: boolean;
+    error: string | null;
+    user: { id: string; name: string } | null;
+    started_at: string | null;
+    finished_at: string | null;
+    created_at: string;
+    meta: BackupMeta | null;
+}
+
+export interface BackupSettings {
+    local_enabled: boolean;
+    local_time: string;
+    remote_enabled: boolean;
+    remote_time: string;
+    local_daily_days: number;
+    local_weekly_weeks: number;
+    local_monthly_months: number;
+    local_yearly_years: number;
+    remote_daily_days: number;
+    remote_weekly_weeks: number;
+    remote_monthly_months: number;
+    remote_yearly_years: number;
+    local_usage_bytes: number;
+    remote_usage_bytes: number;
+    remote_quota_bytes: number;
+    remote_usage_percent: number;
+    remote_configured: boolean;
+    pinned_count: number;
+}
+
 export interface Sparkline {
     points: number[];
     labels: string[];
@@ -306,24 +393,44 @@ export interface Leader {
     waste_count: number;
 }
 
+export type DashboardPeriod = 'daily' | 'weekly' | 'monthly';
+
+export interface ProductionStatusCounts {
+    queued: number;
+    processing: number;
+    completed: number;
+    failed: number;
+}
+
 export interface OwnerDashboard {
     role: 'owner';
+    period: DashboardPeriod;
     finance: {
         gross_revenue: string;
         total_cost: string;
         net_profit: string;
         expenses: string;
+        receivables: string;
     };
+    order_count: number;
+    production: ProductionStatusCounts;
     sparkline: Sparkline;
 }
 
 export interface ManagerDashboard {
     role: 'manager';
+    period: DashboardPeriod;
+    finance: {
+        gross_revenue: string;
+        expenses: string;
+        receivables: string;
+    };
+    order_count: number;
+    production: ProductionStatusCounts;
     counts: {
         materials: number;
-        machines: number;
         staff: number;
-        pricing: number;
+        product_quantity_discounts: number;
     };
     stock_ledgers: StockLedger[];
     expenses: Expense[];
@@ -352,12 +459,17 @@ export interface DesignerDashboard {
     recent_invoices: Invoice[];
 }
 
+export interface WasteByUnit {
+    unit: string;
+    quantity: number;
+}
+
 export interface ProductionDashboard {
     role: 'production';
     queued: number;
     processing: number;
     completed_today: number;
-    waste_today: number;
+    waste_today_by_unit: WasteByUnit[];
     queue: ProductionQueueItem[];
 }
 
@@ -391,7 +503,7 @@ export interface BaseCostReport {
     invoices: Invoice[];
     wasted_materials: Array<{
         id: string;
-        material: { id: string; name: string; cost: string } | null;
+        material: { id: string; name: string; unit: string; cost: string } | null;
         quantity: string;
         wasted_cost: string;
         logged_at: string;

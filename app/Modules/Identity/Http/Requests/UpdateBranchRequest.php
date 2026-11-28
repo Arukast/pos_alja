@@ -33,6 +33,7 @@ final class UpdateBranchRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:1000'],
             'phone' => ['nullable', 'string', 'max:50'],
             'is_active' => ['sometimes', 'boolean'],
+            'reseller_discount_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'settings' => ['nullable', 'array'],
         ];
     }

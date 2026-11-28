@@ -5,21 +5,28 @@ namespace App\Providers;
 use App\Models\ActivityLog;
 use App\Models\Attribute;
 use App\Models\AttributeType;
-use App\Models\Machine;
+use App\Models\Backup;
+use App\Models\BackupSetting;
 use App\Models\Material;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\Purchase;
 use App\Models\StockLedger;
 use App\Models\WastedMaterial;
+use App\Policies\AttributeTypePolicy;
 use App\Policies\AuditPolicy;
+use App\Policies\BackupPolicy;
+use App\Policies\BackupSettingPolicy;
 use App\Policies\CatalogPolicy;
-use App\Policies\MachinePolicy;
 use App\Policies\MaterialPolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\WastePolicy;
+use App\Services\Backup\BackupDispatcher;
+use App\Services\Backup\DatabaseDumper;
+use App\Services\Backup\PgDumpDatabaseDumper;
+use App\Services\Backup\QueueBackupDispatcher;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -34,7 +41,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(DatabaseDumper::class, PgDumpDatabaseDumper::class);
+        $this->app->bind(BackupDispatcher::class, QueueBackupDispatcher::class);
     }
 
     /**
@@ -51,19 +59,21 @@ class AppServiceProvider extends ServiceProvider
         ));
 
         Gate::policy(ProductCategory::class, CatalogPolicy::class);
-        Gate::policy(AttributeType::class, CatalogPolicy::class);
         Gate::policy(Attribute::class, CatalogPolicy::class);
+        Gate::policy(AttributeType::class, AttributeTypePolicy::class);
         Gate::policy(Product::class, CatalogPolicy::class);
-        Gate::policy(Pricing::class, CatalogPolicy::class);
+        Gate::policy(ProductQuantityDiscount::class, CatalogPolicy::class);
         Gate::policy(StockLedger::class, CatalogPolicy::class);
         Gate::policy(Material::class, MaterialPolicy::class);
-        Gate::policy(Machine::class, MachinePolicy::class);
         Gate::policy(WastedMaterial::class, WastePolicy::class);
         Gate::policy(Purchase::class, PurchasePolicy::class);
         Gate::policy(ActivityLog::class, AuditPolicy::class);
+        Gate::policy(Backup::class, BackupPolicy::class);
+        Gate::policy(BackupSetting::class, BackupSettingPolicy::class);
 
         Gate::define('viewDashboard', [ReportPolicy::class, 'viewDashboard']);
         Gate::define('viewOwnerReports', [ReportPolicy::class, 'viewOwnerReports']);
+        Gate::define('viewFinancialReports', [ReportPolicy::class, 'viewFinancialReports']);
         Gate::define('viewLeaderboard', [ReportPolicy::class, 'viewLeaderboard']);
 
         // Force HTTPS if the request comes from your Tailscale Funnel domain,

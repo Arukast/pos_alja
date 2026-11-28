@@ -1,9 +1,9 @@
 import {
     Box,
     Building2,
-    CircleDollarSign,
     ClipboardList,
     CreditCard,
+    DatabaseBackup,
     LayoutDashboard,
     ListOrdered,
     Package,
@@ -52,12 +52,14 @@ export const roleLinks: Record<string, NavGroup[]> = {
             label: 'Administrasi',
             links: [
                 { to: '/owner/users', label: 'Manajemen Pengguna', icon: Users },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
                 { to: '/owner/branches', label: 'Manajemen Cabang', icon: Building2 },
                 { to: '/owner/categories', label: 'Kategori Produk', icon: Tags },
                 { to: '/owner/products', label: 'Produk', icon: Box },
-                { to: '/owner/machines', label: 'Mesin Cetak', icon: Printer },
+                { to: '/owner/attributes', label: 'Atribut', icon: Tags },
                 { to: '/owner/materials', label: 'Bahan & Stok', icon: Package },
                 { to: '/owner/purchases', label: 'Pembelian', icon: ShoppingCart },
+                { to: '/owner/backups', label: 'Backup Data', icon: DatabaseBackup },
             ],
         },
     ],
@@ -67,6 +69,15 @@ export const roleLinks: Record<string, NavGroup[]> = {
             links: [
                 { to: '/manager', label: 'Dasbor', icon: LayoutDashboard, end: true },
                 { to: '/manager/leaderboard', label: 'Papan Peringkat Desainer', icon: TrendingUp },
+            ],
+        },
+        {
+            label: 'Analitik',
+            links: [
+                { to: '/manager/revenue', label: 'Rincian Pendapatan Bruto', icon: TrendingUp },
+                { to: '/manager/base-cost', label: 'Rincian Biaya Dasar', icon: Wallet },
+                { to: '/manager/net-profit', label: 'Rincian Laba Bersih', icon: PiggyBank },
+                { to: '/manager/expenses', label: 'Rincian Pengeluaran', icon: Receipt },
             ],
         },
         {
@@ -80,16 +91,17 @@ export const roleLinks: Record<string, NavGroup[]> = {
         {
             label: 'Konfigurasi',
             links: [
-                { to: '/manager/finishing', label: 'Display & Finishing', icon: Tags },
+                { to: '/manager/finishing', label: 'Atribut', icon: Tags },
                 { to: '/manager/categories', label: 'Kategori Produk', icon: Tags },
                 { to: '/manager/products', label: 'Produk', icon: Box },
-                { to: '/manager/machines', label: 'Mesin Cetak', icon: Printer },
-                { to: '/manager/pricing', label: 'Matriks Harga', icon: CircleDollarSign },
             ],
         },
         {
             label: 'Administrasi',
-            links: [{ to: '/manager/users', label: 'Manajemen Pengguna', icon: Users }],
+            links: [
+                { to: '/manager/users', label: 'Manajemen Pengguna', icon: Users },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
+            ],
         },
     ],
     cashier: [
@@ -103,6 +115,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
                 { to: '/cashier/payments', label: 'Antrean Pembayaran', icon: CreditCard },
                 { to: '/cashier/pickup', label: 'Antrean Pengambilan', icon: Truck },
                 { to: '/cashier/expenses', label: 'Pengeluaran', icon: Receipt },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
             ],
         },
     ],
@@ -116,6 +129,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             links: [
                 { to: '/designer/new-order', label: 'Pesanan Baru', icon: ShoppingCart },
                 { to: '/designer/orders', label: 'Daftar Pesanan', icon: ClipboardList },
+                { to: '/customers', label: 'Pelanggan', icon: Users },
             ],
         },
     ],
@@ -129,7 +143,7 @@ export const roleLinks: Record<string, NavGroup[]> = {
             links: [
                 { to: '/production/materials', label: 'Bahan & Stok', icon: Package },
                 { to: '/production/queue', label: 'Antrean Cetak', icon: Printer },
-                { to: '/production/waste', label: 'Riwayat Sisa Bahan', icon: Recycle },
+                { to: '/production/waste', label: 'Riwayat Bahan Terbuang', icon: Recycle },
             ],
         },
     ],

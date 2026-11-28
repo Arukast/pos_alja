@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Models\Attribute;
 use App\Models\User;
 
 final class CatalogPolicy
@@ -17,14 +18,13 @@ final class CatalogPolicy
         return $user->role === 'manager' && $user->branch_id !== null;
     }
 
-    public function viewAttributeTypes(User $user): bool
-    {
-        return in_array($user->role, ['owner', 'manager'], true);
-    }
-
     public function viewAttributes(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        if ($user->role === 'owner') {
+            return true;
+        }
+
+        return $user->role === 'manager' && $user->branch_id !== null;
     }
 
     public function viewProducts(User $user): bool
@@ -42,9 +42,9 @@ final class CatalogPolicy
         return $user->role === 'owner';
     }
 
-    public function viewPricing(User $user): bool
+    public function viewProductQuantityDiscounts(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner' || ($user->role === 'manager' && $user->branch_id !== null);
     }
 
     public function viewStockLedgers(User $user): bool
@@ -57,18 +57,22 @@ final class CatalogPolicy
         return $user->role === 'owner';
     }
 
-    public function manageAttributeTypes(User $user): bool
+    public function createAttribute(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner'
+            || ($user->role === 'manager' && $user->branch_id !== null);
     }
 
-    public function manageAttributes(User $user): bool
+    public function updateAttribute(User $user, Attribute $attribute): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner'
+            || ($user->role === 'manager'
+                && $user->branch_id !== null
+                && $attribute->branch_id === $user->branch_id);
     }
 
-    public function managePricing(User $user): bool
+    public function manageProductQuantityDiscounts(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner';
     }
 }

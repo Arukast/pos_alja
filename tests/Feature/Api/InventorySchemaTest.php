@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ProductCategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class InventorySchemaTest extends TestCase
@@ -63,6 +66,39 @@ class InventorySchemaTest extends TestCase
         $this->assertNotNull($purchaseKey);
         $this->assertSame('purchases', $purchaseKey['foreign_table']);
         $this->assertSame('cascade', strtolower((string) $purchaseKey['on_delete']));
+    }
+
+    public function test_materials_table_has_a_unit_column_defaulting_to_pcs(): void
+    {
+        $this->assertTrue(Schema::hasColumn('materials', 'unit'));
+
+        $category = ProductCategory::create([
+            'name' => 'Large Format',
+            'calculation_archetype' => 'surface_area',
+        ]);
+
+        $materialId = (string) Str::uuid();
+
+        DB::table('materials')->insert([
+            'id' => $materialId,
+            'product_category_id' => $category->id,
+            'name' => 'Unitless Material',
+            'cost' => 0,
+            'price' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertSame('pcs', DB::table('materials')->where('id', $materialId)->value('unit'));
+    }
+
+    public function test_machine_and_pricing_matrix_tables_are_dropped(): void
+    {
+        $this->assertFalse(Schema::hasTable('machines'));
+        $this->assertFalse(Schema::hasTable('machine_pricing'));
+        $this->assertFalse(Schema::hasTable('pricing'));
+        $this->assertFalse(Schema::hasTable('attribute_pricing'));
+        $this->assertTrue(Schema::hasTable('product_quantity_discounts'));
     }
 
     public function test_wasted_materials_has_no_machine_column_but_keeps_order_link(): void

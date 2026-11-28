@@ -34,9 +34,12 @@ Outfit only, with tabular numerals for money and counts.
 - Page title: 28px/800 with tight tracking (`PageBanner`).
 - KPI value: 22px/800 (`StatCard`).
 - Panel heading: caller-owned. `Card` renders no title, so each caller sets the heading size. The nominal size
-  is 16px at `font-semibold` (600), and the `CrudPage` section header uses 16px/700. Callers may deviate: the
-  quantity-discount panel on the category page uses 18px (`text-lg`). The 16px/700 rule in the design source
-  is a convention for section headers, not something a component enforces.
+  is 16px at `font-semibold` (600); `CrudPage` list cards that pass a `create` action render a short `Daftar`
+  list title on the left (a leading `Manajemen ` is stripped; `cardTitle` overrides it) with the small create
+  action on the right. `ResourceTable` has no `cardTitle` or create action; when given `cardActions` it
+  renders the same derived title on the left and those generic actions on the right. The 16px/700
+  rule in the design source is a convention for section headers, not something
+  a component enforces.
 - Body copy: 14px (`text-sm`) on cards, forms, tables, and descriptions. The base element has no global
   14px rule.
 - Table text: 14px (`text-sm`). The design source said 13px; the build uses 14px for readability.
@@ -49,7 +52,9 @@ Outfit only, with tabular numerals for money and counts.
   `#FFF200` for the brand stripe and marks only, dark neutral `#1A1A2E`.
 - Light surfaces: canvas `#F8F9FA`, card `#FFFFFF`, secondary surface `#F1F3F5`, border `#E5E7EB`, ink
   `#111827`, muted `#6B7280`, muted-strong `#4B5563`.
-- Status: soft pill, 6px dot, 11px/600 text in a strong tonal shade (emerald, amber, red, blue).
+- Status: soft pill, 6px dot, 11px/600 text in a strong tonal shade (emerald, amber, red, blue, violet).
+  Role badges map owner brand, manager info, cashier success, designer violet, production warning, system
+  and unknown neutral. User and branch status badges use Aktif success and Nonaktif neutral.
 - Soft shadows only. No page gradients, glass panels, or neon glows. A page banner may carry a soft tint and
   one blurred magenta circle.
 
@@ -65,8 +70,9 @@ selects, checkboxes, and the secondary button variant all use it; error controls
 ## Shell
 
 240px white sidebar (`w-60`), 64px collapsed (`w-16`), right border, and a 3px top stripe of magenta 33% /
-yellow 22% / cyan 45%. The sidebar header carries the `LogoMark`, the `Alja POS` wordmark, and the current
-branch name. Navigation groups use 10px uppercase muted captions, 40px rows, 12px radius, and 14px/500 labels.
+yellow 22% / cyan 45%. The sidebar header carries the square Alja mark (`logo-alja-mark-96.png`), the `Alja POS`
+wordmark, and the current branch name when one is assigned. Navigation groups use 10px uppercase muted captions,
+40px rows, 12px radius, and 14px/500 labels.
 
 Active navigation is a solid `#D01A7E` row with white text and a white 3px rail on the left (5.08:1). This
 replaced an earlier tinted active row.
@@ -77,9 +83,9 @@ width 1600px.
 ## Components
 
 - Page banner: role-tinted, 16px radius, 20px padding, 1px tinted border, four 8px CMYK squares, a 10px
-  uppercase eyebrow, title 28px/800, description 14px `light-muted-strong`, actions on the right, and one
-  blurred magenta circle. Tints: owner `#FFF0F3`, operations `#E6F7FD` (manager, cashier, production),
-  designer `#F0FDFA`.
+  uppercase eyebrow, title 28px/800, description 14px `light-muted-strong`, and one blurred magenta circle.
+  Headers are copy only, with no actions, filters, or links. Tints: owner `#FFF0F3`, operations `#E6F7FD`
+  (manager, cashier, production), designer `#F0FDFA`.
 - KPI card (`StatCard`): white, 16px radius, 1px border, 20px padding, 10px uppercase muted label, 22px/800
   value, optional hint line. It supports a tinted icon chip (`icon` prop, 32px, `brand-primary/10`), but no
   dashboard passes one; record it as available, not as a page rule.
@@ -89,8 +95,9 @@ width 1600px.
   Rows that contain an action render about 48px because `Button size="sm"` is 32px tall plus 8px vertical
   cell padding. Numeric columns are right-aligned and tabular, with two exceptions: the production dashboard
   queue table renders `Jml` left-aligned, and the manager materials movements panel (`Pergerakan stok
-  terbaru`) renders its stock counts left-aligned. The action column is sticky on the right only at `lg:` and
-  above.
+  terbaru`) renders its stock counts left-aligned. In the CRUD tables the action column is sticky on the right
+  at every width; in the production queue the action column and in purchases the total column are sticky only
+  below `lg:` (`max-lg:sticky`).
 - Pagination: Indonesian copy. `Menampilkan X–Y dari Z` when a total is known, `Menampilkan X dari Z` when
   the window is a single row, and `Halaman X dari Y` for lists whose total cannot be stated honestly
   (client-side filtered lists that only know the current page). Buttons are `Sebelumnya` and `Berikutnya`.
@@ -99,13 +106,16 @@ width 1600px.
 - Forms: 10px/600 uppercase label, 40px control, 12px radius, 1px `#6B7280` border, white surface, 2px
   magenta focus ring at 40%.
 - Dialog: centred 560px by default, 16px radius, 1px border, flat `brand-dark/55` dim, one primary and one
-  secondary action.
+  secondary action. The product modal adds an inline `Tier Jumlah` section with repeatable `Jumlah minimum`
+  and `Diskon` rows and `Tambah tier`/`Hapus tier` actions, using the same form labels and control sizing;
+  it starts with no rows. The Manager's read-only `Lihat` modal uses the same layout with those controls
+  disabled. The former standalone quantity-tier cards were removed with their pages.
 - Chart (`Sparkline`): one magenta area series, 3px line, area gradient from 28% to transparent, three
   quarter gridlines plus a dashed zero baseline, and 3.5px point markers.
 - Login: light grey canvas (`login-mesh`) with a 4rem grid mesh, a centred 448px (`max-w-md`) white card with
-  the 3px brand stripe, the `LogoMark` beside the wordmark, and one primary button. This screen has no CMYK
-  squares.
-- `LogoMark`: rounded square on a 32px grid, magenta fill, white A with a yellow crossbar and dot.
+  the 3px brand stripe, the full Alja lockup above the `Masuk` heading below `sm` and beside it at `sm` and
+  above, and one primary button. The lockup is decorative (`alt=""`). This screen has no CMYK squares.
+- Brand mark: the square mark is the leading `A` glyph cropped from the source artwork's ALJA word, on a 512px opaque near-black (`#252324`) tile (`frontend/public/images/logo-alja-mark.png`). The crop keeps only the white `A` (with its 1px antialias fringe) and its magenta extrusion; every other pixel is `#252324`, so no ghost hairlines or brackets survive at any size. The in-app shell uses a 96px derivative (`frontend/public/images/logo-alja-mark-96.png`). The full lockup (`frontend/public/images/logo-alja.webp`) appears on Login and 404 at 160px wide. Favicons use a flat white `A` at 16px (no extrusion or hairlines) and the detailed mark at 32/48, plus a multi-size ICO carrying the flat 16 and detailed 32/48. Apple 180 is a cleaned scale of the same near-black tile with no maskable inset; PWA 192/512 draw the mark inside the central 80% safe zone (0.85 maskable inset). Manifest theme is `#E91E8C` on `#FFFFFF`.
 
 ### Banner deviations
 
@@ -127,12 +137,13 @@ The design source is light-only. Dark mode is a required variant of the same sys
   `teal-400/10`); the banner's blurred circle uses `brand-primary/15`. Tinted borders sit at 25%.
 - Filled brand controls keep `#D01A7E` with white text.
 - Dark mode never changes composition, only colour.
+- The full lockup carries its own white sticker border; the mark and generated icons are opaque near-black (`#252324`) tiles with no white backing and are legible on both themes.
 
 ## Print
 
 - `PrintHeader` renders four CMYK squares and the wordmark with `print-color-exact`, so the marks survive the
   browser's print colour handling.
-- Invoice: A4 sheet, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The invoice is
+- Invoice: A4 page, `min-h-[297mm]` on screen with `print:min-h-0`, and a 12mm print margin. The invoice is
   the single customer document and includes prices, discounts, DP history, and the remaining receivable.
 - Production has no invoice or receipt print. Its work list is the production queue, which contains no money
   field. No separate ticket or money-free print mode is part of the target.
@@ -155,7 +166,7 @@ The design source is light-only. Dark mode is a required variant of the same sys
   there is no panel to replace.
 - Production screens never show price, cost, profit, discount, receivable, or payment fields. Invoice and
   receipt print are denied to production; production uses the queue.
-- The production queue table shows `Area` (m²), `Operator`, and a status filter. Failed print (waste) is
+- The production queue table shows `Area` (m²) and `Operator`. Failed print (waste) is
   recorded from the queue row and shows a quantity, never money.
 - Money is transported as decimal strings with two places and displayed through `formatMoney`; the SPA never
   submits authoritative line prices.
@@ -171,7 +182,7 @@ needed to state them honestly:
 - Per-branch comparison rows.
 - File upload.
 - Attendance and on-shift state.
-- User last-active and active flag.
+- User last-active timestamp.
 - Cash-drawer balance.
 - Persisted cash tendered.
 

@@ -6,6 +6,7 @@ namespace App\Modules\Sales\Http\Requests;
 
 use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class StoreCustomerRequest extends FormRequest
 {
@@ -24,7 +25,10 @@ final class StoreCustomerRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
-            'type' => ['nullable', 'string', 'max:50'],
+            'institution' => ['required_without:institutions', 'string', Rule::in(Customer::INSTITUTIONS)],
+            'institutions' => ['required_without:institution', 'array', 'min:1'],
+            'institutions.*' => [Rule::in(Customer::INSTITUTIONS)],
+            'type' => ['nullable', 'string', 'in:Reguler,Reseller'],
         ];
     }
 }

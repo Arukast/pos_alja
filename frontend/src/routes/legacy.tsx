@@ -1,54 +1,11 @@
 import { Navigate, useSearchParams } from 'react-router';
 
-import { roleHome } from '../auth/roleHome';
 import { useAuth } from '../auth/useAuth';
-
-const tabRoutes: Record<string, Record<string, string>> = {
-    owner: {
-        revenue: '/owner/revenue',
-        cost: '/owner/base-cost',
-        profit: '/owner/net-profit',
-        expenses: '/owner/expenses',
-        audit: '/owner/audit',
-        users: '/owner/users',
-        branches: '/owner/branches',
-        materials: '/owner/materials',
-        categories: '/owner/categories',
-        products: '/owner/products',
-        machines: '/owner/machines',
-    },
-    manager: {
-        materials: '/manager/materials',
-        ledgers: '/manager/ledgers',
-        finishing: '/manager/finishing',
-        pricing: '/manager/pricing',
-        leaderboard: '/manager/leaderboard',
-        users: '/manager/users',
-        categories: '/manager/categories',
-        products: '/manager/products',
-        machines: '/manager/machines',
-    },
-    cashier: {
-        payments: '/cashier/payments',
-        pickup: '/cashier/pickup',
-        expenses: '/cashier/expenses',
-    },
-    designer: {
-        new_order: '/designer/new-order',
-        order_list: '/designer/orders',
-    },
-    production: {
-        print_queue: '/production/queue',
-        waste: '/production/waste',
-    },
-};
+import { legacyTarget } from './legacyTargets';
 
 export function LegacyDashboardRedirect() {
     const { user } = useAuth();
     const [searchParams] = useSearchParams();
-    const role = user?.role ?? '';
-    const tab = searchParams.get('tab') ?? '';
-    const target = tabRoutes[role]?.[tab] ?? roleHome(user?.role);
 
-    return <Navigate to={target} replace />;
+    return <Navigate to={legacyTarget(user?.role ?? '', searchParams.get('tab') ?? '')} replace />;
 }

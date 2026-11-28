@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Requests;
 
 use App\Models\User;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -30,7 +31,15 @@ final class UpdateUserRequest extends FormRequest
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class, 'email')->ignore($targetId)],
             'password' => ['nullable', 'string', Password::defaults(), 'confirmed'],
             'role' => ['required', 'string', 'in:owner,manager,cashier,designer,production'],
-            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'branch_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('branches', 'id')->where(
+                    function (Builder $query): void {
+                        $query->whereNull('deleted_at');
+                    }
+                ),
+            ],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string', 'max:1000'],
         ];

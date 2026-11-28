@@ -1,8 +1,10 @@
-import { apiFetch } from '../lib/api';
+import { API_BASE, apiDownload, apiFetch } from '../lib/api';
 import type {
     ActivityLog,
     Attribute,
     AttributeType,
+    Backup,
+    BackupSettings,
     BaseCostReport,
     Branch,
     Category,
@@ -13,13 +15,13 @@ import type {
     GrossRevenueReport,
     Invoice,
     LeaderboardReport,
-    Machine,
     Material,
+    MaterialPage,
     NetProfitReport,
     Paginated,
     Payment,
-    Pricing,
     Product,
+    ProductQuantityDiscount,
     ProductionQueueItem,
     Purchase,
     StockLedger,
@@ -44,7 +46,11 @@ function queryString(params: object = {}): string {
     return query ? `?${query}` : '';
 }
 
+export type ReportType = 'gross-revenue' | 'base-cost' | 'net-profit' | 'expenses';
+export type ReportExportFormat = 'xlsx' | 'pdf';
+
 export interface ReportParams {
+    period?: string;
     branch_id?: string;
     start_date: string;
     end_date: string;
@@ -59,15 +65,16 @@ export interface QuoteOptions {
     categories: Category[];
     products: Product[];
     materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null }>;
-    machines: Array<{ id: string; name: string }>;
     attributes: Attribute[];
+    attribute_types: AttributeType[];
 }
 
 export interface Quote {
-    pricing_id: string;
     unit_price: string;
     area: number;
     quantity: number;
+    quantity_discount_percent: string;
+    discount_amount: string;
     subtotal: string;
 }
 
@@ -92,22 +99,21 @@ export const api = {
 
     categories: () => apiFetch<{ data: Category[] }>('/categories'),
 
-    attributeTypes: () => apiFetch<{ data: AttributeType[] }>('/attribute-types'),
-
     attributes: (params: QueryParams = {}) =>
         apiFetch<{ data: Attribute[] }>(`/attributes${queryString(params)}`),
+
+    attributeTypes: () => apiFetch<{ data: AttributeType[] }>('/attribute-types'),
 
     products: (params: QueryParams = {}) =>
         apiFetch<Paginated<Product>>(`/products${queryString(params)}`),
 
     materials: <T = Material>(params: QueryParams = {}) =>
-        apiFetch<Paginated<T>>(`/materials${queryString(params)}`),
+        apiFetch<MaterialPage<T>>(`/materials${queryString(params)}`),
 
-    machines: (params: QueryParams = {}) =>
-        apiFetch<Paginated<Machine>>(`/machines${queryString(params)}`),
-
-    pricing: (params: QueryParams = {}) =>
-        apiFetch<Paginated<Pricing>>(`/pricing${queryString(params)}`),
+    productQuantityDiscounts: (params: QueryParams = {}) =>
+        apiFetch<Paginated<ProductQuantityDiscount>>(
+            `/product-quantity-discounts${queryString(params)}`
+        ),
 
     stockLedgers: (params: QueryParams = {}) =>
         apiFetch<Paginated<StockLedger>>(`/stock-ledgers${queryString(params)}`),
@@ -136,6 +142,23 @@ export const api = {
     auditLogs: (params: QueryParams = {}) =>
         apiFetch<Paginated<ActivityLog>>(`/audit-logs${queryString(params)}`),
 
+    backups: (params: QueryParams = {}) =>
+        apiFetch<Paginated<Backup>>(`/backups${queryString(params)}`),
+
+    createBackup: () =>
+        mutate<{ message: string; backup: Backup }>('/backups', 'POST'),
+
+    pinBackup: (id: string, pinned: boolean) =>
+        mutate<{ backup: Backup }>(`/backups/${id}/pin`, 'PATCH', { pinned }),
+
+    backupSettings: () =>
+        apiFetch<{ settings: BackupSettings }>('/backup-settings'),
+
+    updateBackupSettings: (data: MutationBody) =>
+        mutate<{ settings: BackupSettings }>('/backup-settings', 'PUT', data),
+
+    backupDownloadUrl: (id: string) => `${API_BASE}/backups/${id}/download`,
+
     report: {
         grossRevenue: (params: ReportParams) =>
             apiFetch<GrossRevenueReport>(`/reports/gross-revenue${queryString(params)}`),
@@ -155,20 +178,36 @@ export const api = {
             ),
 
         leaderboard: () => apiFetch<LeaderboardReport>('/reports/designer-leaderboard'),
+
+        exportReport: (
+            type: ReportType,
+            params: ReportParams & { format: ReportExportFormat }
+        ) =>
+            apiDownload(
+                `/reports/${type}/export${queryString(params)}`,
+                `laporan-${type}-${params.start_date}_${params.end_date}.${params.format}`
+            ),
     },
 
-    quoteOptions: () => apiFetch<QuoteOptions>('/quotes/options'),
+    quoteOptions: (params: QueryParams = {}) =>
+        apiFetch<QuoteOptions>(`/quotes/options${queryString(params)}`),
 
     quote: (data: MutationBody) => mutate<{ quote: Quote }>('/quotes', 'POST', data),
 
     customers: (params: QueryParams = {}) =>
-        apiFetch<{ data: Customer[] }>(`/customers${queryString(params)}`),
+        apiFetch<Paginated<Customer>>(`/customers${queryString(params)}`),
 
     createCustomer: (data: MutationBody) =>
         mutate<{ customer: Customer }>('/customers', 'POST', data),
 
+    updateCustomer: (id: string, data: MutationBody) =>
+        mutate<{ customer: Customer }>(`/customers/${id}`, 'PUT', data),
+
     createInvoice: (data: MutationBody) =>
         mutate<{ invoice: Invoice }>('/invoices', 'POST', data),
+
+    updateInvoiceItems: (invoiceId: string, data: MutationBody) =>
+        mutate<{ invoice: Invoice }>(`/invoices/${invoiceId}/items`, 'PUT', data),
 
     downPayment: (invoiceId: string, data: MutationBody) =>
         mutate<{ payment: Payment; invoice: Invoice }>(
@@ -202,9 +241,15 @@ export const api = {
     completeOrder: (orderId: string) =>
         mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/complete`, 'POST'),
 
+    failOrder: (orderId: string, data: { note: string }) =>
+        mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/fail`, 'POST', data),
+
+    reopenOrder: (orderId: string) =>
+        mutate<{ order: ProductionQueueItem }>(`/orders/${orderId}/reopen`, 'POST'),
+
     wasteOptions: () =>
         apiFetch<{
-            materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null }>;
+            materials: Array<{ id: string; name: string; type: string | null; dimensions: string | null; unit: string }>;
             designers: Array<{ id: string; name: string }>;
         }>('/waste/options'),
 
@@ -224,6 +269,8 @@ export const api = {
             mutate<{ user: UserRecord }>('/users', 'POST', data),
         updateUser: (id: string, data: MutationBody) =>
             mutate<{ user: UserRecord }>(`/users/${id}`, 'PUT', data),
+        toggleUser: (id: string) =>
+            mutate<{ user: UserRecord }>(`/users/${id}/status`, 'PATCH'),
         deleteUser: (id: string) => mutate<void>(`/users/${id}`, 'DELETE'),
         restoreUser: (id: string) =>
             mutate<{ user: UserRecord }>(`/users/${id}/restore`, 'POST'),
@@ -243,20 +290,24 @@ export const api = {
             mutate<{ material: Material }>(`/materials/${id}/stock`, 'POST', data),
         activateMaterial: (id: string, data: MutationBody) =>
             mutate<{ material: Material }>(`/materials/${id}/activate`, 'POST', data),
-
-        createMachine: (data: MutationBody) =>
-            mutate<{ machine: Machine }>('/machines', 'POST', data),
-        updateMachine: (id: string, data: MutationBody) =>
-            mutate<{ machine: Machine }>(`/machines/${id}`, 'PUT', data),
-        deleteMachine: (id: string) => mutate<void>(`/machines/${id}`, 'DELETE'),
-        restoreMachine: (id: string) =>
-            mutate<{ machine: Machine }>(`/machines/${id}/restore`, 'POST'),
+        setMaterialMinimumStock: (id: string, data: MutationBody) =>
+            mutate<{ material: Material }>(`/materials/${id}/min-stock`, 'PATCH', data),
+        setMaterialActive: (id: string, data: { is_active: boolean }) =>
+            mutate<{ material: Material }>(`/materials/${id}/active`, 'PATCH', data),
+        setMaterialBranchAvailability: (
+            id: string,
+            data: { branch_id?: string; is_active: boolean }
+        ) =>
+            mutate<{ material: Material }>(
+                `/materials/${id}/branch-availability`,
+                'PATCH',
+                data
+            ),
 
         createCategory: (data: MutationBody) =>
             mutate<{ category: Category }>('/categories', 'POST', data),
         updateCategory: (id: string, data: MutationBody) =>
             mutate<{ category: Category }>(`/categories/${id}`, 'PUT', data),
-        deleteCategory: (id: string) => mutate<void>(`/categories/${id}`, 'DELETE'),
 
         createProduct: (data: MutationBody) =>
             mutate<{ product: Product }>('/products', 'POST', data),
@@ -266,23 +317,29 @@ export const api = {
         restoreProduct: (id: string) =>
             mutate<{ product: Product }>(`/products/${id}/restore`, 'POST'),
 
-        createAttributeType: (data: MutationBody) =>
-            mutate<{ attribute_type: AttributeType }>('/attribute-types', 'POST', data),
-        deleteAttributeType: (id: string) =>
-            mutate<void>(`/attribute-types/${id}`, 'DELETE'),
-
         createAttribute: (data: MutationBody) =>
             mutate<{ attribute: Attribute }>('/attributes', 'POST', data),
         updateAttribute: (id: string, data: MutationBody) =>
             mutate<{ attribute: Attribute }>(`/attributes/${id}`, 'PUT', data),
-        deleteAttribute: (id: string) => mutate<void>(`/attributes/${id}`, 'DELETE'),
 
-        createPricing: (data: MutationBody) =>
-            mutate<{ pricing: Pricing }>('/pricing', 'POST', data),
-        updatePricing: (id: string, data: MutationBody) =>
-            mutate<{ pricing: Pricing }>(`/pricing/${id}`, 'PUT', data),
-        deletePricing: (id: string) => mutate<void>(`/pricing/${id}`, 'DELETE'),
-        clonePricing: (data: MutationBody) =>
-            mutate<{ cloned: number }>('/pricing/clone-tiers', 'POST', data),
+        createAttributeType: (data: MutationBody) =>
+            mutate<{ attribute_type: AttributeType }>('/attribute-types', 'POST', data),
+        updateAttributeType: (slug: string, data: MutationBody) =>
+            mutate<{ attribute_type: AttributeType }>(`/attribute-types/${slug}`, 'PUT', data),
+
+        createProductQuantityDiscount: (data: MutationBody) =>
+            mutate<{ tier: ProductQuantityDiscount }>(
+                '/product-quantity-discounts',
+                'POST',
+                data
+            ),
+        updateProductQuantityDiscount: (id: string, data: MutationBody) =>
+            mutate<{ tier: ProductQuantityDiscount }>(
+                `/product-quantity-discounts/${id}`,
+                'PUT',
+                data
+            ),
+        deleteProductQuantityDiscount: (id: string) =>
+            mutate<void>(`/product-quantity-discounts/${id}`, 'DELETE'),
     },
 };

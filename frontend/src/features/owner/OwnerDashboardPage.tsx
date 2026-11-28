@@ -76,35 +76,38 @@ export function OwnerDashboardPage() {
                 eyebrow="Pemilik"
                 title="Dasbor Pemilik"
                 description="Pendapatan, biaya, laba, dan pengeluaran lintas cabang."
-                actions={
-                    <>
-                        <Select
-                            aria-label="Cabang"
-                            value={branchId}
-                            onChange={(event) => updateParam('branch_id', event.target.value)}
-                            className="h-9 py-1.5"
-                        >
-                            <option value="all">Semua cabang</option>
-                            {(branchesQuery.data?.data ?? []).map((branch) => (
-                                <option key={branch.id} value={branch.id}>
-                                    {branch.name}
-                                </option>
-                            ))}
-                        </Select>
-                        {(['daily', 'weekly', 'monthly'] as const).map((value) => (
-                            <Button
-                                key={value}
-                                size="sm"
-                                variant={period === value ? 'primary' : 'secondary'}
-                                aria-pressed={period === value}
-                                onClick={() => updateParam('period', value)}
-                            >
-                                {periodLabels[value]}
-                            </Button>
-                        ))}
-                    </>
-                }
             />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <div className="w-full sm:w-56">
+                    <Select
+                        aria-label="Cabang"
+                        value={branchId}
+                        onChange={(event) => updateParam('branch_id', event.target.value)}
+                        className="h-9 py-1.5"
+                    >
+                        <option value="all">Semua cabang</option>
+                        {(branchesQuery.data?.data ?? []).map((branch) => (
+                            <option key={branch.id} value={branch.id}>
+                                {branch.name}
+                            </option>
+                        ))}
+                    </Select>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {(['daily', 'weekly', 'monthly'] as const).map((value) => (
+                        <Button
+                            key={value}
+                            size="sm"
+                            variant={period === value ? 'primary' : 'secondary'}
+                            aria-pressed={period === value}
+                            onClick={() => updateParam('period', value)}
+                        >
+                            {periodLabels[value]}
+                        </Button>
+                    ))}
+                </div>
+            </div>
 
             {dashboardQuery.isLoading ? (
                 <Card>
@@ -141,7 +144,7 @@ export function OwnerDashboardPage() {
                         <StatCard
                             label="Biaya Dasar"
                             value={formatMoney(data.finance.total_cost)}
-                            hint={`${shareOfRevenue(data.finance.total_cost, data.finance.gross_revenue, '% dari pendapatan bruto')} · HPP invoice ditambah sisa bahan`}
+                            hint={`${shareOfRevenue(data.finance.total_cost, data.finance.gross_revenue, '% dari pendapatan bruto')} · HPP invoice ditambah bahan terbuang`}
                         />
                         <StatCard
                             label="Laba Bersih"
@@ -153,6 +156,53 @@ export function OwnerDashboardPage() {
                             value={formatMoney(data.finance.expenses)}
                             hint={`${shareOfRevenue(data.finance.expenses, data.finance.gross_revenue, '% dari pendapatan bruto')} · Biaya operasional`}
                         />
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
+                        <StatCard
+                            label="Piutang Usaha"
+                            value={formatMoney(data.finance.receivables)}
+                            hint="Sisa tagihan invoice belum lunas"
+                        />
+                        <StatCard
+                            label="Jumlah Pesanan"
+                            value={String(data.order_count)}
+                            hint={
+                                branchLabel
+                                    ? `${branchLabel} · Pesanan pada periode ini`
+                                    : 'Pesanan pada periode ini'
+                            }
+                        />
+                        <Card>
+                            <CardHeader>
+                                <h2 className="font-semibold">Status Produksi</h2>
+                                <span className="text-light-muted text-xs dark:text-gray-400">
+                                    {periodLabels[period] ?? period}
+                                </span>
+                            </CardHeader>
+                            <CardBody>
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    {[
+                                        { label: 'Antre', value: data.production.queued },
+                                        { label: 'Diproses', value: data.production.processing },
+                                        { label: 'Selesai', value: data.production.completed },
+                                        { label: 'Gagal', value: data.production.failed },
+                                    ].map((item) => (
+                                        <div
+                                            key={item.label}
+                                            className="bg-light-surface-2 dark:bg-surface-700 border-light-border dark:border-surface-300 rounded-xl border px-3 py-2.5"
+                                        >
+                                            <p className="text-light-muted text-xs dark:text-gray-400">
+                                                {item.label}
+                                            </p>
+                                            <p className="text-light-text mt-1 text-xl font-extrabold tabular-nums dark:text-gray-100">
+                                                {item.value}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardBody>
+                        </Card>
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

@@ -7,21 +7,22 @@ namespace App\Modules\Sales\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
 use App\Models\Invoice;
-use App\Models\Machine;
 use App\Models\Material;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Modules\Catalog\Http\Resources\AttributeResource;
+use App\Modules\Catalog\Http\Resources\AttributeTypeResource;
 use App\Modules\Catalog\Http\Resources\CategoryResource;
 use App\Modules\Catalog\Http\Resources\ProductResource;
+use App\Modules\Catalog\Queries\CatalogQueries;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
 final class QuoteOptionsController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(CatalogQueries $queries): JsonResponse
     {
         Gate::authorize('viewQuoteOptions', Invoice::class);
 
@@ -32,12 +33,14 @@ final class QuoteOptionsController extends Controller
         }
 
         $branchId = $actor->branch_id;
+        $includeInactiveAttributes = request()->boolean('include_inactive_attributes');
 
         $materials = Material::query()
             ->with('category')
+            ->availableInBranch($branchId)
             ->whereHas(
-                'branchStocks',
-                fn (Builder $query) => $query->where('branch_id', $branchId)
+                'category',
+                fn (Builder $query) => $query->where('is_active', true)
             )
             ->orderBy('name')
             ->get()
@@ -53,17 +56,12 @@ final class QuoteOptionsController extends Controller
             ])
             ->values();
 
-        $machines = Machine::query()
-            ->where('branch_id', $branchId)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Machine $machine): array => [
-                'id' => $machine->id,
-                'name' => $machine->name,
-            ])
-            ->values();
-
         $attributes = Attribute::query()
+            ->with('typeInfo')
+            ->when(
+                ! $includeInactiveAttributes,
+                fn (Builder $query) => $query->where('is_active', true)
+            )
             ->where(function (Builder $query) use ($branchId): void {
                 $query->where('branch_id', $branchId)->orWhereNull('branch_id');
             })
@@ -72,14 +70,31 @@ final class QuoteOptionsController extends Controller
 
         return response()->json([
             'categories' => CategoryResource::collection(
-                ProductCategory::query()->orderBy('name')->get()
+                ProductCategory::query()->where('is_active', true)->orderBy('name')->get()
             ),
             'products' => ProductResource::collection(
-                Product::query()->where('is_active', true)->with('category')->orderBy('name')->get()
+                Product::query()
+                    ->where('is_active', true)
+                    ->where(function (Builder $query): void {
+                        $query->whereNull('product_category_id')
+                            ->orWhereHas(
+                                'category',
+                                fn (Builder $category) => $category->where('is_active', true)
+                            );
+                    })
+                    ->with([
+                        'category',
+                        'materials',
+                        'attributeTypes',
+                        'compatibleAttributes.typeInfo',
+                        'quantityDiscounts',
+                    ])
+                    ->orderBy('name')
+                    ->get()
             ),
             'materials' => $materials,
-            'machines' => $machines,
             'attributes' => AttributeResource::collection($attributes),
+            'attribute_types' => AttributeTypeResource::collection($queries->attributeTypes()),
         ]);
     }
 }

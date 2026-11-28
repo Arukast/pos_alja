@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\StockLedger;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,7 +41,7 @@ class ProductionWriteApiTest extends TestCase
 
     private Material $material;
 
-    private Pricing $pricing;
+    private Product $product;
 
     private Order $order;
 
@@ -67,9 +68,9 @@ class ProductionWriteApiTest extends TestCase
             'calculation_archetype' => 'surface_area',
         ]);
 
-        $product = Product::create([
+        $this->product = Product::create([
             'name' => 'Vinyl Banner',
-            'pricing_type' => 'area',
+            'selling_unit' => 'm2',
             'product_category_id' => $category->id,
         ]);
 
@@ -77,6 +78,7 @@ class ProductionWriteApiTest extends TestCase
             'name' => 'Vinyl Roll',
             'product_category_id' => $category->id,
             'type' => 'roll',
+            'unit' => 'm2',
             'cost' => 10000,
             'price' => 15000,
         ]);
@@ -88,22 +90,11 @@ class ProductionWriteApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        $this->pricing = Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $product->id,
-            'material_id' => $this->material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 10000,
-            'profit' => 40000,
-        ]);
-
         $this->invoice = $this->invoice($this->branchOne, $customer, 'INV-B1-001');
         $this->otherInvoice = $this->invoice($this->branchTwo, $customer, 'INV-B2-001');
 
-        $this->order = $this->order($this->invoice, $this->pricing, 3, 2);
-        $this->otherOrder = $this->order($this->otherInvoice, $this->pricing, 1, 1);
+        $this->order = $this->order($this->invoice, $this->material->id, 3, 2);
+        $this->otherOrder = $this->order($this->otherInvoice, $this->material->id, 1, 1);
     }
 
     public function test_start_deducts_area_stock_and_is_idempotent(): void
@@ -136,6 +127,176 @@ class ProductionWriteApiTest extends TestCase
             ->count());
     }
 
+    public function test_start_production_deducts_stock_from_the_order_material(): void
+    {
+        ['material' => $material, 'order' => $order] = $this->unitOrder('lembar', 0, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->assertSame($material->id, $order->material_id);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage',
+            'reference_type' => 'order',
+            'reference_id' => $order->id,
+        ]);
+    }
+
+    public function test_start_deducts_quantity_for_non_area_units(): void
+    {
+        ['material' => $material, 'order' => $order] = $this->unitOrder('lembar', 3, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->assertSame(8.0, (float) $material->stocks()->first()?->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage',
+            'reference_type' => 'order',
+            'reference_id' => $order->id,
+            'used_stock' => 2,
+            'remaining_stock' => 8,
+        ]);
+    }
+
+    public function test_start_rejects_an_m2_material_on_an_order_without_area(): void
+    {
+        ['material' => $material, 'order' => $order] = $this->unitOrder('m2', 0, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('area');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 0,
+            'operator_id' => null,
+        ]);
+        $this->assertDatabaseCount('order_status_logs', 0);
+        $this->assertSame(10.0, (float) $material->stocks()->first()?->current_stock);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_start_returns_a_validation_error_when_the_priced_material_is_soft_deleted(): void
+    {
+        $this->material->delete();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/start")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $this->order->id,
+            'status' => 0,
+            'operator_id' => null,
+        ]);
+        $this->assertDatabaseCount('order_status_logs', 0);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+        $this->assertSame(10.0, (float) $this->material->stocks()->first()?->current_stock);
+    }
+
+    public function test_start_falls_back_to_quantity_for_materials_with_the_default_unit(): void
+    {
+        // Only m2 materials require an area; this order has none.
+        ['material' => $material, 'order' => $order] = $this->unitOrder(null, 0, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->assertSame(8.0, (float) $material->stocks()->first()?->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage',
+            'reference_id' => $order->id,
+            'used_stock' => 2,
+            'remaining_stock' => 8,
+        ]);
+    }
+
+    public function test_start_allows_a_no_material_order_for_a_no_material_product(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(false);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk()
+            ->assertJsonPath('order.status', 1);
+
+        $this->assertDatabaseCount('stock_ledgers', 0);
+        $this->assertDatabaseCount('wasted_materials', 0);
+
+        $log = ActivityLog::query()
+            ->where('action', 'ORDER_START')
+            ->where('model_id', $order->id)
+            ->firstOrFail();
+
+        $this->assertSame([], $log->payload['material_usage']);
+    }
+
+    public function test_start_rejects_a_null_material_order_for_a_material_product(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(true);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('material');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 0,
+            'operator_id' => null,
+        ]);
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_fail_and_complete_are_allowed_for_a_no_material_order(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(false);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk()
+            ->assertJsonPath('order.status', 1);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/fail", ['note' => 'Cetak gagal'])
+            ->assertOk()
+            ->assertJsonPath('order.status', 3);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/reopen")
+            ->assertOk();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/complete")
+            ->assertOk()
+            ->assertJsonPath('order.status', 2);
+
+        $this->assertDatabaseCount('stock_ledgers', 0);
+    }
+
+    public function test_production_queue_lists_a_no_material_order(): void
+    {
+        ['order' => $order] = $this->noMaterialOrder(false);
+
+        $this->actingAs($this->production)
+            ->getJson('/api/v1/production/queue')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $order->id]);
+    }
+
     public function test_complete_requires_processing_and_sets_completed(): void
     {
         $this->actingAs($this->production)
@@ -150,6 +311,158 @@ class ProductionWriteApiTest extends TestCase
             ->postJson("/api/v1/orders/{$this->order->id}/complete")
             ->assertOk()
             ->assertJsonPath('order.status', 2);
+    }
+
+    public function test_start_writes_order_start_audit_with_material_usage(): void
+    {
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/start")
+            ->assertOk();
+
+        $ledger = StockLedger::query()
+            ->where('reference_type', 'order')
+            ->where('reference_id', $this->order->id)
+            ->where('type', 'usage')
+            ->firstOrFail();
+
+        $log = ActivityLog::query()
+            ->where('action', 'ORDER_START')
+            ->where('model_type', Order::class)
+            ->where('model_id', $this->order->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->production->id, $log->user_id);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+        $this->assertSame(0, $log->payload['status_before']);
+        $this->assertSame(1, $log->payload['status_after']);
+        $this->assertNull($log->payload['operator_before']);
+        $this->assertSame($this->production->id, $log->payload['operator_after']);
+
+        $usage = $log->payload['material_usage'];
+        $this->assertCount(1, $usage);
+        $this->assertSame($this->material->id, $usage[0]['material_id']);
+        $this->assertSame(6.0, (float) $usage[0]['quantity']);
+        $this->assertSame(10.0, (float) $usage[0]['stock_before']);
+        $this->assertSame(4.0, (float) $usage[0]['stock_after']);
+        $this->assertSame('usage', $usage[0]['direction']);
+        $this->assertSame($ledger->id, $usage[0]['ledger_id']);
+    }
+
+    public function test_second_start_audit_uses_the_current_usage_ledger_after_reopen(): void
+    {
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/start")
+            ->assertOk();
+
+        $firstLedger = StockLedger::query()
+            ->where('reference_type', 'order')
+            ->where('reference_id', $this->order->id)
+            ->where('type', 'usage')
+            ->where('initial_stock', 10)
+            ->firstOrFail();
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/fail", ['note' => 'Bahan rusak'])
+            ->assertOk();
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/reopen")
+            ->assertOk();
+
+        $this->material->stocks()->first()?->update(['current_stock' => 12]);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/start")
+            ->assertOk();
+
+        $secondLedger = StockLedger::query()
+            ->where('reference_type', 'order')
+            ->where('reference_id', $this->order->id)
+            ->where('type', 'usage')
+            ->where('initial_stock', 12)
+            ->firstOrFail();
+
+        $this->assertNotSame($firstLedger->id, $secondLedger->id);
+        $this->assertSame(6.0, (float) $secondLedger->remaining_stock);
+
+        $logs = ActivityLog::query()
+            ->where('action', 'ORDER_START')
+            ->where('model_type', Order::class)
+            ->where('model_id', $this->order->id)
+            ->get();
+
+        $this->assertCount(2, $logs);
+
+        $firstLog = $logs->first(
+            fn (ActivityLog $log): bool => $log->payload['material_usage'][0]['ledger_id'] === $firstLedger->id
+        );
+        $secondLog = $logs->first(
+            fn (ActivityLog $log): bool => $log->payload['material_usage'][0]['ledger_id'] === $secondLedger->id
+        );
+
+        $this->assertNotNull($firstLog);
+        $this->assertNotNull($secondLog);
+
+        $usage = $secondLog->payload['material_usage'];
+        $this->assertCount(1, $usage);
+        $this->assertSame(12.0, (float) $usage[0]['stock_before']);
+        $this->assertSame(6.0, (float) $usage[0]['stock_after']);
+    }
+
+    public function test_complete_writes_order_complete_audit(): void
+    {
+        $secondProduction = $this->user('production', $this->branchOne);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/start")
+            ->assertOk();
+
+        $this->actingAs($secondProduction)
+            ->postJson("/api/v1/orders/{$this->order->id}/complete")
+            ->assertOk();
+
+        $log = ActivityLog::query()
+            ->where('action', 'ORDER_COMPLETE')
+            ->where('model_type', Order::class)
+            ->where('model_id', $this->order->id)
+            ->firstOrFail();
+
+        $this->assertSame($secondProduction->id, $log->user_id);
+        $this->assertSame(1, $log->payload['status_before']);
+        $this->assertSame(2, $log->payload['status_after']);
+        $this->assertSame($this->production->id, $log->payload['operator_before']);
+        $this->assertSame($secondProduction->id, $log->payload['operator_after']);
+    }
+
+    public function test_reopen_writes_order_reopen_audit(): void
+    {
+        $this->order->update(['status' => 3, 'operator_id' => $this->production->id]);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/reopen")
+            ->assertOk();
+
+        $log = ActivityLog::query()
+            ->where('action', 'ORDER_REOPEN')
+            ->where('model_type', Order::class)
+            ->where('model_id', $this->order->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->production->id, $log->user_id);
+        $this->assertSame(3, $log->payload['status_before']);
+        $this->assertSame(0, $log->payload['status_after']);
+        $this->assertSame($this->production->id, $log->payload['operator_before']);
+        $this->assertNull($log->payload['operator_after']);
+        $this->assertArrayHasKey('note', $log->payload);
+        $this->assertNull($log->payload['note']);
+    }
+
+    public function test_invalid_transition_does_not_write_audit(): void
+    {
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$this->order->id}/complete")
+            ->assertStatus(422);
+
+        $this->assertDatabaseCount('activity_logs', 0);
     }
 
     public function test_production_cannot_start_another_branch_order(): void
@@ -201,6 +514,58 @@ class ProductionWriteApiTest extends TestCase
             'wasted_stock' => 2,
             'remaining_stock' => 8,
         ]);
+
+        $ledger = StockLedger::query()
+            ->where('material_id', $this->material->id)
+            ->where('type', 'waste')
+            ->where('reference_id', $this->order->id)
+            ->firstOrFail();
+
+        $log = ActivityLog::query()
+            ->where('action', 'STOCK_USAGE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->firstOrFail();
+
+        $this->assertSame($this->production->id, $log->user_id);
+        $this->assertSame($this->branchOne->id, $log->branch_id);
+        $this->assertSame($response->json('waste.id'), $log->payload['waste_id']);
+        $this->assertSame($this->order->id, $log->payload['order_id']);
+        $this->assertSame($this->material->id, $log->payload['material_id']);
+        $this->assertSame(2.0, (float) $log->payload['quantity']);
+        $this->assertSame(10.0, (float) $log->payload['stock_before']);
+        $this->assertSame(8.0, (float) $log->payload['stock_after']);
+        $this->assertSame('Failed print', $log->payload['reason']);
+        $this->assertSame($ledger->id, $log->payload['ledger_id']);
+    }
+
+    public function test_waste_accepts_a_soft_deleted_material_and_writes_stock_usage_audit(): void
+    {
+        $this->material->delete();
+
+        $response = $this->actingAs($this->production)
+            ->postJson('/api/v1/waste', [
+                'material_id' => $this->material->id,
+                'order_id' => $this->order->id,
+                'quantity' => 2,
+            ])
+            ->assertCreated();
+
+        $this->assertSame(8.0, (float) $this->material->stocks()->first()?->current_stock);
+        $this->assertDatabaseHas('wasted_materials', [
+            'id' => $response->json('waste.id'),
+            'material_id' => $this->material->id,
+        ]);
+
+        $log = ActivityLog::query()
+            ->where('action', 'STOCK_USAGE')
+            ->where('model_type', Material::class)
+            ->where('model_id', $this->material->id)
+            ->firstOrFail();
+
+        $this->assertSame(2.0, (float) $log->payload['quantity']);
+        $this->assertSame(10.0, (float) $log->payload['stock_before']);
+        $this->assertSame(8.0, (float) $log->payload['stock_after']);
     }
 
     public function test_waste_allows_missing_designer_and_ignores_machine_id(): void
@@ -237,7 +602,7 @@ class ProductionWriteApiTest extends TestCase
 
     public function test_waste_rejects_completed_order(): void
     {
-        $completed = $this->order($this->invoice, $this->pricing, 1, 1);
+        $completed = $this->order($this->invoice, $this->material->id, 1, 1);
         $completed->update(['status' => 2]);
 
         $this->actingAs($this->production)
@@ -320,6 +685,24 @@ class ProductionWriteApiTest extends TestCase
         }
     }
 
+    public function test_waste_rejects_inactive_designer(): void
+    {
+        $this->designer->update(['is_active' => false]);
+
+        $this->actingAs($this->production)->postJson('/api/v1/waste', [
+            'material_id' => $this->material->id,
+            'designer_id' => $this->designer->id,
+            'order_id' => $this->order->id,
+            'quantity' => 1,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('designer_id')
+            ->assertJsonPath(
+                'errors.designer_id.0',
+                'Desainer ini tidak aktif atau bukan milik cabang Anda.'
+            );
+    }
+
     public function test_waste_requires_authentication_and_a_production_role(): void
     {
         $payload = [
@@ -376,12 +759,62 @@ class ProductionWriteApiTest extends TestCase
         $this->actingAs($this->production)
             ->getJson('/api/v1/production/summary')
             ->assertOk()
-            ->assertJsonPath('waste_today', 2);
+            ->assertJsonPath('waste_today_by_unit.0', ['unit' => 'm2', 'quantity' => 2])
+            ->assertJsonMissingPath('waste_today');
 
         $this->actingAs($this->production)
             ->getJson('/api/v1/dashboard')
             ->assertOk()
-            ->assertJsonPath('waste_today', 2);
+            ->assertJsonPath('waste_today_by_unit.0', ['unit' => 'm2', 'quantity' => 2])
+            ->assertJsonMissingPath('waste_today');
+    }
+
+    /**
+     * @return array{material: Material, order: Order}
+     */
+    private function unitOrder(?string $unit, float $area, float $quantity): array
+    {
+        $attributes = [
+            'name' => 'Bahan '.($unit ?? 'default'),
+            'product_category_id' => $this->material->product_category_id,
+            'type' => 'roll',
+        ];
+
+        if ($unit !== null) {
+            $attributes['unit'] = $unit;
+        }
+
+        $material = Material::create($attributes);
+
+        MaterialBranchStock::create([
+            'material_id' => $material->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 10,
+            'min_stock' => 1,
+        ]);
+
+        return [
+            'material' => $material,
+            'order' => $this->order($this->invoice, $material->id, $area, $quantity),
+        ];
+    }
+
+    /**
+     * @return array{product: Product, order: Order}
+     */
+    private function noMaterialOrder(bool $requiresMaterial): array
+    {
+        $product = Product::create([
+            'name' => 'Layanan Digital',
+            'selling_unit' => 'm2',
+            'product_category_id' => $this->product->product_category_id,
+            'requires_material' => $requiresMaterial,
+        ]);
+
+        return [
+            'product' => $product,
+            'order' => $this->order($this->invoice, null, 3, 2, $product->id),
+        ];
     }
 
     private function branch(string $name): Branch
@@ -421,11 +854,17 @@ class ProductionWriteApiTest extends TestCase
         ]);
     }
 
-    private function order(Invoice $invoice, Pricing $pricing, float $area, float $quantity): Order
-    {
+    private function order(
+        Invoice $invoice,
+        ?string $materialId,
+        float $area,
+        float $quantity,
+        ?string $productId = null,
+    ): Order {
         return Order::create([
             'invoice_id' => $invoice->id,
-            'pricing_id' => $pricing->id,
+            'product_id' => $productId ?? $this->product->id,
+            'material_id' => $materialId,
             'file_name' => 'job.pdf',
             'notes' => 'Production job',
             'area' => $area,

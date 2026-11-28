@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\ProductCategory;
+use App\Models\StockLedger;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -402,7 +403,9 @@ class InventoryServiceTest extends TestCase
 
         $returned = $this->inventoryService->deductStockOnPrint($material->id, 4.0, $this->branchId, $orderId, $operator);
 
-        $this->assertInstanceOf(Material::class, $returned);
+        $this->assertInstanceOf(StockLedger::class, $returned);
+        $this->assertSame(10.0, (float) $returned->initial_stock);
+        $this->assertSame(6.0, (float) $returned->remaining_stock);
         $this->assertDatabaseHas('stock_ledgers', [
             'material_id' => $material->id,
             'type' => 'usage',
@@ -468,6 +471,61 @@ class InventoryServiceTest extends TestCase
             ->where('type', 'initial')
             ->count());
         $this->assertDatabaseCount('stock_ledgers', 1);
+    }
+
+    public function test_usage_reversal_increases_stock_and_records_added_stock(): void
+    {
+        $material = $this->material();
+        $this->seedStock($material, 10.0);
+        $orderId = (string) Str::uuid();
+
+        $this->inventoryService->applyMovement(
+            $material->id,
+            $this->branchId,
+            'usage',
+            6.0,
+            referenceType: 'order',
+            referenceId: $orderId,
+        );
+
+        $result = $this->inventoryService->applyMovement(
+            $material->id,
+            $this->branchId,
+            'usage_reversal',
+            6.0,
+            referenceType: 'order',
+            referenceId: $orderId,
+        );
+
+        $this->assertSame(4.0, $result['old_stock']);
+        $this->assertSame(10.0, $result['new_stock']);
+        $this->assertSame(10.0, (float) $this->stockRow($material)->current_stock);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage_reversal',
+            'reference_type' => 'order',
+            'reference_id' => $orderId,
+            'added_stock' => 6,
+            'used_stock' => 0,
+            'wasted_stock' => 0,
+            'remaining_stock' => 10,
+        ]);
+    }
+
+    public function test_apply_movement_returns_ledger_id(): void
+    {
+        $material = $this->material();
+        $this->seedStock($material, 10.0);
+
+        $result = $this->inventoryService->applyMovement($material->id, $this->branchId, 'usage', 4.0);
+
+        $ledgerId = DB::table('stock_ledgers')
+            ->where('material_id', $material->id)
+            ->where('type', 'usage')
+            ->value('id');
+
+        $this->assertNotNull($ledgerId);
+        $this->assertSame($ledgerId, $result['ledger_id']);
     }
 
     public function test_apply_movement_rejects_unknown_type(): void

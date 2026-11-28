@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -128,6 +129,19 @@ class BranchApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('branch.is_active', false);
 
+        $log = ActivityLog::query()
+            ->where('model_id', $branchId)
+            ->where('description', 'Mengubah status aktif cabang: Renamed Branch menjadi nonaktif')
+            ->firstOrFail();
+        $this->assertSame('UPDATE', $log->action);
+        $this->assertSame(
+            'Mengubah status aktif cabang: Renamed Branch menjadi nonaktif',
+            $log->description
+        );
+        $this->assertSame($branchId, $log->model_id);
+        $this->assertTrue($log->payload['before']['is_active']);
+        $this->assertFalse($log->payload['after']['is_active']);
+
         $this->actingAs($owner)
             ->deleteJson("/api/v1/branches/{$branchId}")
             ->assertNoContent();
@@ -153,6 +167,27 @@ class BranchApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_guest_cannot_toggle_branch_status(): void
+    {
+        $branch = $this->branch('Main Branch');
+
+        $this->patchJson("/api/v1/branches/{$branch->id}/status")->assertUnauthorized();
+
+        $this->assertTrue($branch->fresh()->is_active);
+    }
+
+    public function test_manager_cannot_toggle_branch_status(): void
+    {
+        $branch = $this->branch('Main Branch');
+        $manager = $this->user('manager', $branch);
+
+        $this->actingAs($manager)
+            ->patchJson("/api/v1/branches/{$branch->id}/status")
+            ->assertForbidden();
+
+        $this->assertTrue($branch->fresh()->is_active);
+    }
+
     public function test_branch_code_must_be_unique(): void
     {
         $owner = $this->user('owner', null);
@@ -165,6 +200,73 @@ class BranchApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('code');
+    }
+
+    public function test_owner_can_configure_branch_reseller_discount_percent_and_validates_bounds(): void
+    {
+        $owner = $this->user('owner', null);
+
+        $defaultBranch = $this->actingAs($owner)
+            ->postJson('/api/v1/branches', [
+                'name' => 'Default Discount Branch',
+                'code' => 'DEFDISC',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('branch.reseller_discount_percent', '0.00')
+            ->json('branch');
+
+        $this->assertSame(0.0, Branch::query()->findOrFail($defaultBranch['id'])->getResellerDiscountPercent());
+
+        $configured = $this->actingAs($owner)
+            ->postJson('/api/v1/branches', [
+                'name' => 'Reseller Discount Branch',
+                'code' => 'RESDISC',
+                'reseller_discount_percent' => 12.5,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('branch.reseller_discount_percent', '12.50')
+            ->json('branch');
+
+        $this->actingAs($owner)
+            ->putJson("/api/v1/branches/{$configured['id']}", [
+                'name' => 'Reseller Discount Branch',
+                'code' => 'RESDISC',
+                'reseller_discount_percent' => 15,
+            ])
+            ->assertOk()
+            ->assertJsonPath('branch.reseller_discount_percent', '15.00');
+
+        $this->assertSame(15.0, Branch::query()->findOrFail($configured['id'])->getResellerDiscountPercent());
+
+        $this->actingAs($owner)
+            ->postJson('/api/v1/branches', [
+                'name' => 'Negative Discount',
+                'code' => 'NEGDISC',
+                'reseller_discount_percent' => -1,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('reseller_discount_percent');
+
+        $this->actingAs($owner)
+            ->putJson("/api/v1/branches/{$configured['id']}", [
+                'name' => 'Reseller Discount Branch',
+                'code' => 'RESDISC',
+                'reseller_discount_percent' => 100.01,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('reseller_discount_percent');
+    }
+
+    public function test_branch_update_without_is_active_preserves_current_status(): void
+    {
+        $owner = $this->user('owner', null);
+        $branch = $this->branch('Inactive Branch');
+        $branch->update(['is_active' => false]);
+
+        $this->actingAs($owner)
+            ->putJson("/api/v1/branches/{$branch->id}", ['name' => 'Renamed Branch'])
+            ->assertOk()
+            ->assertJsonPath('branch.is_active', false);
     }
 
     private function branch(string $name, ?string $code = null): Branch

@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Modules\Audit\Http\Controllers\BackupController;
+use App\Modules\Audit\Http\Controllers\BackupSettingController;
 use App\Modules\Catalog\Http\Controllers\AttributeController;
 use App\Modules\Catalog\Http\Controllers\AttributeTypeController;
 use App\Modules\Catalog\Http\Controllers\CategoryController;
-use App\Modules\Catalog\Http\Controllers\MachineController;
 use App\Modules\Catalog\Http\Controllers\MaterialController;
-use App\Modules\Catalog\Http\Controllers\PricingController;
 use App\Modules\Catalog\Http\Controllers\ProductController;
+use App\Modules\Catalog\Http\Controllers\ProductQuantityDiscountController;
 use App\Modules\Catalog\Http\Controllers\StockLedgerController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\BranchController;
@@ -30,7 +31,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login']);
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'active'])->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
@@ -51,6 +52,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/users', [UserController::class, 'store']);
         Route::get('/users/{user}', [UserController::class, 'show']);
         Route::put('/users/{user}', [UserController::class, 'update']);
+        Route::patch('/users/{user}/status', [UserController::class, 'status']);
         Route::delete('/users/{user}', [UserController::class, 'destroy']);
         Route::post('/users/{user}/restore', [UserController::class, 'restore']);
 
@@ -63,8 +65,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::delete('/products/{product}', [ProductController::class, 'destroy']);
         Route::post('/products/{product}/restore', [ProductController::class, 'restore']);
         Route::get('/materials', [MaterialController::class, 'index']);
-        Route::get('/machines', [MachineController::class, 'index']);
-        Route::get('/pricing', [PricingController::class, 'index']);
+        Route::get('/product-quantity-discounts', [ProductQuantityDiscountController::class, 'index']);
         Route::get('/stock-ledgers', [StockLedgerController::class, 'index']);
 
         Route::get('/materials/similar', [MaterialController::class, 'similar']);
@@ -75,37 +76,34 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/materials/{material}/stock', [MaterialController::class, 'stock']);
         Route::post('/materials/{material}/adjustments', [MaterialController::class, 'adjust']);
         Route::post('/materials/{material}/activate', [MaterialController::class, 'activate']);
+        Route::patch('/materials/{material}/min-stock', [MaterialController::class, 'minStock']);
+        Route::patch('/materials/{material}/active', [MaterialController::class, 'active']);
+        Route::patch('/materials/{material}/branch-availability', [MaterialController::class, 'branchAvailability']);
 
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::post('/purchases', [PurchaseController::class, 'store']);
 
-        Route::post('/machines', [MachineController::class, 'store']);
-        Route::put('/machines/{machine}', [MachineController::class, 'update']);
-        Route::delete('/machines/{machine}', [MachineController::class, 'destroy']);
-        Route::post('/machines/{machine}/restore', [MachineController::class, 'restore']);
-
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/{category}', [CategoryController::class, 'update']);
-        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
-
-        Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
-        Route::delete('/attribute-types/{attributeType}', [AttributeTypeController::class, 'destroy']);
 
         Route::post('/attributes', [AttributeController::class, 'store']);
         Route::put('/attributes/{attribute}', [AttributeController::class, 'update']);
-        Route::delete('/attributes/{attribute}', [AttributeController::class, 'destroy']);
 
-        Route::post('/pricing/clone-tiers', [PricingController::class, 'cloneTiers']);
-        Route::post('/pricing', [PricingController::class, 'store']);
-        Route::put('/pricing/{pricing}', [PricingController::class, 'update']);
-        Route::delete('/pricing/{pricing}', [PricingController::class, 'destroy']);
+        Route::post('/attribute-types', [AttributeTypeController::class, 'store']);
+        Route::put('/attribute-types/{type}', [AttributeTypeController::class, 'update']);
+
+        Route::post('/product-quantity-discounts', [ProductQuantityDiscountController::class, 'store']);
+        Route::put('/product-quantity-discounts/{tier}', [ProductQuantityDiscountController::class, 'update']);
+        Route::delete('/product-quantity-discounts/{tier}', [ProductQuantityDiscountController::class, 'destroy']);
 
         Route::get('/customers', [CustomerController::class, 'index']);
         Route::post('/customers', [CustomerController::class, 'store']);
+        Route::put('/customers/{customer}', [CustomerController::class, 'update']);
         Route::get('/quotes/options', [QuoteOptionsController::class, 'index']);
         Route::post('/quotes', [QuoteController::class, 'store']);
         Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::post('/invoices', [InvoiceController::class, 'store']);
+        Route::put('/invoices/{invoice}/items', [InvoiceController::class, 'updateItems']);
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
         Route::get('/invoices/{invoice}/ticket', [InvoiceController::class, 'ticket']);
         Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);
@@ -119,6 +117,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/production/summary', [ProductionController::class, 'summary']);
         Route::post('/orders/{order}/start', [ProductionController::class, 'start']);
         Route::post('/orders/{order}/complete', [ProductionController::class, 'complete']);
+        Route::post('/orders/{order}/fail', [ProductionController::class, 'fail']);
+        Route::post('/orders/{order}/reopen', [ProductionController::class, 'reopen']);
         Route::get('/waste/options', [WasteController::class, 'options']);
         Route::get('/waste', [WasteController::class, 'index']);
         Route::post('/waste', [WasteController::class, 'store']);
@@ -128,9 +128,33 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::get('/reports/base-cost', [ReportController::class, 'baseCost']);
         Route::get('/reports/net-profit', [ReportController::class, 'netProfit']);
         Route::get('/reports/expenses', [ReportController::class, 'expenses']);
+        Route::get('/reports/{type}/export', [ReportController::class, 'export']);
         Route::get('/reports/sparkline', [ReportController::class, 'sparkline']);
         Route::get('/reports/designer-leaderboard', [ReportController::class, 'leaderboard']);
         Route::get('/audit-logs', [AuditController::class, 'index']);
         Route::get('/audit-logs/{activityLog}', [AuditController::class, 'show']);
+
+        Route::get('/backups', [BackupController::class, 'index']);
+        Route::post('/backups', [BackupController::class, 'store']);
+        Route::get('/backups/{backup}/download', [BackupController::class, 'download']);
+        Route::patch('/backups/{backup}/pin', [BackupController::class, 'pin']);
+
+        Route::get('/backup-settings', [BackupSettingController::class, 'show']);
+        Route::put('/backup-settings', [BackupSettingController::class, 'update']);
+    });
+
+    // Tombstone: category deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/categories/{category}', static function (): void {
+        abort(404);
+    });
+
+    // Tombstone: attribute deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/attributes/{attribute}', static function (): void {
+        abort(404);
+    });
+
+    // Tombstone: attribute type deletion is removed, but DELETE must stay detectable as 404, not 405.
+    Route::delete('/attribute-types/{type}', static function (): void {
+        abort(404);
     });
 });

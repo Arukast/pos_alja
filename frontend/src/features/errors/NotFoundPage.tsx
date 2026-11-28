@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router';
 
-import { LogoMark } from '../../components/LogoMark';
 import { Button } from '../../components/ui/Button';
 
 export function NotFoundPage() {
@@ -9,7 +8,13 @@ export function NotFoundPage() {
     return (
         <main className="bg-light-bg text-light-text dark:bg-surface-900 flex min-h-screen items-center justify-center px-4 dark:text-gray-100">
             <section className="border-light-border bg-light-surface shadow-card dark:border-surface-300 dark:bg-surface-700 w-full max-w-md rounded-2xl border px-6 py-10 text-center dark:shadow-none">
-                <LogoMark className="mx-auto h-12 w-12" />
+                <img
+                    src="/images/logo-alja.webp"
+                    alt="Alja Digital Printing"
+                    width={673}
+                    height={371}
+                    className="mx-auto h-auto w-40"
+                />
                 <p className="text-brand-fill dark:text-brand-primary-light mt-5 text-sm font-semibold uppercase tracking-[0.3em]">
                     404
                 </p>

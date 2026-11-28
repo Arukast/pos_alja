@@ -15,7 +15,7 @@
 | Money | Decimal strings with two places, e.g. `"125000.00"`. |
 | Dates | `Y-m-d` for filters and date fields; ISO-8601 for timestamps. |
 | Pagination | `?page=`; response includes `data`, `links`, and `meta` (`current_page`, `last_page`, `per_page`, `total`). |
-| Errors | `{ "message": "...", "errors": { "field": ["..."] } }` with 401, 403, 404, 409, 419, 422, or 429. |
+| Errors | `{ "message": "...", "errors": { "field": ["..."] } }` with 401, 403, 404, 409, 410, 419, 422, or 429. |
 | Language | All user-facing messages are Indonesian. Field names, route paths, enum values, and action codes remain English. |
 | Error rendering | Framework-generated 401/403/404/500 on `/api/*` and `/broadcasting/*` render as `{"message": "..."}` in Indonesian. App-authored `abort()` messages with explicit **401/403** text are preserved; 404 route/model errors use the fixed message. 500 hides internals unless `APP_DEBUG=true`. 422 keeps `message` plus `errors`; 419 and 429 keep default rendering; non-JSON requests keep default rendering. |
 | Branch scope | Derived from the authenticated user. Owner may use `branch_id=all` in reporting. |
@@ -32,9 +32,15 @@
 | PUT | `/auth/profile` | owner, manager | Name and email. |
 | PUT | `/auth/password` | authenticated | Current password plus confirmed new password. 204. |
 | POST | `/auth/confirm-password` | authenticated | Validate current password and record confirmation time. 204. |
-| DELETE | `/auth/profile` | owner, manager | Current password required; soft delete and logout. 204. |
+| DELETE | `/auth/profile` | owner, manager | Current password required; sets `is_active = false`, then logs out and invalidates the session. 204. 422 when the owner is the last active owner. |
 
 `UserResource` never returns `password` or `remember_token`.
+
+Profile deactivation writes an `UPDATE` audit row with description `Menonaktifkan akun sendiri: {username}` and before/after `is_active`.
+
+Login returns 422 with the generic `username` error (`auth.failed`) for invalid credentials, an inactive user, and a non-owner whose assigned branch is inactive, trashed, or missing. Owners skip the branch check; a non-owner with no branch keeps the previous behavior (login succeeds, and branch-scoped actions keep their documented 403/422/empty results).
+
+`EnsureAccountIsActive` runs after `auth:sanctum` on every authenticated `/api/v1` route. An inactive user, or a non-owner whose assigned branch is inactive, trashed, or missing, gets `401` `{ "message": "Akun atau cabang Anda tidak aktif. Silakan hubungi pemilik." }` after the web guard logs out and the session and CSRF token are invalidated. Open Reverb sockets are not revoked; the next authenticated `/api/v1` request rejects the session, and broadcasts carry no money data. `/broadcasting/auth` is outside the `active` middleware, so a deactivated session can still re-authorize a private channel until its next authenticated `/api/v1` request.
 
 ## 3. Identity
 
@@ -49,7 +55,9 @@
 | PATCH | `/branches/{branch}/status` | owner |
 | DELETE | `/branches/{branch}` | owner |
 
-Branch create/update responses include `reseller_discount_percent` (decimal `0–100`, default `0`). `PUT /branches/{branch}` accepts it; the invoice branch's value is used for Reseller pricing.
+Branch create/update accept `reseller_discount_percent` (`0–100`, default `0`) and `settings`; the column and `settings.reseller_discount_percent` are kept in sync and read by pricing.
+
+`PATCH /branches/{branch}/status` toggles `is_active` and writes an `UPDATE` audit row with before/after values; it is the normal SPA toggle. Branch store/update still accept `is_active` (`sometimes`, boolean), but the SPA omits it, so create defaults active and update preserves the current state. Soft-deleted branches are converted to visible inactive rows by `2026_11_26_140000_add_is_active_to_users_and_convert_trashed_branches.php`. `DELETE /branches/{branch}` remains an administrative escape hatch with no restore route.
 
 ### Users
 
@@ -59,22 +67,27 @@ Branch create/update responses include `reseller_discount_percent` (decimal `0�
 | POST | `/users` | owner; manager creates cashier/designer/production in own branch |
 | GET | `/users/{user}` | owner; manager own branch staff |
 | PUT | `/users/{user}` | same as show |
-| DELETE | `/users/{user}` | same as show |
-| POST | `/users/{user}/restore` | same as show |
+| PATCH | `/users/{user}/status` | owner any user except self; manager own-branch cashier/designer/production |
+| DELETE | `/users/{user}` | owner (administrative; no SPA action) |
+| POST | `/users/{user}/restore` | owner (administrative; no SPA action) |
 
-Managers cannot create or manage owner/manager accounts or assign another branch. Passwords are never included in audit payloads.
+`UserResource` includes `is_active` (boolean, default `true`). Store and update requests do not accept `is_active`; the status route, profile deactivation, and user restore change it. `branch_id` must reference a non-trashed branch.
+
+`PATCH /users/{user}/status` toggles `is_active` and writes an `UPDATE` audit row with `before`/`after` `is_active`. An owner cannot toggle their own status (`422` on `is_active`); a manager targeting themselves is denied `403` by the policy before the service runs. The status route cannot emit the last-active-owner guard: a sole owner toggling themselves hits the self-toggle rule, and any other target implies a second active owner. The shared guard blocks profile deactivation (`is_active` key), `DELETE /users/{user}` (`user` key), and demotion through `PUT /users/{user}` (`role` key) with `Pemilik aktif terakhir tidak dapat dinonaktifkan, dihapus, atau diturunkan perannya.`, inside the caller's transaction with `lockForUpdate()`, and is tested at service level. `DELETE` and restore are owner-only administrative APIs with no normal UI; restore also sets `is_active = true`. Managers cannot create or manage owner/manager accounts or assign another branch. Passwords are never included in audit payloads.
 
 ## 4. Catalog And Inventory
 
 | Method | Path | Access |
 | :--- | :--- | :--- |
 | GET | `/categories` | owner, manager |
-| POST/PUT/DELETE | `/categories`, `/categories/{category}` | owner |
+| POST/PUT | `/categories`, `/categories/{category}` | owner |
 | GET | `/attribute-types` | owner, manager |
-| POST/DELETE | `/attribute-types`, `/attribute-types/{attributeType}` | owner |
+| POST | `/attribute-types` | owner |
+| PUT | `/attribute-types/{type}` (slug-bound) | owner |
+| DELETE | `/attribute-types/{type}` (slug-bound) | none (404 tombstone; the row is kept) |
 | GET | `/attributes` | owner, manager |
-| POST/PUT/DELETE | `/attributes`, `/attributes/{attribute}` | owner |
-| GET | `/products` | owner, manager, cashier, designer |
+| POST/PUT | `/attributes`, `/attributes/{attribute}` | owner or manager (manager branch forced when omitted; a different branch is 403; branch immutable after creation) |
+| GET | `/products` | owner, manager, cashier, designer (only owner/manager/designer receive the `tiers` key) |
 | POST/PUT/DELETE | `/products`, `/products/{product}` | owner |
 | POST | `/products/{product}/restore` | owner |
 | GET | `/materials` | owner all; manager/production own branch |
@@ -85,18 +98,32 @@ Managers cannot create or manage owner/manager accounts or assign another branch
 | POST | `/materials/{material}/stock` | owner, manager (manager branch forced) |
 | POST | `/materials/{material}/adjustments` | owner, manager (manager branch forced) |
 | POST | `/materials/{material}/activate` | owner, manager (branch-stock activation) |
+| PATCH | `/materials/{material}/min-stock` | owner names the branch; manager own branch (other branch 403) |
+| PATCH | `/materials/{material}/active` | owner (global active toggle) |
+| PATCH | `/materials/{material}/branch-availability` | owner any branch; manager own branch (other branch 403; branchless manager denied) |
 | GET | `/materials/similar?name=` | owner, manager |
+| GET | `/product-quantity-discounts` | owner, manager (global rows; no branch filter) |
+| POST | `/product-quantity-discounts` | owner only |
+| PUT/DELETE | `/product-quantity-discounts/{tier}` | owner only |
 | GET | `/stock-ledgers` | owner all; manager own branch |
 | GET | `/purchases` | owner all; manager own branch |
 | POST | `/purchases` | owner, manager (manager branch forced) |
 
-Categories accept `discount_tiers[]` with `min_qty` and `discount_percent`. Products accept `name`, `product_category_id`, `pricing_type` (`unit` or `area`), and `is_active`. Materials accept `type`, `cost`, and `price`; the target `unit` field (`m2`, `sheet`, `pcs`) is not implemented (see `docs/requirements/implementation-gaps.md`). Attributes accept `type` (`finishing` or `display`), `price`, and `cost`. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row.
+Categories accept `name`, `description` (nullable, max 255), and `is_active`; `GET /categories` also returns the derived `products_count` (soft-deleted products excluded), while `POST/PUT` return `{id,name,description,is_active}` only. `calculation_archetype` and `allowed_attribute_types` are omitted from category requests and `CategoryResource`. `DELETE /categories/{category}` is removed and returns 404. `DELETE /attributes/{attribute}` is removed and returns 404; `DELETE /attribute-types/{type}` is a 404 tombstone and the row is kept. Attribute types accept `name` (required, max 100, unique), `sort_order` (optional nullable integer, default `max(sort_order) + 1`), and `is_active` (optional boolean, default true). `slug` is generated from the name on create (lowercase, non-empty, unique with a numeric suffix on collision, capped at 100 characters) and is immutable; it is the route key. `GET /attribute-types` returns `{data:[...]}` ordered by `sort_order`, then `name`; `POST` returns `{attribute_type:{...}}` with 201 and `PUT` returns the updated type. `AttributeTypeResource` returns `id`, `name`, `slug`, `sort_order`, and `is_active`. Products accept `name`, `product_category_id`, `selling_unit` (`m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, `batang`), `is_active`, and `material_ids[]?` (UUIDs of compatible non-deleted materials), plus optional `price` and `cost` (`sometimes|numeric|min:0`, two-decimal `decimal(12,2)` columns defaulting to `0.00`, independent of each other and additive to the material/attribute price and cost) and `requires_material` and `uses_attributes` (`sometimes`, boolean, both defaulting to true) and `attribute_type_ids[]?`/`attribute_ids[]?` (UUIDs, `distinct`; types must exist, attributes must exist and not be soft-deleted). An omitted `price` or `cost` on update preserves the stored value; a create defaults it to `0.00`. `selling_unit` is validated with `Rule::in(MaterialUnit::VALUES)`; the stored column defaults to `pcs`, but a create request must send `selling_unit` and a missing key returns 422. This is a hard API break: a client sending only the legacy `pricing_type` key is ignored, so a create without `selling_unit` is 422. New type IDs must reference active `attribute_types`; new attributes must be active, belong to an active type, and be inside the final allowed types. IDs already mapped to the product stay valid on update even when now inactive. The two B2 pivot ID arrays (`attribute_type_ids`, `attribute_ids`) are synced to `attribute_type_product`/`attribute_product`, alongside the existing `material_ids`, in the same transaction as the product row, and writes are Owner-only (Manager gets 403). `ProductResource` returns `materials[]` (`{id,name}`), `material_ids[]`, `attribute_types[]` (`{id,name}`), `attribute_type_ids[]`, `compatible_attributes[]` (`{id,name,type,type_name}`), `attribute_ids[]`, `requires_material`, and `uses_attributes`; the name arrays are display-only and the ID arrays stay authoritative. `ProductResource` also emits `price` (two-decimal string) to Owner, Manager, Cashier, and Designer and `cost` only to Owner and Manager; Cashier, Designer, and Production never receive `cost`, and Production receives neither field. Empty mappings mean all active types/attributes; `uses_attributes = false` disables attributes but keeps the mappings. Product create/restore records a single flat audit snapshot and only product update records `before`/`after`; both carry both flags, all three pivot ID arrays, and `price`/`cost`. Product create/update (not restore) invalidates `['quote-options']` in the SPA. Pricing formulas use `product.selling_unit`; only `m2` selects area (`width * length`) pricing. B2/B4 add no capability-write route: product flags, pivots, and the product's own base `price`/`cost` use `/products`, material and attribute price/cost edits use `/materials` and `/attributes`, and tiers use `/product-quantity-discounts`. Product base price/cost are global across branches; per-branch service pricing is deferred. Materials accept `name`, `product_category_id`, `type`, `dimensions`, `unit`, `cost`, `price`, `initial_stock`, and `min_stock`. `unit` is required on create and optional on update; allowed values are exactly `m2`, `pcs`, `lembar`, `roll`, `kg`, `liter`, and `batang`. The column defaults to `pcs`, and existing rows are backfilled; `m2` displays as `m²`. Attributes accept `name`, `type` (the `attribute_types.slug`; required, max 100, `exists:attribute_types,slug`), `branch_id` (create only; immutable after creation), `price`, `cost`, and `is_active`. Creating an attribute requires an active type; updating keeps the current type even when it is inactive, and a changed type must be active. `AttributeResource` adds `type_name` (the type's display name, or the raw slug when unresolved) and keeps the `cost` rule below. A manager omitting `branch_id` is forced to the manager's own branch; an explicit different branch returns 403. A manager may create a material; the action initializes `material_branch_stock` only for the manager's branch. A manager without a branch creates the material with no branch stock row. Material create and update requests are unchanged and do not accept `is_active`; availability changes only through the two availability PATCH routes described below. `MaterialResource` adds `is_active` at the top level and in each `stocks[]` row. `GET /materials` adds a top-level integer `available_total` for Owner and Manager: globally active, non-deleted materials, and when a branch is resolved it also requires an active branch-stock row there. An owner omitting `branch_id` (or sending `all`) gets the global-only count; a manager is forced to the own branch and a branchless manager gets 0. `available_total` ignores `search`, `low_stock`, `include_deleted`, and pagination. Production responses are unchanged: they omit `is_active`, `available_total`, and money. `AttributeResource` includes `cost` only for Owner and Manager; every other role, including cashier and production, receives attributes without `cost` (only designers can read quote options), while `price` stays.
 
-Material responses include `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data, but include `current_stock`, `min_stock`, and `is_low_stock`. Machine endpoints and pricing-matrix endpoints remain transitional; machine-master removal is not part of the PB-05/PB-07 build (see `docs/requirements/implementation-gaps.md`).
+Material responses include `unit`, `current_stock`, `min_stock`, and `stocks` per branch for owner/manager. Production material responses omit `cost`, `price`, and per-branch price data, but include `unit`, `current_stock`, `min_stock`, and `is_low_stock`. The pricing-matrix endpoints are removed (404). Global product quantity tiers are paginated at 20 rows and ordered by `product_id`, then `min_qty`; `GET` is owner/manager and every write is owner-only (guest 401, cashier/designer/production 403). A tier accepts `product_id` (existing product UUID), `min_qty` (integer >= 1), and `discount_percent` (0–100); `(product_id, min_qty)` is unique, so duplicates and an out-of-range discount return 422. `POST` returns `{tier}` with 201, `PUT /product-quantity-discounts/{tier}` returns `{tier}`, and `DELETE` returns 204 and hard-deletes the row. `ProductQuantityDiscountResource` returns `id`, `product_id`, `product {id,name}`, `min_qty`, and `discount_percent` as a two-decimal string. Tiers have no branch or customer-type dimension; the highest eligible tier wins at quote time. The standalone tier endpoints remain unchanged and tested. In addition, product POST/PUT accept an optional `tiers[]` array of `{min_qty, discount_percent}` (with an optional `id` on update) written inside the product transaction; `min_qty` is an integer `1..100000` with `distinct`, and `discount_percent` is numeric `0..100`. Validation errors use dotted keys (`tiers.0.min_qty`, `tiers.1.id`, ...). A duplicate tier `id` or an `id` belonging to another product returns 422. On PUT, a missing `tiers` key or `tiers: []` deletes all tier rows; rows whose `id` is omitted are deleted, retained ids are updated, and id-less rows are inserted, with deletes before updates/inserts. `ProductResource` emits `tiers` (`id`, `min_qty`, `discount_percent` as a two-decimal string, ordered by `min_qty`) only to Owner, Manager, and Designer. Product create/update audit snapshots include the ordered `tiers` rows under the `tiers` key in both `before` and `after`.
 
 `GET /materials?low_stock=1` returns only materials whose resolved branch stock has `current_stock <= min_stock`. For an owner with `branch_id=all`, the filter uses OR semantics: a material is returned when at least one branch is low. In that case the top-level `is_low_stock` is always null, even when the response loads one stock row, and each `stocks[]` row carries its own boolean `is_low_stock`. For a single resolved branch the top-level `is_low_stock` is a boolean. Each `stocks[]` row always carries its own boolean. Manager and production are forced to their own branch. The filtered list is paginated like the normal list.
 
 Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta` (non-zero signed value, -99999999.99 to 99999999.99), plus `reason` (3-255 characters). `branch_id` is required for an owner and forced from the manager's account. It writes a `stock_ledgers` row of type `adjustment` with the reason and actor, and an activity log entry. The resulting stock must stay between 0 and 99999999.99; a negative result, a zero delta, both or neither mode, or a value over the cap is 422. The response is `{ material: MaterialResource }` with the updated stock, not the ledger row. For an owner adjusting one branch, the updated value appears in `stocks[]`; the top-level `is_low_stock` may be null when several branch rows are loaded. `POST /materials/{material}/stock` remains for a quick positive restock and writes ledger type `restock`.
+
+`PATCH /materials/{material}/min-stock` accepts `min_stock` (0-99999999.99, at most two decimals) and `branch_id` (a UUID). The owner must name the branch; a manager omitting it is forced to the manager's own branch, an explicit different branch returns 403, and a manager without a branch is denied. It updates only `material_branch_stock.min_stock` on an existing row; a missing branch-stock row returns 422 on `branch_id` and is not created. The action writes no `stock_ledgers` row and no activity log, and `current_stock` is unchanged. The response is `{ material: MaterialResource }` with the updated threshold. For an owner whose response loads multiple branch rows, the top-level `min_stock` is `null` and the updated value appears in `stocks[]`; the manager response resolves only the own-branch row and exposes its `min_stock` at the top level.
+
+`PATCH /materials/{material}/active` accepts `is_active` (required boolean) and is Owner-only; other roles get 403 and a missing or non-boolean value gets 422. It locks the material, writes one `UPDATE` audit row with the `is_active` before/after, and leaves stock, ledger, and other master fields untouched. The response is `{ material: MaterialResource }`. The audit row inherits the actor's `branch_id` (null when the owner has no branch).
+
+`PATCH /materials/{material}/branch-availability` accepts `is_active` (required boolean) and `branch_id` (required for an owner, UUID, existing). A manager is forced to the own branch; an explicit different branch is 403 and a branchless manager is denied. An owner omitting `branch_id`, an unknown branch, or a missing branch-stock row returns 422 on `branch_id`, and no row is created. It locks the stock row, updates only `is_active`, and writes no audit row and no stock-ledger row; `current_stock` and `min_stock` are unchanged (accepted FR25 debt). The response is `{ material: MaterialResource }`.
+
+`POST /materials/{material}/activate` creates the branch-stock row when it is missing and sets `is_active = true` on an existing inactive row. Its `ACTIVATE` audit payload keys are unchanged; when the row exists, stock is unchanged and no ledger row is written.
 
 ### Purchase Rules
 
@@ -105,29 +132,29 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 - The server computes each line `subtotal` with integer-cent arithmetic, rounds every line to two decimals, and sums the rounded lines into `total_amount`. Client subtotals and totals are ignored.
 - One transaction creates the purchase and items, increments branch stock, writes one `stock_ledgers` row per line (`type=purchase`, `reference_type=purchase`, `reference_id`, actor), and writes an activity log entry. A missing branch stock row is created with `min_stock=0`. Duplicate material lines are allowed as separate lines and each increments stock.
 - The unique key is `(branch_id, idempotency_key)`. A replay in the resolved branch returns the stored purchase with 200 and no stock or ledger change, even when the payload differs, provided the new payload still validates; an invalid payload returns 422 before the replay lookup. A new purchase returns 201. The replay lookup is branch-scoped, so a manager cannot read another branch's key.
-- The response is `{ purchase: PurchaseResource }`. Fields: `id`, `branch {id,name}`, `user {id,name}`, `purchased_at` (`Y-m-d`), `supplier`, `total_amount`, `notes`, `items[]` (`id`, `material {id,name}`, `quantity`, `unit_cost`, `subtotal`), and `created_at`. Purchase history keeps the name of a soft-deleted material.
+- The response is `{ purchase: PurchaseResource }`. Fields: `id`, `branch {id,name}`, `user {id,name}`, `purchased_at` (`Y-m-d`), `supplier`, `total_amount`, `notes`, `items[]` (`id`, `material {id,name,unit}`, `quantity`, `unit_cost`, `subtotal`), and `created_at`. Purchase history keeps the name and unit of a soft-deleted material.
 - There is no purchase detail, update, or delete route. Purchases are immutable after creation and there is no reversal flow.
 - Over-cap values, a soft-deleted material, or an invalid payload return 422.
 
 ### Stock Ledger Rules
 
 - `GET /stock-ledgers` is owner all; manager own branch.
-- `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
-- `type` is one of `initial`, `purchase`, `usage`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference.
+- `StockLedgerResource` returns `id`, `branch_id`, `branch`, `material {id,name,unit}`, `type`, `reason`, `user {id,name}`, `reference_type`, `reference_id`, `logged_at`, `initial_stock`, `added_stock`, `used_stock`, `wasted_stock`, `remaining_stock`, and `notes`.
+- `type` is one of `initial`, `purchase`, `usage`, `usage_reversal`, `waste`, `adjustment`, or `restock`. Legacy rows may have a null `type`, `user`, and reference. `usage_reversal` is written when a failed processing order returns its net usage; it references the order and records `added_stock`.
 
-`GET /products` uses server-side pagination at 10 products per page (`meta.per_page = 10`) and supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active products (`is_active = true`) only. `GET /categories` includes `discount_tiers[]` (`id`, `min_qty`, and 2-decimal `discount_percent`, ordered by `min_qty`).
+`GET /products` uses server-side pagination at 10 products per page by default (`meta.per_page = 10`); `per_page` accepts 1-100 (above 100 is 422) so admin selects can request a full active catalog in one page. It supports `search` (case-insensitive match on product name and category name), `category_id`, `is_active` (`1`/`0`), and `include_deleted` (`owner` only). `GET /quotes/options` returns active categories only; active products in an active or null category; globally active materials in an active category with an active branch-stock row in the designer's branch; and active attributes unless `include_inactive_attributes=1` (still branch-scoped). It also returns `attribute_types` (all types, ordered by `sort_order`, then `name`) so the SPA can render one select per active type. Attribute objects include `type_name`. Its categories omit `products_count`; product `category` objects include `is_active`, while quote-option material categories return only `{id,name}`. The top-level `materials` list is authoritative for availability. `products[].materials` and `products[].material_ids` are the compatible-material mapping and may still include globally or branch-inactive materials. Each product also carries `requires_material`, `uses_attributes`, `attribute_type_ids[]`, `attribute_ids[]`, and the display-only `attribute_types[]`/`compatible_attributes[]` name arrays, plus a two-decimal `price` (default `0.00`) and no `cost` for designers. Options are not filtered by those mappings; the Designer SPA filters the selects, and the quote/invoice API enforces compatibility server-side. Attribute objects omit `cost` for designers and keep `price`. Product `price` is additive to the selected material/attribute price in the authoritative quote formula; product `cost` is never exposed here. Each product's `tiers` array is present only for Owner, Manager, and Designer; Cashier and Production responses omit the key entirely. `GET /categories` includes `description`, `is_active`, and the derived `products_count` (soft-deleted products excluded).
 
 ## 5. Sales
 
 | Method | Path | Access |
 | :--- | :--- | :--- |
-| GET | `/customers?search=` | owner, manager, cashier, designer |
+| GET | `/customers?search=&page=` | owner, manager, cashier, designer |
 | POST | `/customers` | owner, manager, designer |
 | PUT | `/customers/{customer}` | owner, manager, designer |
 | GET | `/quotes/options` | designer |
 | POST | `/quotes` | designer |
 | POST | `/invoices` | designer with a branch |
-| PUT | `/invoices/{invoice}` | designer, branch-scoped; only before production and not fully paid |
+| PUT | `/invoices/{invoice}/items` | designer, branch-scoped; only before production and not fully paid |
 | GET | `/invoices` | all roles, branch-scoped |
 | GET | `/invoices/{invoice}` | all roles, branch-scoped |
 | GET | `/invoices/{invoice}/print` | owner, manager, cashier, designer; branch-scoped |
@@ -139,28 +166,42 @@ Stock adjustment accepts exactly one of `new_quantity` (0-99999999.99) or `delta
 | GET | `/expenses` | owner all; manager own branch |
 | POST | `/expenses` | owner, manager |
 
+### Customers
+
+- `GET /customers?search=&page=` is server-side paginated at 20 rows per page and returns the paginated envelope `{data, links, meta}` with `meta.per_page = 20`. `search` is trimmed and matches `name` or `phone` (case-insensitive `like`); rows are ordered by `name`. Each `data[]` record carries `id`, `name`, optional `phone`/`email`/`address`, the legacy primary `institution`, the full `institutions: string[]` list, and the customer price class `type` (`Reguler`/`Reseller`). Guests get 401 and production gets 403.
+- Institution labels are exactly, in order: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`, `Bisnis/Perusahaan`, `Organisasi/Yayasan`. `Customer::INSTITUTIONS` on the server and `CUSTOMER_INSTITUTIONS` in the SPA must both use this list.
+- `POST /customers` requires `name` plus either `institutions` (non-empty array of allowed labels) or the legacy singular `institution` (one allowed label); when both are sent, `institutions` wins. Labels are deduplicated and sorted into constant order; the first normalized label is mirrored into `institution`. Phone, email, and address are optional; `type` is optional and accepts `Reguler` (default) or `Reseller`. Owner, manager, and designer may create; cashier and production get 403, guests 401. An unknown label returns 422 on `institutions` (or `institutions.0`) or `institution`; an empty/missing label pair returns 422. A successful create writes an `ActivityLog` `CREATE` row with actor, role, and branch and returns `{customer: CustomerResource}` with 201.
+- `PUT /customers/{customer}` is **full replacement**, not a patch: the server rewrites `name`, `phone`, `email`, `address`, `institution`, `institutions`, and `type` from the request. Omitted optional fields become null and an omitted `type` resets to `Reguler`; send the complete desired state. It uses the same validation pair and label precedence as `POST`, resolves the route-model binding to 404 for an unknown UUID, and writes one `UPDATE` `ActivityLog` row with the actor, role, branch, and the resulting `institutions`. Access mirrors create (owner, manager, designer; cashier/production 403, guest 401). Invalid labels return 422 and write no audit row. The response is `{customer: CustomerResource}` with 200.
+- Customers are global: neither index, create, nor update applies a branch filter. The no-branch non-owner write gap is recorded as remaining debt in `docs/requirements/implementation-gaps.md`.
+
 ### Quote And Invoice Input
 
-`POST /quotes` accepts `customer_id?`, `product_id`, `material_id`, `finishing_id?`, `display_id?`, `quantity`, `width?`, `length?`. It returns `unit_price`, `area`, `quantity`, and `subtotal`; `unit_price` is after the reseller adjustment and before the category quantity discount. Cost and profit are not returned to the designer. When `customer_id` is present, the customer type is read from the customer record; otherwise it defaults to `Reguler`. `GET /quotes/options` returns categories, products, materials, and finishing/display attributes; it does not return machines.
+`POST /quotes` accepts `product_id`, `material_id` (nullable), `selected_attributes[]?`, `quantity`, `width?`, `length?`, and `customer_type?`. `material_id` is required when the product has `requires_material = true` and must be absent or null when it is false; the controller uses `$data['material_id'] ?? null` and skips `MaterialAvailability` when null. Product capability material errors (missing/incompatible material, material on a no-material product) return 422 on `material_id`; product capability attribute errors (attribute outside the allowed types/compatible attributes, or any attributes on a `uses_attributes = false` product) return 422 on `selected_attributes`. Request-validation failures on unknown IDs stay under `selected_attributes.*`; inactive/branch-inactive/duplicate attribute errors and product/service errors stay on `quote`; availability errors stay on `material_id`. No client flag widens these checks. It returns `quote` with `unit_price`, `area`, `quantity`, `quantity_discount_percent` (the applied tier as a decimal string), `discount_amount` (the total discount as a decimal string), and `subtotal`: `unit_price = (products.price + materials.price + sum(selected attributes.price)) * (1 - reseller%/100)` for Reseller lines, `subtotal = unit_price * quantity * area_factor * (1 - highest eligible tier%/100)`, and `area_factor = width * length` only for `selling_unit = m2`. `products.price` defaults to `0.00` and is additive to the material/attribute price; the reseller/quantity/area/tier order is unchanged. Cost mirrors `products.cost + materials.cost + sum(selected attributes.cost)` multiplied by quantity and area factor without commercial discounts. Cost, profit, pricing identity, and tier identity are never returned to the designer. Attribute selection is dynamic across all active types and limited to one attribute per type; there is no fixed cap (no `max:3`). `customer_type` defaults to `Reguler`. It returns 422 on `material_id` when the material is globally inactive, soft-deleted, missing, or has no active branch-stock row in the designer's branch. An unknown attribute ID returns 422 under `selected_attributes.*`; an attribute or type that is inactive, belongs to another branch, or repeats a type returns 422 under `quote`. `GET /quotes/options` returns categories, products, materials, and attributes, filtered to active catalog entries; pass `include_inactive_attributes=1` to keep inactive attributes visible in the designer edit page.
 
-`POST /invoices` and `PUT /invoices/{invoice}` accept `customer_id`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `product_id`, `material_id`, `finishing_id?`, `display_id?`, `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `is_manual_price`, `unit_price?`, and `cost?`.
+`POST /invoices` accepts `customer_id`, `institution?`, `discount?`, `deadline?`, `source?` (`Offline`/`Online`), and `items[]` with `product_id`, `material_id` (nullable), `file_name?`, `notes?`, `width?`, `length?`, `quantity`, `selected_attributes[]?`, `is_manual_price`, `unit_price?`, and `cost?`. The legacy `pricing_id` key is ignored; a line without `product_id` is 422 on `items.{index}.product_id`. Attribute selection follows the same dynamic one-per-type rule as `/quotes`. Order rows persist `width`, `length`, `selected_attributes`, and the server-computed identity/money snapshots so later edits can reprice from the saved specifications. The optional `institution` is the per-order institution choice: it must be one of that customer's `institutions` (or the legacy singular `institution` for an unbackfilled row) and is stored as a snapshot on `invoices.institution`.
+
+`PUT /invoices/{invoice}/items` (designer, own branch) replaces the desired item list. Each update item accepts `id?` for an existing order, `product_id`, `material_id` (nullable), `file_name?`, `notes?`, `width?`, `length?`, `quantity`, and `selected_attributes[]?`. An update item may reuse an inactive material already on the locked existing invoice, including a new line with that material; another unavailable material returns 422 on `items.{index}.material_id`. A soft-deleted material is always rejected, even when an existing order used it. The material allowance applies only to inactive-but-present materials and is material-level and server-derived from the locked existing orders; no client field widens it. The update also keeps any inactive attribute or inactive attribute type already selected anywhere on the locked existing invoice (invoice-wide allowance, server-derived, no client flag). Another inactive or unavailable attribute returns 422 on `items.{index}.selected_attributes`, duplicate attributes of one type are rejected, and there is no fixed selected-attribute cap. The action also accepts an optional `deadline`; when the key is absent the stored deadline is preserved, while an explicit `null` clears it.
+
+`GET /invoices/{invoice}` includes each order's own `product_id`, `material_id`, `material` name (resolved with `withTrashed()`, so a soft-deleted material still shows its name), `customer_type`, `selected_attributes`, geometry, and money snapshots; there is no `pricing` object. `unit_price`, `subtotal`, `quantity_discount_percent`, and `discount_amount` are visible to owner/manager/designer, while `cost` and `profit` are owner/manager only; cashier and production see no per-line money fields. The designer edit page derives `selling_unit` (one of the seven SATUAN values) from the product in `/quotes/options`; only `m2` selects area (`width * length`) pricing. Lines created before B4 keep their money snapshots but render null product/material identity. `GET /invoices` (the `/api/v1/invoices` list endpoint) eager-loads `orders` for all roles: non-production roles receive the safe `OrderResource` (order-owned product/material identity, `status`, `is_manual_price`, and money allowed for the role, with no `pricing` object), while production receives the money-free `ProductionOrderResource` subset; `GET /invoices/{invoice}` remains the detail endpoint that loads the full order snapshots.
 
 Server rules:
 
-- Base price is recomputed from material price plus finishing/display price; client prices are ignored unless `is_manual_price` is true.
-- For a Reseller customer, the branch reseller discount is applied to the base price. The customer type comes from `customer_id`, never from a client-writable `customer_type`.
-- The category quantity discount uses the tier with the highest `min_qty <= quantity`.
-- Manual lines require both `unit_price` and `cost`, must be non-negative, and `cost` must not exceed `unit_price`.
-- Only one finishing and one display option may be selected per item; the selected option and its price/cost snapshot are stored in `order_attributes`.
-- Machine ids are no longer accepted.
+- New quote and invoice lines require a globally active material with an active branch-stock row. `POST /quotes` returns 422 on `material_id` and `POST /invoices` returns 422 on `items.{index}.material_id` for an inactive, branch-inactive, soft-deleted, or missing-stock material, including manual-price lines. The invoice-edit allowance above is the only exception.
+- Invoice create and item updates enforce the product's own composition: a `null` `material_id` is accepted only for a product with `requires_material = false`; a non-null material requires a material product and must be compatible; `uses_attributes = false` rejects new attributes under `items.{index}.selected_attributes`; allowed types/compatible attributes are enforced. Material requirement and compatibility errors return 422 on `items.{index}.material_id`; product errors return 422 on `items.{index}.product_id`; capability attribute errors return 422 on `items.{index}.selected_attributes`. A null-material line skips the availability check; active product, positive quantity, branch reseller percent, and tier eligibility still apply.
+- An invoice edit grandfathers only a whole unchanged line: the locked order's `product_id`, `material_id`, and normalized (lowercased, de-duplicated, sorted) `selected_attributes` set must all match. Unchanged lines skip the product capability checks and keep the locked-order-derived inactive material/attribute allowances. Any new line, changed product, changed material, or changed/added selection is enforced; no client field or flag widens the grandfather decision. `selected_attributes` in the request is used for the comparison, while the signature is derived from locked orders.
+- `QuotePricingService::calculate()` recomputes base, both discounts, area, cost, profit, and `discount_amount`; client prices are ignored unless `is_manual_price` is true, and even then the server persists the snapshot and recomputes totals.
+- Invoice creation reads the customer type from the customer record. The branch reseller percent applies to Reseller lines and the highest eligible product tier applies to every line; both percentages and the combined `discount_amount` are snapshotted on each order.
+- Invoice creation resolves the allowed labels from `customer.institutions`, falling back to `[customer.institution]` for legacy rows. A requested `institution` outside that set returns 422 on `institution` (`Institusi tidak termasuk pilihan pelanggan ini.`) and creates no invoice; when omitted, the first allowed label is used, including for legacy labels outside the six-label allow-list. The SPA therefore omits the field when the selected label is not in `CUSTOMER_INSTITUTIONS`, so an unbackfilled legacy label still produces a valid invoice. The chosen label is stored on `invoices.institution`. `InvoiceResource` returns this snapshot as the nested `customer.institution`, falling back to the live customer label for legacy invoices, so later customer edits never rewrite existing invoice history. No top-level invoice field, receipt field, ticket field, or print change is introduced.
+- Manual lines require both `unit_price` and `cost`; `unit_price` must be positive, `cost` must be non-negative, and `cost` must not exceed `unit_price`.
+- `selected_attributes[]` is the only attribute selection: every selected active attribute contributes its own `price`/`cost` to the computed base; a deactivated attribute is accepted only for an unchanged invoice line already using it. Legacy `finishing_id`/`cut_id`/`display_id` keys are not request fields. The selection is persisted on `orders.selected_attributes`; there is no `order_attributes` snapshot table.
 - Discount cannot exceed the computed subtotal.
 - Invoice numbers use the unique branch code and a per-branch daily sequence.
-- Creation, update, and manual-price audit entries are atomic.
-- An invoice update is rejected with 409 when any order is already in production or the invoice is fully paid.
-- An invoice update is rejected with 422 when the new total is less than the amount already paid.
+- Invoice creation and item updates lock the invoice and its order rows in a transaction. Item updates recalculate line quotes and invoice totals on the server, preserve payment rows, and audit before/after totals and item IDs.
+- An invoice item update is rejected with 409 when any order is already in production, the invoice is fully paid, or any existing order has `is_manual_price` set; manual lines are never repriced at list price.
+- An invoice item update is rejected with 422 when the discount exceeds the new subtotal or the new total is less than the amount already paid.
 - Production may read the invoice detail only with money fields redacted; invoice and receipt print are denied.
 
-Customer input requires `name` and `institution`; `phone`, `email`, `address`, and `type` are optional. `type` defaults to `Reguler` and accepts `Reguler` or `Reseller`. Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`.
+Customer input requires `name` and at least one institution label via `institutions[]` or legacy `institution`; `phone`, `email`, `address`, and `type` are optional. `type` defaults to `Reguler` and accepts `Reguler` or `Reseller`. Institutions: `Masyarakat/Retail`, `Sekolah`, `Universitas`, `Pemerintahan`, `Bisnis/Perusahaan`, `Organisasi/Yayasan`. Both POST and PUT follow the rules in the Customers section above, including `institutions` precedence and PUT full-replacement semantics.
 
 ### Payment Rules
 
@@ -181,17 +222,23 @@ Customer input requires `name` and `institution`; `phone`, `email`, `address`, a
 
 | Method | Path | Access |
 | :--- | :--- | :--- |
-| GET | `/production/queue?status=&branch_id=` | all roles, branch-scoped |
+| GET | `/production/queue?branch_id=` | all roles, branch-scoped |
 | GET | `/production/summary` | production |
 | POST | `/orders/{order}/start` | production, branch-scoped |
 | POST | `/orders/{order}/complete` | production, branch-scoped |
+| POST | `/orders/{order}/fail` | production, branch-scoped |
+| POST | `/orders/{order}/reopen` | production, branch-scoped |
 | GET | `/waste` | production, branch-scoped |
 | POST | `/waste` | production, branch-scoped |
 | GET | `/waste/options` | production, branch-scoped |
 
-The queue filters by `status` (`0`, `1`, `2`) and, for owner, by `branch_id`. It sorts by deadline, priority, and creation time. Starting an order deducts material stock once, sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
+The queue returns statuses `0`, `1`, and `3` (Gagal), accepts an optional `status` (`0`, `1`, or `3`; any other value returns 422) and an optional `search` (matched against the invoice number, file name, or exact order UUID), and for owner filters by `branch_id`. A non-UUID `search` value never touches the UUID `id` column. Each item includes `has_waste`, which is `true` when at least one `wasted_materials` row references the order and is eager-loaded so the queue does not run per-row queries. It currently orders by `created_at`, then `id`; deadline/priority sorting is not implemented. Both the queue and all four `/production/summary` counts require the parent invoice status to be `1` (DP) or `2` (Lunas); orders on unpaid invoices (status `0`) are excluded for every actor, including owner with no branch or `branch_id=all`. Starting an order requires status 0 and deducts material stock once by unit: `m2` deducts `area * quantity` and 422s when `area <= 0`; every other unit deducts `quantity`. An order with `material_id = null` may start only when its own product has `requires_material = false`: no stock deduction, no usage ledger, `material_usage = []` in the audit payload, and the existing status/operator/log/broadcast path unchanged. A null-material order for a material-required product, or a soft-deleted material (`material_id` set but `material` null), returns 422 on `material` with `Bahan untuk pesanan ini tidak ditemukan.` Material and unit come from the order snapshot. Waste remains material-only. No new route or permission is added. It sets status 1, writes a status log, and broadcasts. Completing requires status 1 and sets status 2.
 
-Waste is recorded from the queue row and requires `order_id`; the order must belong to the operator's branch and have status 0 or 1. `material_id` must have a branch stock row, `quantity` must be positive, at most two decimals, and at most 99999999.99, `dimensions` and `notes` are optional, and `designer_id` is optional (a designer in the same branch). `machine_id` is not accepted and is ignored if sent. Waste writes a `stock_ledgers` row of type `waste` with the order reference and actor, and may push stock negative but not below -99999999.99. `GET /waste` returns paginated history; `WasteResource` has `id`, `branch`, `material`, `order_id`, `designer`, `operator`, `quantity`, `dimensions`, `notes`, and `logged_at`, with no machine. `GET /waste/options` returns branch materials and branch designers only. The SPA records waste from the queue row; `/production/waste` is read-only history.
+`GET /production/summary` is production-only and branch-scoped. It returns `queued`, `processing`, `completed_today`, `failed` (orders currently in status `3`), and `waste_today_by_unit`, an array of `{ unit, quantity }` for today grouped by material unit, including soft-deleted materials. The old flat waste number no longer exists. All four counts apply the same invoice-status `1/2` predicate as the queue. `completed_today` still counts order status `2` while the queue excludes it, so full queue/summary parity is not claimed.
+
+`POST /orders/{order}/fail` requires `note` (3–255 characters) and status `1`; any other status returns 422. It reverses the net usage per `(material_id, branch_id)` (`usage` minus `usage_reversal`), writes one `usage_reversal` row for each material with positive net usage, sets status `3`, keeps the operator, writes the status log with the note verbatim, and broadcasts. It returns 200 `{ order }`. `POST /orders/{order}/reopen` takes no body and requires status `3`; any other status returns 422. It sets status `0`, clears the operator, writes the status log note `Production reopened`, and broadcasts. It returns 200 `{ order }`. Both are production-only and branch-scoped: guest 401, wrong role or other branch 403.
+
+Waste is recorded from the queue row and requires `order_id`; the order must belong to the operator's branch and have status `0`, `1`, or `3`. A completed order (status `2`) returns 422. `material_id` must have a branch stock row, `quantity` must be positive, at most two decimals, and at most 99999999.99, `dimensions` and `notes` are optional, and `designer_id` is optional (a designer in the same branch). Waste writes a `stock_ledgers` row of type `waste` with the order reference and actor, and may push stock negative but not below -99999999.99. `GET /waste` returns paginated history; `WasteResource` has `id`, `branch`, `material {id,name,unit}`, `order_id`, `designer`, `operator`, `quantity`, `dimensions`, `notes`, and `logged_at`. `GET /waste/options` returns branch materials and branch designers only. The SPA records waste from the queue row; `/production/waste` is read-only history.
 
 Production responses omit all money fields. Quantities are numeric. The queue is the production work list; there is no separate ticket endpoint.
 
@@ -204,18 +251,94 @@ Production responses omit all money fields. Quantities are numeric. The queue is
 | Method | Path | Access |
 | :--- | :--- | :--- |
 | GET | `/dashboard` | all roles; role-shaped payload |
-| GET | `/reports/gross-revenue` | owner |
-| GET | `/reports/base-cost` | owner |
-| GET | `/reports/net-profit` | owner |
-| GET | `/reports/expenses` | owner |
+| GET | `/reports/gross-revenue` | owner, manager (own branch) |
+| GET | `/reports/base-cost` | owner, manager (own branch) |
+| GET | `/reports/net-profit` | owner, manager (own branch) |
+| GET | `/reports/expenses` | owner, manager (own branch) |
+| GET | `/reports/{type}/export` | owner, manager (own branch) |
 | GET | `/reports/sparkline?period=daily|weekly|monthly` | owner |
 | GET | `/reports/designer-leaderboard` | manager |
 | GET | `/audit-logs` | owner |
 | GET | `/audit-logs/{activityLog}` | owner |
+| GET | `/backups` | owner |
+| POST | `/backups` | owner |
+| GET | `/backups/{backup}/download` | owner |
+| PATCH | `/backups/{backup}/pin` | owner |
+| GET | `/backup-settings` | owner |
+| PUT | `/backup-settings` | owner |
 
-Report filters: `branch_id`, `start_date`, `end_date`. `end_date` must be on or after `start_date`. Owner net profit subtracts invoice HPP, wasted material cost, and operating expenses.
+Dashboard and report scoping:
+
+- `GET /dashboard` (`DashboardRequest`): accepts `period` (`daily|weekly|monthly`, default `daily`) and `branch_id` (owner only; defaults to `all`). Non-owner users without a branch or non-owners sending `branch_id=all` or another branch's UUID receive `403`. Both `owner` and `manager` receive `period`, `finance.receivables`, `order_count`, and `production` (`queued`, `processing`, `completed`, `failed`); `manager` also receives branch `finance` (`gross_revenue`, `expenses`, `receivables`), `counts`, `stock_ledgers`, `expenses`, and `leaderboard`. For a manager, `counts.materials` is the same available material count as `GET /materials.available_total` for the own branch: globally active materials with an active own-branch stock row; a branchless manager gets 0.
+- The production dashboard payload returns `queued`, `processing`, `completed_today`, `waste_today_by_unit`, and the queue; `failed` is returned by `/production/summary`.
+- Financial reports (`gross-revenue`, `base-cost`, `net-profit`, `expenses`) use `ReportFilterRequest`: `period` (`daily|weekly|monthly|custom`), `branch_id` (owner only; managers are locked to their own branch and receive `403` on `branch_id=all` or another branch), `start_date`, and `end_date` (`after_or_equal:start_date`). Preset periods (`daily`, `weekly`, `monthly`) derive `start_date`/`end_date` automatically when omitted; `custom` requires both dates. Net profit subtracts invoice HPP, wasted material cost, and operating expenses.
+- `GET /reports/{type}/export` (`ExportReportRequest`, `ExportReport` action): `type` in `gross-revenue`, `base-cost`, `net-profit`, `expenses`; required `format` in `xlsx|pdf` (`422` otherwise); same period, date, and branch authorization rules as financial reports. Generates `.xlsx` via streaming `openspout/openspout` (`ExcelReportExporter`) or printable A4 `.pdf` via `dompdf/dompdf` (`PdfReportExporter`, detail tables capped at 200 rows per section) with `Content-Disposition: attachment; filename="laporan-{type}-{scope}-{start_date}_{end_date}.{xlsx|pdf}"`. Records an `EXPORT` `ActivityLog` entry via `AuditLogger` before streaming starts.
 
 Audit logs support `search`, `sort` (`created_at`, `username`, `role`, `action`), `direction`, and pagination.
+
+`ActivityLogResource` returns `id`, `branch {id,name}` or null, `user {id,name}` or null, `username`, `role`, `action`, `description`, `model_type`, `model_id`, `payload`, and `created_at`. Eloquent audit rows are append-only: updates and deletes throw. Query-builder mass updates and raw SQL bypass the guard by convention. The list is global and owner-only; no branch filter exists. The SPA renders a detail modal from the same list payload; there is no extra detail fetch.
+
+### Backup Runs
+
+`GET /api/v1/backups`
+
+- Owner only. Paginated, `created_at` descending. `per_page` is 1-50 and defaults to 10.
+- `BackupResource` fields: `id`, `trigger` (`manual`/`scheduled`), `destination` (`local`/`remote`/`both`), `status` (`queued`/`running`/`success`/`partial`/`failed`), `filename` (null while `queued`), `size_bytes`, `local_available`, `remote_available`, `is_pinned`, `error`, `user {id,name}` or null, `started_at`, `finished_at`, `created_at`, and `meta`.
+- `local_available` is a live existence check on the local disk. `remote_available` only means `remote_path !== null`; no per-row R2 HEAD is issued, so the download endpoint's `410` remains authoritative.
+- `meta` carries `pruned` counts per destination, `duration_ms`, `remote_skipped`, and `retention_error`. Transient keys starting with `pending_` (job cleanup targets) are stripped from the response.
+
+`POST /api/v1/backups`
+
+- Owner only. No request body.
+- If a manual run is `queued` or `running` and was created within the last 30 minutes, returns `409` with `{ "message": "Backup manual sedang berjalan." }`. Scheduled runs never block a manual run.
+- Remote backup disabled: creates `trigger=manual`, `destination=local`, `status=queued` with the owner as `user_id`.
+- Remote backup enabled and configured: creates `destination=both`.
+- Remote backup enabled but unconfigured (bucket, endpoint, key, or secret missing): returns `422` with `{ "message": "Backup remote belum dikonfigurasi." }` and creates no row.
+- Dispatches the queued job and returns `202` with `{ "message": "Backup dimulai.", "backup": BackupResource }`. The dump never runs inside the request.
+- If dispatch throws, the row is marked `failed`, one `BACKUP` audit row is written, and the response is `500` with `{ "message": "Backup gagal dimulai." }`.
+
+`GET /api/v1/backups/{backup}/download`
+
+- Owner only. Streams the stored dump as `filename`. Prefers `local_path` when the file exists, then `remote_path`. The request never supplies a path.
+- Writes a `DOWNLOAD` audit row before streaming starts; the row means an attempted download, so a client abort after the headers still leaves it.
+- Returns `410` with `{ "message": "Berkas backup tidak ditemukan." }` when neither file exists.
+
+`PATCH /api/v1/backups/{backup}/pin`
+
+- Owner only. Body `{ "pinned": true|false }` (`pinned` is required and boolean); unknown fields are ignored.
+- Locks the row, updates `is_pinned`, writes `PIN` or `UNPIN` with before/after, and returns `200` `{ "backup": BackupResource }`.
+- Pinned files are exempt from retention. They still count toward usage and can still be downloaded.
+
+### Backup Settings
+
+`GET /api/v1/backup-settings` returns `{ "settings": BackupSettingResource }` for the owner. `PUT /api/v1/backup-settings` is a full replace: all twelve fields are required, and partial updates return `422`.
+
+| Field | Rule |
+| :--- | :--- |
+| `local_enabled`, `remote_enabled` | boolean |
+| `local_time`, `remote_time` | `H:i` |
+| `local_daily_days`, `remote_daily_days` | integer 7-90 |
+| `local_weekly_weeks`, `remote_weekly_weeks` | integer 4-52 |
+| `local_monthly_months`, `remote_monthly_months` | integer 6-24 |
+| `local_yearly_years`, `remote_yearly_years` | integer 1-10 |
+
+`BackupSettingResource` returns the twelve fields plus `local_usage_bytes`, `remote_usage_bytes`, `remote_quota_bytes`, `remote_usage_percent`, `remote_configured`, and `pinned_count`.
+
+- Usage sums `size_bytes` of rows whose matching path is not null; pinned files count. `remote_usage_percent = remote_usage_bytes / remote_quota_bytes * 100`, rounded to one decimal, and is `0` when the quota is `0`.
+- `remote_configured` only says whether bucket, endpoint, key, and secret are present; values are never exposed.
+- Saving with remote enabled but unconfigured is allowed; the first remote run fails visibly and the page shows a warning.
+- The update writes one `UPDATE` audit row with `before` and `after` for the submitted fields and returns `{ "settings": ... }`.
+- Changes apply on the next `backup:tick`; no scheduler restart is needed. A time moved earlier than now catches up on the next tick if today's run has not happened.
+
+### Reporting And Backup Audit Actions
+
+| Action | Subject | Payload | Notes |
+| :--- | :--- | :--- | :--- |
+| `EXPORT` | None (`model_type`/`model_id` null) | `report_type`, `format`, `period`, `branch_id`, `start_date`, `end_date` | Written via `AuditLogger` before streaming; `activity_logs.branch_id` is null when owner exports `all` branches. |
+| `BACKUP` | `Backup` | `backup_id`, `trigger`, `destination`, `status`, `filename`, `local_path`, `remote_path`, `size`, `error`, `meta` | One row per run. Scheduled runs use the system actor. `RunBackup::failed()` is idempotent by checking for an existing row. |
+| `DOWNLOAD` | `Backup` | `backup_id`, `filename`, `source` (`local` or `remote`) | Written before streaming; it records the attempt, not completion. |
+| `PIN` / `UNPIN` | `Backup` | `backup_id`, `is_pinned_before`, `is_pinned_after` | Inside the pin transaction. |
+| `UPDATE` | `BackupSetting` | `before`, `after` | Keys limited to the submitted settings fields, e.g. `local_time` or `remote_daily_days`. |
 
 ## 8. Realtime
 

@@ -2,13 +2,18 @@
 
 namespace App\Services;
 
-use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class UserService
 {
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly LastActiveOwnerGuard $lastActiveOwnerGuard
+    ) {}
+
     /**
      * Create a user and log activity.
      */
@@ -29,17 +34,13 @@ class UserService
             $payload = $user->toArray();
             unset($payload['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'CREATE',
-                'description' => "Membuat pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => $payload,
-            ]);
+            $this->audit->record(
+                $actor,
+                'CREATE',
+                "Membuat pengguna: {$user->username} ({$user->role})",
+                $user,
+                $payload,
+            );
 
             return $user;
         });
@@ -68,25 +69,60 @@ class UserService
                 $updateData['password'] = Hash::make($data['password']);
             }
 
+            if ($user->role === 'owner' && ($data['role'] ?? $user->role) !== 'owner') {
+                $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user, 'role');
+            }
+
             $user->update($updateData);
 
             $newData = $user->fresh()->toArray();
             unset($newData['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'UPDATE',
-                'description' => "Memperbarui pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => [
+            $this->audit->record(
+                $actor,
+                'UPDATE',
+                "Memperbarui pengguna: {$user->username} ({$user->role})",
+                $user,
+                [
                     'before' => $oldData,
                     'after' => $newData,
                 ],
+            );
+
+            return $user;
+        });
+    }
+
+    /**
+     * Toggle a user's active status and log activity.
+     */
+    public function toggleUserStatus(User $user, User $actor): User
+    {
+        if ($actor->is($user)) {
+            throw ValidationException::withMessages([
+                'is_active' => 'Anda tidak dapat menonaktifkan akun Anda sendiri dari Manajemen Pengguna. Gunakan menu Profil.',
             ]);
+        }
+
+        return DB::transaction(function () use ($user, $actor): User {
+            $oldStatus = $user->is_active;
+
+            if ($oldStatus) {
+                $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user);
+            }
+
+            $user->update(['is_active' => ! $oldStatus]);
+
+            $this->audit->record(
+                $actor,
+                'UPDATE',
+                "Mengubah status aktif pengguna: {$user->username} menjadi ".($user->is_active ? 'aktif' : 'nonaktif'),
+                $user,
+                [
+                    'before' => ['is_active' => $oldStatus],
+                    'after' => ['is_active' => $user->is_active],
+                ],
+            );
 
             return $user;
         });
@@ -98,20 +134,18 @@ class UserService
     public function deleteUser(User $user, User $actor): void
     {
         DB::transaction(function () use ($user, $actor) {
+            $this->lastActiveOwnerGuard->ensureNotLastActiveOwner($user, 'user');
+
             $payload = $user->toArray();
             unset($payload['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'DELETE',
-                'description' => "Menghapus pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => $payload,
-            ]);
+            $this->audit->record(
+                $actor,
+                'DELETE',
+                "Menghapus pengguna: {$user->username} ({$user->role})",
+                $user,
+                $payload,
+            );
 
             $user->delete();
         });
@@ -124,21 +158,18 @@ class UserService
     {
         DB::transaction(function () use ($user, $actor) {
             $user->restore();
+            $user->update(['is_active' => true]);
 
             $payload = $user->toArray();
             unset($payload['password']);
 
-            ActivityLog::create([
-                'branch_id' => $actor->branch_id,
-                'user_id' => $actor->id,
-                'username' => $actor->username,
-                'role' => $actor->role,
-                'action' => 'RESTORE',
-                'description' => "Memulihkan pengguna: {$user->username} ({$user->role})",
-                'model_type' => User::class,
-                'model_id' => $user->id,
-                'payload' => $payload,
-            ]);
+            $this->audit->record(
+                $actor,
+                'RESTORE',
+                "Memulihkan pengguna: {$user->username} ({$user->role})",
+                $user,
+                $payload,
+            );
         });
     }
 }
