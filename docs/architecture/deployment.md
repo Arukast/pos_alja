@@ -268,23 +268,19 @@ The Unit A drop migrations (`2026_11_27_000003_drop_product_category_discounts_t
 
 Before `php artisan migrate --force` on any database that may contain rows in `product_category_discounts` or `attribute_types`, take and verify a backup: at minimum `pg_dump -Fc -t product_category_discounts -t attribute_types <database>` (a full database dump is also acceptable), confirm it restores, and get Owner approval to proceed. If either table is non-empty and no verified backup exists, stop.
 
+### B4 Pricing Redesign (Irreversible Drop)
+
+Four migrations run in filename order: `2026_11_27_000011_create_product_quantity_discounts_table.php` (new global tiers), `000012_add_pricing_snapshots_to_orders_table.php` (six order columns), `000013_drop_pricing_id_from_orders_table.php`, and `000014_drop_pricing_and_attribute_pricing_tables.php`. They use only portable Schema/Builder operations with no platform-specific raw SQL; SQLite rebuilds tables for column drops while PostgreSQL issues native `DROP COLUMN`/`DROP TABLE`. The automated suite exercises them on SQLite; PostgreSQL DDL and rollback on a populated database remain unverified here.
+
+The last two migrations are irreversible: every `pricing` and `attribute_pricing` row and every `orders.pricing_id` value is deleted with no backfill. Historical orders keep their money snapshots but render null product/material identity. `down()` restores only empty tables or the `pricing_id` column, never the dropped rows.
+
+Before deploying to any database that may hold matrix rows, take a verified backup (`pg_dump -Fc <database>` or a verified equivalent), confirm it restores to a scratch database, record the dump location and verification result, and get Owner approval. If a verified backup is absent, stop the deploy. Run the backend and migration first, then the SPA: the old SPA shows `Matriks Harga` and sends `pricing_id`, so it cannot operate against the new API. Rollback requires restoring the verified dump; a partial `migrate:rollback` does not recover data.
+
 ### Material Availability Flags (Additive)
 
 `2026_11_27_000005_add_is_active_to_materials_and_material_branch_stock.php` adds `materials.is_active` and `material_branch_stock.is_active`, both boolean default `true`. Existing rows read true. It has no backfill, no data loss, and no index. Run `php artisan migrate --force` as usual; `down()` drops only the two flags, so stock, ledger, and history remain.
 
-Take the usual verified pre-deploy backup, then run this read-only check for active pricing rows whose material has no active branch stock before deploying the enforcement:
-
-```sql
-SELECT count(*) FROM pricing p
-JOIN materials m ON m.id = p.material_id
-WHERE p.deleted_at IS NULL AND m.deleted_at IS NULL AND m.is_active
-  AND NOT EXISTS (
-    SELECT 1 FROM material_branch_stock s
-    WHERE s.material_id = m.id AND s.branch_id = p.branch_id AND s.is_active
-  );
-```
-
-Have the Owner decide whether those materials should remain orderable; no automatic data change is made. Deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API; the availability toggles require the new API, because the PATCH routes return 404 against an older API.
+Take the usual verified pre-deploy backup. The B4 pricing-matrix removal has since dropped the `pricing` table, so this historical pre-flight check is no longer runnable; material availability is now enforced from `materials.is_active` and `material_branch_stock.is_active`, and new quote/invoice lines carry their own `material_id`. Have the Owner decide whether materials should remain orderable; no automatic data change is made. Deploy the API (migration and backend) before the SPA. The old SPA ignores the new fields and keeps working against the new API; the availability toggles require the new API, because the PATCH routes return 404 against an older API.
 
 ### Attribute Types (Additive + Column Widening)
 
@@ -312,7 +308,7 @@ SQLite does not enforce varchar length, so the widening, the seed/backfill, and 
 Two new migrations are additive in `up()` and run in filename order:
 
 1. `2026_11_27_000007_add_product_composition_columns_and_pivots.php` adds `products.requires_material` and `products.uses_attributes` (boolean, default `true`, cast boolean) and creates `attribute_type_product` and `attribute_product`. Each pivot has a composite primary key on its two UUID columns, foreign keys to `products` and `attribute_types`/`attributes` with `cascadeOnDelete()`, and timestamps. There is no backfill: existing products keep both flags true and both pivots empty, which means all active types/attributes, so current behavior is preserved until an Owner edits the product. `down()` drops both pivots and the two columns; configured memberships are lost on rollback.
-2. `2026_11_27_000008_make_pricing_material_id_nullable.php` changes `pricing.material_id` to nullable with `change()` and no backfill; existing rows are untouched. On SQLite `change()` rebuilds the table; `NoMaterialPricingApiTest` asserts the rebuilt table still has the `material_id` foreign key to `materials` with `cascade` on delete. On PostgreSQL run the migration normally and verify the column and constraint explicitly (the SQLite suite does not execute PostgreSQL DDL):
+2. `2026_11_27_000008_make_pricing_material_id_nullable.php` changes `pricing.material_id` to nullable with `change()` and no backfill; existing rows are untouched. On SQLite `change()` rebuilds the table; `NoMaterialOrderApiTest` asserts the rebuilt table still has the `material_id` foreign key to `materials` with `cascade` on delete. On PostgreSQL run the migration normally and verify the column and constraint explicitly (the SQLite suite does not execute PostgreSQL DDL):
 
    ```bash
    docker compose exec app php artisan migrate --force
@@ -329,7 +325,7 @@ Rollout order: deploy the product flags/pivots migration and API first, then the
 
 1. Set production `.env` values, including HTTPS session and Sanctum domains.
 2. Build and start Compose.
-3. Run migrations.
+3. For databases with B4 matrix rows (or Unit A drop-table rows), verify the backup and Owner approval first, then run migrations.
 4. Confirm `/up` returns 200.
 5. Run `php artisan tinker --execute="echo app()->getLocale();"`; it must print `id`.
 6. Log in through the SPA; verify CSRF, cookies, and one flow per role.
@@ -339,4 +335,5 @@ Rollout order: deploy the product flags/pivots migration and API first, then the
 10. Open `/owner/backups`; save settings, run one manual backup, confirm it leaves `queued`, and download the file. Inspect `backups` and the `BACKUP` audit row.
 11. Run the restore drill in section 7.5 and record the result; until then RPO/RTO stay unclaimed.
 12. Record any skipped verification in the change description.
-13. For B2, verify `attribute_type_product`, `attribute_product`, both new `products` flags, and the nullable `pricing.material_id` as described in section 7; record that PostgreSQL DDL and the null-row rollback remain unverified here.
+13. For B2, verify `attribute_type_product`, `attribute_product`, and both new `products` flags. The nullable `pricing.material_id` check was relevant before B4 dropped the table; record that PostgreSQL DDL and the null-row rollback remain unverified here.
+14. For B4, confirm the verified pre-deploy backup and Owner approval, then verify `product_quantity_discounts`, the six `orders` snapshots, and the absence of `pricing`, `attribute_pricing`, and `orders.pricing_id`. Confirm the SPA has no `Matriks Harga` page; record that PostgreSQL DDL and a populated-database rollback remain unverified here.

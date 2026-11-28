@@ -153,16 +153,12 @@ export interface ProductionMaterial {
     is_low_stock: boolean | null;
 }
 
-export interface Pricing {
+export interface ProductQuantityDiscount {
     id: string;
-    branch_id: string | null;
+    product_id: string;
     product: { id: string; name: string } | null;
-    material: { id: string; name: string } | null;
-    customer_type: string;
     min_qty: number;
-    price: string;
-    cost: string;
-    profit: string;
+    discount_percent: string;
 }
 
 export interface StockLedger {
@@ -206,17 +202,13 @@ export interface Purchase {
 
 export interface Order {
     id: string;
-    pricing_id: string | null;
-    pricing?: {
-        product: string | null;
-        material: string | null;
-        selling_unit: string | null;
-        product_id?: string | null;
-        requires_material?: boolean;
-        uses_attributes?: boolean;
-        attribute_type_ids?: string[];
-        attribute_ids?: string[];
-    } | null;
+    product_id: string | null;
+    product?: string | null;
+    material_id: string | null;
+    material: string | null;
+    customer_type: string;
+    quantity_discount_percent?: string;
+    discount_amount?: string;
     file_name: string | null;
     notes: string | null;
     area: string;
@@ -435,7 +427,7 @@ export interface ManagerDashboard {
     counts: {
         materials: number;
         staff: number;
-        pricing: number;
+        product_quantity_discounts: number;
     };
     stock_ledgers: StockLedger[];
     expenses: Expense[];

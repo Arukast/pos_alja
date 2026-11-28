@@ -4,11 +4,11 @@ import { editEligibility } from './editEligibility';
 
 const order = (overrides: Partial<{
     status: number;
-    pricing_id: string | null;
+    product_id: string | null;
     is_manual_price: boolean;
 }> = {}) => ({
     status: 0,
-    pricing_id: '00000000-0000-4000-8000-000000000001',
+    product_id: '00000000-0000-4000-8000-000000000001',
     is_manual_price: false,
     ...overrides,
 });
@@ -33,8 +33,8 @@ describe('editEligibility', () => {
             .toEqual({ editable: false, reason: 'sudah diproduksi' });
     });
 
-    it('returns tarif tidak tersedia for a null pricing_id', () => {
-        expect(editEligibility({ status: 1, orders: [order({ pricing_id: null })] }))
+    it('returns tarif tidak tersedia for a null product_id', () => {
+        expect(editEligibility({ status: 1, orders: [order({ product_id: null })] }))
             .toEqual({ editable: false, reason: 'tarif tidak tersedia' });
     });
 
@@ -43,7 +43,7 @@ describe('editEligibility', () => {
             .toEqual({ editable: false, reason: 'harga manual' });
     });
 
-    it('stays editable when soft-deleted pricing is undetectable in the payload', () => {
+    it('stays editable when product identity is present in the payload', () => {
         expect(editEligibility({ status: 1, orders: [order()] }))
             .toEqual({ editable: true, reason: null });
     });

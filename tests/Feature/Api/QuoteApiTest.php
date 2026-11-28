@@ -9,9 +9,9 @@ use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -37,8 +37,6 @@ class QuoteApiTest extends TestCase
     private Material $material;
 
     private Attribute $attribute;
-
-    private Pricing $pricing;
 
     protected function setUp(): void
     {
@@ -78,17 +76,6 @@ class QuoteApiTest extends TestCase
             'branch_id' => $this->branchOne->id,
             'current_stock' => 10,
             'min_stock' => 1,
-        ]);
-
-        $this->pricing = Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $this->product->id,
-            'material_id' => $this->material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 20000,
-            'profit' => 30000,
         ]);
 
         $this->attribute = Attribute::create([
@@ -440,40 +427,50 @@ class QuoteApiTest extends TestCase
                 'length' => 3,
             ])
             ->assertOk()
-            ->assertJsonPath('quote.unit_price', '50000.00')
+            ->assertJsonPath('quote.unit_price', '25000.00')
             ->assertJsonPath('quote.area', 6)
-            ->assertJsonPath('quote.subtotal', '600000.00')
+            ->assertJsonPath('quote.subtotal', '300000.00')
+            ->assertJsonPath('quote.quantity_discount_percent', '0.00')
+            ->assertJsonPath('quote.discount_amount', '0.00')
             ->assertJsonMissingPath('quote.unit_cost')
             ->assertJsonMissingPath('quote.cost')
             ->assertJsonMissingPath('quote.profit');
     }
 
-    public function test_quote_returns_validation_error_when_pricing_is_missing(): void
+    public function test_quote_publishes_the_applied_quantity_discount(): void
     {
-        $unpriced = Material::create([
-            'name' => 'Unpriced',
-            'product_category_id' => $this->product->product_category_id,
-            'type' => 'roll',
-        ]);
-        $this->product->materials()->sync([$this->material->id, $unpriced->id]);
-
-        MaterialBranchStock::create([
-            'material_id' => $unpriced->id,
-            'branch_id' => $this->branchOne->id,
-            'current_stock' => 10,
-            'min_stock' => 1,
+        ProductQuantityDiscount::create([
+            'product_id' => $this->product->id,
+            'min_qty' => 10,
+            'discount_percent' => 5,
         ]);
 
         $this->actingAs($this->designer)
             ->postJson('/api/v1/quotes', [
                 'product_id' => $this->product->id,
-                'material_id' => $unpriced->id,
+                'material_id' => $this->material->id,
+                'quantity' => 10,
+                'width' => 2,
+                'length' => 3,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.quantity_discount_percent', '5.00')
+            ->assertJsonPath('quote.discount_amount', '75000.00')
+            ->assertJsonPath('quote.subtotal', '1425000.00');
+    }
+
+    public function test_quote_returns_validation_error_for_an_unknown_material(): void
+    {
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $this->product->id,
+                'material_id' => (string) Str::uuid(),
                 'quantity' => 1,
                 'width' => 2,
                 'length' => 3,
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('quote');
+            ->assertJsonValidationErrors('material_id');
     }
 
     public function test_quote_rejects_array_product_id_with_validation_error(): void
@@ -490,9 +487,9 @@ class QuoteApiTest extends TestCase
             ->assertJsonValidationErrors('product_id');
     }
 
-    public function test_quote_rejects_a_soft_deleted_pricing_row(): void
+    public function test_quote_rejects_a_soft_deleted_material(): void
     {
-        $this->pricing->delete();
+        $this->material->delete();
 
         $this->actingAs($this->designer)
             ->postJson('/api/v1/quotes', [
@@ -503,7 +500,7 @@ class QuoteApiTest extends TestCase
                 'length' => 3,
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('quote');
+            ->assertJsonValidationErrors('material_id');
     }
 
     public function test_quote_uses_a_custom_type_attribute_price(): void
@@ -533,8 +530,8 @@ class QuoteApiTest extends TestCase
                 'length' => 3,
             ])
             ->assertOk()
-            ->assertJsonPath('quote.unit_price', '55000.00')
-            ->assertJsonPath('quote.subtotal', '660000.00')
+            ->assertJsonPath('quote.unit_price', '30000.00')
+            ->assertJsonPath('quote.subtotal', '360000.00')
             ->assertJsonMissingPath('quote.unit_cost')
             ->assertJsonMissingPath('quote.cost')
             ->assertJsonMissingPath('quote.profit');
@@ -679,8 +676,8 @@ class QuoteApiTest extends TestCase
                 'length' => 3,
             ])
             ->assertOk()
-            ->assertJsonPath('quote.unit_price', '55000.00')
-            ->assertJsonPath('quote.subtotal', '660000.00');
+            ->assertJsonPath('quote.unit_price', '30000.00')
+            ->assertJsonPath('quote.subtotal', '360000.00');
     }
 
     public function test_quote_deduplicates_repeated_attribute_ids(): void
@@ -827,16 +824,6 @@ class QuoteApiTest extends TestCase
             'current_stock' => 10,
             'min_stock' => 1,
         ]);
-        Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $this->product->id,
-            'material_id' => $otherMaterial->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 20000,
-            'profit' => 30000,
-        ]);
 
         $this->actingAs($this->designer)
             ->postJson('/api/v1/quotes', [
@@ -926,7 +913,7 @@ class QuoteApiTest extends TestCase
                 'length' => 3,
             ])
             ->assertOk()
-            ->assertJsonPath('quote.unit_price', '50000.00');
+            ->assertJsonPath('quote.unit_price', '25000.00');
     }
 
     private function branch(string $name): Branch

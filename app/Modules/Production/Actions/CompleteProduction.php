@@ -20,7 +20,7 @@ final class CompleteProduction
     {
         $updated = DB::transaction(function () use ($order, $operator): Order {
             $locked = Order::query()
-                ->with(['invoice', 'pricing.product'])
+                ->with(['invoice', 'material'])
                 ->whereKey($order->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -64,6 +64,6 @@ final class CompleteProduction
 
         SafeBroadcast::orderUpdated($updated->invoice->branch_id, $operator);
 
-        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'pricing']);
+        return $updated->load(['invoice.customer', 'invoice.designer', 'operator', 'material']);
     }
 }

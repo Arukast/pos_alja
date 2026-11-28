@@ -11,7 +11,6 @@ use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockLedger;
@@ -42,7 +41,7 @@ class ProductionWriteApiTest extends TestCase
 
     private Material $material;
 
-    private Pricing $pricing;
+    private Product $product;
 
     private Order $order;
 
@@ -69,7 +68,7 @@ class ProductionWriteApiTest extends TestCase
             'calculation_archetype' => 'surface_area',
         ]);
 
-        $product = Product::create([
+        $this->product = Product::create([
             'name' => 'Vinyl Banner',
             'selling_unit' => 'm2',
             'product_category_id' => $category->id,
@@ -91,22 +90,11 @@ class ProductionWriteApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        $this->pricing = Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $product->id,
-            'material_id' => $this->material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 10000,
-            'profit' => 40000,
-        ]);
-
         $this->invoice = $this->invoice($this->branchOne, $customer, 'INV-B1-001');
         $this->otherInvoice = $this->invoice($this->branchTwo, $customer, 'INV-B2-001');
 
-        $this->order = $this->order($this->invoice, $this->pricing, 3, 2);
-        $this->otherOrder = $this->order($this->otherInvoice, $this->pricing, 1, 1);
+        $this->order = $this->order($this->invoice, $this->material->id, 3, 2);
+        $this->otherOrder = $this->order($this->otherInvoice, $this->material->id, 1, 1);
     }
 
     public function test_start_deducts_area_stock_and_is_idempotent(): void
@@ -137,6 +125,23 @@ class ProductionWriteApiTest extends TestCase
             ->where('type', 'usage')
             ->where('reference_id', $this->order->id)
             ->count());
+    }
+
+    public function test_start_production_deducts_stock_from_the_order_material(): void
+    {
+        ['material' => $material, 'order' => $order] = $this->unitOrder('lembar', 0, 2);
+
+        $this->actingAs($this->production)
+            ->postJson("/api/v1/orders/{$order->id}/start")
+            ->assertOk();
+
+        $this->assertSame($material->id, $order->material_id);
+        $this->assertDatabaseHas('stock_ledgers', [
+            'material_id' => $material->id,
+            'type' => 'usage',
+            'reference_type' => 'order',
+            'reference_id' => $order->id,
+        ]);
     }
 
     public function test_start_deducts_quantity_for_non_area_units(): void
@@ -597,7 +602,7 @@ class ProductionWriteApiTest extends TestCase
 
     public function test_waste_rejects_completed_order(): void
     {
-        $completed = $this->order($this->invoice, $this->pricing, 1, 1);
+        $completed = $this->order($this->invoice, $this->material->id, 1, 1);
         $completed->update(['status' => 2]);
 
         $this->actingAs($this->production)
@@ -788,50 +793,27 @@ class ProductionWriteApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        $pricing = Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $this->pricing->product_id,
-            'material_id' => $material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 10000,
-            'profit' => 40000,
-        ]);
-
         return [
             'material' => $material,
-            'order' => $this->order($this->invoice, $pricing, $area, $quantity),
+            'order' => $this->order($this->invoice, $material->id, $area, $quantity),
         ];
     }
 
     /**
-     * @return array{product: Product, pricing: Pricing, order: Order}
+     * @return array{product: Product, order: Order}
      */
     private function noMaterialOrder(bool $requiresMaterial): array
     {
         $product = Product::create([
             'name' => 'Layanan Digital',
             'selling_unit' => 'm2',
-            'product_category_id' => $this->pricing->product->product_category_id,
+            'product_category_id' => $this->product->product_category_id,
             'requires_material' => $requiresMaterial,
-        ]);
-
-        $pricing = Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $product->id,
-            'material_id' => null,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 10000,
-            'profit' => 40000,
         ]);
 
         return [
             'product' => $product,
-            'pricing' => $pricing,
-            'order' => $this->order($this->invoice, $pricing, 3, 2),
+            'order' => $this->order($this->invoice, null, 3, 2, $product->id),
         ];
     }
 
@@ -872,11 +854,17 @@ class ProductionWriteApiTest extends TestCase
         ]);
     }
 
-    private function order(Invoice $invoice, Pricing $pricing, float $area, float $quantity): Order
-    {
+    private function order(
+        Invoice $invoice,
+        ?string $materialId,
+        float $area,
+        float $quantity,
+        ?string $productId = null,
+    ): Order {
         return Order::create([
             'invoice_id' => $invoice->id,
-            'pricing_id' => $pricing->id,
+            'product_id' => $productId ?? $this->product->id,
+            'material_id' => $materialId,
             'file_name' => 'job.pdf',
             'notes' => 'Production job',
             'area' => $area,

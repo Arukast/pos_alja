@@ -21,7 +21,6 @@ const roleTones: Record<string, BadgeTone> = {
 const modelTypes: Record<string, string> = {
     ActivityLog: 'Jejak Audit',
     Attribute: 'Atribut',
-    AttributePricing: 'Harga Atribut',
     AttributeType: 'Jenis Atribut',
     Backup: 'Backup',
     BackupSetting: 'Pengaturan Backup',
@@ -34,7 +33,7 @@ const modelTypes: Record<string, string> = {
     Order: 'Pesanan',
     OrderStatusLog: 'Riwayat Status Pesanan',
     Payment: 'Pembayaran',
-    Pricing: 'Harga',
+    ProductQuantityDiscount: 'Tier Jumlah',
     Product: 'Produk',
     ProductCategory: 'Kategori Produk',
     ProductCategoryDiscount: 'Diskon Kategori Produk',

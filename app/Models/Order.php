@@ -14,7 +14,12 @@ class Order extends Model
 
     protected $fillable = [
         'invoice_id',
-        'pricing_id',
+        'product_id',
+        'material_id',
+        'customer_type',
+        'reseller_discount_percent',
+        'quantity_discount_percent',
+        'discount_amount',
         'operator_id',
         'file_name',
         'file_path',
@@ -38,6 +43,9 @@ class Order extends Model
 
     protected $casts = [
         'selected_attributes' => 'array',
+        'reseller_discount_percent' => 'decimal:2',
+        'quantity_discount_percent' => 'decimal:2',
+        'customer_type' => 'string',
     ];
 
     /**
@@ -49,11 +57,19 @@ class Order extends Model
     }
 
     /**
-     * @return BelongsTo<Pricing, $this>
+     * @return BelongsTo<Product, $this>
      */
-    public function pricing(): BelongsTo
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(Pricing::class, 'pricing_id');
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * @return BelongsTo<Material, $this>
+     */
+    public function material(): BelongsTo
+    {
+        return $this->belongsTo(Material::class);
     }
 
     /**

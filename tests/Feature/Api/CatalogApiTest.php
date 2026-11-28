@@ -9,9 +9,9 @@ use App\Models\AttributeType;
 use App\Models\Branch;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,9 +46,9 @@ class CatalogApiTest extends TestCase
 
     private Attribute $attributeTwo;
 
-    private Pricing $pricingOne;
+    private ProductQuantityDiscount $tierOne;
 
-    private Pricing $pricingTwo;
+    private ProductQuantityDiscount $tierTwo;
 
     private StockLedger $ledgerOne;
 
@@ -79,7 +79,7 @@ class CatalogApiTest extends TestCase
             'product_category_id' => $this->category->id,
         ]);
 
-        Product::create([
+        $flyer = Product::create([
             'name' => 'Flyer',
             'selling_unit' => 'pcs',
             'product_category_id' => $this->category->id,
@@ -115,34 +115,28 @@ class CatalogApiTest extends TestCase
             'branch_id' => $this->branchOne->id,
             'name' => 'Glossy',
             'type' => 'finishing',
+            'price' => 3500,
+            'cost' => 1500,
         ]);
 
         $this->attributeTwo = Attribute::create([
             'branch_id' => $this->branchTwo->id,
             'name' => 'Matte',
             'type' => 'finishing',
+            'price' => 2500,
+            'cost' => 1000,
         ]);
 
-        $this->pricingOne = Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $this->category->products()->first()->id,
-            'material_id' => $this->material->id,
-            'customer_type' => 'Reguler',
+        $this->tierOne = ProductQuantityDiscount::create([
+            'product_id' => $vinylBanner->id,
             'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 20000,
-            'profit' => 30000,
+            'discount_percent' => 10,
         ]);
 
-        $this->pricingTwo = Pricing::create([
-            'branch_id' => $this->branchTwo->id,
-            'product_id' => $this->category->products()->first()->id,
-            'material_id' => $this->material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 60000,
-            'cost' => 25000,
-            'profit' => 35000,
+        $this->tierTwo = ProductQuantityDiscount::create([
+            'product_id' => $flyer->id,
+            'min_qty' => 5,
+            'discount_percent' => 20,
         ]);
 
         $this->ledgerOne = StockLedger::create([
@@ -175,14 +169,14 @@ class CatalogApiTest extends TestCase
         ]);
     }
 
-    public function test_owner_can_read_categories_attributes_products_and_pricing(): void
+    public function test_owner_can_read_categories_attributes_products_and_tiers(): void
     {
         foreach ([
             '/api/v1/categories',
             '/api/v1/attributes',
             '/api/v1/products',
             '/api/v1/materials',
-            '/api/v1/pricing',
+            '/api/v1/product-quantity-discounts',
             '/api/v1/stock-ledgers',
         ] as $path) {
             $this->actingAs($this->owner)->getJson($path)->assertOk();
@@ -216,11 +210,14 @@ class CatalogApiTest extends TestCase
         $this->assertContains($this->attributeOne->id, collect($attributes)->pluck('id')->all());
         $this->assertNotContains($this->attributeTwo->id, collect($attributes)->pluck('id')->all());
 
-        $this->actingAs($this->manager)
-            ->getJson('/api/v1/pricing?branch_id='.$this->branchTwo->id)
+        $tiers = $this->actingAs($this->manager)
+            ->getJson('/api/v1/product-quantity-discounts')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $this->pricingOne->id);
+            ->assertJsonCount(2, 'data')
+            ->json('data');
+
+        $this->assertContains($this->tierOne->id, collect($tiers)->pluck('id')->all());
+        $this->assertContains($this->tierTwo->id, collect($tiers)->pluck('id')->all());
 
         $this->actingAs($this->manager)
             ->getJson('/api/v1/stock-ledgers?branch_id='.$this->branchTwo->id)
@@ -236,7 +233,7 @@ class CatalogApiTest extends TestCase
             $this->actingAs($user)->getJson('/api/v1/categories')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/attributes')->assertForbidden();
             $this->actingAs($user)->getJson('/api/v1/materials')->assertForbidden();
-            $this->actingAs($user)->getJson('/api/v1/pricing')->assertForbidden();
+            $this->actingAs($user)->getJson('/api/v1/product-quantity-discounts')->assertForbidden();
         }
     }
 
@@ -338,6 +335,29 @@ class CatalogApiTest extends TestCase
         $this->assertEmpty(array_intersect($pageOneIds, $pageThreeIds));
         $this->assertEmpty(array_intersect($pageTwoIds, $pageThreeIds));
         $this->assertCount(25, array_unique([...$pageOneIds, ...$pageTwoIds, ...$pageThreeIds]));
+    }
+
+    public function test_products_accept_a_per_page_bounded_to_one_hundred(): void
+    {
+        for ($index = 1; $index <= 12; $index++) {
+            Product::create([
+                'name' => sprintf('Produk Opsi %02d', $index),
+                'selling_unit' => 'pcs',
+                'product_category_id' => $this->category->id,
+            ]);
+        }
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?is_active=1&per_page=100')
+            ->assertOk()
+            ->assertJsonCount(14, 'data')
+            ->assertJsonPath('meta.per_page', 100)
+            ->assertJsonPath('meta.last_page', 1);
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products?per_page=101')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
     }
 
     public function test_product_search_is_case_insensitive_and_filters_by_category_and_active_status(): void
@@ -490,7 +510,7 @@ class CatalogApiTest extends TestCase
         $this->assertDatabaseHas('products', ['name' => 'Flyer', 'is_active' => true]);
     }
 
-    public function test_manager_reads_attribute_pricing_and_branchless_manager_is_denied(): void
+    public function test_manager_reads_attribute_price_and_cost_and_branchless_manager_is_denied(): void
     {
         $this->attributeOne->update([
             'price' => 3500,

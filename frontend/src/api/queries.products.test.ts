@@ -151,7 +151,7 @@ describe('api.products and admin product mutations', () => {
         expect(mockedApiFetch).toHaveBeenCalledWith('/quotes/options');
     });
 
-    it('calls attribute and branch admin endpoints with pricing, active status, and reseller discount', async () => {
+    it('calls attribute and branch admin endpoints with active status, and reseller discount', async () => {
         const attributeBody = {
             name: 'Laminasi Glossy',
             type: 'finishing',
@@ -190,6 +190,18 @@ describe('api.products and admin product mutations', () => {
         expect(mockedApiFetch).toHaveBeenCalledWith('/branches/br-1', {
             method: 'PUT',
             body: JSON.stringify(branchUpdate),
+        });
+    });
+
+    it('calls the tier endpoints with no branch dimension', async () => {
+        await api.productQuantityDiscounts({ page: 1 });
+        expect(mockedApiFetch).toHaveBeenCalledWith('/product-quantity-discounts?page=1');
+
+        const tierBody = { product_id: 'p', min_qty: 10, discount_percent: 5 };
+        await api.admin.createProductQuantityDiscount(tierBody);
+        expect(mockedApiFetch).toHaveBeenCalledWith('/product-quantity-discounts', {
+            method: 'POST',
+            body: JSON.stringify(tierBody),
         });
     });
 });

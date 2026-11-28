@@ -16,7 +16,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, TableRow } from '../../components/ui/Table';
 import { formatDate } from '../../lib/dates';
 import { paymentMethodLabel, paymentTypeLabel } from '../../lib/labels';
-import { formatMoney, formatQuantity } from '../../lib/money';
+import { formatMoney, formatQuantity, quantityDiscountLabel } from '../../lib/money';
 import { selectedAttributeNames } from './attributeOptions';
 import { editEligibility } from './editEligibility';
 
@@ -306,7 +306,8 @@ export function DesignerOrdersPage() {
                             </div>
                         </dl>
 
-                        <Table ariaLabel="Item pesanan">
+                        {/* The shared Table sets min-w-full; the important flag lets the scroll region keep columns readable. */}
+                        <Table ariaLabel="Item pesanan" className="min-w-[36rem]!">
                             <TableHead>
                                 <TableRow>
                                     <TableHeaderCell>Item</TableHeaderCell>
@@ -331,11 +332,16 @@ export function DesignerOrdersPage() {
 
                                         return (
                                             <TableRow key={order.id}>
-                                                <TableCell>
+                                                <TableCell className="[overflow-wrap:anywhere]">
                                                     <p className="font-medium">{order.file_name ?? 'Item'}</p>
-                                                    {order.pricing?.product || order.pricing?.material ? (
+                                                    {order.product || order.material ? (
                                                         <p className="text-light-muted-strong text-xs dark:text-gray-400">
-                                                            {[order.pricing?.product, order.pricing?.material].filter(Boolean).join(' / ')}
+                                                            {[order.product, order.material].filter(Boolean).join(' · ')}
+                                                        </p>
+                                                    ) : null}
+                                                    {quantityDiscountLabel(order.quantity_discount_percent) ? (
+                                                        <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                            {quantityDiscountLabel(order.quantity_discount_percent)}
                                                         </p>
                                                     ) : null}
                                                     <p className="text-light-muted-strong text-xs dark:text-gray-400">

@@ -7,11 +7,10 @@ namespace App\Modules\Sales\Actions;
 use App\Exceptions\InvalidAttributeSelectionException;
 use App\Exceptions\InvalidMaterialSelectionException;
 use App\Exceptions\InvalidProductAttributeSelectionException;
-use App\Exceptions\PricingNotFoundException;
 use App\Models\Invoice;
+use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
-use App\Models\Pricing;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\MaterialAvailability;
@@ -55,7 +54,7 @@ final class UpdateInvoiceItems
                 ->whereKey($invoice->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-            $existingOrders = $lockedInvoice->orders()->with('pricing')->lockForUpdate()->get();
+            $existingOrders = $lockedInvoice->orders()->with(['product', 'material'])->lockForUpdate()->get();
 
             // Invoice-wide allowance: any attribute already stored on this invoice may be kept.
             $invoiceAttributeIds = $existingOrders
@@ -79,7 +78,7 @@ final class UpdateInvoiceItems
             }
 
             $allowedMaterialIds = $existingOrders
-                ->map(static fn (Order $order): ?string => $order->pricing?->material_id)
+                ->map(static fn (Order $order): ?string => $order->material_id)
                 ->filter()
                 ->unique()
                 ->all();
@@ -91,14 +90,11 @@ final class UpdateInvoiceItems
             $retainedIds = [];
 
             foreach ($data['items'] as $index => $item) {
-                $pricing = Pricing::query()
-                    ->with(['product.category', 'material'])
-                    ->findOrFail($item['pricing_id']);
+                $materialId = $item['material_id'] ?? null;
+                $material = null;
 
-                if ($pricing->branch_id !== $branchId) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => 'Baris harga ini milik cabang lain.',
-                    ]);
+                if ($materialId !== null) {
+                    $material = Material::query()->withTrashed()->findOrFail($materialId);
                 }
 
                 $selectedAttributes = is_array($item['selected_attributes'] ?? null)
@@ -121,43 +117,44 @@ final class UpdateInvoiceItems
 
                 // C2: only a whole unchanged line is grandfathered; no client flag widens this.
                 $unchanged = $existingOrder instanceof Order
-                    && strtolower($existingOrder->pricing_id ?? '') === strtolower((string) $item['pricing_id'])
-                    && $existingOrder->pricing?->material_id === $pricing->material_id
+                    && strtolower($existingOrder->product_id ?? '') === strtolower((string) $item['product_id'])
+                    && strtolower($existingOrder->material_id ?? '') === strtolower((string) ($item['material_id'] ?? ''))
                     && $this->normalizeAttributeSet($existingOrder->selected_attributes)
                         === $this->normalizeAttributeSet($selectedAttributes);
 
-                $material = $pricing->material;
-
-                if ($pricing->material_id !== null
+                if ($materialId !== null
                     && ! $this->availability->isAvailable($material, $branchId)
-                    && ($material === null
-                        || $material->trashed()
+                    && ($material->trashed()
                         || ! in_array($material->id, $allowedMaterialIds, true))) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
+                        "items.{$index}.material_id" => 'Bahan tidak aktif atau tidak tersedia di cabang ini.',
                     ]);
                 }
 
                 try {
-                    $quote = $this->quote->forPricing(
-                        $pricing,
-                        $item,
-                        $branchId,
-                        $customerType,
-                        $unchanged ? $invoiceAttributeIds : [],
-                        $unchanged,
-                    );
+                    $quote = $this->quote->execute([
+                        'product_id' => $item['product_id'],
+                        'material_id' => $materialId,
+                        'selected_attributes' => $selectedAttributes,
+                        'quantity' => $item['quantity'],
+                        'width' => $item['width'] ?? null,
+                        'length' => $item['length'] ?? null,
+                        'customer_type' => $customerType,
+                        'branch_id' => $branchId,
+                        'inactive_attribute_allowance' => $unchanged ? $invoiceAttributeIds : [],
+                        'skip_product_capability_checks' => $unchanged,
+                    ]);
                 } catch (InvalidMaterialSelectionException $exception) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                        "items.{$index}.material_id" => $exception->getMessage(),
                     ]);
                 } catch (InvalidAttributeSelectionException|InvalidProductAttributeSelectionException $exception) {
                     throw ValidationException::withMessages([
                         "items.{$index}.selected_attributes" => $exception->getMessage(),
                     ]);
-                } catch (PricingNotFoundException|InvalidArgumentException $exception) {
+                } catch (InvalidArgumentException $exception) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.pricing_id" => $exception->getMessage(),
+                        "items.{$index}.product_id" => $exception->getMessage(),
                     ]);
                 }
 
@@ -169,7 +166,12 @@ final class UpdateInvoiceItems
 
                 $lines[] = [
                     'existing' => $existingOrder,
-                    'pricing_id' => $quote['pricing_id'],
+                    'product_id' => $quote['product_id'],
+                    'material_id' => $quote['material_id'],
+                    'customer_type' => $quote['customer_type'],
+                    'reseller_discount_percent' => $quote['reseller_discount_percent'],
+                    'quantity_discount_percent' => $quote['quantity_discount_percent'],
+                    'discount_amount' => $quote['discount_amount'],
                     'file_name' => $this->normalizeText($item['file_name'] ?? null),
                     'notes' => $this->normalizeText($item['notes'] ?? null),
                     'area' => $quote['area'],
@@ -208,7 +210,8 @@ final class UpdateInvoiceItems
                 'accounts_receivable' => Decimal::money($lockedInvoice->accounts_receivable),
                 'orders' => $existingOrders->map(static fn (Order $order): array => [
                     'id' => $order->id,
-                    'pricing_id' => $order->pricing_id,
+                    'product_id' => $order->product_id,
+                    'material_id' => $order->material_id,
                     'file_name' => $order->file_name,
                     'notes' => $order->notes,
                     'quantity' => (string) $order->quantity,
@@ -286,7 +289,8 @@ final class UpdateInvoiceItems
                         'accounts_receivable' => Decimal::money($receivable),
                         'orders' => $lockedInvoice->orders()->get()->map(static fn (Order $order): array => [
                             'id' => $order->id,
-                            'pricing_id' => $order->pricing_id,
+                            'product_id' => $order->product_id,
+                            'material_id' => $order->material_id,
                             'file_name' => $order->file_name,
                             'notes' => $order->notes,
                             'quantity' => (string) $order->quantity,

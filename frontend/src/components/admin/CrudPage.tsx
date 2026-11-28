@@ -30,6 +30,8 @@ export interface CrudField<T> {
     labelFor?: (values: Record<string, unknown>) => string;
     disabledWhen?: (values: Record<string, unknown>) => boolean;
     hideOnEdit?: boolean;
+    min?: string | number;
+    max?: string | number;
 }
 
 type FormValues = Record<string, string | number | boolean | string[]>;
@@ -38,6 +40,7 @@ export function CrudPage<T extends { id: string }>({
     eyebrow,
     title,
     cardTitle,
+    cardNote,
     description,
     queryKey,
     queryFn,
@@ -50,6 +53,7 @@ export function CrudPage<T extends { id: string }>({
     pageResetKey,
     rowActions,
     rowLabel,
+    editTitle,
     createLabel = 'Tambah data',
     summary,
     toolbar,
@@ -63,6 +67,7 @@ export function CrudPage<T extends { id: string }>({
     eyebrow: string;
     title: string;
     cardTitle?: string;
+    cardNote?: string;
     description?: string;
     queryKey: readonly unknown[];
     queryFn: (page: number) => Promise<Paginated<T>>;
@@ -75,6 +80,7 @@ export function CrudPage<T extends { id: string }>({
     pageResetKey?: unknown;
     rowActions?: (row: T) => ReactNode;
     rowLabel?: (row: T) => string;
+    editTitle?: (row: T) => string;
     createLabel?: string;
     summary?: ReactNode;
     toolbar?: ReactNode;
@@ -210,9 +216,14 @@ export function CrudPage<T extends { id: string }>({
             {toolbar}
 
             <Card>
-                {create || hideBanner ? (
+                {create || hideBanner || cardTitle ? (
                     <CardHeader>
-                        <h2 className="font-semibold">{cardTitle ?? listCardTitle(title)}</h2>
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <h2 className="font-semibold">{cardTitle ?? listCardTitle(title)}</h2>
+                            {cardNote ? (
+                                <p className="text-light-muted-strong text-xs dark:text-gray-400">{cardNote}</p>
+                            ) : null}
+                        </div>
                         {create ? (
                             <Button size="sm" className="ml-auto" onClick={openCreate}>
                                 {createLabel}
@@ -333,7 +344,7 @@ export function CrudPage<T extends { id: string }>({
             <Modal
                 open={open}
                 onClose={closeModal}
-                title={editing ? 'Ubah data' : createLabel}
+                title={editing ? (editTitle?.(editing) ?? 'Ubah data') : createLabel}
                 footer={
                     <>
                         <Button variant="secondary" disabled={save.isPending} onClick={closeModal}>
@@ -455,6 +466,8 @@ export function CrudPage<T extends { id: string }>({
                                 value={String(value)}
                                 error={error}
                                 required={field.required}
+                                min={field.min}
+                                max={field.max}
                                 onChange={(event) =>
                                     setValues({ ...values, [field.key]: event.target.value })
                                 }

@@ -16,6 +16,23 @@ export function formatQuantity(value: string | number | null | undefined): strin
     return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(numeric);
 }
 
+/** Short label for a quantity tier applied to a line; empty when none was applied. */
+export function quantityDiscountLabel(value: string | number | null | undefined): string {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const numeric = typeof value === 'number' ? value : Number.parseFloat(value);
+
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+        return '';
+    }
+
+    const percent = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(numeric);
+
+    return `Diskon jumlah (${percent}%)`;
+}
+
 export function formatMoney(value: string | number): string {
     const numeric = typeof value === 'number' ? value : Number.parseFloat(value);
 

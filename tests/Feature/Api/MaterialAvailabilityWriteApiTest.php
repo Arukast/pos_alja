@@ -9,7 +9,6 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -35,8 +34,6 @@ class MaterialAvailabilityWriteApiTest extends TestCase
     private Material $material;
 
     private MaterialBranchStock $stock;
-
-    private Pricing $pricing;
 
     protected function setUp(): void
     {
@@ -85,16 +82,7 @@ class MaterialAvailabilityWriteApiTest extends TestCase
             'min_stock' => 1,
         ]);
 
-        $this->pricing = Pricing::create([
-            'branch_id' => $this->branch->id,
-            'product_id' => $this->product->id,
-            'material_id' => $this->material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 20000,
-            'profit' => 30000,
-        ]);
+        $this->product->materials()->sync([$this->material->id]);
     }
 
     public function test_quote_rejects_globally_inactive_material(): void
@@ -138,8 +126,8 @@ class MaterialAvailabilityWriteApiTest extends TestCase
         $this->actingAs($this->designer)
             ->postJson('/api/v1/quotes', $this->quotePayload())
             ->assertOk()
-            ->assertJsonPath('quote.unit_price', '50000.00')
-            ->assertJsonPath('quote.subtotal', '600000.00');
+            ->assertJsonPath('quote.unit_price', '25000.00')
+            ->assertJsonPath('quote.subtotal', '300000.00');
     }
 
     public function test_invoice_creation_rejects_globally_inactive_material(): void
@@ -149,7 +137,7 @@ class MaterialAvailabilityWriteApiTest extends TestCase
         $this->actingAs($this->designer)
             ->postJson('/api/v1/invoices', $this->invoicePayload())
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.pricing_id');
+            ->assertJsonValidationErrors('items.0.material_id');
     }
 
     public function test_invoice_creation_rejects_branch_inactive_material(): void
@@ -159,19 +147,19 @@ class MaterialAvailabilityWriteApiTest extends TestCase
         $this->actingAs($this->designer)
             ->postJson('/api/v1/invoices', $this->invoicePayload())
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.pricing_id');
+            ->assertJsonValidationErrors('items.0.material_id');
     }
 
     public function test_invoice_creation_rejects_material_without_branch_stock(): void
     {
-        $pricing = $this->pricingFor($this->materialWithoutStock());
+        $material = $this->materialWithoutStock();
 
         $this->actingAs($this->designer)
             ->postJson('/api/v1/invoices', $this->invoicePayload([
-                'items' => [$this->item(['pricing_id' => $pricing->id])],
+                'items' => [$this->item(['material_id' => $material->id])],
             ]))
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.pricing_id');
+            ->assertJsonValidationErrors('items.0.material_id');
     }
 
     public function test_invoice_creation_rejects_soft_deleted_material(): void
@@ -181,7 +169,7 @@ class MaterialAvailabilityWriteApiTest extends TestCase
         $this->actingAs($this->designer)
             ->postJson('/api/v1/invoices', $this->invoicePayload())
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.pricing_id');
+            ->assertJsonValidationErrors('items.0.material_id');
     }
 
     public function test_invoice_creation_rejects_manual_price_line_with_unavailable_material(): void
@@ -197,7 +185,7 @@ class MaterialAvailabilityWriteApiTest extends TestCase
                 ])],
             ]))
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.pricing_id');
+            ->assertJsonValidationErrors('items.0.material_id');
     }
 
     public function test_invoice_edit_allows_an_already_used_inactive_material(): void
@@ -246,14 +234,13 @@ class MaterialAvailabilityWriteApiTest extends TestCase
                 'items' => [$this->item(['id' => $invoice['order_id']])],
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.pricing_id');
+            ->assertJsonValidationErrors('items.0.material_id');
     }
 
     public function test_invoice_edit_rejects_a_different_inactive_material(): void
     {
         $invoice = $this->createInvoice();
         $otherMaterial = $this->materialWithoutStock();
-        $otherPricing = $this->pricingFor($otherMaterial);
 
         MaterialBranchStock::create([
             'material_id' => $otherMaterial->id,
@@ -274,17 +261,17 @@ class MaterialAvailabilityWriteApiTest extends TestCase
             ->putJson("/api/v1/invoices/{$invoice['id']}/items", [
                 'items' => [$this->item([
                     'id' => $invoice['order_id'],
-                    'pricing_id' => $otherPricing->id,
+                    'material_id' => $otherMaterial->id,
                 ])],
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.0.pricing_id');
+            ->assertJsonValidationErrors('items.0.material_id');
 
         $this->assertSame($beforeGrandTotal, (string) Invoice::query()->findOrFail($invoice['id'])->grand_total);
         $this->assertDatabaseCount('orders', 1);
         $this->assertDatabaseHas('orders', [
             'id' => $invoice['order_id'],
-            'pricing_id' => $this->pricing->id,
+            'material_id' => $this->material->id,
         ]);
     }
 
@@ -292,7 +279,6 @@ class MaterialAvailabilityWriteApiTest extends TestCase
     {
         $invoice = $this->createInvoice();
         $otherMaterial = $this->materialWithoutStock();
-        $otherPricing = $this->pricingFor($otherMaterial);
 
         MaterialBranchStock::create([
             'material_id' => $otherMaterial->id,
@@ -309,13 +295,13 @@ class MaterialAvailabilityWriteApiTest extends TestCase
                 'items' => [
                     $this->item(['id' => $invoice['order_id']]),
                     $this->item([
-                        'pricing_id' => $otherPricing->id,
+                        'material_id' => $otherMaterial->id,
                         'allow_inactive_material' => true,
                     ]),
                 ],
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('items.1.pricing_id');
+            ->assertJsonValidationErrors('items.1.material_id');
 
         $this->assertDatabaseCount('orders', 1);
     }
@@ -345,20 +331,6 @@ class MaterialAvailabilityWriteApiTest extends TestCase
             'type' => 'roll',
             'cost' => 20000,
             'price' => 25000,
-        ]);
-    }
-
-    private function pricingFor(Material $material): Pricing
-    {
-        return Pricing::create([
-            'branch_id' => $this->branch->id,
-            'product_id' => $this->product->id,
-            'material_id' => $material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 20000,
-            'profit' => 30000,
         ]);
     }
 
@@ -396,7 +368,8 @@ class MaterialAvailabilityWriteApiTest extends TestCase
     private function item(array $overrides = []): array
     {
         return array_merge([
-            'pricing_id' => $this->pricing->id,
+            'product_id' => $this->product->id,
+            'material_id' => $this->material->id,
             'file_name' => 'banner.pdf',
             'notes' => 'Test item',
             'quantity' => 2,

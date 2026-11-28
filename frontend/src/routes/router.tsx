@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 
 import { RequireAuth, RequireRole, RoleRedirect } from '../auth/RequireAuth';
 import { AppShell } from '../components/AppShell';
@@ -18,6 +18,7 @@ import {
     OwnerCategoriesPage,
     OwnerMaterialsPage,
     OwnerProductsPage,
+    OwnerQuantityTiersPage,
     OwnerUsersPage,
 } from '../features/owner/AdminPages';
 import { AuditPage } from '../features/owner/AuditPage';
@@ -33,8 +34,8 @@ import {
     ManagerLeaderboardPage,
     ManagerLedgersPage,
     ManagerMaterialsPage,
-    ManagerPricingPage,
     ManagerProductsPage,
+    ManagerQuantityTiersPage,
     ManagerUsersPage,
 } from '../features/manager/AdminPages';
 import { ManagerDashboardPage } from '../features/manager/ManagerDashboardPage';
@@ -90,6 +91,7 @@ export const router = createBrowserRouter([
                             { path: 'products', element: <OwnerProductsPage /> },
                             { path: 'attributes', element: <OwnerAttributesPage /> },
                             { path: 'materials', element: <OwnerMaterialsPage /> },
+                            { path: 'quantity-tiers', element: <OwnerQuantityTiersPage /> },
                             { path: 'purchases', element: <PurchasesPage /> },
                         ],
                     },
@@ -106,7 +108,11 @@ export const router = createBrowserRouter([
                             { path: 'purchases', element: <PurchasesPage /> },
                             { path: 'ledgers', element: <ManagerLedgersPage /> },
                             { path: 'finishing', element: <ManagerFinishingPage /> },
-                            { path: 'pricing', element: <ManagerPricingPage /> },
+                            {
+                                path: 'pricing',
+                                element: <Navigate to="/manager/quantity-tiers" replace />,
+                            },
+                            { path: 'quantity-tiers', element: <ManagerQuantityTiersPage /> },
                             { path: 'leaderboard', element: <ManagerLeaderboardPage /> },
                             { path: 'users', element: <ManagerUsersPage /> },
                             { path: 'categories', element: <ManagerCategoriesPage /> },

@@ -16,11 +16,13 @@ import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
 import { editEligibility } from './editEligibility';
-import { hasMissingLinearLength } from './orderSpecs';
+import { materialForProduct, materialOptionsForEdit } from './materialOptions';
+import { isOrderEditable } from './orderSpecs';
 
 interface EditableOrderItem {
     id?: string;
-    pricing_id: string;
+    product_id: string;
+    material_id: string | null;
     file_name: string;
     notes: string;
     quantity: string;
@@ -36,7 +38,8 @@ function editableItem(order: Order): EditableOrderItem {
 
     return {
         id: order.id,
-        pricing_id: order.pricing_id ?? '',
+        product_id: order.product_id ?? '',
+        material_id: order.material_id ?? null,
         file_name: order.file_name ?? '',
         notes: order.notes ?? '',
         quantity: String(order.quantity),
@@ -53,6 +56,9 @@ export function DesignerEditOrderPage() {
     const invoice = invoiceQuery.data?.invoice;
 
     const eligibility = invoice !== undefined ? editEligibility({ status: invoice.status, orders: invoice.orders }) : null;
+    const canEdit = eligibility !== null
+        && eligibility.editable
+        && (invoice?.orders ?? []).every(isOrderEditable);
 
     if (invoiceQuery.isLoading) {
         return <div role="status" className="flex min-h-48 items-center justify-center"><Spinner className="text-brand-primary h-6 w-6" /></div>;
@@ -62,12 +68,8 @@ export function DesignerEditOrderPage() {
         return <EmptyState title="Invoice tidak dapat dimuat" description="Periksa koneksi dan hak akses, lalu coba lagi." action={<Button variant="secondary" onClick={() => invoiceQuery.refetch()}>Coba lagi</Button>} />;
     }
 
-    if (eligibility !== null && !eligibility.editable) {
+    if (eligibility !== null && !canEdit) {
         return <EmptyState title="Invoice tidak dapat diubah" description="Invoice sudah lunas, item sudah masuk produksi, atau data tarif item belum tersedia untuk dihitung ulang." action={<Link className="text-brand-fill-hover font-semibold hover:underline" to="/designer/orders">Kembali ke pesanan</Link>} />;
-    }
-
-    if ((invoice.orders ?? []).some(hasMissingLinearLength)) {
-        return <EmptyState title="Item tidak dapat diubah" description="Pesanan lama ini tidak menyimpan panjang atau luas, sehingga harga tidak dapat dihitung ulang tanpa menebak. Buat pesanan baru atau hubungi admin." action={<Link className="text-brand-fill-hover font-semibold hover:underline" to="/designer/orders">Kembali ke pesanan</Link>} />;
     }
 
     return <DesignerEditOrderForm key={invoice.id} invoice={invoice} invoiceId={id} />;
@@ -127,7 +129,7 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
         });
     };
 
-    /** Adds a new line using an existing invoice price configuration as its starting point. */
+    /** Adds a new line using an existing invoice line as its starting point. */
     const handleAddItem = () => {
         const template = items[0];
 
@@ -162,18 +164,25 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
         return <EmptyState title="Opsi item gagal dimuat" description="Periksa koneksi, lalu coba lagi." action={<Button variant="secondary" onClick={() => optionsQuery.refetch()}>Coba lagi</Button>} />;
     }
 
-    const pricingOptions = Array.from(new Map((invoice.orders ?? [])
-        .filter((order) => order.pricing_id !== null)
-        .map((order) => [order.pricing_id as string, {
-            id: order.pricing_id as string,
-            label: [order.pricing?.product, order.pricing?.material].filter(Boolean).join(' · ') || 'Konfigurasi item',
-            meta: {
-                requires_material: order.pricing?.requires_material ?? true,
-                uses_attributes: order.pricing?.uses_attributes ?? true,
-                attribute_type_ids: order.pricing?.attribute_type_ids ?? [],
-                attribute_ids: order.pricing?.attribute_ids ?? [],
-            },
-        }])).values());
+    const products = optionsQuery.data?.products ?? [];
+    const productOptions = Array.from(new Map((invoice.orders ?? [])
+        .filter((order) => order.product_id !== null)
+        .map((order) => {
+            const productId = order.product_id as string;
+            const product = products.find((candidate) => candidate.id === productId);
+
+            return [productId, {
+                id: productId,
+                label: product?.name ?? 'Konfigurasi item',
+                meta: {
+                    requires_material: product?.requires_material ?? true,
+                    uses_attributes: product?.uses_attributes ?? true,
+                    attribute_type_ids: product?.attribute_type_ids ?? [],
+                    attribute_ids: product?.attribute_ids ?? [],
+                    material_ids: product?.material_ids ?? [],
+                },
+            }];
+        })).values());
     const attributes = optionsQuery.data?.attributes ?? [];
     const attributeTypes = optionsQuery.data?.attribute_types ?? [];
 
@@ -192,15 +201,46 @@ function DesignerEditOrderForm({ invoice, invoiceId }: { invoice: Invoice; invoi
                 <CardHeader><h2 className="font-semibold">Item pesanan</h2><Button variant="secondary" size="sm" onClick={handleAddItem}>Tambah item</Button></CardHeader>
                 <CardBody className="space-y-5">
                     {items.map((item, index) => {
-                        const meta = pricingOptions.find((configuration) => configuration.id === item.pricing_id)?.meta;
+                        const meta = productOptions.find((configuration) => configuration.id === item.product_id)?.meta;
+                        const allowedMaterialIds = meta?.material_ids ?? [];
 
                         return (
                             <section key={item.id ?? `new-${index}`} className="space-y-3 border-b border-light-border pb-5 last:border-0 dark:border-surface-300">
                                 <div className="flex items-center justify-between"><h3 className="font-medium">Item {index + 1}</h3><Button variant="ghost" size="sm" disabled={items.length <= 1} onClick={() => handleRemoveItem(index)}>Hapus</Button></div>
-                                <Select label={meta?.requires_material === false ? 'Produk' : 'Produk dan bahan'} value={item.pricing_id} error={errors[`items.${index}.pricing_id`]} onChange={(event) => handleItemChange(index, { pricing_id: event.target.value, selected_attributes: [] })}>
-                                    {pricingOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
-                                </Select>
                                 <div className="grid gap-3 sm:grid-cols-2">
+                                    <Select label="Produk" value={item.product_id} error={errors[`items.${index}.product_id`]} onChange={(event) => {
+                                        const nextProductId = event.target.value;
+
+                                        handleItemChange(index, {
+                                            product_id: nextProductId,
+                                            material_id: materialForProduct(products.find((product) => product.id === nextProductId), item.material_id),
+                                            selected_attributes: [],
+                                        });
+                                    }}>
+                                        {productOptions.map((configuration) => <option key={configuration.id} value={configuration.id}>{configuration.label}</option>)}
+                                    </Select>
+                                    {meta?.requires_material === false ? null : (
+                                        <Select
+                                            label="Bahan"
+                                            value={item.material_id ?? ''}
+                                            error={errors[`items.${index}.material_id`]}
+                                            onChange={(event) => handleItemChange(index, { material_id: event.target.value || null })}
+                                        >
+                                            <option value="">Pilih bahan</option>
+                                            {materialOptionsForEdit(
+                                                optionsQuery.data?.materials ?? [],
+                                                allowedMaterialIds,
+                                                item.material_id === null
+                                                    ? null
+                                                    : {
+                                                        id: item.material_id,
+                                                        name: invoice.orders?.[index]?.material ?? 'Bahan tersimpan',
+                                                    }
+                                            ).map((material) => (
+                                                <option key={material.id} value={material.id}>{material.label}</option>
+                                            ))}
+                                        </Select>
+                                    )}
                                     <Input label="Nama file / item" value={item.file_name} error={errors[`items.${index}.file_name`]} onChange={(event) => handleItemChange(index, { file_name: event.target.value })} />
                                     <Input label="Jumlah" type="number" min="0.01" step="0.01" value={item.quantity} error={errors[`items.${index}.quantity`]} onChange={(event) => handleItemChange(index, { quantity: event.target.value })} />
                                     <Input label="Lebar (m)" type="number" min="0.01" step="0.01" value={item.width} error={errors[`items.${index}.width`]} onChange={(event) => handleItemChange(index, { width: event.target.value })} />

@@ -17,14 +17,17 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeaderCell, Ta
 import { Toast, type ToastTone } from '../../components/ui/Toast';
 import { errorMessage, mapApiErrors } from '../../lib/errors';
 import { defaultInstitution, institutionOptions } from '../../lib/institutions';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, quantityDiscountLabel } from '../../lib/money';
 import { selectableAttributes, selectedAttributeId, setSelectedAttribute, typesForSelection } from './attributeOptions';
+import { materialForProduct } from './materialOptions';
 
 /**
  * Representasi satu baris item pesanan yang sudah dihitung penawarannya di keranjang.
  */
 interface CartLine {
     quote: Quote;
+    product_id: string;
+    material_id: string;
     product_name: string;
     material_name: string;
     attribute_labels: string[];
@@ -137,7 +140,7 @@ export function DesignerNewOrderPage() {
     /**
      * Memperbarui state draf item dan menghapus penawaran lama saat parameter harga berubah.
      */
-    const updatePricingItem = (patch: Partial<DraftItemState>) => {
+    const updateDraftItem = (patch: Partial<DraftItemState>) => {
         setItem((current) => ({ ...current, ...patch }));
         setQuote(null);
         setItemError(null);
@@ -202,7 +205,8 @@ export function DesignerNewOrderPage() {
                 deadline: deadline || null,
                 source,
                 items: cart.map((line) => ({
-                    pricing_id: line.quote.pricing_id,
+                    product_id: line.product_id,
+                    material_id: line.material_id || null,
                     file_name: line.file_name.trim() || null,
                     notes: line.notes.trim() || null,
                     quantity: line.quantity,
@@ -263,6 +267,8 @@ export function DesignerNewOrderPage() {
             ...current,
             {
                 quote,
+                product_id: item.product_id,
+                material_id: item.material_id,
                 product_name: productName,
                 material_name: materialName,
                 attribute_labels: attributeLabels,
@@ -464,17 +470,9 @@ export function DesignerNewOrderPage() {
                                                 const nextProduct = (options?.products ?? []).find(
                                                     (product) => product.id === nextProductId
                                                 );
-                                                const nextRequiresMaterial = nextProduct?.requires_material ?? true;
-                                                const nextAllowedIds = nextProduct?.material_ids ?? [];
-                                                const keepMaterial = nextRequiresMaterial
-                                                    && (nextAllowedIds.length === 0
-                                                        || nextAllowedIds.includes(item.material_id));
-
-                                                updatePricingItem({
+                                                updateDraftItem({
                                                     product_id: nextProductId,
-                                                    material_id: keepMaterial
-                                                        ? item.material_id
-                                                        : '',
+                                                    material_id: materialForProduct(nextProduct, item.material_id) ?? '',
                                                     selected_attributes: [],
                                                 });
                                             }}
@@ -491,7 +489,7 @@ export function DesignerNewOrderPage() {
                                                 label="Bahan"
                                                 value={item.material_id}
                                                 onChange={(event) =>
-                                                    updatePricingItem({ material_id: event.target.value })
+                                                    updateDraftItem({ material_id: event.target.value })
                                                 }
                                             >
                                                 <option value="">Pilih bahan</option>
@@ -512,7 +510,7 @@ export function DesignerNewOrderPage() {
                                                     type.slug
                                                 )}
                                                 onChange={(event) =>
-                                                    updatePricingItem({
+                                                    updateDraftItem({
                                                         selected_attributes: setSelectedAttribute(
                                                             options?.attributes ?? [],
                                                             item.selected_attributes,
@@ -541,7 +539,7 @@ export function DesignerNewOrderPage() {
                                             min="1"
                                             value={item.quantity}
                                             onChange={(event) =>
-                                                updatePricingItem({ quantity: Number(event.target.value) })
+                                                updateDraftItem({ quantity: Number(event.target.value) })
                                             }
                                         />
                                         {needsWidth ? (
@@ -552,7 +550,7 @@ export function DesignerNewOrderPage() {
                                                 step="0.01"
                                                 value={item.width}
                                                 onChange={(event) =>
-                                                    updatePricingItem({ width: Number(event.target.value) })
+                                                    updateDraftItem({ width: Number(event.target.value) })
                                                 }
                                             />
                                         ) : null}
@@ -564,7 +562,7 @@ export function DesignerNewOrderPage() {
                                                 step="0.01"
                                                 value={item.length}
                                                 onChange={(event) =>
-                                                    updatePricingItem({ length: Number(event.target.value) })
+                                                    updateDraftItem({ length: Number(event.target.value) })
                                                 }
                                             />
                                         ) : null}
@@ -609,6 +607,11 @@ export function DesignerNewOrderPage() {
                                                         {quote ? `${quote.area} m²` : '-'}
                                                     </dd>
                                                 </div>
+                                                {quantityDiscountLabel(quote?.quantity_discount_percent) ? (
+                                                    <div className="text-light-muted-strong w-full text-xs dark:text-gray-400">
+                                                        {quantityDiscountLabel(quote?.quantity_discount_percent)}
+                                                    </div>
+                                                ) : null}
                                             </dl>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Button
@@ -670,7 +673,7 @@ export function DesignerNewOrderPage() {
                                     <TableEmpty colSpan={4}>Tambahkan minimal satu item.</TableEmpty>
                                 ) : (
                                     cart.map((line, index) => (
-                                        <TableRow key={`${line.quote.pricing_id}-${index}`}>
+                                        <TableRow key={`${line.product_id}-${index}`}>
                                             <TableCell>
                                                 <p className="font-medium">
                                                     {line.file_name || line.product_name}
@@ -682,6 +685,11 @@ export function DesignerNewOrderPage() {
                                                         ? ` · ${line.attribute_labels.join(', ')}`
                                                         : ''}
                                                 </p>
+                                                {quantityDiscountLabel(line.quote.quantity_discount_percent) ? (
+                                                    <p className="text-light-muted-strong text-xs dark:text-gray-400">
+                                                        {quantityDiscountLabel(line.quote.quantity_discount_percent)}
+                                                    </p>
+                                                ) : null}
                                             </TableCell>
                                             <TableCell className="text-right whitespace-nowrap tabular-nums">
                                                 {line.quantity}

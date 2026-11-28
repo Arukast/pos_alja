@@ -230,7 +230,6 @@ return [
         'deadline' => 'tenggat',
         'source' => 'sumber',
         'items' => 'item',
-        'items.*.pricing_id' => 'harga',
         'items.*.file_name' => 'nama file',
         'items.*.notes' => 'catatan',
         'items.*.width' => 'lebar',

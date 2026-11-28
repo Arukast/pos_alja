@@ -92,12 +92,13 @@ class InventorySchemaTest extends TestCase
         $this->assertSame('pcs', DB::table('materials')->where('id', $materialId)->value('unit'));
     }
 
-    public function test_machine_tables_are_dropped_but_pricing_tables_remain(): void
+    public function test_machine_and_pricing_matrix_tables_are_dropped(): void
     {
         $this->assertFalse(Schema::hasTable('machines'));
         $this->assertFalse(Schema::hasTable('machine_pricing'));
-        $this->assertTrue(Schema::hasTable('pricing'));
-        $this->assertTrue(Schema::hasTable('attribute_pricing'));
+        $this->assertFalse(Schema::hasTable('pricing'));
+        $this->assertFalse(Schema::hasTable('attribute_pricing'));
+        $this->assertTrue(Schema::hasTable('product_quantity_discounts'));
     }
 
     public function test_wasted_materials_has_no_machine_column_but_keeps_order_link(): void

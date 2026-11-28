@@ -8,7 +8,7 @@ export interface EditEligibilityInput {
     status: number;
     orders: Array<{
         status: number;
-        pricing_id: string | null;
+        product_id: string | null;
         is_manual_price?: boolean;
     }> | null | undefined;
 }
@@ -29,7 +29,7 @@ export function editEligibility(invoice: EditEligibilityInput): EditEligibility 
         return { editable: false, reason: 'sudah diproduksi' };
     }
 
-    if (orders.some((order) => order.pricing_id === null)) {
+    if (orders.some((order) => order.product_id === null)) {
         return { editable: false, reason: 'tarif tidak tersedia' };
     }
 

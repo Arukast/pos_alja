@@ -20,8 +20,8 @@ import type {
     NetProfitReport,
     Paginated,
     Payment,
-    Pricing,
     Product,
+    ProductQuantityDiscount,
     ProductionQueueItem,
     Purchase,
     StockLedger,
@@ -70,10 +70,11 @@ export interface QuoteOptions {
 }
 
 export interface Quote {
-    pricing_id: string;
     unit_price: string;
     area: number;
     quantity: number;
+    quantity_discount_percent: string;
+    discount_amount: string;
     subtotal: string;
 }
 
@@ -109,8 +110,10 @@ export const api = {
     materials: <T = Material>(params: QueryParams = {}) =>
         apiFetch<MaterialPage<T>>(`/materials${queryString(params)}`),
 
-    pricing: (params: QueryParams = {}) =>
-        apiFetch<Paginated<Pricing>>(`/pricing${queryString(params)}`),
+    productQuantityDiscounts: (params: QueryParams = {}) =>
+        apiFetch<Paginated<ProductQuantityDiscount>>(
+            `/product-quantity-discounts${queryString(params)}`
+        ),
 
     stockLedgers: (params: QueryParams = {}) =>
         apiFetch<Paginated<StockLedger>>(`/stock-ledgers${queryString(params)}`),
@@ -324,12 +327,19 @@ export const api = {
         updateAttributeType: (slug: string, data: MutationBody) =>
             mutate<{ attribute_type: AttributeType }>(`/attribute-types/${slug}`, 'PUT', data),
 
-        createPricing: (data: MutationBody) =>
-            mutate<{ pricing: Pricing }>('/pricing', 'POST', data),
-        updatePricing: (id: string, data: MutationBody) =>
-            mutate<{ pricing: Pricing }>(`/pricing/${id}`, 'PUT', data),
-        deletePricing: (id: string) => mutate<void>(`/pricing/${id}`, 'DELETE'),
-        clonePricing: (data: MutationBody) =>
-            mutate<{ cloned: number }>('/pricing/clone-tiers', 'POST', data),
+        createProductQuantityDiscount: (data: MutationBody) =>
+            mutate<{ tier: ProductQuantityDiscount }>(
+                '/product-quantity-discounts',
+                'POST',
+                data
+            ),
+        updateProductQuantityDiscount: (id: string, data: MutationBody) =>
+            mutate<{ tier: ProductQuantityDiscount }>(
+                `/product-quantity-discounts/${id}`,
+                'PUT',
+                data
+            ),
+        deleteProductQuantityDiscount: (id: string) =>
+            mutate<void>(`/product-quantity-discounts/${id}`, 'DELETE'),
     },
 };

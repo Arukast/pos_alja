@@ -42,9 +42,9 @@ final class CatalogPolicy
         return $user->role === 'owner';
     }
 
-    public function viewPricing(User $user): bool
+    public function viewProductQuantityDiscounts(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner' || ($user->role === 'manager' && $user->branch_id !== null);
     }
 
     public function viewStockLedgers(User $user): bool
@@ -71,8 +71,8 @@ final class CatalogPolicy
                 && $attribute->branch_id === $user->branch_id);
     }
 
-    public function managePricing(User $user): bool
+    public function manageProductQuantityDiscounts(User $user): bool
     {
-        return in_array($user->role, ['owner', 'manager'], true);
+        return $user->role === 'owner';
     }
 }

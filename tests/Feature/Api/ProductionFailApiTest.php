@@ -12,7 +12,6 @@ use App\Models\Invoice;
 use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Order;
-use App\Models\Pricing;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockLedger;
@@ -45,7 +44,7 @@ class ProductionFailApiTest extends TestCase
 
     private Material $material;
 
-    private Pricing $pricing;
+    private Product $product;
 
     protected function setUp(): void
     {
@@ -68,7 +67,7 @@ class ProductionFailApiTest extends TestCase
             'calculation_archetype' => 'surface_area',
         ]);
 
-        $product = Product::create([
+        $this->product = Product::create([
             'name' => 'Vinyl Banner',
             'selling_unit' => 'm2',
             'product_category_id' => $category->id,
@@ -88,17 +87,6 @@ class ProductionFailApiTest extends TestCase
             'branch_id' => $this->branchOne->id,
             'current_stock' => 10,
             'min_stock' => 1,
-        ]);
-
-        $this->pricing = Pricing::create([
-            'branch_id' => $this->branchOne->id,
-            'product_id' => $product->id,
-            'material_id' => $this->material->id,
-            'customer_type' => 'Reguler',
-            'min_qty' => 1,
-            'price' => 50000,
-            'cost' => 10000,
-            'profit' => 40000,
         ]);
 
         $this->invoice = $this->invoice($this->branchOne, $customer, 'INV-B1-001');
@@ -719,7 +707,8 @@ class ProductionFailApiTest extends TestCase
     {
         return Order::create([
             'invoice_id' => $invoice->id,
-            'pricing_id' => $this->pricing->id,
+            'product_id' => $this->product->id,
+            'material_id' => $this->material->id,
             'operator_id' => $operatorId,
             'file_name' => 'job.pdf',
             'notes' => 'Production job',

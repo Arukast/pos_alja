@@ -37,9 +37,10 @@ Outfit only, with tabular numerals for money and counts.
   is 16px at `font-semibold` (600); `CrudPage` list cards that pass a `create` action render a short `Daftar`
   list title on the left (a leading `Manajemen ` is stripped; `cardTitle` overrides it) with the small create
   action on the right. `ResourceTable` has no `cardTitle` or create action; when given `cardActions` it
-  renders the same derived title on the left and those generic actions on the right. Callers may deviate:
-  the "Salin tingkat harga" panel on `/manager/pricing` uses 18px (`text-lg`). The 16px/700 rule in the
-  design source is a convention for section headers, not something a component enforces.
+  renders the same derived title on the left and those generic actions on the right. The read-only
+  quantity-tier cards keep that 16px title and add the note "Hanya pemilik dapat mengubah tier."
+  beside it. The 16px/700 rule in the design source is a convention for section headers, not something
+  a component enforces.
 - Body copy: 14px (`text-sm`) on cards, forms, tables, and descriptions. The base element has no global
   14px rule.
 - Table text: 14px (`text-sm`). The design source said 13px; the build uses 14px for readability.

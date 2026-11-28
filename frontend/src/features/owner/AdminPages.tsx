@@ -9,6 +9,7 @@ import { CrudPage, type CrudField } from '../../components/admin/CrudPage';
 import { RoleBadge } from '../../components/RoleBadge';
 import { AttributesPage } from '../catalog/AttributesPage';
 import { CategoriesPage } from '../catalog/CategoriesPage';
+import { QuantityTiersPage } from '../catalog/QuantityTiersPage';
 import { ProductsPage } from '../catalog/ProductsPage';
 import { AdjustMaterialModal } from '../catalog/AdjustMaterialModal';
 import { MaterialActiveToggle } from '../catalog/MaterialActiveToggle';
@@ -472,4 +473,8 @@ export function OwnerProductsPage() {
 
 export function OwnerAttributesPage() {
     return <AttributesPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
+}
+
+export function OwnerQuantityTiersPage() {
+    return <QuantityTiersPage eyebrow="Administrasi" queryKeyPrefix="owner" />;
 }
