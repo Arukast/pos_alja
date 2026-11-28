@@ -29,7 +29,7 @@ final class CustomerInstitutionBackfillTest extends TestCase
     /** Replaying the labels migration wraps each legacy primary label in a single-element list. */
     public function test_backfill_wraps_each_existing_primary_label(): void
     {
-        Artisan::call('migrate:rollback', ['--step' => 6]);
+        Artisan::call('migrate:rollback', ['--step' => 7]);
 
         DB::table('customers')->insert([
             $this->legacyCustomer('Sekolah Contoh', 'Sekolah'),
@@ -47,7 +47,7 @@ final class CustomerInstitutionBackfillTest extends TestCase
     /** Unknown legacy labels are preserved verbatim instead of being dropped. */
     public function test_backfill_preserves_legacy_unknown_label(): void
     {
-        Artisan::call('migrate:rollback', ['--step' => 6]);
+        Artisan::call('migrate:rollback', ['--step' => 7]);
 
         DB::table('customers')->insert(
             $this->legacyCustomer('Legacy Contoh', 'Lainnya')
@@ -61,7 +61,7 @@ final class CustomerInstitutionBackfillTest extends TestCase
     /** The replayed backfill covers every row across more than one chunk. */
     public function test_backfill_handles_more_than_one_chunk(): void
     {
-        Artisan::call('migrate:rollback', ['--step' => 6]);
+        Artisan::call('migrate:rollback', ['--step' => 7]);
 
         $customers = [];
 
@@ -99,7 +99,7 @@ final class CustomerInstitutionBackfillTest extends TestCase
             'institution' => 'Sekolah',
         ]);
 
-        Artisan::call('migrate:rollback', ['--step' => 5]);
+        Artisan::call('migrate:rollback', ['--step' => 6]);
 
         $invoice = $this->legacyInvoice($customer->id);
         DB::table('invoices')->insert($invoice);
@@ -118,7 +118,7 @@ final class CustomerInstitutionBackfillTest extends TestCase
         ]);
         $customer->delete();
 
-        Artisan::call('migrate:rollback', ['--step' => 5]);
+        Artisan::call('migrate:rollback', ['--step' => 6]);
 
         $invoice = $this->legacyInvoice($customer->id);
         DB::table('invoices')->insert($invoice);
@@ -140,7 +140,7 @@ final class CustomerInstitutionBackfillTest extends TestCase
             'institution' => 'Pemerintahan',
         ]);
 
-        Artisan::call('migrate:rollback', ['--step' => 5]);
+        Artisan::call('migrate:rollback', ['--step' => 6]);
 
         $invoices = [];
 

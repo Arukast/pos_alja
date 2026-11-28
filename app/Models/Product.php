@@ -21,6 +21,8 @@ class Product extends Model
         'name',
         'selling_unit',
         'product_category_id',
+        'price',
+        'cost',
         'is_active',
         'requires_material',
         'uses_attributes',
@@ -93,6 +95,8 @@ class Product extends Model
     public function auditSnapshot(): array
     {
         return [
+            'price' => $this->price,
+            'cost' => $this->cost,
             'requires_material' => (bool) $this->requires_material,
             'uses_attributes' => (bool) $this->uses_attributes,
             'material_ids' => $this->materials()->pluck('materials.id')->values()->all(),

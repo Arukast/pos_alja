@@ -1817,6 +1817,107 @@ class CatalogWriteApiTest extends TestCase
         ]);
     }
 
+    public function test_owner_persists_product_base_price_and_cost_on_create_and_update(): void
+    {
+        $created = $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Priced Banner',
+                'product_category_id' => $this->category->id,
+                'selling_unit' => 'm2',
+                'price' => '150000.00',
+                'cost' => '60000.00',
+            ])
+            ->assertCreated()
+            ->json('product');
+
+        $this->assertDatabaseHas('products', [
+            'id' => $created['id'],
+            'price' => '150000.00',
+            'cost' => '60000.00',
+        ]);
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/products/{$created['id']}", [
+                'name' => 'Priced Banner Updated',
+                'product_category_id' => $this->category->id,
+                'selling_unit' => 'm2',
+                'price' => '175000.00',
+                'cost' => '70000.00',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('products', [
+            'id' => $created['id'],
+            'price' => '175000.00',
+            'cost' => '70000.00',
+        ]);
+    }
+
+    public function test_product_write_rejects_invalid_price_and_cost(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Negative Price',
+                'product_category_id' => $this->category->id,
+                'selling_unit' => 'm2',
+                'price' => -1,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('price');
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Invalid Cost',
+                'product_category_id' => $this->category->id,
+                'selling_unit' => 'm2',
+                'cost' => 'abc',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('cost');
+    }
+
+    public function test_product_update_preserves_omitted_price_or_cost(): void
+    {
+        $created = $this->actingAs($this->owner)
+            ->postJson('/api/v1/products', [
+                'name' => 'Partial Update',
+                'product_category_id' => $this->category->id,
+                'selling_unit' => 'm2',
+                'price' => '150000.00',
+                'cost' => '60000.00',
+            ])
+            ->assertCreated()
+            ->json('product');
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/products/{$created['id']}", [
+                'name' => 'Partial Update Price Only',
+                'product_category_id' => $this->category->id,
+                'price' => '175000.00',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('products', [
+            'id' => $created['id'],
+            'price' => '175000.00',
+            'cost' => '60000.00',
+        ]);
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/products/{$created['id']}", [
+                'name' => 'Partial Update Cost Only',
+                'product_category_id' => $this->category->id,
+                'cost' => '70000.00',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('products', [
+            'id' => $created['id'],
+            'price' => '175000.00',
+            'cost' => '70000.00',
+        ]);
+    }
+
     private function branch(string $name): Branch
     {
         return Branch::create([
