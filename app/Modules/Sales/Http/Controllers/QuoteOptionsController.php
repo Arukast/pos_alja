@@ -87,6 +87,7 @@ final class QuoteOptionsController extends Controller
                         'materials',
                         'attributeTypes',
                         'compatibleAttributes.typeInfo',
+                        'quantityDiscounts',
                     ])
                     ->orderBy('name')
                     ->get()

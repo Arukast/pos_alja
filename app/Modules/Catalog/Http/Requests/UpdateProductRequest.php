@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Http\Requests;
 
 use App\Models\Product;
+use App\Models\ProductQuantityDiscount;
 use App\Support\MaterialUnit;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -34,6 +36,26 @@ final class UpdateProductRequest extends FormRequest
             'attribute_type_ids.*' => ['uuid', 'distinct', 'exists:attribute_types,id'],
             'attribute_ids' => ['sometimes', 'array'],
             'attribute_ids.*' => ['uuid', 'distinct', Rule::exists('attributes', 'id')->whereNull('deleted_at')],
+            'tiers' => ['sometimes', 'array'],
+            'tiers.*' => ['array'],
+            'tiers.*.min_qty' => ['required', 'integer', 'min:1', 'max:100000', 'distinct'],
+            'tiers.*.discount_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'tiers.*.id' => [
+                'sometimes',
+                'uuid',
+                'distinct',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $product = $this->route('product');
+                    $owned = $product instanceof Product && ProductQuantityDiscount::query()
+                        ->whereKey($value)
+                        ->where('product_id', $product->id)
+                        ->exists();
+
+                    if (! $owned) {
+                        $fail('Tier tidak ditemukan pada produk ini.');
+                    }
+                },
+            ],
         ];
     }
 }

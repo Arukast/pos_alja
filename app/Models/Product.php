@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Decimal;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -78,6 +80,14 @@ class Product extends Model
     }
 
     /**
+     * @return HasMany<ProductQuantityDiscount, $this>
+     */
+    public function quantityDiscounts(): HasMany
+    {
+        return $this->hasMany(ProductQuantityDiscount::class)->orderBy('min_qty');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function auditSnapshot(): array
@@ -88,6 +98,13 @@ class Product extends Model
             'material_ids' => $this->materials()->pluck('materials.id')->values()->all(),
             'attribute_type_ids' => $this->attributeTypes()->pluck('attribute_type_product.attribute_type_id')->values()->all(),
             'attribute_ids' => $this->compatibleAttributes()->pluck('attribute_product.attribute_id')->values()->all(),
+            'tiers' => $this->quantityDiscounts()->orderBy('min_qty')->get()->map(
+                static fn (ProductQuantityDiscount $tier): array => [
+                    'id' => $tier->id,
+                    'min_qty' => (int) $tier->min_qty,
+                    'discount_percent' => Decimal::money($tier->discount_percent),
+                ]
+            )->values()->all(),
         ];
     }
 }

@@ -114,6 +114,7 @@ export interface Product {
         type_name: string;
     }>;
     attribute_ids: string[];
+    tiers?: Array<{ id: string; min_qty: number; discount_percent: string }>;
 }
 
 export interface MaterialStock {

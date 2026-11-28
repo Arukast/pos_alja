@@ -15,9 +15,10 @@
 | Attributes (finishing, cut, display, and custom types) | all | global read-only; create/update own branch | no | no | no |
 | Attribute types | CRUD (no delete; activate/deactivate) | read | no | no | no |
 | Order attribute selection | no | no | no | yes, product-filtered active types/attributes; invoice edit keeps invoice-wide inactive selections | no |
-| Product quantity tiers (global) | CRUD | read only | no | no | no |
+| Product quantity tiers (global; inline on product form) | CRUD; tier ids sent inside product POST/PUT | read only; no tier add/edit/delete controls | no | no | no |
+| `ProductResource.tiers` payload key | yes | yes | no | yes | no |
 | Material base cost/price | write | create with own-branch stock only | no | no | no |
-| Products | CRUD | read | read | read | no |
+| Products | CRUD | read via read-only `Lihat` modal (no create/edit/delete) | read | read | no |
 | Product flags (bahan/atribut), allowed attribute types, compatible attributes | write | read | read | read via quote options | no |
 | Materials master | CRUD; global active toggle; read all branches including low stock; global delete | create (own-branch stock only); restock/activate/adjust own branch; branch active toggle; read own branch including low stock; no master edit/delete and no global toggle | no | no | read own branch including low stock |
 | Customers (shared `/customers`) | create/read/update | create/read/update | read only (including search) | create/read/update | no |
@@ -75,6 +76,7 @@
 24. Product capability writes (`requires_material`, `uses_attributes`, `attribute_type_ids`, `attribute_ids`, alongside `material_ids`) are Owner-only; the Manager product page is read-only. `ProductResource` exposes the flags, both ID arrays, and display-only name arrays. Empty type/attribute mappings mean all active types/attributes; `uses_attributes = false` disables attributes while preserving the stored mappings. Designer selections are filtered by the product on both new-order and edit pages, and no request field widens the server-side capability check.
 25. No new production write is introduced by B2 or B4. `production` keeps its existing queue/start/fail/reopen and waste permissions and its money redaction; starting a null-material order is allowed only when the order's own product has `requires_material = false`, skips stock deduction and material usage, keeps `material_usage = []`, and adds no material-free waste path. A soft-deleted material on the order is rejected at start.
 26. The designer order detail modal is read-only and renders discount, down payment, payment rows, unit price, subtotal, total, and outstanding from the existing `GET /api/v1/invoices/{id}` response. `cost`, `profit`, `total_cost`, and `total_profit` stay hidden from designers in both the API and the SPA; B4 exposes the order-owned `quantity_discount_percent` and `discount_amount` snapshots to designers, and no further money field or endpoint is introduced.
+27. Product tier configuration is edited inline in the product modal. Owner writes products and their `tiers[]`; Manager opens the same modal with every field, including tier rows, disabled. `ProductResource` emits `tiers` only to Owner, Manager, and Designer; Cashier and Production receive no tier key. A `tiers.*.id` on update must belong to the product being updated (otherwise 422 with a dotted key). The standalone `Tier Jumlah` UI pages and nav entries are removed and their URLs redirect to the products pages, while the tier REST endpoints stay Owner-write/Manager-read. Tier configuration visibility is distinct from money visibility: applied discounts in quotes and invoices keep the existing money rules.
 
 ## Revision Note
 

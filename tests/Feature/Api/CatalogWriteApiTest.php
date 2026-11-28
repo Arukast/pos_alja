@@ -12,11 +12,16 @@ use App\Models\Material;
 use App\Models\MaterialBranchStock;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductQuantityDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
+use App\Support\Decimal;
+use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class CatalogWriteApiTest extends TestCase
@@ -1160,6 +1165,7 @@ class CatalogWriteApiTest extends TestCase
                 'selling_unit' => 'pcs',
                 'is_active' => false,
                 'material_ids' => [$this->otherMaterial->id],
+                'tiers' => [],
             ])
             ->assertOk()
             ->assertJsonPath('product.is_active', false)
@@ -1315,6 +1321,7 @@ class CatalogWriteApiTest extends TestCase
                 'name' => 'Banner Vinyl Baru',
                 'product_category_id' => $this->category->id,
                 'selling_unit' => 'lembar',
+                'tiers' => [],
             ])->assertOk();
 
         $this->assertSame('lembar', $updated->json('product.selling_unit'));
@@ -1347,6 +1354,7 @@ class CatalogWriteApiTest extends TestCase
                 'name' => $this->product->name,
                 'product_category_id' => $this->category->id,
                 'pricing_type' => 'area',
+                'tiers' => [],
             ])->assertOk();
 
         $this->assertSame('roll', $response->json('product.selling_unit'));
@@ -1601,6 +1609,212 @@ class CatalogWriteApiTest extends TestCase
             ->assertJsonPath('category.is_active', false);
 
         $this->assertFalse(Schema::hasTable('product_category_discounts'));
+    }
+
+    public function test_product_create_without_tiers_is_valid(): void
+    {
+        $response = $this->actingAs($this->owner)->postJson('/api/v1/products', [
+            'name' => 'Banner Tanpa Tier',
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+        ])->assertCreated();
+
+        $product = Product::query()->findOrFail($response->json('product.id'));
+        $this->assertSame(0, $product->quantityDiscounts()->count());
+        $this->assertSame([], $response->json('product.tiers'));
+    }
+
+    public function test_owner_creates_product_with_tiers_in_one_transaction(): void
+    {
+        $response = $this->actingAs($this->owner)->postJson('/api/v1/products', [
+            'name' => 'Banner Bertingkat',
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+            'tiers' => [
+                ['min_qty' => 100, 'discount_percent' => '12.50'],
+                ['min_qty' => 10, 'discount_percent' => '5.00'],
+            ],
+        ])->assertCreated();
+
+        $id = $response->json('product.id');
+        $rows = Product::query()->findOrFail($id)->quantityDiscounts()->orderBy('min_qty')->get();
+
+        $this->assertSame([10, 100], $rows->pluck('min_qty')->all());
+        $this->assertSame(['5.00', '12.50'], $rows->map(
+            static fn (ProductQuantityDiscount $tier): string => Decimal::money($tier->discount_percent)
+        )->all());
+        $this->assertSame([10, 100], $response->json('product.tiers.*.min_qty'));
+        $this->assertSame(['5.00', '12.50'], $response->json('product.tiers.*.discount_percent'));
+    }
+
+    public function test_owner_updates_adds_edits_and_deletes_tiers_in_one_transaction(): void
+    {
+        $keepId = ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 10, 'discount_percent' => 5,
+        ])->id;
+        $droppedId = ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 50, 'discount_percent' => 8,
+        ])->id;
+
+        $this->actingAs($this->owner)->putJson("/api/v1/products/{$this->product->id}", [
+            'name' => $this->product->name,
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+            'tiers' => [
+                ['id' => $keepId, 'min_qty' => 50, 'discount_percent' => '7.50'],
+                ['min_qty' => 100, 'discount_percent' => '15.00'],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('product.tiers.0.min_qty', 50)
+            ->assertJsonPath('product.tiers.1.min_qty', 100);
+
+        $this->assertSame([50, 100], $this->product->quantityDiscounts()->orderBy('min_qty')->pluck('min_qty')->all());
+        $this->assertDatabaseMissing('product_quantity_discounts', ['id' => $droppedId]);
+        $this->assertDatabaseHas('product_quantity_discounts', ['id' => $keepId, 'discount_percent' => 7.50]);
+    }
+
+    public function test_put_without_tiers_clears_all_tiers_and_empty_array_also_clears(): void
+    {
+        ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 10, 'discount_percent' => 5,
+        ]);
+
+        $omitted = $this->actingAs($this->owner)->putJson("/api/v1/products/{$this->product->id}", [
+            'name' => $this->product->name,
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+        ])->assertOk();
+        $this->assertSame(0, $this->product->quantityDiscounts()->count());
+        $this->assertSame([], $omitted->json('product.tiers'));
+
+        ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 20, 'discount_percent' => 8,
+        ]);
+        $empty = $this->actingAs($this->owner)->putJson("/api/v1/products/{$this->product->id}", [
+            'name' => $this->product->name,
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+            'tiers' => [],
+        ])->assertOk();
+        $this->assertSame(0, $this->product->quantityDiscounts()->count());
+        $this->assertSame([], $empty->json('product.tiers'));
+    }
+
+    public function test_update_rejects_invalid_duplicate_and_foreign_tier_ids(): void
+    {
+        $own = ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 10, 'discount_percent' => 5,
+        ]);
+        $otherProduct = Product::query()->create([
+            'name' => 'Produk Lain', 'product_category_id' => $this->category->id, 'selling_unit' => 'pcs',
+        ]);
+        $foreign = ProductQuantityDiscount::query()->create([
+            'product_id' => $otherProduct->id, 'min_qty' => 70, 'discount_percent' => 9,
+        ]);
+
+        $put = fn (array $tiers): TestResponse => $this->actingAs($this->owner)->putJson(
+            "/api/v1/products/{$this->product->id}",
+            ['name' => $this->product->name, 'product_category_id' => $this->category->id, 'selling_unit' => 'pcs', 'tiers' => $tiers]
+        );
+
+        $put([['min_qty' => 10, 'discount_percent' => '5.00'], ['min_qty' => 10, 'discount_percent' => '6.00']])
+            ->assertStatus(422)->assertJsonValidationErrors('tiers.1.min_qty');
+        $put([['id' => $own->id, 'min_qty' => 10, 'discount_percent' => '5.00'], ['id' => $own->id, 'min_qty' => 20, 'discount_percent' => '6.00']])
+            ->assertStatus(422)->assertJsonValidationErrors('tiers.1.id');
+        $put([['id' => $foreign->id, 'min_qty' => 30, 'discount_percent' => '6.00']])
+            ->assertStatus(422)->assertJsonValidationErrors('tiers.0.id');
+        $put([['min_qty' => 0, 'discount_percent' => '101.00']])
+            ->assertStatus(422)->assertJsonValidationErrors(['tiers.0.min_qty', 'tiers.0.discount_percent']);
+        $put([['min_qty' => 100001, 'discount_percent' => '-1.00']])
+            ->assertStatus(422)->assertJsonValidationErrors(['tiers.0.min_qty', 'tiers.0.discount_percent']);
+
+        $this->assertSame([10], $this->product->quantityDiscounts()->pluck('min_qty')->all());
+    }
+
+    public function test_tier_write_failure_rolls_back_product_and_tier_changes(): void
+    {
+        $low = ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 10, 'discount_percent' => 5,
+        ]);
+        $high = ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 20, 'discount_percent' => 8,
+        ]);
+
+        $thrown = false;
+        try {
+            $this->withoutExceptionHandling()->actingAs($this->owner)
+                ->putJson("/api/v1/products/{$this->product->id}", [
+                    'name' => 'Nama Yang Tidak Tersimpan',
+                    'product_category_id' => $this->category->id,
+                    'selling_unit' => 'pcs',
+                    'tiers' => [
+                        ['id' => $low->id, 'min_qty' => 20, 'discount_percent' => '6.00'],
+                        ['id' => $high->id, 'min_qty' => 10, 'discount_percent' => '9.00'],
+                    ],
+                ]);
+        } catch (QueryException) {
+            $thrown = true;
+        }
+
+        $this->assertTrue($thrown);
+        $this->assertSame($this->product->name, $this->product->fresh()->name);
+        $this->assertSame([10 => '5.00', 20 => '8.00'], $this->product->quantityDiscounts()
+            ->orderBy('min_qty')->get()->mapWithKeys(
+                static fn (ProductQuantityDiscount $tier): array => [$tier->min_qty => Decimal::money($tier->discount_percent)]
+            )->all());
+    }
+
+    public function test_product_audit_snapshot_includes_tiers(): void
+    {
+        $created = $this->actingAs($this->owner)->postJson('/api/v1/products', [
+            'name' => 'Banner Audit',
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+            'tiers' => [['min_qty' => 25, 'discount_percent' => '11.00']],
+        ])->assertCreated()->json('product.id');
+
+        $createLog = ActivityLog::query()->where('action', 'CREATE')
+            ->where('model_id', $created)->firstOrFail();
+        $this->assertSame([25], array_column($createLog->payload['tiers'], 'min_qty'));
+
+        $this->actingAs($this->owner)->putJson("/api/v1/products/{$created}", [
+            'name' => 'Banner Audit Ubah',
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+            'tiers' => [['min_qty' => 30, 'discount_percent' => '12.00']],
+        ])->assertOk();
+
+        $updateLog = ActivityLog::query()->where('action', 'UPDATE')
+            ->where('model_id', $created)->firstOrFail();
+        $this->assertSame([25], array_column($updateLog->payload['before']['tiers'], 'min_qty'));
+        $this->assertSame([30], array_column($updateLog->payload['after']['tiers'], 'min_qty'));
+    }
+
+    public function test_tier_with_empty_id_is_inserted_without_deleting_existing_tiers(): void
+    {
+        $existingId = ProductQuantityDiscount::query()->create([
+            'product_id' => $this->product->id, 'min_qty' => 10, 'discount_percent' => 5,
+        ])->id;
+
+        // Keep the raw '' in the payload so the validator sees exactly the value the review traced.
+        $this->withoutMiddleware(ConvertEmptyStringsToNull::class);
+
+        $this->actingAs($this->owner)->putJson("/api/v1/products/{$this->product->id}", [
+            'name' => $this->product->name,
+            'product_category_id' => $this->category->id,
+            'selling_unit' => 'pcs',
+            'tiers' => [
+                ['id' => $existingId, 'min_qty' => 10, 'discount_percent' => '5.00'],
+                ['id' => '', 'min_qty' => 30, 'discount_percent' => '9.00'],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('product.tiers.0.min_qty', 10)
+            ->assertJsonPath('product.tiers.1.min_qty', 30);
+
+        $this->assertSame([10, 30], $this->product->quantityDiscounts()->orderBy('min_qty')->pluck('min_qty')->all());
+        $this->assertDatabaseHas('product_quantity_discounts', [
+            'id' => $existingId, 'min_qty' => 10, 'discount_percent' => 5,
+        ]);
     }
 
     private function branch(string $name): Branch

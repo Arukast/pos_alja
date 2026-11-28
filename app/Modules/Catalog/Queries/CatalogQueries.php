@@ -64,6 +64,7 @@ final class CatalogQueries
             'materials',
             'attributeTypes',
             'compatibleAttributes.typeInfo',
+            'quantityDiscounts',
         ]);
 
         if (($filters['include_deleted'] ?? false) === true) {
