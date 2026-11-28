@@ -7,6 +7,7 @@ const base: Product = {
     id: 'p1',
     name: 'Banner',
     selling_unit: 'pcs',
+    price: '0.00',
     is_active: true,
     category: null,
     materials: [],

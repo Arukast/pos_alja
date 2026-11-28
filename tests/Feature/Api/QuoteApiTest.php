@@ -457,6 +457,78 @@ class QuoteApiTest extends TestCase
             ->assertJsonMissingPath('quote.profit');
     }
 
+    public function test_quote_uses_product_base_price_when_there_is_no_material_or_attribute(): void
+    {
+        $product = Product::create([
+            'name' => 'Service Fee',
+            'selling_unit' => 'pcs',
+            'product_category_id' => $this->product->product_category_id,
+            'requires_material' => false,
+            'uses_attributes' => false,
+            'price' => '100000.00',
+            'cost' => '40000.00',
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $product->id,
+                'material_id' => null,
+                'quantity' => 2,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.unit_price', '100000.00')
+            ->assertJsonPath('quote.subtotal', '200000.00')
+            ->assertJsonMissingPath('quote.cost')
+            ->assertJsonMissingPath('quote.profit');
+    }
+
+    public function test_quote_adds_product_base_price_before_reseller_and_tier_discounts(): void
+    {
+        $this->branchOne->update(['reseller_discount_percent' => 10]);
+
+        $product = Product::create([
+            'name' => 'Priced Banner',
+            'selling_unit' => 'pcs',
+            'product_category_id' => $this->product->product_category_id,
+            'price' => '100000.00',
+            'cost' => '40000.00',
+        ]);
+
+        $material = Material::create([
+            'name' => 'Priced Roll',
+            'product_category_id' => $this->product->product_category_id,
+            'type' => 'roll',
+            'price' => 50000,
+            'cost' => 25000,
+        ]);
+
+        $product->materials()->sync([$material->id]);
+
+        MaterialBranchStock::create([
+            'material_id' => $material->id,
+            'branch_id' => $this->branchOne->id,
+            'current_stock' => 10,
+            'min_stock' => 1,
+        ]);
+
+        ProductQuantityDiscount::create([
+            'product_id' => $product->id,
+            'min_qty' => 2,
+            'discount_percent' => 10,
+        ]);
+
+        $this->actingAs($this->designer)
+            ->postJson('/api/v1/quotes', [
+                'product_id' => $product->id,
+                'material_id' => $material->id,
+                'customer_type' => 'Reseller',
+                'quantity' => 2,
+            ])
+            ->assertOk()
+            ->assertJsonPath('quote.subtotal', '243000.00')
+            ->assertJsonPath('quote.discount_amount', '57000.00');
+    }
+
     public function test_quote_publishes_the_applied_quantity_discount(): void
     {
         ProductQuantityDiscount::create([

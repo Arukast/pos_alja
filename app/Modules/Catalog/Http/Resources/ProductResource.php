@@ -63,6 +63,12 @@ final class ProductResource extends JsonResource
         ];
 
         $user = $request->user();
+        if ($user instanceof User && in_array($user->role, ['owner', 'manager', 'cashier', 'designer'], true)) {
+            $data['price'] = Decimal::money($this->price);
+        }
+        if ($user instanceof User && in_array($user->role, ['owner', 'manager'], true)) {
+            $data['cost'] = Decimal::money($this->cost);
+        }
         if ($user instanceof User && in_array($user->role, ['owner', 'manager', 'designer'], true)) {
             $tiers = $this->relationLoaded('quantityDiscounts') ? $this->quantityDiscounts : collect();
             $data['tiers'] = $tiers->map(static fn (ProductQuantityDiscount $tier): array => [

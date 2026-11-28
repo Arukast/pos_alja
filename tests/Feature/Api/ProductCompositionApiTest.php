@@ -28,6 +28,8 @@ class ProductCompositionApiTest extends TestCase
 
     private User $manager;
 
+    private User $cashier;
+
     private AttributeType $type;
 
     private AttributeType $finishingType;
@@ -56,6 +58,7 @@ class ProductCompositionApiTest extends TestCase
         $this->owner = $this->user('owner', null);
         $this->designer = $this->user('designer', $this->branch);
         $this->manager = $this->user('manager', $this->branch);
+        $this->cashier = $this->user('cashier', $this->branch);
 
         $this->type = AttributeType::query()->where('slug', 'finishing')->firstOrFail();
         $this->finishingType = $this->type;
@@ -79,6 +82,8 @@ class ProductCompositionApiTest extends TestCase
             'name' => 'Vinyl Banner',
             'selling_unit' => 'm2',
             'product_category_id' => $this->category->id,
+            'price' => '150000.00',
+            'cost' => '60000.00',
         ]);
 
         $this->material = Material::create([
@@ -134,6 +139,51 @@ class ProductCompositionApiTest extends TestCase
             ->assertJsonPath('data.0.attribute_ids.0', $attribute->id)
             ->assertJsonPath('data.0.compatible_attributes.0.name', 'Glossy')
             ->assertJsonPath('data.0.compatible_attributes.0.type_name', 'Finishing');
+    }
+
+    public function test_owner_sees_product_price_and_cost(): void
+    {
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/products')
+            ->assertOk()
+            ->assertJsonPath('data.0.price', '150000.00')
+            ->assertJsonPath('data.0.cost', '60000.00');
+    }
+
+    public function test_manager_sees_product_price_and_cost(): void
+    {
+        $this->actingAs($this->manager)
+            ->getJson('/api/v1/products')
+            ->assertOk()
+            ->assertJsonPath('data.0.price', '150000.00')
+            ->assertJsonPath('data.0.cost', '60000.00');
+    }
+
+    public function test_cashier_sees_product_price_but_not_cost(): void
+    {
+        $this->actingAs($this->cashier)
+            ->getJson('/api/v1/products')
+            ->assertOk()
+            ->assertJsonPath('data.0.price', '150000.00')
+            ->assertJsonMissingPath('data.0.cost');
+    }
+
+    public function test_designer_sees_product_price_but_not_cost(): void
+    {
+        $this->actingAs($this->designer)
+            ->getJson('/api/v1/products')
+            ->assertOk()
+            ->assertJsonPath('data.0.price', '150000.00')
+            ->assertJsonMissingPath('data.0.cost');
+    }
+
+    public function test_quote_options_expose_price_without_cost_to_designer(): void
+    {
+        $this->actingAs($this->designer)
+            ->getJson('/api/v1/quotes/options')
+            ->assertOk()
+            ->assertJsonPath('products.0.price', '150000.00')
+            ->assertJsonMissingPath('products.0.cost');
     }
 
     public function test_quote_options_include_product_composition(): void

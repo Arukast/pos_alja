@@ -144,6 +144,26 @@ class NoMaterialOrderApiTest extends TestCase
         $this->assertDatabaseCount('stock_ledgers', 0);
     }
 
+    public function test_no_material_invoice_uses_product_base_price_and_cost(): void
+    {
+        $this->noMaterialProduct->update([
+            'price' => '100000.00',
+            'cost' => '40000.00',
+        ]);
+
+        $created = $this->actingAs($this->designer())
+            ->postJson('/api/v1/invoices', $this->invoicePayload())
+            ->assertCreated();
+
+        $this->actingAs($this->owner())
+            ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.unit_price', '100000.00')
+            ->assertJsonPath('invoice.orders.0.subtotal', '200000.00')
+            ->assertJsonPath('invoice.orders.0.cost', '80000.00')
+            ->assertJsonPath('invoice.orders.0.profit', '120000.00');
+    }
+
     public function test_invoice_show_renders_a_null_material_line(): void
     {
         $created = $this->actingAs($this->designer())
@@ -202,6 +222,14 @@ class NoMaterialOrderApiTest extends TestCase
         return User::factory()->create([
             'role' => 'designer',
             'branch_id' => $this->branch->id,
+        ]);
+    }
+
+    private function owner(): User
+    {
+        return User::factory()->create([
+            'role' => 'owner',
+            'branch_id' => null,
         ]);
     }
 }

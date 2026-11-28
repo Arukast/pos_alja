@@ -102,6 +102,35 @@ export function ProductsPage({
             getValue: (product) => product.selling_unit,
         },
         {
+            key: 'price',
+            label: 'Harga dasar (ditambahkan ke harga bahan & atribut)',
+            type: 'number',
+            defaultValue: '0.00',
+            getValue: (product) => product.price ?? '0.00',
+        },
+        {
+            key: 'cost',
+            label: 'Biaya dasar (ditambahkan ke biaya bahan & atribut)',
+            type: 'number',
+            defaultValue: '0.00',
+            getValue: (product) => product.cost ?? '0.00',
+        },
+        {
+            key: 'base_cost_hint',
+            label: '',
+            type: 'custom',
+            render: (values) => {
+                const price = Number(values.price);
+                const cost = Number(values.cost);
+
+                return cost > price && cost > 0 ? (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                        Biaya dasar lebih besar dari harga dasar — cek kembali
+                    </p>
+                ) : null;
+            },
+        },
+        {
             key: 'requires_material',
             label: 'Perlu bahan',
             type: 'checkbox',

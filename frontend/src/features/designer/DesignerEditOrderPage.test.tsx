@@ -51,6 +51,7 @@ const options: QuoteOptions = {
         id: 'p-banner',
         name: 'Spanduk Flexy',
         selling_unit: 'm2',
+        price: '0.00',
         is_active: true,
         category: null,
         materials: [{ id: 'm-flexy', name: 'Flexy' }],

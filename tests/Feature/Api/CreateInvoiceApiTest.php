@@ -1297,6 +1297,30 @@ class CreateInvoiceApiTest extends TestCase
         ]);
     }
 
+    public function test_create_invoice_snapshot_adds_product_base_cost_to_material_cost(): void
+    {
+        $this->product->update([
+            'selling_unit' => 'pcs',
+            'price' => '100000.00',
+            'cost' => '40000.00',
+        ]);
+        $this->material->update(['cost' => 25000]);
+
+        $created = $this->actingAs($this->designer)
+            ->postJson('/api/v1/invoices', $this->payload(['items' => [$this->item([
+                'width' => null,
+                'length' => null,
+            ])]]))
+            ->assertCreated();
+
+        $this->actingAs($this->owner)
+            ->getJson('/api/v1/invoices/'.$created->json('invoice.id'))
+            ->assertOk()
+            ->assertJsonPath('invoice.orders.0.subtotal', '250000.00')
+            ->assertJsonPath('invoice.orders.0.cost', '130000.00')
+            ->assertJsonPath('invoice.orders.0.profit', '120000.00');
+    }
+
     public function test_update_invoice_writes_new_snapshots_and_keeps_payment_rows(): void
     {
         $this->branchOne->update(['settings' => ['reseller_discount_percent' => 10]]);

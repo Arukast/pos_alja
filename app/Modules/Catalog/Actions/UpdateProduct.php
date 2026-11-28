@@ -22,7 +22,7 @@ final class UpdateProduct
     ) {}
 
     /**
-     * @param  array{name: string, product_category_id: string, selling_unit?: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>, tiers?: array<int, array{id?: string, min_qty: int, discount_percent: string}>}  $data
+     * @param  array{name: string, product_category_id: string, selling_unit?: string, price?: string, cost?: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>, tiers?: array<int, array{id?: string, min_qty: int, discount_percent: string}>}  $data
      */
     public function execute(Product $product, array $data, User $actor): Product
     {
@@ -38,6 +38,12 @@ final class UpdateProduct
                     'selling_unit' => array_key_exists('selling_unit', $data)
                         ? $data['selling_unit']
                         : $product->selling_unit,
+                    'price' => array_key_exists('price', $data)
+                        ? $data['price']
+                        : $product->price,
+                    'cost' => array_key_exists('cost', $data)
+                        ? $data['cost']
+                        : $product->cost,
                     'is_active' => array_key_exists('is_active', $data)
                         ? (bool) $data['is_active']
                         : (bool) $product->is_active,

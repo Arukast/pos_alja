@@ -21,6 +21,8 @@ class Product extends Model
         'name',
         'selling_unit',
         'product_category_id',
+        'price',
+        'cost',
         'is_active',
         'requires_material',
         'uses_attributes',

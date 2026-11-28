@@ -22,7 +22,7 @@ final class CreateProduct
     ) {}
 
     /**
-     * @param  array{name: string, product_category_id: string, selling_unit: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>, tiers?: array<int, array{id?: string, min_qty: int, discount_percent: string}>}  $data
+     * @param  array{name: string, product_category_id: string, selling_unit: string, price?: string, cost?: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>, tiers?: array<int, array{id?: string, min_qty: int, discount_percent: string}>}  $data
      */
     public function execute(array $data, User $actor): Product
     {
@@ -34,6 +34,8 @@ final class CreateProduct
                     'name' => $data['name'],
                     'product_category_id' => $data['product_category_id'],
                     'selling_unit' => $data['selling_unit'],
+                    'price' => $data['price'] ?? '0.00',
+                    'cost' => $data['cost'] ?? '0.00',
                     'is_active' => (bool) ($data['is_active'] ?? true),
                     'requires_material' => (bool) ($data['requires_material'] ?? true),
                     'uses_attributes' => (bool) ($data['uses_attributes'] ?? true),

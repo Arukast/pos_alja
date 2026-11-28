@@ -25,6 +25,8 @@ final class StoreProductRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'product_category_id' => ['required', 'uuid', 'exists:product_categories,id'],
             'selling_unit' => ['required', 'string', Rule::in(MaterialUnit::VALUES)],
+            'price' => ['sometimes', 'numeric', 'min:0'],
+            'cost' => ['sometimes', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
             'requires_material' => ['sometimes', 'boolean'],
             'uses_attributes' => ['sometimes', 'boolean'],

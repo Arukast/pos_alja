@@ -1,9 +1,15 @@
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Attribute, AttributeType, Material, Product } from '../../api/types';
 
-const { responses } = vi.hoisted(() => ({ responses: new Map<string, unknown>() }));
+const { responses, capturedFields } = vi.hoisted(() => ({
+    responses: new Map<string, unknown>(),
+    capturedFields: {
+        current: [] as Array<{ key: string; render?: (values: Record<string, unknown>) => ReactNode }>,
+    },
+}));
 
 vi.mock('../../auth/useAuth', () => ({
     useAuth: () => ({ user: { role: 'manager' } }),
@@ -31,24 +37,29 @@ vi.mock('../../components/admin/CrudPage', () => ({
         label: string;
         type?: string;
         options?: Array<{ value: string; label: string }>;
-    }> }) => (
-        <div>
-            {fields
-                .filter((field) => field.type === 'multiselect')
-                .map((field) => (
-                    <div key={field.key}>
-                        <span>{field.label}</span>
-                        {(field.options ?? []).length === 0 ? (
-                            <span>Belum ada pilihan.</span>
-                        ) : (
-                            (field.options ?? []).map((option) => (
-                                <span key={option.value}>{option.label}</span>
-                            ))
-                        )}
-                    </div>
-                ))}
-        </div>
-    ),
+        render?: (values: Record<string, unknown>) => ReactNode;
+    }> }) => {
+        capturedFields.current = fields;
+
+        return (
+            <div>
+                {fields
+                    .filter((field) => field.type === 'multiselect')
+                    .map((field) => (
+                        <div key={field.key}>
+                            <span>{field.label}</span>
+                            {(field.options ?? []).length === 0 ? (
+                                <span>Belum ada pilihan.</span>
+                            ) : (
+                                (field.options ?? []).map((option) => (
+                                    <span key={option.value}>{option.label}</span>
+                                ))
+                            )}
+                        </div>
+                    ))}
+            </div>
+        );
+    },
 }));
 
 import { ManagerProductsPage } from '../manager/AdminPages';
@@ -92,6 +103,7 @@ describe('read-only product modal compatibility options', () => {
             id: 'p1',
             name: 'Spanduk',
             selling_unit: 'pcs',
+            price: '0.00',
             is_active: true,
             category: null,
             materials: [material],
@@ -120,5 +132,22 @@ describe('read-only product modal compatibility options', () => {
         expect(html).toContain('Finishing');
         expect(html).toContain('Glossy · Finishing');
         expect(html).not.toContain('Belum ada pilihan.');
+    });
+
+    it('shows the base cost hint only when base cost exceeds base price', () => {
+        renderToStaticMarkup(<ManagerProductsPage />);
+
+        const hint = capturedFields.current.find((field) => field.key === 'base_cost_hint');
+        expect(hint?.render).toBeTypeOf('function');
+
+        const renderHint = hint!.render!;
+        const excess = renderToStaticMarkup(renderHint({ price: '100000', cost: '150000' }));
+        expect(excess).toContain('Biaya dasar lebih besar dari harga dasar — cek kembali');
+
+        const equal = renderToStaticMarkup(renderHint({ price: '100000', cost: '100000' }));
+        expect(equal).toBe('');
+
+        const zero = renderToStaticMarkup(renderHint({ price: '0.00', cost: '0.00' }));
+        expect(zero).toBe('');
     });
 });

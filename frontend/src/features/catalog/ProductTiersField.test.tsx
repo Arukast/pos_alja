@@ -47,10 +47,14 @@ describe('ProductTiersField', () => {
             material_ids: ['mat-1', 'mat-2'],
             attribute_type_ids: ['type-1'],
             attribute_ids: ['attr-1'],
+            price: '0.00',
+            cost: '0.00',
             tiers: rows,
         });
 
         expect(payload).toMatchObject({
+            price: '0.00',
+            cost: '0.00',
             material_ids: ['mat-1', 'mat-2'],
             attribute_type_ids: ['type-1'],
             attribute_ids: ['attr-1'],

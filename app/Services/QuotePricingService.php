@@ -18,7 +18,7 @@ final class QuotePricingService
     /**
      * Calculate the authoritative quote for a product configuration.
      *
-     * base_price = materials.price + Σ selected active attributes.price
+     * base_price = product.price + materials.price + Σ selected active attributes.price
      * reseller%  = customer_type === 'Reseller' ? Branch::find(branch_id)?->getResellerDiscountPercent() ?? 0 : 0
      * base_after_reseller = base_price * (1 - reseller%/100)
      * area_factor = product.selling_unit === 'm2' ? width * length : 1
@@ -26,7 +26,7 @@ final class QuotePricingService
      * undiscounted_after_reseller = base_after_reseller * quantity * area_factor
      * tier% = highest ProductQuantityDiscount where product_id = … and min_qty <= quantity, else 0
      * subtotal = undiscounted_after_reseller * (1 - tier%/100)
-     * unit_cost = materials.cost + Σ selected active attributes.cost
+     * unit_cost = product.cost + materials.cost + Σ selected active attributes.cost
      * cost = unit_cost * quantity * area_factor                        // no discount applied to cost
      * profit = subtotal - cost
      * discount_amount = gross_subtotal - subtotal                      // reseller + tier combined
@@ -132,9 +132,9 @@ final class QuotePricingService
             $attributeCostSum += (float) $attribute->cost;
         }
 
-        $basePrice = $materialPrice + $attributePriceSum;
+        $basePrice = (float) $product->price + $materialPrice + $attributePriceSum;
         $baseAfterReseller = $basePrice * (1.0 - ($resellerPercent / 100.0));
-        $unitCost = $materialCost + $attributeCostSum;
+        $unitCost = (float) $product->cost + $materialCost + $attributeCostSum;
         $area = 0.0;
         $areaFactor = 1.0;
 
