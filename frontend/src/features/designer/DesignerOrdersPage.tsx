@@ -306,7 +306,8 @@ export function DesignerOrdersPage() {
                             </div>
                         </dl>
 
-                        <Table ariaLabel="Item pesanan">
+                        {/* The shared Table sets min-w-full; the important flag lets the scroll region keep columns readable. */}
+                        <Table ariaLabel="Item pesanan" className="min-w-[36rem]!">
                             <TableHead>
                                 <TableRow>
                                     <TableHeaderCell>Item</TableHeaderCell>

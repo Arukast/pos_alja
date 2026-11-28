@@ -67,4 +67,10 @@ describe('DesignerOrdersPage', () => {
         expect(html).toContain('spanduk_toko.pdf');
         expect(html).toContain('[overflow-wrap:anywhere]');
     });
+
+    it('keeps the item table wide enough to scroll instead of collapsing columns at 390px', () => {
+        const html = renderOrdersPage();
+
+        expect(html).toMatch(/<table[^>]*aria-label="Item pesanan"[^>]*class="[^"]*min-w-\[36rem\]!/);
+    });
 });
