@@ -167,7 +167,7 @@ Expected: FAIL — unknown properties on `Product`, hint not rendered.
 
 - [ ] **Step 3: Implement fields and payload**
 
-Add `price: string` and `cost?: string` to `Product` in `api/types.ts`. In `productPayload()` add `price: String(values.price ?? '0.00')` and `cost: String(values.cost ?? '0.00')`. In `ProductsPage.tsx` add two `number` fields with keys `price` and `cost`, defaults `'0.00'`, `getValue: (row) => row.price ?? '0.00'` (and `row.cost ?? '0.00'`), labels `Harga dasar (ditambahkan ke harga bahan & atribut)` and `Biaya dasar (ditambahkan ke biaya bahan & atribut)`. Add one `custom` field with key `base_cost_hint`, `label: ''`, and `render(values)` returning the hint `<p>` when `Number(values.cost) > Number(values.price) && Number(values.cost) > 0`, otherwise `null`. Note: `valuesForFields()` initializes a custom field's value to `[]` and `render` does not receive `readOnly`; do not depend on either.
+Add `price: string` and `cost?: string` to `Product` in `api/types.ts`. In `productPayload()` add `price: String(values.price ?? '0.00')` and `cost: String(values.cost ?? '0.00')`. In `ProductsPage.tsx` add two `number` fields with keys `price` and `cost`, defaults `'0.00'`, `getValue: (row) => row.price ?? '0.00'` (and `row.cost ?? '0.00'`), labels `Harga dasar` and `Biaya dasar`. Add one `custom` field with key `base_cost_hint`, `label: ''`, and `render(values)` returning the hint `<p>` when `Number(values.cost) > Number(values.price) && Number(values.cost) > 0`, otherwise `null`. Note: `valuesForFields()` initializes a custom field's value to `[]` and `render` does not receive `readOnly`; do not depend on either.
 
 - [ ] **Step 4: Run checks to verify they pass**
 

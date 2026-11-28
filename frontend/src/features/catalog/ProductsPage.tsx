@@ -103,14 +103,14 @@ export function ProductsPage({
         },
         {
             key: 'price',
-            label: 'Harga dasar (ditambahkan ke harga bahan & atribut)',
+            label: 'Harga dasar',
             type: 'number',
             defaultValue: '0.00',
             getValue: (product) => product.price ?? '0.00',
         },
         {
             key: 'cost',
-            label: 'Biaya dasar (ditambahkan ke biaya bahan & atribut)',
+            label: 'Biaya dasar',
             type: 'number',
             defaultValue: '0.00',
             getValue: (product) => product.cost ?? '0.00',

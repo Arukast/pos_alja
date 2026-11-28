@@ -67,7 +67,7 @@ Consumers already using this service (`/quotes`, `CreateInvoice`, `UpdateInvoice
 
 ### Frontend
 
-- `frontend/src/features/catalog/ProductsPage.tsx`: two plain always-visible fields, default `'0.00'`, no `hideWhen`. Labels: `Harga dasar (ditambahkan ke harga bahan & atribut)` and `Biaya dasar (ditambahkan ke biaya bahan & atribut)`.
+- `frontend/src/features/catalog/ProductsPage.tsx`: two plain always-visible fields, default `'0.00'`, no `hideWhen`. Labels: `Harga dasar` and `Biaya dasar`.
 - Add a non-blocking UI hint when base cost is greater than base price and cost is greater than zero: `Biaya dasar lebih besar dari harga dasar — cek kembali`. Use the existing `type: 'custom'` field `render` pattern from `ProductTiersField` so it reads live form values. It does not block save and does not imply a final profit warning.
 - `frontend/src/features/catalog/ProductTiersField.tsx`: `productPayload()` sends both fields as strings.
 - `frontend/src/api/types.ts`: add both fields to `Product`.
