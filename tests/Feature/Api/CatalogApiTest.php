@@ -14,7 +14,9 @@ use App\Models\ProductCategory;
 use App\Models\ProductQuantityDiscount;
 use App\Models\StockLedger;
 use App\Models\User;
+use App\Modules\Catalog\Http\Resources\ProductResource;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -646,6 +648,36 @@ class CatalogApiTest extends TestCase
             'name' => $name,
             'code' => Str::upper(Str::random(6)),
         ]);
+    }
+
+    public function test_product_resource_exposes_tiers_only_to_owner_manager_designer(): void
+    {
+        $product = Product::query()->create([
+            'name' => 'Gate Banner',
+            'selling_unit' => 'pcs',
+            'product_category_id' => $this->category->id,
+        ]);
+        ProductQuantityDiscount::query()->create([
+            'product_id' => $product->id, 'min_qty' => 15, 'discount_percent' => 10,
+        ]);
+        $product = $product->load('quantityDiscounts');
+
+        foreach (['owner', 'manager', 'designer'] as $role) {
+            $request = Request::create('/');
+            $request->setUserResolver(fn () => $this->user($role, $this->branchOne));
+            $data = (new ProductResource($product))->resolve($request);
+
+            $this->assertArrayHasKey('tiers', $data);
+            $this->assertSame([15], array_column($data['tiers'], 'min_qty'));
+        }
+
+        foreach (['cashier', 'production'] as $role) {
+            $request = Request::create('/');
+            $request->setUserResolver(fn () => $this->user($role, $this->branchOne));
+            $data = (new ProductResource($product))->resolve($request);
+
+            $this->assertArrayNotHasKey('tiers', $data);
+        }
     }
 
     private function user(string $role, ?Branch $branch): User

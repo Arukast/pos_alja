@@ -8,6 +8,9 @@ use App\Models\Attribute;
 use App\Models\AttributeType;
 use App\Models\Material;
 use App\Models\Product;
+use App\Models\ProductQuantityDiscount;
+use App\Models\User;
+use App\Support\Decimal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,7 +30,7 @@ final class ProductResource extends JsonResource
             ? $this->compatibleAttributes
             : collect();
 
-        return [
+        $data = [
             'id' => $this->id,
             'name' => $this->name,
             'selling_unit' => $this->selling_unit,
@@ -58,5 +61,17 @@ final class ProductResource extends JsonResource
             ])->values()->all(),
             'material_ids' => $materials->pluck('id')->values()->all(),
         ];
+
+        $user = $request->user();
+        if ($user instanceof User && in_array($user->role, ['owner', 'manager', 'designer'], true)) {
+            $tiers = $this->relationLoaded('quantityDiscounts') ? $this->quantityDiscounts : collect();
+            $data['tiers'] = $tiers->map(static fn (ProductQuantityDiscount $tier): array => [
+                'id' => $tier->id,
+                'min_qty' => (int) $tier->min_qty,
+                'discount_percent' => Decimal::money($tier->discount_percent),
+            ])->values()->all();
+        }
+
+        return $data;
     }
 }

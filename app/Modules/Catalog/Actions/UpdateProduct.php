@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Actions;
 
 use App\Models\Product;
+use App\Models\ProductQuantityDiscount;
 use App\Models\User;
 use App\Modules\Catalog\Support\ProductComposition;
 use App\Services\AuditLogger;
@@ -21,7 +22,7 @@ final class UpdateProduct
     ) {}
 
     /**
-     * @param  array{name: string, product_category_id: string, selling_unit?: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>}  $data
+     * @param  array{name: string, product_category_id: string, selling_unit?: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>, tiers?: array<int, array{id?: string, min_qty: int, discount_percent: string}>}  $data
      */
     public function execute(Product $product, array $data, User $actor): Product
     {
@@ -47,6 +48,8 @@ final class UpdateProduct
                         ? (bool) $data['uses_attributes']
                         : (bool) $product->uses_attributes,
                 ]);
+
+                $this->syncTiers($product, $data['tiers'] ?? []);
 
                 $this->composition->sync($product, $data);
 
@@ -78,6 +81,40 @@ final class UpdateProduct
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $updated->load(['category', 'materials', 'attributeTypes', 'compatibleAttributes.typeInfo']);
+        return $updated->load(['category', 'materials', 'attributeTypes', 'compatibleAttributes.typeInfo', 'quantityDiscounts']);
+    }
+
+    /**
+     * @param  array<int, array{id?: string, min_qty: int, discount_percent: string}>  $tiers
+     */
+    private function syncTiers(Product $product, array $tiers): void
+    {
+        $ids = array_filter(array_column($tiers, 'id'));
+
+        // shortcut: swapping min_qty between two retained ids still hits the unique index; use two-phase temporary values if that case ever needs support.
+        ProductQuantityDiscount::query()
+            ->where('product_id', $product->id)
+            ->whereNotIn('id', $ids)
+            ->delete();
+
+        foreach ($tiers as $tier) {
+            if (isset($tier['id'])) {
+                ProductQuantityDiscount::query()
+                    ->whereKey($tier['id'])
+                    ->where('product_id', $product->id)
+                    ->update([
+                        'min_qty' => (int) $tier['min_qty'],
+                        'discount_percent' => $tier['discount_percent'],
+                    ]);
+
+                continue;
+            }
+
+            ProductQuantityDiscount::query()->create([
+                'product_id' => $product->id,
+                'min_qty' => (int) $tier['min_qty'],
+                'discount_percent' => $tier['discount_percent'],
+            ]);
+        }
     }
 }

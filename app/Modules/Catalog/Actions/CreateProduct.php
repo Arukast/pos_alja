@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Actions;
 
 use App\Models\Product;
+use App\Models\ProductQuantityDiscount;
 use App\Models\User;
 use App\Modules\Catalog\Support\ProductComposition;
 use App\Services\AuditLogger;
@@ -21,7 +22,7 @@ final class CreateProduct
     ) {}
 
     /**
-     * @param  array{name: string, product_category_id: string, selling_unit: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>}  $data
+     * @param  array{name: string, product_category_id: string, selling_unit: string, is_active?: bool, requires_material?: bool, uses_attributes?: bool, material_ids?: array<int, string>, attribute_type_ids?: array<int, string>, attribute_ids?: array<int, string>, tiers?: array<int, array{id?: string, min_qty: int, discount_percent: string}>}  $data
      */
     public function execute(array $data, User $actor): Product
     {
@@ -39,6 +40,14 @@ final class CreateProduct
                 ]);
 
                 $this->composition->sync($product, $data);
+
+                foreach ($data['tiers'] ?? [] as $tier) {
+                    ProductQuantityDiscount::query()->create([
+                        'product_id' => $product->id,
+                        'min_qty' => (int) $tier['min_qty'],
+                        'discount_percent' => $tier['discount_percent'],
+                    ]);
+                }
 
                 $this->audit->record(
                     $actor,
@@ -61,6 +70,6 @@ final class CreateProduct
 
         SafeBroadcast::orderUpdated($actor->branch_id, $actor);
 
-        return $product->load(['category', 'materials', 'attributeTypes', 'compatibleAttributes.typeInfo']);
+        return $product->load(['category', 'materials', 'attributeTypes', 'compatibleAttributes.typeInfo', 'quantityDiscounts']);
     }
 }
