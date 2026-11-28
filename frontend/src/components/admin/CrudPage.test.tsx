@@ -60,8 +60,18 @@ describe('CrudPage', () => {
 
     it('test_read_only_mode_offers_Lihat_and_disables_all_fields', () => {
         const html = renderPage(
-            [{ key: 'name', label: 'Nama' }, { key: 'flag', label: 'Aktif', type: 'checkbox' }],
-            { readOnly: true, viewTitle: 'Lihat data' }
+            [
+                { key: 'name', label: 'Nama' },
+                { key: 'flag', label: 'Aktif', type: 'checkbox' },
+                { key: 'category', label: 'Kategori', type: 'select', options: [{ value: 'a', label: 'A' }] },
+            ],
+            {
+                readOnly: true,
+                viewTitle: 'Lihat data',
+                create: () => Promise.resolve(),
+                update: () => Promise.resolve(),
+                remove: () => Promise.resolve(),
+            }
         );
 
         expect(html).toContain('>Lihat</button>');
@@ -70,6 +80,9 @@ describe('CrudPage', () => {
         expect(html).not.toContain('>Tambah data</button>');
         expect(html).not.toContain('>Ubah</button>');
         expect(html).not.toContain('>Hapus</button>');
-        expect(html).toContain('disabled');
+
+        const modalMarkup = html.slice(html.indexOf('Lihat data'));
+        expect(modalMarkup.match(/<input[^>]*disabled/g)).toHaveLength(2);
+        expect(modalMarkup).toMatch(/<select[^>]*disabled/);
     });
 });
